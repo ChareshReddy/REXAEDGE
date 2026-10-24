@@ -1,0 +1,23 @@
+{
+  "name": "sap-application-backend",
+  "version": "1.0.0",
+  "description": "Backend service for SAP Business Partner application",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node scripts/runTests.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "axios": "^1.7.9",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "open-rfc": "^0.2.4",
+    "xlsx": "^0.18.5"
+  }
+}

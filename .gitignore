@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment files and secrets
+.env
+.env*
+.env.*
+*.env*
+backend/.env
+backend/.env*
+backend/*.env*
+frontend/.env
+frontend/.env*
+frontend/*.env*
+*.pem
+*.key
+*.cert
+*.pfx
+*.pkcs12
+*credentials*
+!.env.example
+!*.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Mock data files
+backend/mock/*.json
+
+# Production build artifacts
+dist/
+dist
+build/
+frontend/dist/
+frontend/build/
+
+# Logs & SAP RFC Traces
+logs/
+logs
+*.log
+*.trc
+dev_rfc.log
+dev_rfc.trc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archives
+*.zip
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.kilo/
+
+# Scratch & temporary investigation files
+scratch/
+scratch_investigation_results.json
+.temp/
+supabase/.temp/
