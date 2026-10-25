@@ -132,11 +132,29 @@ export function getRfcConnectionParams(customOverrides = {}) {
 }
 
 /**
- * Creates and opens an open-rfc Client instance.
+ * Default open-rfc Client options enforcing classic-xRFC for recursive/table parameters
+ * (avoids "recursive serializer classification rejected: live-decision-required" on S/4HANA & NetWeaver 7.50+).
  */
-export async function openRfcClient(customOverrides = {}) {
+export const DEFAULT_RFC_CLIENT_OPTIONS = Object.freeze({
+  bcd: 'string',
+  int8Mode: 'number',
+  recursiveSerializerPolicy: Object.freeze({
+    profile: 'abap-7.50',
+    observation: Object.freeze({
+      defaultSerializer: 'classic-xrfc',
+      basxmlDisabledSerializer: 'classic-xrfc'
+    })
+  })
+});
+
+/**
+ * Creates and opens an open-rfc Client instance.
+ * @param {object} [customOverrides={}] - Optional server overrides or params
+ * @param {typeof Client} [ClientClass=Client] - Client constructor (can be injected for testing)
+ */
+export async function openRfcClient(customOverrides = {}, ClientClass = Client) {
   const params = getRfcConnectionParams(customOverrides);
-  const client = new Client(params);
+  const client = new ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
   await client.open();
   return client;
 }
@@ -833,7 +851,7 @@ export async function rfcCreateBom(params = {}) {
     CHANGE_NO: c.CHANGE_NO || c.changeNo || ''
   }));
 
-  if (params.server) {
+  if (params.server && process.env.USE_MOCK_SAP !== 'true') {
     getRfcConnectionParams(params.server);
   }
 
@@ -1575,7 +1593,7 @@ export async function rfcDeleteBom(params = {}) {
   const cleanAlt = String(alternativeBom || '1').trim();
   const altPadded = cleanAlt.padStart(2, '0');
 
-  if (params.server) {
+  if (params.server && process.env.USE_MOCK_SAP !== 'true') {
     getRfcConnectionParams(params.server);
   }
 
@@ -2559,6 +2577,154 @@ export async function getNextAvailableAlternative(material, plant, bomUsage = '1
 }
 
 /**
+ * Resolves the target alternative for a BOM copy operation:
+ * - If targetAlternative is blank (empty string, null, or undefined):
+ *     Queries existing alternatives for the target material + plant + usage in SAP,
+ *     combines with any already-allocated alternatives in the current batch (allocatedAlternatives),
+ *     and selects the lowest free alternative number (01-99) via findLowestFreeAlternative.
+ * - If targetAlternative is explicitly specified:
+ *     Checks if the specified alternative already exists in SAP or in allocatedAlternatives.
+ *     If it exists, marks as conflict (exists: true, must be blocked).
+ *     If it does not exist, returns the specified alternative padded to 2 digits.
+ *
+ * @param {object} params
+ * @param {string} params.targetMaterial
+ * @param {string} params.targetPlant
+ * @param {string} [params.targetUsage='1']
+ * @param {string} [params.targetAlternative='']
+ * @param {Array<number|string>} [params.allocatedAlternatives=[]]
+ * @param {object} [params.client=null]
+ * @param {object} [params.server=null]
+ * @returns {Promise<{
+ *   targetAlternative: string,
+ *   isAutoSelected: boolean,
+ *   exists: boolean,
+ *   existingAlternatives: number[]
+ * }>}
+ */
+export async function resolveTargetAlternativeForCopy(params = {}) {
+  const {
+    targetMaterial,
+    targetPlant,
+    targetUsage = '1',
+    targetAlternative = '',
+    allocatedAlternatives = [],
+    client = null,
+    server = null
+  } = params;
+
+  const cleanMat = String(targetMaterial || '').trim().toUpperCase();
+  const cleanPlt = String(targetPlant || '').trim().toUpperCase();
+  const cleanUsg = String(targetUsage || '1').trim();
+  const rawSpecified = String(targetAlternative || '').trim();
+
+  // 1. Query existing alternatives from SAP
+  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server);
+
+  // 2. Normalize allocated alternatives from current batch
+  const allocatedSet = new Set(
+    (allocatedAlternatives || [])
+      .map((a) => parseInt(String(a).trim(), 10))
+      .filter((n) => !isNaN(n) && n > 0)
+  );
+
+  const cleanMatch = rawSpecified.match(/\b(\d{1,2})\b/);
+  const specifiedNum = cleanMatch ? parseInt(cleanMatch[1], 10) : null;
+
+  // Case A: Explicitly specified target alternative
+  if (specifiedNum !== null) {
+    const specifiedPad = String(specifiedNum).padStart(2, '0');
+    const alreadyExists = existingAlts.includes(specifiedNum) || allocatedSet.has(specifiedNum);
+    return {
+      targetAlternative: specifiedPad,
+      isAutoSelected: false,
+      exists: alreadyExists,
+      existingAlternatives: existingAlts
+    };
+  }
+
+  // Case B: Blank target alternative -> auto-select lowest free alternative (01-99)
+  const combinedSet = new Set([...existingAlts, ...allocatedSet]);
+  const freeAlt = findLowestFreeAlternative(Array.from(combinedSet));
+
+  return {
+    targetAlternative: freeAlt,
+    isAutoSelected: true,
+    exists: false,
+    existingAlternatives: existingAlts
+  };
+}
+
+/**
+ * Resolves the source alternative for a BOM copy operation:
+ * - If sourceAlternative is explicitly specified: returns it padded to 2 digits.
+ * - If sourceAlternative is blank:
+ *     Queries existing alternatives for the source material + plant + usage in SAP.
+ *     If 01 exists, auto-selects '01'.
+ *     Else if exactly one alternative exists, auto-selects that alternative.
+ *     Else returns empty string with available alternatives.
+ *
+ * @param {object} params
+ * @param {string} params.sourceMaterial
+ * @param {string} params.sourcePlant
+ * @param {string} [params.sourceUsage='1']
+ * @param {string} [params.sourceAlternative='']
+ * @param {object} [params.client=null]
+ * @param {object} [params.server=null]
+ * @returns {Promise<{
+ *   sourceAlternative: string,
+ *   isAutoSelected: boolean,
+ *   availableAlternatives: number[]
+ * }>}
+ */
+export async function resolveSourceAlternativeForCopy(params = {}) {
+  const {
+    sourceMaterial,
+    sourcePlant,
+    sourceUsage = '1',
+    sourceAlternative = '',
+    client = null,
+    server = null
+  } = params;
+
+  const cleanMat = String(sourceMaterial || '').trim().toUpperCase();
+  const cleanPlt = String(sourcePlant || '').trim().toUpperCase();
+  const cleanUsg = String(sourceUsage || '1').trim();
+  const rawSpecified = String(sourceAlternative || '').trim();
+
+  const cleanMatch = rawSpecified.match(/\b(\d{1,2})\b/);
+  if (cleanMatch) {
+    return {
+      sourceAlternative: cleanMatch[1].padStart(2, '0'),
+      isAutoSelected: false,
+      availableAlternatives: []
+    };
+  }
+
+  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server);
+  if (existingAlts.includes(1)) {
+    return {
+      sourceAlternative: '01',
+      isAutoSelected: true,
+      availableAlternatives: existingAlts
+    };
+  }
+  if (existingAlts.length === 1) {
+    return {
+      sourceAlternative: String(existingAlts[0]).padStart(2, '0'),
+      isAutoSelected: true,
+      availableAlternatives: existingAlts
+    };
+  }
+
+  return {
+    sourceAlternative: '',
+    isAutoSelected: false,
+    availableAlternatives: existingAlts
+  };
+}
+
+/**
  * Step 1: Wrapper to fetch direct components, base quantity, and base unit
  * for a single sub-assembly material. Reuses rfcReadBom per material.
  *
@@ -3107,7 +3273,7 @@ export async function rfcCopyBom(params = {}) {
     copyHierarchy = true
   } = params;
 
-  if (params.server) {
+  if (params.server && process.env.USE_MOCK_SAP !== 'true') {
     getRfcConnectionParams(params.server);
   }
 
@@ -3234,15 +3400,22 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
   }
 
   const results = [];
-  const client = options.client || (await openRfcClient(options.server || options));
-  const shouldClose = !options.client;
+  const isMock = process.env.USE_MOCK_SAP === 'true';
+  const client = options.client || (isMock ? null : await openRfcClient(options.server || options));
+  const shouldClose = !options.client && !isMock && client;
+  const allocatedByTargetKey = options.allocatedByTargetKey || new Map();
+
+  // Populate any pre-allocated alternatives from options (if passed by caller)
+  if (options.allocatedAlternatives && options.targetKey) {
+    allocatedByTargetKey.set(options.targetKey, [...options.allocatedAlternatives]);
+  }
 
   try {
     for (const item of items) {
       const srcMat = String(item.sourceMaterial || '').trim().toUpperCase();
       const srcPlant = String(item.sourcePlant || '').trim().toUpperCase();
       const srcUsage = String(item.sourceUsage || item.sourceBomUsage || '1').trim();
-      const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '1').trim();
+      const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '').trim();
 
       const tgtMat = String(item.targetMaterial || srcMat).trim().toUpperCase();
       const tgtPlant = String(item.targetPlant || '').trim().toUpperCase();
@@ -3272,65 +3445,155 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         continue;
       }
 
-      // 2. Check if Source BOM exists in MAST
+      // 2. Resolve source alternative if blank using shared function
+      let effectiveSrcAlt = srcAlt;
+      if (!effectiveSrcAlt) {
+        const srcAltRes = await resolveSourceAlternativeForCopy({
+          sourceMaterial: srcMat,
+          sourcePlant: srcPlant,
+          sourceUsage: srcUsage,
+          sourceAlternative: srcAlt,
+          client,
+          server: options.server
+        });
+        if (srcAltRes.sourceAlternative) {
+          effectiveSrcAlt = srcAltRes.sourceAlternative;
+          rowResult.sourceAltBom = effectiveSrcAlt;
+        } else {
+          rowResult.status = 'ERROR';
+          rowResult.message = `Alternative BOM was not specified and alternative 01 does not exist for material ${srcMat} in plant ${srcPlant}. Available alternatives: ${(srcAltRes.availableAlternatives || []).join(', ')}`;
+          results.push(rowResult);
+          continue;
+        }
+      }
+
+      // 3. Resolve target alternative using shared function
+      const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
+      const allocatedList = allocatedByTargetKey.get(targetKey) || [];
+
+      const tgtAltRes = await resolveTargetAlternativeForCopy({
+        targetMaterial: tgtMat,
+        targetPlant: tgtPlant,
+        targetUsage: tgtUsage,
+        targetAlternative: tgtAlt,
+        allocatedAlternatives: allocatedList,
+        client,
+        server: options.server
+      });
+
+      // Update allocated list for this target key to prevent file-internal collision
+      const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
+      allocatedByTargetKey.set(targetKey, [...allocatedList, resolvedNum]);
+
+      // Set resolved value in rowResult so preview displays it (not blank!)
+      rowResult.targetAltBom = tgtAltRes.targetAlternative;
+
+      // 4. If an explicitly specified alternative already exists, block it (row 3 behavior stays)
+      if (tgtAltRes.exists) {
+        rowResult.status = 'ERROR';
+        rowResult.message = `Cannot copy: Alternative ${parseInt(tgtAltRes.targetAlternative, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`;
+        rowResult.problems = [rowResult.message];
+        results.push(rowResult);
+        continue;
+      }
+
+      // 5. Check if Source BOM exists in MAST
       try {
-        const mastRes = await client.call('RFC_READ_TABLE', {
-          QUERY_TABLE: 'MAST',
-          DELIMITER: '|',
-          OPTIONS: [{ TEXT: `MATNR = '${toSapMatnr(srcMat)}' AND WERKS = '${srcPlant}'` }],
-          FIELDS: [{ FIELDNAME: 'STLNR' }, { FIELDNAME: 'STLAL' }, { FIELDNAME: 'STLAN' }],
-          DATA: []
-        });
+        if (isMock) {
+          const matching = activeMockBoms.filter(
+            (b) =>
+              String(b.material).toUpperCase() === srcMat &&
+              String(b.plant) === srcPlant &&
+              String(b.bomUsage || '1') === srcUsage
+          );
 
-        const fieldNames = (mastRes.FIELDS || []).map((f) => f.FIELDNAME.trim());
-        const rows = (mastRes.DATA || []).map((r) => {
-          const parts = r.WA.split('|');
-          const obj = {};
-          fieldNames.forEach((name, idx) => {
-            obj[name] = parts[idx]?.trim();
+          if (matching.length === 0) {
+            rowResult.status = 'ERROR';
+            rowResult.message = `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
+            results.push(rowResult);
+            continue;
+          }
+
+          const altMatch = matching.find(
+            (b) =>
+              String(b.alternativeBom || '1').padStart(2, '0') === effectiveSrcAlt.padStart(2, '0') ||
+              parseInt(String(b.alternativeBom || '1'), 10) === parseInt(effectiveSrcAlt, 10)
+          );
+
+          if (!altMatch) {
+            const available = [...new Set(matching.map((b) => String(b.alternativeBom || '1').padStart(2, '0')))];
+            rowResult.status = 'ERROR';
+            rowResult.message = `Source Alternative ${effectiveSrcAlt} not found. Available: ${available.join(', ')}`;
+            results.push(rowResult);
+            continue;
+          }
+
+          rowResult.componentCount = altMatch.components ? altMatch.components.length : 0;
+          if (rowResult.componentCount === 0) {
+            rowResult.status = 'INVALID';
+            rowResult.message = 'BOM has no active components';
+            results.push(rowResult);
+            continue;
+          }
+        } else {
+          const mastRes = await client.call('RFC_READ_TABLE', {
+            QUERY_TABLE: 'MAST',
+            DELIMITER: '|',
+            OPTIONS: [{ TEXT: `MATNR = '${toSapMatnr(srcMat)}' AND WERKS = '${srcPlant}'` }],
+            FIELDS: [{ FIELDNAME: 'STLNR' }, { FIELDNAME: 'STLAL' }, { FIELDNAME: 'STLAN' }],
+            DATA: []
           });
-          return {
-            stlnr: obj.STLNR,
-            stlal: obj.STLAL,
-            stlan: obj.STLAN
-          };
-        });
 
-        if (rows.length === 0) {
-          rowResult.status = 'ERROR';
-          rowResult.message = `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
-          results.push(rowResult);
-          continue;
-        }
+          const fieldNames = (mastRes.FIELDS || []).map((f) => f.FIELDNAME.trim());
+          const rows = (mastRes.DATA || []).map((r) => {
+            const parts = r.WA.split('|');
+            const obj = {};
+            fieldNames.forEach((name, idx) => {
+              obj[name] = parts[idx]?.trim();
+            });
+            return {
+              stlnr: obj.STLNR,
+              stlal: obj.STLAL,
+              stlan: obj.STLAN
+            };
+          });
 
-        const altMatch = rows.find(
-          (r) =>
-            (r.stlal === srcAlt.padStart(2, '0') || parseInt(r.stlal, 10) === parseInt(srcAlt, 10)) &&
-            (!srcUsage || r.stlan === srcUsage)
-        );
+          if (rows.length === 0) {
+            rowResult.status = 'ERROR';
+            rowResult.message = `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
+            results.push(rowResult);
+            continue;
+          }
 
-        if (!altMatch) {
-          const available = [...new Set(rows.map((r) => r.stlal))];
-          rowResult.status = 'ERROR';
-          rowResult.message = `Source Alternative ${srcAlt} not found. Available: ${available.join(', ')}`;
-          results.push(rowResult);
-          continue;
-        }
+          const altMatch = rows.find(
+            (r) =>
+              (r.stlal === effectiveSrcAlt.padStart(2, '0') || parseInt(r.stlal, 10) === parseInt(effectiveSrcAlt, 10)) &&
+              (!srcUsage || r.stlan === srcUsage)
+          );
 
-        // 3. Count components in STAS for this specific alternative
-        const stasRes = await client.call('RFC_READ_TABLE', {
-          QUERY_TABLE: 'STAS',
-          DELIMITER: '|',
-          OPTIONS: [{ TEXT: `STLTY = 'M' AND STLNR = '${altMatch.stlnr}' AND STLAL = '${altMatch.stlal}' AND LKENZ = ''` }],
-          FIELDS: [{ FIELDNAME: 'STLKN' }],
-          DATA: []
-        });
-        rowResult.componentCount = stasRes.DATA ? stasRes.DATA.length : 0;
-        if (rowResult.componentCount === 0) {
-          rowResult.status = 'INVALID';
-          rowResult.message = 'BOM has no active components';
-          results.push(rowResult);
-          continue;
+          if (!altMatch) {
+            const available = [...new Set(rows.map((r) => r.stlal))];
+            rowResult.status = 'ERROR';
+            rowResult.message = `Source Alternative ${effectiveSrcAlt} not found. Available: ${available.join(', ')}`;
+            results.push(rowResult);
+            continue;
+          }
+
+          // Count components in STAS for this specific alternative
+          const stasRes = await client.call('RFC_READ_TABLE', {
+            QUERY_TABLE: 'STAS',
+            DELIMITER: '|',
+            OPTIONS: [{ TEXT: `STLTY = 'M' AND STLNR = '${altMatch.stlnr}' AND STLAL = '${altMatch.stlal}' AND LKENZ = ''` }],
+            FIELDS: [{ FIELDNAME: 'STLKN' }],
+            DATA: []
+          });
+          rowResult.componentCount = stasRes.DATA ? stasRes.DATA.length : 0;
+          if (rowResult.componentCount === 0) {
+            rowResult.status = 'INVALID';
+            rowResult.message = 'BOM has no active components';
+            results.push(rowResult);
+            continue;
+          }
         }
       } catch (srcErr) {
         rowResult.status = 'ERROR';
@@ -3339,36 +3602,17 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         continue;
       }
 
-      // 4. Check if Target Alt BOM already exists in MAST
-      let readyMsg = `Ready to copy (${rowResult.componentCount} components)`;
-      const checkAlt = tgtAlt && tgtAlt !== '1' && tgtAlt !== '01' ? tgtAlt.padStart(2, '0') : '';
-      try {
-        if (checkAlt) {
-          const tgtCheck = await client.call('RFC_READ_TABLE', {
-            QUERY_TABLE: 'MAST',
-            DELIMITER: '|',
-            OPTIONS: [{ TEXT: `MATNR = '${toSapMatnr(tgtMat)}' AND WERKS = '${tgtPlant}' AND STLAL = '${checkAlt}'` }],
-            FIELDS: [{ FIELDNAME: 'STLNR' }],
-            DATA: []
-          });
-
-          if (tgtCheck.DATA && tgtCheck.DATA.length > 0) {
-            readyMsg = `Target Alt ${tgtAlt} exists; will auto-increment to next available Alternative (${rowResult.componentCount} components)`;
-          }
-        }
-      } catch (tgtErr) {}
-
-      // 5. Pre-validate Target BOM creation with BAPI TESTRUN simulation (BAPIFLAG = 'X')
+      // 6. Pre-validate Target BOM creation with BAPI TESTRUN simulation (BAPIFLAG = 'X')
       try {
         const simRes = await rfcSimulateCopyBom({
           sourceMaterial: srcMat,
           sourcePlant: srcPlant,
           sourceUsage: srcUsage,
-          sourceAlternative: srcAlt,
+          sourceAlternative: effectiveSrcAlt || '01',
           targetMaterial: tgtMat,
           targetPlant: tgtPlant,
           targetUsage: tgtUsage,
-          targetAlternative: checkAlt || '01',
+          targetAlternative: tgtAltRes.targetAlternative,
           client,
           copyHierarchy: options.copyHierarchy !== false
         });
@@ -3391,7 +3635,9 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
       }
 
       rowResult.status = 'VALID';
-      rowResult.message = readyMsg;
+      rowResult.message = tgtAltRes.isAutoSelected
+        ? `Ready to copy (Alternative ${tgtAltRes.targetAlternative} auto-selected, ${rowResult.componentCount} components)`
+        : `Ready to copy (${rowResult.componentCount} components)`;
       results.push(rowResult);
     }
   } finally {
@@ -3438,12 +3684,13 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
   }
 
   const results = [];
+  const allocatedByTargetKey = options.allocatedByTargetKey || new Map();
 
   for (const item of items) {
     const srcMat = String(item.sourceMaterial || '').trim().toUpperCase();
     const srcPlant = String(item.sourcePlant || '').trim().toUpperCase();
     const srcUsage = String(item.sourceUsage || item.sourceBomUsage || '1').trim();
-    const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '1').trim();
+    const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '').trim();
 
     const tgtMat = String(item.targetMaterial || srcMat).trim().toUpperCase();
     const tgtPlant = String(item.targetPlant || '').trim().toUpperCase();
@@ -3471,6 +3718,49 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
       continue;
     }
 
+    // Resolve source alternative if blank
+    let effectiveSrcAlt = srcAlt;
+    if (!effectiveSrcAlt) {
+      const srcAltRes = await resolveSourceAlternativeForCopy({
+        sourceMaterial: srcMat,
+        sourcePlant: srcPlant,
+        sourceUsage: srcUsage,
+        sourceAlternative: srcAlt,
+        server: options.server
+      });
+      if (srcAltRes.sourceAlternative) {
+        effectiveSrcAlt = srcAltRes.sourceAlternative;
+        rowResult.sourceAltBom = effectiveSrcAlt;
+      }
+    }
+
+    // Resolve target alternative using shared function
+    const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
+    const allocatedList = allocatedByTargetKey.get(targetKey) || [];
+
+    const tgtAltRes = await resolveTargetAlternativeForCopy({
+      targetMaterial: tgtMat,
+      targetPlant: tgtPlant,
+      targetUsage: tgtUsage,
+      targetAlternative: tgtAlt,
+      allocatedAlternatives: allocatedList,
+      server: options.server
+    });
+
+    const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
+    allocatedByTargetKey.set(targetKey, [...allocatedList, resolvedNum]);
+    const resolvedTgtAlt = tgtAltRes.targetAlternative;
+    rowResult.targetAltBom = resolvedTgtAlt;
+
+    // If an explicitly specified target alternative already exists, block it
+    if (tgtAltRes.exists) {
+      rowResult.success = false;
+      rowResult.message = `Cannot copy: Alternative ${parseInt(resolvedTgtAlt, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`;
+      results.push(rowResult);
+      if (!skipErrors) break;
+      continue;
+    }
+
     try {
       const copyRes = await rfcCopyBom({
         sourceMaterial: srcMat,
@@ -3478,8 +3768,8 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
         targetMaterial: tgtMat,
         targetPlant: tgtPlant,
         bomUsage: tgtUsage,
-        sourceAlternative: srcAlt,
-        targetAlternative: tgtAlt,
+        sourceAlternative: effectiveSrcAlt || '1',
+        targetAlternative: resolvedTgtAlt,
         copyHierarchy,
         server: options.server
       });
@@ -3487,8 +3777,8 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
       if (copyRes.success) {
         rowResult.success = true;
         rowResult.bomNumber = copyRes.bomNumber || '';
-        rowResult.targetAltBom = copyRes.alternativeBom || tgtAlt;
-        rowResult.message = copyRes.message || `Copied successfully (Alt ${copyRes.alternativeBom || tgtAlt})`;
+        rowResult.targetAltBom = copyRes.alternativeBom || resolvedTgtAlt;
+        rowResult.message = copyRes.message || `Copied successfully (Alt ${copyRes.alternativeBom || resolvedTgtAlt})`;
         rowResult.sourceComponentCount = copyRes.sourceComponentCount || 0;
         rowResult.totalLevels = copyRes.totalLevels || 1;
         rowResult.totalBoms = copyRes.totalBoms || 1;
@@ -3804,6 +4094,8 @@ export default {
   findLowestFreeAlternative,
   getExistingAlternatives,
   getNextAvailableAlternative,
+  resolveTargetAlternativeForCopy,
+  resolveSourceAlternativeForCopy,
   getSubAssemblyComponents,
   verifyBomComponents,
   inspectAndVerifyHierarchy,

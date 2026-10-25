@@ -1,7 +1,7 @@
 import { Client } from 'open-rfc';
-import { getRfcConnectionParams } from '../services/sapRfcClient.js';
+import { getRfcConnectionParams, DEFAULT_RFC_CLIENT_OPTIONS } from '../services/sapRfcClient.js';
 
-const client = new Client(getRfcConnectionParams());
+const client = new Client(getRfcConnectionParams(), DEFAULT_RFC_CLIENT_OPTIONS);
 
 async function findBomReaders() {
   await client.open();

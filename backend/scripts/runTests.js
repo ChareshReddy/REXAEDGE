@@ -37,7 +37,11 @@ const testFiles = [
   'test/bulkUploadPanelRender.test.js',
   'test/bulkCreateBomPreviewTable.test.js',
   'test/sapMatnrPaddingAndErrors.test.js',
-  'test/sapConnectionTest.test.js'
+  'test/sapConnectionTest.test.js',
+  'test/bomBackgroundJobs.test.js',
+  'test/bulkBomUiFlow.test.js',
+  'test/bulkCopyAlternativeResolution.test.js',
+  'test/openRfcClientOptions.test.js'
 ];
 
 const env = {

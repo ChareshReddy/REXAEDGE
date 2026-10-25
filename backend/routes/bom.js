@@ -23,6 +23,7 @@ import {
 import { requireAuth, requireServerAccess, requireModuleAccess } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { auditLogger } from '../services/auditLog.js';
+import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
 
 const router = express.Router();
 
@@ -353,6 +354,13 @@ router.post('/delete', requireServerAccess('read_write'), async (req, res) => {
 router.post('/batch-validate', requireServerAccess('read_only'), async (req, res) => {
   try {
     const { items = [], copyHierarchy = true } = req.body || {};
+    if (items.length > MAX_BOMS) {
+      return res.status(400).json({
+        success: false,
+        code: 'BOM_LIMIT_EXCEEDED',
+        message: `Request contains ${items.length} BOM copy rows, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split into smaller batches.`
+      });
+    }
     const result = await rfcBatchValidateBoms(items, { copyHierarchy, server: req.selectedServer });
     return res.status(200).json(result);
   } catch (err) {
@@ -371,6 +379,13 @@ router.post('/batch-validate', requireServerAccess('read_only'), async (req, res
 router.post('/batch-copy', requireServerAccess('read_write'), async (req, res) => {
   try {
     const { items = [], skipErrors = true, copyHierarchy = true } = req.body || {};
+    if (items.length > MAX_BOMS) {
+      return res.status(400).json({
+        success: false,
+        code: 'BOM_LIMIT_EXCEEDED',
+        message: `Request contains ${items.length} BOM copy rows, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split into smaller batches.`
+      });
+    }
     const result = await rfcBatchCopyBoms(items, { skipErrors, copyHierarchy, server: req.selectedServer });
 
     auditLogger.logAction({
@@ -496,6 +511,8 @@ router.post('/create-preflight', requireServerAccess('read_only'), async (req, r
         });
       }
       bomsToValidate = parseInfo.boms;
+      // Zero-storage guarantee: clear buffer reference immediately
+      parseInfo = null;
     } else if (Array.isArray(req.body.boms)) {
       bomsToValidate = req.body.boms;
     } else if (req.body.bom) {
@@ -504,6 +521,14 @@ router.post('/create-preflight', requireServerAccess('read_only'), async (req, r
       return res.status(400).json({
         success: false,
         message: 'No fileContent or boms array provided for pre-flight validation.'
+      });
+    }
+
+    if (bomsToValidate.length > MAX_BOMS) {
+      return res.status(400).json({
+        success: false,
+        code: 'BOM_LIMIT_EXCEEDED',
+        message: `Uploaded file contains ${bomsToValidate.length} BOMs, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split into smaller batches.`
       });
     }
 
@@ -567,6 +592,13 @@ router.post('/create-bulk', requireServerAccess('read_write'), async (req, res) 
     const { boms = [], fileName = '' } = req.body || {};
     if (!Array.isArray(boms) || boms.length === 0) {
       return res.status(400).json({ success: false, message: 'No BOMs provided for bulk creation.' });
+    }
+    if (boms.length > MAX_BOMS) {
+      return res.status(400).json({
+        success: false,
+        code: 'BOM_LIMIT_EXCEEDED',
+        message: `Request contains ${boms.length} BOMs, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split into smaller batches.`
+      });
     }
     const result = await rfcBatchCreateBoms({
       boms,
@@ -663,6 +695,165 @@ router.get('/create-template', requireServerAccess('read_only'), (req, res) => {
     return res.status(500).json({
       success: false,
       message: `Failed to generate Excel template: ${err.message}`
+    });
+  }
+});
+
+// =========================================================================
+// BACKGROUND JOB ENDPOINTS (Safe Bulk Processing for Hundreds of BOMs)
+// =========================================================================
+
+/**
+ * POST /api/bom/jobs/start
+ * Starts an asynchronous background job for Bulk Create/Copy BOM (Pre-flight, Validation, or Execution).
+ * Returns immediately with { jobId } so the client can poll progress.
+ */
+router.post('/jobs/start', async (req, res, next) => {
+  const { type } = req.body || {};
+  const isWriteAction = type === 'create_bulk' || type === 'copy_bulk';
+
+  // Apply server permission check
+  const permCheck = requireServerAccess(isWriteAction ? 'read_write' : 'read_only');
+  return permCheck(req, res, async () => {
+    try {
+      if (isWriteAction && !checkProdConfirmation(req, res)) {
+        return;
+      }
+
+      const {
+        items = [],
+        boms = [],
+        fileContent = null,
+        fileName = '',
+        copyHierarchy = true,
+        skipErrors = true
+      } = req.body || {};
+
+      const jobItems = Array.isArray(items) && items.length > 0
+        ? items
+        : Array.isArray(boms)
+        ? boms
+        : [];
+
+      const startResult = bomJobManager.startJob({
+        type,
+        user: req.user,
+        server: req.selectedServer,
+        items: jobItems,
+        fileContent,
+        fileName,
+        options: { copyHierarchy, skipErrors }
+      });
+
+      return res.status(202).json(startResult);
+    } catch (err) {
+      if (err.code === 'ACTIVE_JOB_EXISTS') {
+        return res.status(409).json({
+          success: false,
+          code: 'ACTIVE_JOB_EXISTS',
+          message: err.message,
+          activeJobId: err.activeJobId
+        });
+      }
+      if (err.code === 'BOM_LIMIT_EXCEEDED') {
+        return res.status(400).json({
+          success: false,
+          code: 'BOM_LIMIT_EXCEEDED',
+          message: err.message,
+          limit: err.limit,
+          actual: err.actual
+        });
+      }
+      if (err.code === 'EMPTY_PAYLOAD' || err.code === 'PARSE_ERROR') {
+        return res.status(400).json({
+          success: false,
+          message: err.message
+        });
+      }
+      console.error('[bom.js] jobs/start error:', err);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to initialize background job: ${err.message}`
+      });
+    }
+  });
+});
+
+/**
+ * GET /api/bom/jobs/active
+ * Checks if the current user has an active job running on the selected server.
+ */
+router.get('/jobs/active', requireServerAccess('read_only'), (req, res) => {
+  try {
+    const active = bomJobManager.getActiveJob(req.user?.id || req.user?.email, req.selectedServer);
+    return res.status(200).json({
+      success: true,
+      hasActiveJob: Boolean(active),
+      job: active
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
+/**
+ * GET /api/bom/jobs/:jobId
+ * Returns the status, progress counters, current BOM, and per-BOM results.
+ */
+router.get('/jobs/:jobId', requireServerAccess('read_only'), (req, res) => {
+  try {
+    const job = bomJobManager.getJob(req.params.jobId, req.user);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: `Job ${req.params.jobId} not found.`
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      job
+    });
+  } catch (err) {
+    if (err.code === 'FORBIDDEN') {
+      return res.status(403).json({
+        success: false,
+        message: err.message
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
+/**
+ * POST /api/bom/jobs/:jobId/cancel
+ * Requests cancellation of a running background job.
+ */
+router.post('/jobs/:jobId/cancel', requireServerAccess('read_only'), (req, res) => {
+  try {
+    const cancelResult = bomJobManager.cancelJob(
+      req.params.jobId,
+      req.user
+    );
+    if (!cancelResult.success) {
+      return res.status(400).json(cancelResult);
+    }
+    return res.status(200).json(cancelResult);
+  } catch (err) {
+    if (err.code === 'FORBIDDEN') {
+      return res.status(403).json({
+        success: false,
+        message: err.message
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: err.message
     });
   }
 });

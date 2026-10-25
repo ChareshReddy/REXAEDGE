@@ -3418,7 +3418,9 @@ export async function verifyBomInCs03(params) {
     );
     if (match) {
       const cleanAlt = String(alternativeBom || '').trim();
-      if (cleanAlt && match.availableAlternatives && !match.availableAlternatives.includes(cleanAlt)) {
+      const altNum = cleanAlt && !isNaN(parseInt(cleanAlt, 10)) ? parseInt(cleanAlt, 10) : null;
+      const altMatches = (a) => String(a).trim() === cleanAlt || (altNum !== null && parseInt(String(a).trim(), 10) === altNum);
+      if (cleanAlt && match.availableAlternatives && !match.availableAlternatives.some(altMatches)) {
         return {
           success: true,
           exists: false,
@@ -3431,8 +3433,11 @@ export async function verifyBomInCs03(params) {
       }
 
       // Dynamically evaluate assembly indicators based on plant-level sub-BOM existence
-      const rawComps = (cleanAlt && match.alternativeComponents && match.alternativeComponents[cleanAlt])
-        ? match.alternativeComponents[cleanAlt]
+      const altKey = cleanAlt && match.alternativeComponents
+        ? Object.keys(match.alternativeComponents).find(altMatches)
+        : null;
+      const rawComps = altKey
+        ? match.alternativeComponents[altKey]
         : (match.components || []);
       const evaluatedComps = rawComps.map(c => {
         let asm = Boolean(c.assembly);

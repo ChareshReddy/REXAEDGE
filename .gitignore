@@ -27,6 +27,8 @@ frontend/*.env*
 
 # Mock data files
 backend/mock/*.json
+backend/mock/bomJobSummaries.json
+backend/mock/auditLog.json
 
 # Production build artifacts
 dist/
@@ -61,3 +63,4 @@ scratch/
 scratch_investigation_results.json
 .temp/
 supabase/.temp/
+.temp_preview_test_build/

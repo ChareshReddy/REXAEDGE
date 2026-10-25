@@ -45,7 +45,9 @@ import {
   rfcCopyBom,
   rfcSimulateCopyBom,
   getExistingAlternatives,
-  findLowestFreeAlternative
+  findLowestFreeAlternative,
+  resolveTargetAlternativeForCopy,
+  resolveSourceAlternativeForCopy
 } from '../services/sapRfcClient.js';
 import { checkMaterialMaintenance } from '../services/materialCheck.js';
 import {
@@ -214,40 +216,38 @@ export async function validateCopyBomParameters({
   }
 
   // Target BOM existence check: when the target BOM already exists, don't block.
-  // Find the lowest free alternative (01-99) for the target material + plant + usage.
-  let targetExists = false;
-  let targetAlts = [];
-  try {
-    if (useRfc) {
-      targetAlts = await getExistingAlternatives(cleanTgtMat, cleanTgtPlant, cleanTgtUsage, null, server);
-      targetExists = targetAlts.length > 0;
-    } else {
+  // When running via GUI mode (or CS03 mock), check CS03 for existing target alternatives.
+  let extraTargetAlts = [];
+  if (!useRfc) {
+    try {
       const tgtCheck = await verifyBomInCs03({
         material: cleanTgtMat,
         plant: cleanTgtPlant,
         bomUsage: cleanTgtUsage
       });
       if (tgtCheck?.success && tgtCheck?.exists) {
-        targetExists = true;
-        targetAlts = (tgtCheck.availableAlternatives || ['1'])
+        extraTargetAlts = (tgtCheck.availableAlternatives || ['1'])
           .map((a) => parseInt(String(a).trim(), 10))
           .filter((n) => !isNaN(n) && n > 0);
       }
-    }
-  } catch (chkErr) {
-    console.warn('[chat.js] Failed to query target BOM alternatives:', chkErr.message);
+    } catch (_) {}
   }
 
-  let resolvedTgtAltNum = cleanTgtAlt ? cleanTgtAlt.padStart(2, '0') : '';
-  let resolvedTgtAltDisplay = cleanTgtAlt || '';
+  // Resolve target alternative using shared function resolveTargetAlternativeForCopy
+  const targetAltRes = await resolveTargetAlternativeForCopy({
+    targetMaterial: cleanTgtMat,
+    targetPlant: cleanTgtPlant,
+    targetUsage: cleanTgtUsage,
+    targetAlternative: cleanTgtAlt,
+    allocatedAlternatives: extraTargetAlts,
+    server
+  });
 
-  if (targetExists) {
-    const freeAlt = findLowestFreeAlternative(targetAlts);
-    resolvedTgtAltNum = freeAlt;
-    resolvedTgtAltDisplay = `Alternative ${freeAlt} (auto-selected)`;
-  } else if (!resolvedTgtAltNum) {
-    resolvedTgtAltNum = '01';
-  }
+  let resolvedTgtAltNum = targetAltRes.targetAlternative;
+  let resolvedTgtAltDisplay = targetAltRes.isAutoSelected
+    ? `Alternative ${targetAltRes.targetAlternative} (auto-selected)`
+    : cleanTgtAlt || `Alternative ${targetAltRes.targetAlternative}`;
+  let targetAlts = Array.from(new Set([...(targetAltRes.existingAlternatives || []), ...extraTargetAlts]));
 
   // Pre-validate Target BOM with BAPI TESTRUN simulation (simulation only, BAPIFLAG = 'X')
   if (useRfc) {
@@ -316,6 +316,8 @@ export async function validateCopyBomParameters({
       };
     }
   }
+
+  const targetExists = (targetAltRes.existingAlternatives?.length > 0) || false;
 
   // Target BOM simulation passed successfully
   return {

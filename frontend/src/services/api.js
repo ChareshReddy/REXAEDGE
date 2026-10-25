@@ -280,6 +280,43 @@ export async function createBulkBoms(payload) {
 }
 
 /**
+ * Starts an asynchronous background job for BOM pre-flight, validation, or execution.
+ * @param {object} payload { type, items, boms, fileContent, fileName, copyHierarchy, skipErrors, confirmText, reason }
+ */
+export async function startBomJob(payload) {
+  const response = await apiClient.post('/bom/jobs/start', payload);
+  return response.data;
+}
+
+/**
+ * Polls the current progress, status, and results of a background job.
+ * @param {string} jobId
+ */
+export async function getBomJob(jobId) {
+  const response = await apiClient.get(`/bom/jobs/${jobId}`);
+  return response.data;
+}
+
+/**
+ * Requests cancellation of an in-flight background job.
+ * @param {string} jobId
+ */
+export async function cancelBomJob(jobId) {
+  const response = await apiClient.post(`/bom/jobs/${jobId}/cancel`);
+  return response.data;
+}
+
+/**
+ * Checks if there is an active job running on the server for the current user.
+ * @param {string} [serverId]
+ */
+export async function getActiveBomJob(serverId) {
+  const params = serverId ? { server: serverId } : {};
+  const response = await apiClient.get('/bom/jobs/active', { params });
+  return response.data;
+}
+
+/**
  * Downloads the official Excel template for Create BOM (Bulk).
  */
 export async function downloadCreateBomTemplate() {

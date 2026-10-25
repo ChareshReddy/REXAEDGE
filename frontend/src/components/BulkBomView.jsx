@@ -13,12 +13,26 @@ import {
   ShieldCheck,
   FileCheck,
   ArrowLeft,
-  ChevronLeft
+  ChevronLeft,
+  Loader2
 } from 'lucide-react';
-import { batchValidateBoms, batchCopyBoms, downloadBomTemplate } from '../services/api';
+import {
+  batchValidateBoms,
+  batchCopyBoms,
+  downloadBomTemplate,
+  startBomJob,
+  getBomJob,
+  cancelBomJob,
+  getActiveBomJob
+} from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
-import activityTracker from '../services/activityTracker';
+import activityTracker from '../services/activityTracker';
 import BlockedReasonsList from './BlockedReasonsList';
+import {
+  BulkWorkflowSteps,
+  BulkFileInfoBar,
+  BulkJobProgressCard
+} from './BulkBomShared';
 
 /**
  * Normalizes headers from Excel spreadsheet into recognized internal keys.
@@ -90,6 +104,21 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
   const [executionReport, setExecutionReport] = useState(null);
   const [activeStep, setActiveStep] = useState(1); // 1: Upload, 2: Validate, 3: Execute/Results
 
+  // Background Job States
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [activeJobType, setActiveJobType] = useState(null);
+  const [jobCurrentBom, setJobCurrentBom] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [jobProgress, setJobProgress] = useState({
+    current: 0,
+    total: 0,
+    percent: 0,
+    successCount: 0,
+    failedCount: 0,
+    notProcessedCount: 0
+  });
+  const pollIntervalRef = useRef(null);
+
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -99,12 +128,183 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
     };
   }, [isValidating, isExecuting]);
 
+  // Clean up polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  const startJobPolling = (jobId, type) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    setActiveJobId(jobId);
+    setActiveJobType(type);
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const data = await getBomJob(jobId);
+        if (!data.success || !data.job) return;
+        const job = data.job;
+
+        const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+        setJobProgress({
+          current: job.processed,
+          total: job.total,
+          percent: pct,
+          successCount: job.successCount || 0,
+          failedCount: job.failedCount || 0,
+          notProcessedCount: job.notProcessedCount || 0
+        });
+        setJobCurrentBom(job.currentBom);
+
+        const isFinished = [
+          'COMPLETED',
+          'COMPLETED_WITH_ERRORS',
+          'CANCELLED',
+          'STOPPED_ON_CONNECTION_DROP',
+          'FAILED',
+          'INTERRUPTED'
+        ].includes(job.status);
+
+        if (isFinished) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+          setActiveJobId(null);
+          setIsCancelling(false);
+
+          if (type === 'copy_validate') {
+            setIsValidating(false);
+            if (job.status === 'STOPPED_ON_CONNECTION_DROP') {
+              setParseError(`Validation stopped: SAP connection dropped. (${job.error || 'Network drop'})`);
+            } else if (job.status === 'FAILED') {
+              setParseError(job.error || 'Validation failed in SAP.');
+            } else {
+              setValidationReport({
+                success: true,
+                totalItems: job.total,
+                validCount: job.successCount,
+                failedCount: job.failedCount,
+                results: job.results
+              });
+              setActiveStep(2);
+
+              const resMap = new Map((job.results || []).map((r) => [r.id, r]));
+              setParsedRows((prev) =>
+                prev.map((row) => {
+                  const match = resMap.get(row.id);
+                  if (match) {
+                    return {
+                      ...row,
+                      targetAltBom: match.targetAltBom || row.targetAltBom,
+                      sourceAltBom: match.sourceAltBom || row.sourceAltBom,
+                      status: match.status,
+                      message: match.message,
+                      componentCount: match.componentCount || 0
+                    };
+                  }
+                  return row;
+                })
+              );
+            }
+          } else if (type === 'copy_bulk') {
+            setIsExecuting(false);
+            setExecutionReport({
+              success: job.status === 'COMPLETED',
+              status: job.status,
+              message:
+                job.error ||
+                (job.status === 'CANCELLED'
+                  ? 'Batch copy cancelled by user.'
+                  : job.status === 'STOPPED_ON_CONNECTION_DROP'
+                  ? 'Batch copy stopped: SAP connection dropped. Remaining rows marked not processed.'
+                  : 'Batch copy completed.'),
+              totalProcessed: job.total,
+              successCount: job.successCount,
+              failedCount: job.failedCount,
+              notProcessedCount: job.notProcessedCount || 0,
+              results: job.results || []
+            });
+
+            const resMap = new Map((job.results || []).map((r) => [r.id, r]));
+            setParsedRows((prev) =>
+              prev.map((row) => {
+                const match = resMap.get(row.id);
+                if (match) {
+                  return {
+                    ...row,
+                    targetAltBom: match.targetAltBom || row.targetAltBom,
+                    sourceAltBom: match.sourceAltBom || row.sourceAltBom,
+                    status: match.status === 'SUCCESS' ? 'SUCCESS' : match.status === 'NOT_PROCESSED' ? 'NOT_PROCESSED' : 'FAILED',
+                    message: match.message,
+                    bomNumber: match.bomNumber || '',
+                    totalLevels: match.totalLevels || 1,
+                    totalBoms: match.totalBoms || 1
+                  };
+                }
+                return row;
+              })
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Job polling warning:', err.message);
+      }
+    }, 2000);
+  };
+
+  // Reconnect on mount if an active job is already in flight
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveJob = async () => {
+      try {
+        const res = await getActiveBomJob();
+        if (!isMounted || !res.success || !res.hasActiveJob || !res.job) return;
+        const job = res.job;
+        if (job.type === 'copy_validate') {
+          setIsValidating(true);
+          startJobPolling(job.jobId, 'copy_validate');
+        } else if (job.type === 'copy_bulk') {
+          setIsExecuting(true);
+          setActiveStep(3);
+          startJobPolling(job.jobId, 'copy_bulk');
+        }
+      } catch (err) {
+        console.warn('Could not check active BOM job:', err.message);
+      }
+    };
+    checkActiveJob();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCancelJob = async () => {
+    if (!activeJobId || isCancelling) return;
+    setIsCancelling(true);
+    try {
+      await cancelBomJob(activeJobId);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to cancel job');
+      setIsCancelling(false);
+    }
+  };
+
   const resetAll = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setFile(null);
     setParsedRows([]);
     setParseError('');
     setValidationReport(null);
     setIsExecuting(false);
+    setActiveJobId(null);
+    setJobCurrentBom(null);
+    setIsCancelling(false);
     setExecutionReport(null);
     setActiveStep(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -164,6 +364,14 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
           return;
         }
 
+        // BOM Cap check (500 limit)
+        if (normalized.length > 500) {
+          setParseError(
+            `Uploaded file contains ${normalized.length} BOM copy rows, which exceeds the maximum limit of 500 BOMs. Please split into smaller batches.`
+          );
+          return;
+        }
+
         setParsedRows(normalized);
         setActiveStep(1);
       } catch (err) {
@@ -214,33 +422,28 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
     setParseError('');
 
     try {
-      const response = await batchValidateBoms(parsedRows);
-      if (response.success) {
-        setValidationReport(response);
-        setActiveStep(2);
+      const res = await startBomJob({
+        type: 'copy_validate',
+        items: parsedRows
+      });
 
-        const resMap = new Map((response.results || []).map((r) => [r.id, r]));
-        setParsedRows((prev) =>
-          prev.map((row) => {
-            const match = resMap.get(row.id);
-            if (match) {
-              return {
-                ...row,
-                status: match.status,
-                message: match.message,
-                componentCount: match.componentCount || 0
-              };
-            }
-            return row;
-          })
-        );
+      if (res.success && res.jobId) {
+        setJobProgress({
+          current: 0,
+          total: res.total,
+          percent: 0,
+          successCount: 0,
+          failedCount: 0,
+          notProcessedCount: 0
+        });
+        startJobPolling(res.jobId, 'copy_validate');
       } else {
-        setParseError(response.message || 'Validation request failed.');
+        setParseError(res.message || 'Failed to start validation job.');
+        setIsValidating(false);
       }
     } catch (err) {
       console.error('Validation error:', err);
       setParseError(err.response?.data?.message || err.message || 'Validation failed.');
-    } finally {
       setIsValidating(false);
     }
   };
@@ -264,36 +467,33 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
 
     setIsExecuting(true);
     setActiveStep(3);
+    setExecutionReport(null);
 
     try {
-      const response = await batchCopyBoms(parsedRows, { skipErrors, copyHierarchy });
-      setExecutionReport(response);
+      const res = await startBomJob({
+        type: 'copy_bulk',
+        items: executableRows,
+        copyHierarchy,
+        skipErrors
+      });
 
-      if (response.success) {
-        const resMap = new Map((response.results || []).map((r) => [r.id, r]));
-        setParsedRows((prev) =>
-          prev.map((row) => {
-            const match = resMap.get(row.id);
-            if (match) {
-              return {
-                ...row,
-                status: match.success ? 'SUCCESS' : 'FAILED',
-                message: match.message,
-                bomNumber: match.bomNumber || '',
-                totalLevels: match.totalLevels || 1,
-                totalBoms: match.totalBoms || 1
-              };
-            }
-            return row;
-          })
-        );
+      if (res.success && res.jobId) {
+        setJobProgress({
+          current: 0,
+          total: res.total,
+          percent: 0,
+          successCount: 0,
+          failedCount: 0,
+          notProcessedCount: 0
+        });
+        startJobPolling(res.jobId, 'copy_bulk');
       } else {
-        setParseError(response.message || 'Batch execution stopped with errors.');
+        setParseError(res.message || 'Failed to start copy job.');
+        setIsExecuting(false);
       }
     } catch (err) {
       console.error('Execution error:', err);
       setParseError(err.response?.data?.message || err.message || 'Execution failed.');
-    } finally {
       setIsExecuting(false);
     }
   };
@@ -387,22 +587,7 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
 
       <div className="fiori-view-body wide">
         {/* Workflow Steps Indicator */}
-        <div className="sap-bulk-steps-bar" style={{ maxWidth: 1100, width: '100%', margin: '0 auto 14px', borderRadius: 8, border: '1px solid var(--sap-border)' }}>
-          <div className={`sap-bulk-step ${activeStep >= 1 ? 'active' : ''}`}>
-            <span className="step-num">1</span>
-            <span>Upload File</span>
-          </div>
-          <div className="step-arrow"><ArrowRight size={12} /></div>
-          <div className={`sap-bulk-step ${activeStep >= 2 ? 'active' : ''}`}>
-            <span className="step-num">2</span>
-            <span>SAP Pre-flight Validation</span>
-          </div>
-          <div className="step-arrow"><ArrowRight size={12} /></div>
-          <div className={`sap-bulk-step ${activeStep >= 3 ? 'active' : ''}`}>
-            <span className="step-num">3</span>
-            <span>Sequential Execution</span>
-          </div>
-        </div>
+        <BulkWorkflowSteps activeStep={activeStep} />
 
         {/* Error Notification */}
         {parseError && parsedRows.length > 0 && (
@@ -451,34 +636,27 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
             </BulkUploadPanel>
           ) : (
             <div className="sap-bulk-table-view">
+              {/* ACTIVE BACKGROUND JOB PROGRESS CARD */}
+              <BulkJobProgressCard
+                isValidating={isValidating}
+                isExecuting={isExecuting}
+                activeJobId={activeJobId}
+                jobProgress={jobProgress}
+                jobCurrentBom={jobCurrentBom}
+                isCancelling={isCancelling}
+                onCancelJob={handleCancelJob}
+                validationLabel="Validating Copy Rows"
+                executionLabel="Executing Batch Copy"
+              />
+
               {/* File Info Bar */}
-              <div className="sap-bulk-file-info-bar">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileCheck size={16} color="var(--sap-success)" />
-                  <span style={{ fontWeight: 600, color: 'var(--sap-text)', fontSize: '12px' }}>{file?.name}</span>
-                  <span className="sap-badge-count">{parsedRows.length} rows</span>
-                </div>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    className="sap-btn sap-btn-ghost sap-btn-sm"
-                    onClick={handleDownloadTemplate}
-                  >
-                    <Download size={12} />
-                    <span>Template</span>
-                  </button>
-                  {!isExecuting && (
-                    <button
-                      type="button"
-                      className="sap-btn sap-btn-ghost sap-btn-sm"
-                      onClick={resetAll}
-                    >
-                      <RefreshCw size={12} />
-                      <span>Change File</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+              <BulkFileInfoBar
+                fileName={file?.name || ''}
+                countText={`${parsedRows.length} rows`}
+                isLocked={isExecuting || isValidating}
+                onDownloadTemplate={handleDownloadTemplate}
+                onChangeFile={resetAll}
+              />
 
               {/* Summary Counter Badges */}
               {validationReport && (
@@ -599,7 +777,7 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                               {isRowValid && <CheckCircle2 size={11} />}
                               {isRowWarn && <AlertTriangle size={11} />}
                               {isRowError && <XCircle size={11} />}
-                              {row.status === 'PENDING' && 'Pending'}
+                              {row.status === 'PENDING' && 'Not validated'}
                               {row.status === 'VALID' && 'Ready'}
                               {row.status === 'WARNING' && 'Warning'}
                               {row.status === 'ERROR' && 'Error'}
@@ -661,48 +839,48 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
               Launchpad
             </button>
 
-            {parsedRows.length > 0 && !validationReport && !executionReport && (
-              <button
-                type="button"
-                className="sap-btn sap-btn-primary"
-                onClick={handleValidateWithSap}
-                disabled={isValidating}
-                style={{ height: 28, fontSize: '11px', padding: '0 10px' }}
-              >
-                {isValidating ? (
-                  <>
-                    <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                    <span>Validating with SAP...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck size={13} />
-                    <span>Validate Rows with SAP</span>
-                  </>
-                )}
-              </button>
-            )}
+            {parsedRows.length > 0 && !executionReport && (
+              <>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-secondary"
+                  onClick={handleValidateWithSap}
+                  disabled={isValidating || isExecuting}
+                  style={{ height: 28, fontSize: '11px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  {isValidating ? (
+                    <>
+                      <span className="sap-spinner" style={{ width: 12, height: 12 }} />
+                      <span>Validating with SAP...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={13} />
+                      <span>{validationReport ? 'Re-validate' : 'Validate with SAP'}</span>
+                    </>
+                  )}
+                </button>
 
-            {validationReport && !executionReport && (
-              <button
-                type="button"
-                className="sap-btn sap-btn-primary"
-                onClick={handleExecuteBatchCopy}
-                disabled={isExecuting || (validCount === 0 && warningCount === 0)}
-                style={{ height: 28, fontSize: '11px', padding: '0 12px' }}
-              >
-                {isExecuting ? (
-                  <>
-                    <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                    <span>Executing Sequential RFC Copy...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={13} />
-                    <span>Execute Batch Copy ({validCount + warningCount} Items)</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-primary execute-batch-copy-btn"
+                  onClick={handleExecuteBatchCopy}
+                  disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
+                  style={{ height: 28, fontSize: '11px', padding: '0 12px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  {isExecuting ? (
+                    <>
+                      <span className="sap-spinner" style={{ width: 12, height: 12 }} />
+                      <span>Executing Sequential RFC Copy...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={13} />
+                      <span>Execute Batch Copy ({validationReport ? validCount + warningCount : 0})</span>
+                    </>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>

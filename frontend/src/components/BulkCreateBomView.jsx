@@ -19,7 +19,22 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import BulkUploadPanel from './BulkUploadPanel';
-import { preflightCreateBoms, createBulkBoms, createSingleBom, downloadCreateBomTemplate } from '../services/api';
+import {
+  BulkWorkflowSteps,
+  BulkFileInfoBar,
+  BulkJobProgressCard
+} from './BulkBomShared';
+import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
+import {
+  preflightCreateBoms,
+  createBulkBoms,
+  createSingleBom,
+  downloadCreateBomTemplate,
+  startBomJob,
+  getBomJob,
+  cancelBomJob,
+  getActiveBomJob
+} from '../services/api';
 import activityTracker from '../services/activityTracker';
 
 export default function BulkCreateBomView({
@@ -30,8 +45,10 @@ export default function BulkCreateBomView({
   initialPreflightReport = null
 }) {
   const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('');
+  const [fileName, setFileName] = useState(initialPreflightReport ? 'Sample_BOM_File.xlsx' : '');
   const [fileBase64, setFileBase64] = useState('');
+  const [parsedBoms, setParsedBoms] = useState(initialPreflightReport?.boms || []);
+  const [activeStep, setActiveStep] = useState(initialPreflightReport ? 2 : 1);
 
   // Pre-flight states
   const [isValidating, setIsValidating] = useState(false);
@@ -121,29 +138,187 @@ export default function BulkCreateBomView({
   const [confirmText, setConfirmText] = useState('');
   const [businessReason, setBusinessReason] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
-  const [executionProgress, setExecutionProgress] = useState({ current: 0, total: 0 });
   const [executionReport, setExecutionReport] = useState(null);
+
+  // Background Job States
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [activeJobType, setActiveJobType] = useState(null);
+  const [jobCurrentBom, setJobCurrentBom] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [jobProgress, setJobProgress] = useState({
+    current: 0,
+    total: 0,
+    percent: 0,
+    successCount: 0,
+    failedCount: 0,
+    skippedCount: 0,
+    notProcessedCount: 0
+  });
+  const pollIntervalRef = useRef(null);
 
   const fileInputRef = useRef(null);
   const isProd = systemKey === 'PROD';
   const isLocked = isValidating || isExecuting;
+  const showSlimHeader = Boolean(parsedBoms.length > 0 || preflightReport || isValidating || isExecuting);
 
   useEffect(() => {
     activityTracker.setOperation('bulk_create_bom', isValidating || isExecuting);
     return () => activityTracker.setOperation('bulk_create_bom', false);
   }, [isValidating, isExecuting]);
 
+  // Clean up polling timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // Poll a running background job every 2 seconds
+  const startJobPolling = (jobId, type) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    setActiveJobId(jobId);
+    setActiveJobType(type);
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const data = await getBomJob(jobId);
+        if (!data.success || !data.job) return;
+        const job = data.job;
+
+        const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+        setJobProgress({
+          current: job.processed,
+          total: job.total,
+          percent: pct,
+          successCount: job.successCount || 0,
+          failedCount: job.failedCount || 0,
+          skippedCount: job.skippedCount || 0,
+          notProcessedCount: job.notProcessedCount || 0
+        });
+        setJobCurrentBom(job.currentBom);
+
+        const isFinished = [
+          'COMPLETED',
+          'COMPLETED_WITH_ERRORS',
+          'CANCELLED',
+          'STOPPED_ON_CONNECTION_DROP',
+          'FAILED',
+          'INTERRUPTED'
+        ].includes(job.status);
+
+        if (isFinished) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+          setActiveJobId(null);
+          setIsCancelling(false);
+
+          if (type === 'create_preflight') {
+            setIsValidating(false);
+            if (job.status === 'STOPPED_ON_CONNECTION_DROP') {
+              setParseError(`Pre-flight stopped: SAP connection dropped. (${job.error || 'Network error'})`);
+            } else if (job.status === 'FAILED') {
+              setParseError(job.error || 'Pre-flight validation failed.');
+            } else {
+              setPreflightReport({
+                success: true,
+                totalBoms: job.results.length,
+                readyCount: job.successCount,
+                skippedCount: job.skippedCount,
+                invalidCount: job.failedCount,
+                boms: job.results
+              });
+              setActiveStep(2);
+            }
+          } else if (type === 'create_bulk') {
+            setIsExecuting(false);
+            setExecutionReport({
+              success: job.status === 'COMPLETED',
+              status: job.status,
+              message:
+                job.error ||
+                (job.status === 'CANCELLED'
+                  ? 'Execution cancelled by user.'
+                  : job.status === 'STOPPED_ON_CONNECTION_DROP'
+                  ? 'Execution stopped: SAP connection dropped. Remaining BOMs marked not processed.'
+                  : 'Bulk BOM creation finished.'),
+              totalProcessed: job.total,
+              bomsCreated: job.successCount,
+              componentsCreated: (job.results || []).reduce(
+                (acc, r) => acc + (r.componentsCount || 0),
+                0
+              ),
+              skippedCount: job.skippedCount,
+              failedCount: job.failedCount,
+              notProcessedCount: job.notProcessedCount || 0,
+              results: job.results || []
+            });
+          }
+        }
+      } catch (pollErr) {
+        console.warn('Job polling warning:', pollErr.message);
+      }
+    }, 2000);
+  };
+
+  // Reconnect to in-flight active job on page mount/reload
+  useEffect(() => {
+    let isMounted = true;
+    const checkActiveJob = async () => {
+      try {
+        const res = await getActiveBomJob();
+        if (!isMounted || !res.success || !res.hasActiveJob || !res.job) return;
+        const job = res.job;
+        if (job.type === 'create_preflight') {
+          setIsValidating(true);
+          startJobPolling(job.jobId, 'create_preflight');
+        } else if (job.type === 'create_bulk') {
+          setIsExecuting(true);
+          startJobPolling(job.jobId, 'create_bulk');
+        }
+      } catch (err) {
+        console.warn('Active job verification check:', err.message);
+      }
+    };
+    checkActiveJob();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCancelJob = async () => {
+    if (!activeJobId || isCancelling) return;
+    setIsCancelling(true);
+    try {
+      await cancelBomJob(activeJobId);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to request job cancellation.');
+      setIsCancelling(false);
+    }
+  };
+
   const handleReset = () => {
     if (isLocked) return;
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     setFile(null);
     setFileName('');
     setFileBase64('');
+    setParsedBoms([]);
     setPreflightReport(null);
     setParseError('');
     setExpandedMessageBoms(new Set());
     setCurrentPage(1);
     setIsExecuting(false);
+    setActiveJobId(null);
+    setJobCurrentBom(null);
+    setIsCancelling(false);
     setExecutionReport(null);
+    setActiveStep(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -152,6 +327,8 @@ export default function BulkCreateBomView({
     setParseError('');
     setPreflightReport(null);
     setExecutionReport(null);
+    setParsedBoms([]);
+    setActiveStep(1);
 
     if (!fileObj) return;
 
@@ -159,31 +336,64 @@ export default function BulkCreateBomView({
     setFileName(fileObj.name);
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
-        const base64Data = e.target.result;
-        setFileBase64(base64Data);
-
-        // Immediately trigger server pre-flight validation
-        setIsValidating(true);
-        const res = await preflightCreateBoms({
-          fileContent: base64Data,
-          fileName: fileObj.name
-        });
-
-        if (res.success) {
-          setPreflightReport(res);
-        } else {
-          setParseError(res.message || 'File parsing or validation failed on server.');
+        const buffer = e.target.result;
+        const res = parseBomSpreadsheetClient(buffer);
+        if (!res.success) {
+          setParseError(res.error);
+          return;
         }
+
+        setParsedBoms(res.boms);
+
+        // Convert to base64 for background validation job when user clicks Validate
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        setFileBase64(btoa(binary));
       } catch (err) {
-        setParseError(err.response?.data?.message || err.message || 'Error processing uploaded spreadsheet.');
-      } finally {
-        setIsValidating(false);
+        console.error('Failed to parse file client-side:', err);
+        setParseError(`Failed to parse file: ${err.message}`);
       }
     };
+    reader.readAsArrayBuffer(fileObj);
+  };
 
-    reader.readAsDataURL(fileObj);
+  const handleValidateWithSap = async () => {
+    if (parsedBoms.length === 0 || isLocked) return;
+    setIsValidating(true);
+    setParseError('');
+
+    try {
+      const res = await startBomJob({
+        type: 'create_preflight',
+        fileContent: fileBase64 || null,
+        boms: parsedBoms,
+        fileName: file?.name || fileName
+      });
+
+      if (res.success && res.jobId) {
+        setJobProgress({
+          current: 0,
+          total: res.total,
+          percent: 0,
+          successCount: 0,
+          failedCount: 0,
+          skippedCount: 0,
+          notProcessedCount: 0
+        });
+        startJobPolling(res.jobId, 'create_preflight');
+      } else {
+        setParseError(res.message || 'Failed to start pre-flight validation job.');
+        setIsValidating(false);
+      }
+    } catch (err) {
+      setParseError(err.response?.data?.message || err.message || 'Error processing validation job.');
+      setIsValidating(false);
+    }
   };
 
   const handleDownloadTemplate = async () => {
@@ -215,136 +425,45 @@ export default function BulkCreateBomView({
       }
     }
 
+    const allBoms = preflightReport?.boms || parsedBoms || [];
+  const hasValidated = Boolean(preflightReport);
+    const readyBoms = allBoms.filter((b) => b.status === 'Ready');
+    if (readyBoms.length === 0) {
+      alert('No ready BOMs to create.');
+      return;
+    }
+
+    setIsConfirmModalOpen(false);
     setIsExecuting(true);
+    setActiveStep(3);
     setExecutionReport(null);
 
-    const allBoms = preflightReport?.boms || [];
-    const readyBoms = allBoms.filter((b) => b.status === 'Ready');
-    setExecutionProgress({ current: 0, total: readyBoms.length });
-
-    let bomsCreated = 0;
-    let componentsCreated = 0;
-    let skippedCount = 0;
-    let failedCount = 0;
-    const results = [];
-
     try {
-      for (let i = 0; i < readyBoms.length; i++) {
-        setExecutionProgress({ current: i + 1, total: readyBoms.length });
-        const bom = readyBoms[i];
-        try {
-          const res = await createSingleBom({
-            bom,
-            confirmText: isProd ? confirmText : undefined,
-            reason: isProd ? businessReason : undefined
-          });
-
-          if (res.success) {
-            bomsCreated++;
-            componentsCreated += res.componentsCreated || bom.components?.length || 0;
-            results.push({
-              sequenceNum: bom.sequenceNum,
-              material: bom.material,
-              plant: bom.plant,
-              bomUsage: bom.bomUsage,
-              alternativeBom: bom.alternativeBom,
-              bomNumber: res.bomNumber || res.alternativeBom || '-',
-              status: res.status || 'SUCCESS',
-              message: res.message || 'BOM created successfully.',
-              discrepancies: res.discrepancies || [],
-              componentsCount: bom.components?.length || 0
-            });
-          } else {
-            failedCount++;
-            results.push({
-              sequenceNum: bom.sequenceNum,
-              material: bom.material,
-              plant: bom.plant,
-              bomUsage: bom.bomUsage,
-              alternativeBom: bom.alternativeBom,
-              bomNumber: '-',
-              status: 'FAILED',
-              message: res.message || 'Failed to create BOM in SAP.',
-              discrepancies: res.discrepancies || [],
-              componentsCount: bom.components?.length || 0
-            });
-          }
-        } catch (itemErr) {
-          failedCount++;
-          results.push({
-            sequenceNum: bom.sequenceNum,
-            material: bom.material,
-            plant: bom.plant,
-            bomUsage: bom.bomUsage,
-            alternativeBom: bom.alternativeBom,
-            bomNumber: '-',
-            status: 'FAILED',
-            message: itemErr.response?.data?.message || itemErr.message || 'Error executing BOM creation.',
-            discrepancies: [],
-            componentsCount: bom.components?.length || 0
-          });
-        }
-      }
-
-      // Add non-ready BOMs (skipped / invalid)
-      for (const bom of allBoms) {
-        if (bom.status === 'Already exists - skipped') {
-          skippedCount++;
-          results.push({
-            sequenceNum: bom.sequenceNum,
-            material: bom.material,
-            plant: bom.plant,
-            bomUsage: bom.bomUsage,
-            alternativeBom: bom.alternativeBom,
-            bomNumber: '-',
-            status: 'SKIPPED',
-            message: bom.reason || 'BOM already exists in plant; skipped.',
-            discrepancies: [],
-            componentsCount: bom.components?.length || 0
-          });
-        } else if (bom.status === 'Invalid') {
-          failedCount++;
-          results.push({
-            sequenceNum: bom.sequenceNum,
-            material: bom.material,
-            plant: bom.plant,
-            bomUsage: bom.bomUsage,
-            alternativeBom: bom.alternativeBom,
-            bomNumber: '-',
-            status: 'INVALID',
-            message: bom.reason || 'BOM failed pre-flight validation.',
-            discrepancies: [],
-            componentsCount: bom.components?.length || 0
-          });
-        }
-      }
-
-      // Sort results by sequenceNum or original order
-      results.sort((a, b) => (parseInt(a.sequenceNum, 10) || 0) - (parseInt(b.sequenceNum, 10) || 0));
-
-      setExecutionReport({
-        success: failedCount === 0,
-        totalProcessed: allBoms.length,
-        bomsCreated,
-        componentsCreated,
-        skippedCount,
-        failedCount,
-        results
+      const res = await startBomJob({
+        type: 'create_bulk',
+        boms: readyBoms,
+        fileName,
+        confirmText: isProd ? confirmText : undefined,
+        reason: isProd ? businessReason : undefined
       });
-      setIsConfirmModalOpen(false);
+
+      if (res.success && res.jobId) {
+        setJobProgress({
+          current: 0,
+          total: res.total,
+          percent: 0,
+          successCount: 0,
+          failedCount: 0,
+          skippedCount: 0,
+          notProcessedCount: 0
+        });
+        startJobPolling(res.jobId, 'create_bulk');
+      } else {
+        setParseError(res.message || 'Failed to start bulk creation job.');
+        setIsExecuting(false);
+      }
     } catch (err) {
-      setExecutionReport({
-        success: false,
-        message: err.response?.data?.message || err.message || 'Batch creation failed.',
-        totalProcessed: allBoms.length,
-        bomsCreated,
-        componentsCreated,
-        skippedCount,
-        failedCount: allBoms.length - bomsCreated - skippedCount,
-        results
-      });
-      setIsConfirmModalOpen(false);
-    } finally {
+      setParseError(err.response?.data?.message || err.message || 'Failed to start bulk creation job.');
       setIsExecuting(false);
     }
   };
@@ -388,7 +507,8 @@ export default function BulkCreateBomView({
   const skippedCount = preflightReport?.skippedCount || 0;
   const invalidCount = preflightReport?.invalidCount || 0;
 
-  const allBoms = preflightReport?.boms || [];
+  const allBoms = preflightReport?.boms || parsedBoms || [];
+  const hasValidated = Boolean(preflightReport);
   const totalComponentRows = allBoms.reduce((acc, b) => acc + (b.components?.length || 1), 0);
   const isPaginated = totalComponentRows > 300;
   const pageSize = 50;
@@ -452,6 +572,8 @@ export default function BulkCreateBomView({
       </div>
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+        {/* Workflow Steps Indicator */}
+        <BulkWorkflowSteps activeStep={activeStep} />
         {/* RESULTS SCREEN */}
         {executionReport ? (
           <div>
@@ -535,6 +657,14 @@ export default function BulkCreateBomView({
                   {executionReport.failedCount}
                 </div>
               </div>
+              {executionReport.notProcessedCount > 0 && (
+                <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Not Processed</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f97316' }}>
+                    {executionReport.notProcessedCount}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Results Table */}
@@ -630,30 +760,72 @@ export default function BulkCreateBomView({
           </div>
         ) : (
           /* UPLOAD & PREVIEW VIEW */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* Shared Bulk Upload Panel */}
-            <BulkUploadPanel
-              title="Upload Spreadsheet"
-              helperText="Accepts tab-delimited text saved as .XLS, or real .xlsx and .xls files."
-              acceptedFormats=".xlsx,.xls,.tsv,.txt"
-              supportedFormatsText="Supports tab-separated text saved as .XLS, or Excel .xlsx / .xls"
-              fileName={fileName}
-              onFile={handleFileProcess}
-              loading={isValidating}
-              loadingText="Validating data with SAP master records..."
-              disabled={isLocked}
-              templateAction={{
-                label: 'Download Template',
-                onClick: handleDownloadTemplate,
-                disabled: isLocked
-              }}
-              error={parseError}
-              onClear={handleReset}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: allBoms.length > 0 ? 16 : 24 }}>
+            {allBoms.length === 0 ? (
+              /* Shared Bulk Upload Panel (shown before upload) */
+              <BulkUploadPanel
+                title="Upload Spreadsheet"
+                helperText="Accepts tab-delimited text saved as .XLS, or real .xlsx and .xls files."
+                acceptedFormats=".xlsx,.xls,.tsv,.txt"
+                supportedFormatsText="Supports tab-separated text saved as .XLS, or Excel .xlsx / .xls"
+                fileName={fileName}
+                onFile={handleFileProcess}
+                loading={isValidating}
+                loadingText="Validating data with SAP master records..."
+                disabled={isLocked}
+                templateAction={{
+                  label: 'Download Template',
+                  onClick: handleDownloadTemplate,
+                  disabled: isLocked
+                }}
+                error={parseError}
+                onClear={handleReset}
+              />
+            ) : (
+              <>
+                {/* ACTIVE BACKGROUND JOB PROGRESS CARD */}
+                <BulkJobProgressCard
+                  isValidating={isValidating}
+                  isExecuting={isExecuting}
+                  activeJobId={activeJobId}
+                  jobProgress={jobProgress}
+                  jobCurrentBom={jobCurrentBom}
+                  isCancelling={isCancelling}
+                  onCancelJob={handleCancelJob}
+                  validationLabel="Validating BOMs in SAP"
+                  executionLabel="Creating BOMs in SAP"
+                />
 
-            {/* PRE-FLIGHT PREVIEW TABLE */}
-            {preflightReport && (
-              <div className="sap-card" style={{ padding: 20 }}>
+                {/* Slim one-line header above preview (shown after file upload) */}
+                <BulkFileInfoBar
+                  fileName={fileName}
+                  countText={`${allBoms.length} BOM${allBoms.length === 1 ? '' : 's'}`}
+                  isLocked={isLocked}
+                  onDownloadTemplate={handleDownloadTemplate}
+                  onChangeFile={handleReset}
+                />
+
+                {parseError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md, 6px)',
+                      background: 'var(--sap-error-bg, #fef2f2)',
+                      border: '1px solid var(--sap-error-border, #fecaca)',
+                      color: 'var(--sap-error, #dc2626)',
+                      fontSize: 13
+                    }}
+                  >
+                    <XCircle size={18} style={{ flexShrink: 0 }} />
+                    <span>{parseError}</span>
+                  </div>
+                )}
+
+                {/* PRE-FLIGHT PREVIEW TABLE */}
+                <div className="sap-card" style={{ padding: 20 }}>
                   {/* Header & Controls */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                     <div>
@@ -661,7 +833,7 @@ export default function BulkCreateBomView({
                         Pre-flight Validation Preview
                       </h3>
                       <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
-                        {preflightReport.totalBoms} BOM(s) found across {preflightReport.totalRows} component row(s)
+                        {allBoms.length} BOM(s) found across {totalComponentRows} component row(s)
                       </div>
                     </div>
                   </div>
@@ -965,18 +1137,27 @@ export default function BulkCreateBomView({
                                           background: '#ffffff'
                                         }}
                                       >
-                                        <span
-                                          className={`sap-badge ${
-                                            bom.status === 'Ready'
-                                              ? 'sap-badge-success'
-                                              : bom.status === 'Already exists - skipped' || bom.status === 'Already exists'
-                                              ? 'sap-badge-warning'
-                                              : 'sap-badge-danger'
-                                          }`}
-                                          style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
-                                        >
-                                          {bom.status === 'Already exists - skipped' ? 'Already exists' : bom.status}
-                                        </span>
+                                        {!hasValidated ? (
+                                          <span
+                                            className="sap-badge sap-badge-neutral"
+                                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
+                                          >
+                                            Not validated
+                                          </span>
+                                        ) : (
+                                          <span
+                                            className={`sap-badge ${
+                                              bom.status === 'Ready'
+                                                ? 'sap-badge-success'
+                                                : bom.status === 'Already exists - skipped' || bom.status === 'Already exists'
+                                                ? 'sap-badge-warning'
+                                                : 'sap-badge-danger'
+                                            }`}
+                                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
+                                          >
+                                            {bom.status === 'Already exists - skipped' ? 'Already exists' : bom.status}
+                                          </span>
+                                        )}
                                       </td>
                                     </tr>
                                   );
@@ -1127,15 +1308,23 @@ export default function BulkCreateBomView({
                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-dark)', marginRight: 4 }}>
                       Validation Summary:
                     </span>
-                    <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
-                      Ready: {readyCount}
-                    </span>
-                    <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
-                      Skipped (Existing): {skippedCount}
-                    </span>
-                    <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
-                      Invalid: {invalidCount}
-                    </span>
+                    {!hasValidated ? (
+                      <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
+                        Not validated ({allBoms.length} BOM{allBoms.length === 1 ? '' : 's'})
+                      </span>
+                    ) : (
+                      <>
+                        <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          Ready: {readyCount}
+                        </span>
+                        <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          Skipped (Existing): {skippedCount}
+                        </span>
+                        <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          Invalid: {invalidCount}
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -1151,8 +1340,33 @@ export default function BulkCreateBomView({
 
                     <button
                       type="button"
+                      className="sap-btn sap-btn-secondary validate-with-sap-btn"
+                      onClick={handleValidateWithSap}
+                      disabled={isLocked || allBoms.length === 0}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '9px 18px'
+                      }}
+                    >
+                      {isValidating ? (
+                        <>
+                          <Loader2 size={15} className="sap-spin" />
+                          <span>Validating with SAP...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck size={15} />
+                          <span>{hasValidated ? 'Re-validate' : 'Validate with SAP'}</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
                       className="sap-btn sap-btn-primary create-ready-boms-btn"
-                      disabled={readyCount === 0 || isLocked}
+                      disabled={!hasValidated || readyCount === 0 || isLocked}
                       onClick={handleOpenConfirm}
                       style={{ padding: '9px 24px' }}
                     >
@@ -1160,8 +1374,8 @@ export default function BulkCreateBomView({
                         <>
                           <Loader2 size={16} className="sap-spin" />
                           <span>
-                            {executionProgress.total > 0
-                              ? `Creating ${executionProgress.current} of ${executionProgress.total}...`
+                            {jobProgress.total > 0
+                              ? `Creating ${jobProgress.current} of ${jobProgress.total}...`
                               : 'Creating in SAP...'}
                           </span>
                         </>
@@ -1172,7 +1386,8 @@ export default function BulkCreateBomView({
                   </div>
                 </div>
               </div>
-            )}
+            </>
+          )}
           </div>
         )}
 
@@ -1268,8 +1483,8 @@ export default function BulkCreateBomView({
                   <>
                     <Loader2 size={16} className="sap-spin" />
                     <span>
-                      {executionProgress.total > 0
-                        ? `Creating ${executionProgress.current} of ${executionProgress.total}...`
+                      {jobProgress.total > 0
+                        ? `Creating ${jobProgress.current} of ${jobProgress.total}...`
                         : 'Creating in SAP...'}
                     </span>
                   </>
