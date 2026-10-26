@@ -79,7 +79,7 @@ async function runSapSessionMonitoringTests() {
   // Log in to obtain authenticated cookie for chat endpoints
   const loginRes = await makeRequest('POST', '/api/auth/login', {
     username: 'LEELAM_EXT',
-    password: 'MockPassword123'
+    password: 'Password@123'
   });
   assert.strictEqual(loginRes.status, 200);
   const cookie = loginRes.headers['set-cookie']?.[0]?.split(';')[0] || '';
@@ -98,7 +98,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health1.client, '500');
     assert.strictEqual(health1.user, 'LEELAM_EXT');
 
-    const apiRes1 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes1 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes1.status, 200);
     assert.strictEqual(apiRes1.data.connected, true);
     assert.strictEqual(apiRes1.data.status, 'CONNECTED');
@@ -114,7 +114,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health2.status, 'SESSION_NOT_FOUND');
     assert.match(health2.message, /log in to SAP GUI again/i);
 
-    const apiRes2 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes2 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes2.status, 200);
     assert.strictEqual(apiRes2.data.connected, false);
     assert.strictEqual(apiRes2.data.status, 'SESSION_NOT_FOUND');
@@ -131,7 +131,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health3.code, 'SAP_SERVER_UNAVAILABLE');
     assert.match(health3.message, /SAP server is currently unavailable/i);
 
-    const apiRes3 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes3 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes3.status, 200);
     assert.strictEqual(apiRes3.data.connected, false);
     assert.strictEqual(apiRes3.data.status, 'SERVER_UNAVAILABLE');
@@ -148,7 +148,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health4.code, 'SAP_SESSION_BUSY');
     assert.match(health4.message, /processing another operation/i);
 
-    const apiRes4 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes4 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes4.status, 200);
     assert.strictEqual(apiRes4.data.status, 'BUSY');
     console.log('   ✓ SAP session busy state gracefully reported');
@@ -171,12 +171,12 @@ async function runSapSessionMonitoringTests() {
     // -------------------------------------------------------------
     console.log('\n6. Testing Heartbeat changes CONNECTED → SERVER_UNAVAILABLE:');
     process.env.TEST_SAP_SESSION_HEALTH = 'CONNECTED';
-    const pollConnected = await makeRequest('GET', '/api/sap/session-status');
+    const pollConnected = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(pollConnected.data.status, 'CONNECTED');
 
     // Server goes down while app is running
     process.env.TEST_SAP_SESSION_HEALTH = 'SERVER_UNAVAILABLE';
-    const pollUnavailable = await makeRequest('GET', '/api/sap/session-status');
+    const pollUnavailable = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(pollUnavailable.data.connected, false);
     assert.strictEqual(pollUnavailable.data.status, 'SERVER_UNAVAILABLE');
     assert.match(pollUnavailable.data.message, /server is currently unavailable/i);
@@ -188,7 +188,7 @@ async function runSapSessionMonitoringTests() {
     console.log('\n7. Testing Heartbeat changes SERVER_UNAVAILABLE → CONNECTED:');
     // User restarts/logs into SAP
     process.env.TEST_SAP_SESSION_HEALTH = 'CONNECTED';
-    const pollRestored = await makeRequest('GET', '/api/sap/session-status');
+    const pollRestored = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(pollRestored.data.connected, true);
     assert.strictEqual(pollRestored.data.status, 'CONNECTED');
     console.log('   ✓ Heartbeat poll automatically returns to CONNECTED when SAP comes back online');
@@ -367,7 +367,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health15.status, 'CONNECTED');
     assert.strictEqual(health15.user, 'ACCESS1');
 
-    const apiRes15 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes15 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes15.status, 200);
     assert.strictEqual(apiRes15.data.connected, true);
     assert.strictEqual(apiRes15.data.user, 'ACCESS1');
@@ -383,7 +383,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health16.status, 'CONNECTED');
     assert.strictEqual(health16.user, 'TESTUSER');
 
-    const apiRes16 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes16 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes16.status, 200);
     assert.strictEqual(apiRes16.data.user, 'TESTUSER');
     console.log('   ✓ Arbitrary user TESTUSER discovered dynamically without hardcoding');
@@ -393,12 +393,12 @@ async function runSapSessionMonitoringTests() {
     // -------------------------------------------------------------
     console.log('\n17. Testing user switching LEELAM_EXT → ACCESS1 without server restart:');
     setMockSapSessionUser('LEELAM_EXT');
-    const beforeSwitch = await makeRequest('GET', '/api/sap/session-status');
+    const beforeSwitch = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(beforeSwitch.data.user, 'LEELAM_EXT');
 
     // User switches to ACCESS1
     setMockSapSessionUser('ACCESS1');
-    const afterSwitch = await makeRequest('GET', '/api/sap/session-status');
+    const afterSwitch = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(afterSwitch.data.user, 'ACCESS1');
     assert.strictEqual(afterSwitch.data.connected, true);
     console.log('   ✓ User switching from LEELAM_EXT to ACCESS1 immediately reflected in status API');
@@ -413,7 +413,7 @@ async function runSapSessionMonitoringTests() {
     assert.strictEqual(health18.status, 'DISCONNECTED');
     assert.strictEqual(health18.code, 'NO_CONNECTION');
 
-    const apiRes18 = await makeRequest('GET', '/api/sap/session-status');
+    const apiRes18 = await makeRequest('GET', '/api/sap/session-status', null, authHeaders);
     assert.strictEqual(apiRes18.status, 200);
     assert.strictEqual(apiRes18.data.connected, false);
     assert.strictEqual(apiRes18.data.status, 'DISCONNECTED');

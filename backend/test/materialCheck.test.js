@@ -233,7 +233,8 @@ async function runTests() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
+            'Content-Length': Buffer.byteLength(postData),
+            'Authorization': 'Bearer admin-test-token'
           }
         },
         (res) => {

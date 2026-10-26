@@ -21,6 +21,7 @@ import {
 import { readBom, explodeBomHierarchy } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
+import ValueHelpInput from './ValueHelpInput';
 
 /**
  * Trims leading zeros only on purely numeric material numbers.
@@ -231,13 +232,13 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
               </label>
               <div className="sap-form-input-wrapper">
                 <Layers size={13} className="input-icon" />
-                <input
-                  type="text"
-                  className="sap-form-input"
+                <ValueHelpInput
+                  kind="material"
+                  plant={searchParams.plant}
                   placeholder="e.g. 100001"
                   value={searchParams.material}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, material: e.target.value }))}
-                  data-finder="material"
+                  style={{ paddingLeft: 30 }}
                   aria-label="Explorer Material"
                 />
               </div>
@@ -249,14 +250,14 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
               </label>
               <div className="sap-form-input-wrapper">
                 <Factory size={13} className="input-icon" />
-                <input
-                  type="text"
-                  className="sap-form-input"
+                <ValueHelpInput
+                  kind="plant"
+                  material={searchParams.material}
                   placeholder="e.g. 1000"
                   maxLength={4}
                   value={searchParams.plant}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, plant: e.target.value }))}
-                  data-finder="plant"
+                  style={{ paddingLeft: 30 }}
                   aria-label="Explorer Plant"
                 />
               </div>

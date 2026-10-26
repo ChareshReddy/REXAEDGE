@@ -7,9 +7,6 @@ import materialCheckRouter from './materialCheck.js';
 
 const router = express.Router();
 
-// Forward POST / and POST /check to existing material maintenance check handler for 100% backward compatibility
-router.use('/', materialCheckRouter);
-
 // Rate limiter for Material Search and Material Detail lookups:
 // 120 requests per minute per user/IP allows smooth debounced typeahead while safeguarding SAP RFC
 export const materialSearchRateLimiter = rateLimit({
@@ -23,9 +20,13 @@ export const materialSearchRateLimiter = rateLimit({
   }
 });
 
-// Enforce authentication and BOM module enablement on all materials lookup routes
+// Enforce authentication, BOM module enablement, and server access on all materials routes
 router.use(requireAuth);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
+router.use(requireServerAccess('read_only'));
+
+// Forward POST / and POST /check to existing material maintenance check handler for 100% backward compatibility
+router.use('/', materialCheckRouter);
 
 /**
  * GET /api/materials/search?q=&plant=&limit=20&mtart=&checkBom=&bomUsage=
@@ -42,7 +43,8 @@ router.get('/search', materialSearchRateLimiter, requireServerAccess('read_only'
   try {
     const { q, plant, limit, mtart, checkBom, bomUsage, mode } = req.query || {};
 
-    if (!q || typeof q !== 'string' || q.trim().length < 2) {
+    const cleanQ = typeof q === 'string' ? q.trim() : '';
+    if (cleanQ && cleanQ.length < 2 && cleanQ !== '*') {
       return res.status(400).json({
         success: false,
         error: 'Search query must be at least 2 characters.'
@@ -50,7 +52,7 @@ router.get('/search', materialSearchRateLimiter, requireServerAccess('read_only'
     }
 
     const results = await searchMaterials({
-      query: q,
+      query: cleanQ,
       plant,
       limit,
       mtart,

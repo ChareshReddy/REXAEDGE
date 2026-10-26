@@ -45,7 +45,9 @@ const testFiles = [
   'test/materialSearch.test.js',
   'test/plants.test.js',
   'test/materialPlantParity.test.js',
-  'test/searchRfcClient.test.js'
+  'test/searchRfcClient.test.js',
+  'test/valueHelpPopup.test.js',
+  'test/noPermittedServerAccess.test.js'
 ];
 
 const env = {

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import FioriPageHeader from './FioriPageHeader';
+import ValueHelpInput from './ValueHelpInput';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
@@ -568,29 +569,27 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                 <div>
                   <label className="sap-form-label">Material*</label>
-                  <input
-                    type="text"
-                    className="sap-form-input"
+                  <ValueHelpInput
+                    kind="material"
+                    plant={headerData.plant}
                     placeholder="e.g. A1BH0214C"
                     disabled={isLocked}
                     value={headerData.material}
                     onChange={(e) => handleHeaderChange('material', e.target.value)}
-                    data-finder="material"
                     aria-label="Header Material"
                   />
                 </div>
 
                 <div>
                   <label className="sap-form-label">Plant*</label>
-                  <input
-                    type="text"
-                    className="sap-form-input"
+                  <ValueHelpInput
+                    kind="plant"
+                    material={headerData.material}
                     placeholder="e.g. 1010"
                     maxLength={4}
                     disabled={isLocked}
                     value={headerData.plant}
                     onChange={(e) => handleHeaderChange('plant', e.target.value)}
-                    data-finder="plant"
                     aria-label="Header Plant"
                   />
                 </div>
@@ -714,15 +713,14 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                           {String((idx + 1) * 10).padStart(4, '0')}
                         </td>
                         <td>
-                          <input
-                            type="text"
-                            className="sap-form-input"
+                          <ValueHelpInput
+                            kind="material"
+                            plant={headerData.plant}
                             placeholder="Component"
                             disabled={isLocked}
                             value={comp.component}
                             onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
                             style={{ padding: '6px 8px', fontSize: 12 }}
-                            data-finder="material"
                             aria-label={`Component ${idx + 1}`}
                           />
                         </td>

@@ -62,7 +62,7 @@ export default function Login({ onLoginSuccess }) {
             <img src={nextItPointLogo} alt="Next IT Point Logo" className="sap-brand-logo-img" />
           </div>
           <span className="sap-brand-divider">|</span>
-          <span className="sap-brand-title">SAP AI Operations Assistant</span>
+          <span className="sap-brand-title">RexaEdge</span>
         </div>
       </header>
 

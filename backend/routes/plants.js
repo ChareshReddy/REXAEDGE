@@ -21,12 +21,13 @@ export const plantRateLimiter = rateLimit({
 // Enforce authentication, BOM module enablement, and server access
 router.use(requireAuth);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
+router.use(requireServerAccess('read_only'));
 
 /**
  * GET /api/plants?q=&material=&refresh=true|false
  * Fetches SAP plant definitions from T001W with long-TTL caching and material extension status.
  */
-router.get('/', plantRateLimiter, requireServerAccess('read_only'), async (req, res) => {
+router.get('/', plantRateLimiter, async (req, res) => {
   const abortController = new AbortController();
   req.on('close', () => {
     if (!res.writableEnded) {

@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
+import ValueHelpInput from './ValueHelpInput';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -208,14 +209,15 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               </label>
               <div className="sap-form-input-wrapper">
                 <Layers size={14} className="input-icon" />
-                <input
+                <ValueHelpInput
                   id="sourceMaterial"
-                  type="text"
+                  kind="material"
+                  plant={formData.sourcePlant}
                   placeholder="e.g. A1BH0214C"
                   value={formData.sourceMaterial}
                   onChange={(e) => handleChange('sourceMaterial', e.target.value)}
                   className={`sap-form-input ${fieldErrors.sourceMaterial ? 'input-error' : ''}`}
-                  data-finder="material"
+                  style={{ paddingLeft: 32 }}
                   aria-label="Source Material"
                 />
               </div>
@@ -227,15 +229,16 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               </label>
               <div className="sap-form-input-wrapper">
                 <Factory size={14} className="input-icon" />
-                <input
+                <ValueHelpInput
                   id="sourcePlant"
-                  type="text"
+                  kind="plant"
+                  material={formData.sourceMaterial}
                   placeholder="e.g. 1001"
                   maxLength={4}
                   value={formData.sourcePlant}
                   onChange={(e) => handleChange('sourcePlant', e.target.value)}
                   className={`sap-form-input ${fieldErrors.sourcePlant ? 'input-error' : ''}`}
-                  data-finder="plant"
+                  style={{ paddingLeft: 32 }}
                   aria-label="Source Plant"
                 />
               </div>
@@ -427,14 +430,15 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               </label>
               <div className="sap-form-input-wrapper">
                 <Layers size={14} className="input-icon" />
-                <input
+                <ValueHelpInput
                   id="targetMaterial"
-                  type="text"
+                  kind="material"
+                  plant={formData.targetPlant}
                   placeholder="e.g. A1BH0214C"
                   value={formData.targetMaterial}
                   onChange={(e) => handleChange('targetMaterial', e.target.value)}
                   className={`sap-form-input ${fieldErrors.targetMaterial ? 'input-error' : ''}`}
-                  data-finder="material"
+                  style={{ paddingLeft: 32 }}
                   aria-label="Target Material"
                 />
               </div>
@@ -446,15 +450,16 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               </label>
               <div className="sap-form-input-wrapper">
                 <Factory size={14} className="input-icon" />
-                <input
+                <ValueHelpInput
                   id="targetPlant"
-                  type="text"
+                  kind="plant"
+                  material={formData.targetMaterial}
                   placeholder="e.g. 1012"
                   maxLength={4}
                   value={formData.targetPlant}
                   onChange={(e) => handleChange('targetPlant', e.target.value)}
                   className={`sap-form-input ${fieldErrors.targetPlant ? 'input-error' : ''}`}
-                  data-finder="plant"
+                  style={{ paddingLeft: 32 }}
                   aria-label="Target Plant"
                 />
               </div>

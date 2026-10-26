@@ -1,13 +1,11 @@
 import React from 'react';
 import { ChevronLeft } from 'lucide-react';
-import MaterialFinder from './MaterialFinder';
 
 /**
- * Shared Fiori Page Header Component (Requirement 1, 4, 6)
+ * Shared Fiori Page Header Component
  * - Renders breadcrumbs on the left
  * - Renders Title row: Back button, Title (h1), systemKey pill on the left
- * - Renders Material Finder search input on the right (width ~360px, min 240px, collapsed below 900px)
- * - Tightened vertical spacing so main page content starts higher
+ * - Renders extraTitleContent if provided
  */
 export default function FioriPageHeader({
   title,
@@ -18,7 +16,6 @@ export default function FioriPageHeader({
   breadcrumbs,
   systemKey,
   extraTitleContent,
-  showFinder = true,
   className = '',
   style = {}
 }) {
@@ -47,7 +44,7 @@ export default function FioriPageHeader({
         </div>
       )}
 
-      {/* Title Row with Left Title and Right-Aligned Material Finder */}
+      {/* Title Row with Left Title */}
       <div className="fiori-ph-title-row">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
           {onBack && (
@@ -73,13 +70,6 @@ export default function FioriPageHeader({
 
           {extraTitleContent}
         </div>
-
-        {/* Right-aligned Material Finder */}
-        {showFinder && (
-          <div style={{ flexShrink: 0, marginLeft: 'auto' }}>
-            <MaterialFinder />
-          </div>
-        )}
       </div>
 
       {/* Subtitle */}

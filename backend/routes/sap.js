@@ -8,7 +8,7 @@ import {
 } from '../services/sapGuiClient.js';
 import { pingRfcServer } from '../services/sapRfcClient.js';
 import { supabaseService } from '../services/supabaseClient.js';
-import { extractToken } from '../middleware/auth.js';
+import { extractToken, requireAuth, requireServerAccess } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -17,6 +17,8 @@ const router = express.Router();
  * or authenticated user permissions.
  */
 async function resolveTargetServer(req) {
+  if (req.selectedServer) return req.selectedServer;
+
   let serverId =
     req.headers?.['x-server-id'] ||
     req.headers?.['x-sap-server-id'] ||
@@ -40,6 +42,9 @@ async function resolveTargetServer(req) {
         if (available && available.length > 0) {
           const matched = await supabaseService.getServerById(available[0].id);
           if (matched) return matched;
+        } else {
+          // Authenticated user has NO permitted servers assigned: fail closed
+          return null;
         }
       }
     } catch (_) {}
@@ -66,7 +71,7 @@ async function resolveTargetServer(req) {
  * GET /api/sap/sessions
  * Returns all active SAP GUI or RFC sessions and the currently selected session.
  */
-router.get('/sessions', async (req, res) => {
+router.get('/sessions', requireAuth, requireServerAccess('read_only'), async (req, res) => {
   try {
     const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
     if (useRfc) {
@@ -128,7 +133,7 @@ router.get('/sessions', async (req, res) => {
  * POST /api/sap/sessions/select
  * Selects an active SAP session to be used for SAP operations.
  */
-router.post('/sessions/select', async (req, res) => {
+router.post('/sessions/select', requireAuth, requireServerAccess('read_only'), async (req, res) => {
   try {
     const { sessionId } = req.body || {};
     if (!sessionId || typeof sessionId !== 'string') {
@@ -194,7 +199,7 @@ router.post('/sessions/select', async (req, res) => {
  * GET /api/sap/session-status
  * Health check endpoint for dynamic SAP RFC or GUI session monitoring.
  */
-router.get('/session-status', async (req, res) => {
+router.get('/session-status', requireAuth, requireServerAccess('read_only'), async (req, res) => {
   try {
     const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
     if (useRfc) {

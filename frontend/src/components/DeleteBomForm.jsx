@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, AlertTriangle, ArrowRight, X, Layers, Factory, Hash } from 'lucide-react';
+import ValueHelpInput from './ValueHelpInput';
 
 export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
   const [formData, setFormData] = useState({
@@ -92,13 +93,15 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
             </label>
             <div className="sap-form-input-wrapper">
               <Layers size={13} className="input-icon" />
-              <input
+              <ValueHelpInput
                 id="delMaterial"
-                type="text"
+                kind="material"
+                plant={formData.plant}
                 placeholder="e.g. A1BH0214C"
                 value={formData.material}
                 onChange={(e) => handleChange('material', e.target.value)}
                 className={`sap-form-input ${fieldErrors.material ? 'input-error' : ''}`}
+                style={{ paddingLeft: 30 }}
                 autoFocus
               />
             </div>
@@ -110,13 +113,15 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
             </label>
             <div className="sap-form-input-wrapper">
               <Factory size={13} className="input-icon" />
-              <input
+              <ValueHelpInput
                 id="delPlant"
-                type="text"
+                kind="plant"
+                material={formData.material}
                 placeholder="e.g. 1001"
                 value={formData.plant}
                 onChange={(e) => handleChange('plant', e.target.value)}
                 className={`sap-form-input ${fieldErrors.plant ? 'input-error' : ''}`}
+                style={{ paddingLeft: 30 }}
               />
             </div>
           </div>

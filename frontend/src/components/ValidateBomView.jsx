@@ -13,6 +13,7 @@ import {
 import { validateSourceBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
+import ValueHelpInput from './ValueHelpInput';
 
 export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateHome }) {
   const [formData, setFormData] = useState({
@@ -109,13 +110,13 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
                 </label>
                 <div className="sap-form-input-wrapper">
                   <Layers size={13} className="input-icon" />
-                  <input
-                    type="text"
-                    className="sap-form-input"
+                  <ValueHelpInput
+                    kind="material"
+                    plant={formData.plant}
                     placeholder="e.g. 100001"
                     value={formData.material}
                     onChange={(e) => setFormData((p) => ({ ...p, material: e.target.value }))}
-                    data-finder="material"
+                    style={{ paddingLeft: 30 }}
                     aria-label="Validate Material"
                     autoFocus
                   />
@@ -128,14 +129,14 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
                 </label>
                 <div className="sap-form-input-wrapper">
                   <Factory size={13} className="input-icon" />
-                  <input
-                    type="text"
-                    className="sap-form-input"
+                  <ValueHelpInput
+                    kind="plant"
+                    material={formData.material}
                     placeholder="e.g. 1000"
                     maxLength={4}
                     value={formData.plant}
                     onChange={(e) => setFormData((p) => ({ ...p, plant: e.target.value }))}
-                    data-finder="plant"
+                    style={{ paddingLeft: 30 }}
                     aria-label="Validate Plant"
                   />
                 </div>

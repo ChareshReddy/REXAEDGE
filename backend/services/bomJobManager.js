@@ -114,10 +114,10 @@ class BomJobManager {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      // Keep most recent 50 job summaries
+      // Keep most recent 200 job summaries
       const summaries = Array.from(this.jobs.values())
         .map((j) => this.toCleanSummary(j))
-        .slice(-50);
+        .slice(-200);
       fs.writeFileSync(JOB_SUMMARIES_FILE, JSON.stringify(summaries, null, 2), 'utf-8');
     } catch (err) {
       console.error('[bomJobManager] Failed to persist job summaries:', err.message);

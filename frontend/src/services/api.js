@@ -588,7 +588,7 @@ export async function adminSetUserPassword(userId, password, confirmPassword) {
  * Searches SAP materials by description or number with optional plant, type and BOM checks.
  */
 export async function searchMaterials(
-  { query, plant, limit = 20, mtart, checkBom = false, bomUsage = '1', mode },
+  { query = '', plant, limit = 100, mtart, checkBom = false, bomUsage = '1', mode },
   options = {}
 ) {
   const params = { q: query, limit };

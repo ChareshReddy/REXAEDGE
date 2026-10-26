@@ -188,14 +188,17 @@ export const MOCK_MATERIALS = [
  * Searches materials in Mock Mode
  */
 function searchMockMaterials({ query, plant, limit, mtart, checkBom }) {
-  const qUpper = query.toUpperCase();
+  const isEmpty = !query || query === '*' || String(query).trim() === '';
+  const qUpper = String(query || '').toUpperCase();
   const tokens = qUpper.split(/\s+/).filter(Boolean);
   const isNum = /^\d+$/.test(query);
 
   let matches = MOCK_MATERIALS.filter((m) => {
     // Number match or description match
     let matchesText = false;
-    if (isNum) {
+    if (isEmpty) {
+      matchesText = true;
+    } else if (isNum) {
       matchesText = m.matnr.includes(query) || m.matnr === query;
     } else {
       matchesText =
@@ -341,14 +344,14 @@ export async function searchMaterials({
   signal,
   timeoutMs
 }) {
-  const sanitizedQuery = sanitizeSearchQuery(query);
-  if (!sanitizedQuery || sanitizedQuery.length < 2) {
+  const sanitizedQuery = sanitizeSearchQuery(query || '');
+  if (query && sanitizedQuery.length > 0 && sanitizedQuery.length < 2 && sanitizedQuery !== '*') {
     const badInputErr = new Error('Search query must be at least 2 characters.');
     badInputErr.status = 400;
     throw badInputErr;
   }
 
-  const cleanLimit = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const cleanLimit = Math.max(1, Math.min(Number(limit) || 100, 500));
   const cleanPlant = plant ? String(plant).trim().toUpperCase() : '';
   const cleanUsage = String(bomUsage || '1').trim();
   const shouldCheckBom = checkBom === true || checkBom === 'true';
@@ -394,7 +397,9 @@ export async function searchMaterials({
 
     let maktWhere = "SPRAS = 'E'";
 
-    if (isNum) {
+    if (!sanitizedQuery || sanitizedQuery === '*') {
+      // Empty search / initial value help list: SPRAS = 'E' without query restriction
+    } else if (isNum) {
       const padded = toSapMatnr(sanitizedQuery);
       // Key prefix search: uses primary index on MATNR
       maktWhere += ` AND ( MATNR = '${padded}' OR MATNR LIKE '${sanitizedQuery}%' )`;
@@ -405,10 +410,12 @@ export async function searchMaterials({
     } else {
       // Description words search
       const tokens = sanitizedQuery.toUpperCase().split(/\s+/).filter(Boolean);
-      const descClause = tokens
-        .map((tok) => `MAKTG LIKE '%${tok.replace(/\*/g, '%')}%'`)
-        .join(' AND ');
-      maktWhere += ` AND ( ${descClause} )`;
+      if (tokens.length > 0) {
+        const descClause = tokens
+          .map((tok) => `MAKTG LIKE '%${tok.replace(/\*/g, '%')}%'`)
+          .join(' AND ');
+        maktWhere += ` AND ( ${descClause} )`;
+      }
     }
 
     // If plant is specified, fetch up to 3x limit to allow MARC filtering
