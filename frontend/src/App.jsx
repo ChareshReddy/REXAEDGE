@@ -29,6 +29,7 @@ import BulkBomView from './components/BulkBomView';
 import ValidateBomView from './components/ValidateBomView';
 import CreateBomView from './components/CreateBomView';
 import BulkCreateBomView from './components/BulkCreateBomView';
+import { FinderProvider } from './context/FinderContext';
 import AdminView from './components/AdminView';
 import Modal from './components/Modal';
 import PasswordModal from './components/PasswordModal';
@@ -40,6 +41,7 @@ import {
   selectSapSession,
   getAvailableServers,
   setSelectedServerHeader,
+  prefetchPlants,
   getServerModules
 } from './services/api';
 import { MODULE_REGISTRY, getModuleKeyForAction } from '@shared/modules.js';
@@ -60,9 +62,24 @@ export default function App() {
   const [isLoadingServers, setIsLoadingServers] = useState(true);
 
   // Application view state
-  const [activeTab, setActiveTab] = useState('launchpad'); // 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin'
+  const [activeTab, setActiveTab] = useState('launchpad'); // 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'material_search'
   const [launchpadSubView, setLaunchpadSubView] = useState('home'); // 'home' | 'bom_operations'
   const [selectedHomeGroup, setSelectedHomeGroup] = useState('');
+  const [prefilledMaterial, setPrefilledMaterial] = useState('');
+  const [prefilledPlant, setPrefilledPlant] = useState('');
+
+  const handleMaterialActionNavigate = (action, params = {}) => {
+    setPrefilledMaterial(params.material || '');
+    setPrefilledPlant(params.plant || '');
+    setActiveTab(action);
+  };
+
+  const isBomScreen = Boolean(
+    user && (
+      ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) ||
+      (activeTab === 'launchpad' && typeof launchpadSubView === 'string' && launchpadSubView.startsWith('bom'))
+    )
+  );
 
   // Logout confirmation modal state
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -227,6 +244,8 @@ export default function App() {
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     setSelectedHomeGroup('');
+    const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
+    if (savedId) prefetchPlants(savedId);
   };
 
   const handleLogout = async () => {
@@ -787,7 +806,8 @@ export default function App() {
       </header>
 
       {/* Main SAP Fiori Workspace Layout */}
-      <main className="sap-assistant-layout">
+      <FinderProvider value={{ activeServer: selectedServer, activeTab, onActionNavigate: handleMaterialActionNavigate }}>
+        <main className="sap-assistant-layout">
         {activeTab === 'launchpad' && (
           <FioriLaunchpad
             sapSession={sapSession}
@@ -926,6 +946,8 @@ export default function App() {
         {activeTab === 'create_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
           <CreateBomView
             systemKey={currentSystem}
+            initialMaterial={prefilledMaterial}
+            initialPlant={prefilledPlant}
             onBack={() => {
               setActiveTab('launchpad');
               setLaunchpadSubView('bom_create_operations');
@@ -962,6 +984,8 @@ export default function App() {
         {activeTab === 'copy_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('copy_bom') || enabledModules.includes(getModuleKeyForAction('copy_bom'))) && (
           <CopyBomView
             systemKey={currentSystem}
+            initialMaterial={prefilledMaterial}
+            initialPlant={prefilledPlant}
             onBack={() => {
               setActiveTab('launchpad');
               setLaunchpadSubView('bom_copy_operations');
@@ -1012,6 +1036,8 @@ export default function App() {
         {activeTab === 'bom_explorer' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bom_explorer') || enabledModules.includes(getModuleKeyForAction('bom_explorer'))) && (
           <BomExplorerView
             systemKey={currentSystem}
+            initialMaterial={prefilledMaterial}
+            initialPlant={prefilledPlant}
             onBack={() => {
               setActiveTab('launchpad');
               setLaunchpadSubView('bom_operations');
@@ -1045,6 +1071,7 @@ export default function App() {
           />
         )}
       </main>
+      </FinderProvider>
 
       {/* Logout Confirmation Modal */}
       <Modal

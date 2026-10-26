@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
   ChevronLeft,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import DeleteBomForm from './DeleteBomForm';
 import ConfirmationCard from './ConfirmationCard';
+import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
@@ -31,7 +33,31 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
     return () => activityTracker.setConfirmation('delete_bom', false);
   }, [proposedAction, actionStatus]);
 
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const handleCancelChecking = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSubmitting(false);
+    setErrorMessage('');
+  };
+
   const handleFormSubmit = async (formData) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setErrorMessage('');
     setExecutionResult(null);
     setProposedAction(null);
@@ -45,7 +71,8 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
         summaryText,
         [],
         systemKey,
-        { actionType: 'delete_bom', deleteBomParams: formData }
+        { actionType: 'delete_bom', deleteBomParams: formData },
+        { signal: controller.signal }
       );
 
       if (response.error) {
@@ -56,12 +83,21 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
       } else {
         setErrorMessage(response.reply || 'Unexpected response from SAP.');
       }
+      if (controller.signal.aborted) return;
     } catch (err) {
+      if (controller.signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError') {
+        return;
+      }
       console.error('Error proposing Delete BOM:', err);
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Unable to submit Delete BOM request.';
       setErrorMessage(text);
     } finally {
-      setIsSubmitting(false);
+      if (!controller.signal.aborted) {
+        setIsSubmitting(false);
+      }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -112,35 +148,18 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
   return (
     <div className="fiori-app-view-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onBack}>
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Delete Material BOM</span>
-          <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>{systemKey}</span>
-        </div>
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            onClick={onBack}
-            title="Back to Bill of Materials"
-            aria-label="Back to Bill of Materials"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Delete Material BOM (CS02)</h1>
-        </div>
-        <p className="fiori-ph-subtitle">
-          Safely archive or delete specific BOM alternatives in SAP without GUI popups. Strict human confirmation gates prevent accidental data loss.
-        </p>
-      </div>
+      <FioriPageHeader
+        title="Delete Material BOM (CS02)"
+        subtitle="Safely archive or delete specific BOM alternatives in SAP without GUI popups. Strict human confirmation gates prevent accidental data loss."
+        onBack={onBack}
+        backTitle="Back to Bill of Materials"
+        systemKey={systemKey}
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Bill of Materials', onClick: onBack },
+          { label: 'Delete Material BOM' }
+        ]}
+      />
 
       <div className="fiori-view-body">
         {/* Error Notice */}
@@ -155,10 +174,33 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
         {!proposedAction && !executionResult && (
           <div className="sap-form-view-section" style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}>
             {isSubmitting ? (
-              <div className="sap-loading-card" style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}>
-                <span className="sap-spinner" style={{ width: 32, height: 32, borderWidth: 3 }} />
-                <h4>Verifying BOM Existence in SAP...</h4>
-                <p>Checking material and plant records prior to deletion proposal.</p>
+              <div
+                className="sap-loading-card"
+                style={{
+                  maxWidth: 680,
+                  width: '100%',
+                  margin: '0 auto',
+                  textAlign: 'center',
+                  padding: '24px 20px',
+                  borderRadius: 'var(--sap-radius)',
+                  border: '1px solid var(--sap-border)'
+                }}
+              >
+                <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                  Verifying BOM Existence in SAP...
+                </h4>
+                <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                  Checking material and plant records prior to deletion proposal.
+                </p>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-secondary"
+                  onClick={handleCancelChecking}
+                  style={{ marginTop: 20 }}
+                >
+                  Cancel
+                </button>
               </div>
             ) : (
               <DeleteBomForm

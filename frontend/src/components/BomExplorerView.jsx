@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { readBom, explodeBomHierarchy } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import FioriPageHeader from './FioriPageHeader';
 
 /**
  * Trims leading zeros only on purely numeric material numbers.
@@ -35,10 +36,10 @@ export function formatMaterialNumber(mat) {
   return s;
 }
 
-export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateHome }) {
+export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateHome, initialMaterial, initialPlant }) {
   const [searchParams, setSearchParams] = useState({
-    material: '',
-    plant: '',
+    material: initialMaterial || '',
+    plant: initialPlant || '',
     bomUsage: '1',
     alternativeBom: ''
   });
@@ -198,35 +199,18 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
   return (
     <div className="fiori-app-view-root">
       {/* Full-width Fiori Horizon Header (Identical to Homepage / Operations Header) */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onBack}>
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">BOM Hierarchy Explorer</span>
-          <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>{systemKey}</span>
-        </div>
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            onClick={onBack}
-            title="Back to Bill of Materials"
-            aria-label="Back to Bill of Materials"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">BOM Hierarchy Explorer (CS03)</h1>
-        </div>
-        <p className="fiori-ph-subtitle">
-          View a material's BOM components and structure.
-        </p>
-      </div>
+      <FioriPageHeader
+        title="BOM Hierarchy Explorer (CS03)"
+        subtitle="View a material's BOM components and structure."
+        onBack={onBack}
+        backTitle="Back to Bill of Materials"
+        systemKey={systemKey}
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Bill of Materials', onClick: onBack },
+          { label: 'BOM Hierarchy Explorer' }
+        ]}
+      />
 
       <div className="fiori-view-body wide">
         {/* Error Notice */}
@@ -253,6 +237,8 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                   placeholder="e.g. 100001"
                   value={searchParams.material}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, material: e.target.value }))}
+                  data-finder="material"
+                  aria-label="Explorer Material"
                 />
               </div>
             </div>
@@ -267,8 +253,11 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                   type="text"
                   className="sap-form-input"
                   placeholder="e.g. 1000"
+                  maxLength={4}
                   value={searchParams.plant}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, plant: e.target.value }))}
+                  data-finder="plant"
+                  aria-label="Explorer Plant"
                 />
               </div>
             </div>

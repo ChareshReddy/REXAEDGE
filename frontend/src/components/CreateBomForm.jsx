@@ -215,6 +215,8 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   value={formData.sourceMaterial}
                   onChange={(e) => handleChange('sourceMaterial', e.target.value)}
                   className={`sap-form-input ${fieldErrors.sourceMaterial ? 'input-error' : ''}`}
+                  data-finder="material"
+                  aria-label="Source Material"
                 />
               </div>
             </div>
@@ -229,9 +231,12 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   id="sourcePlant"
                   type="text"
                   placeholder="e.g. 1001"
+                  maxLength={4}
                   value={formData.sourcePlant}
                   onChange={(e) => handleChange('sourcePlant', e.target.value)}
                   className={`sap-form-input ${fieldErrors.sourcePlant ? 'input-error' : ''}`}
+                  data-finder="plant"
+                  aria-label="Source Plant"
                 />
               </div>
             </div>
@@ -293,7 +298,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               >
                 {isValidating ? (
                   <>
-                    <Loader2 size={14} className="sap-spin-icon" />
+                    <Loader2 size={14} className="sap-spin" />
                     <span>Validating BOM in SAP (RFC)...</span>
                   </>
                 ) : isValidated ? (
@@ -313,7 +318,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
             {/* Validation Status / Result Card */}
             {isValidating && (
               <div className="sap-source-val-card sap-val-loading">
-                <Loader2 size={15} className="sap-spin-icon" style={{ color: 'var(--sap-primary)' }} />
+                <Loader2 size={15} className="sap-spin" style={{ color: 'var(--sap-primary)' }} />
                 <span>Checking SAP CS03 transaction for reference BOM...</span>
               </div>
             )}
@@ -429,6 +434,8 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   value={formData.targetMaterial}
                   onChange={(e) => handleChange('targetMaterial', e.target.value)}
                   className={`sap-form-input ${fieldErrors.targetMaterial ? 'input-error' : ''}`}
+                  data-finder="material"
+                  aria-label="Target Material"
                 />
               </div>
             </div>
@@ -443,9 +450,12 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   id="targetPlant"
                   type="text"
                   placeholder="e.g. 1012"
+                  maxLength={4}
                   value={formData.targetPlant}
                   onChange={(e) => handleChange('targetPlant', e.target.value)}
                   className={`sap-form-input ${fieldErrors.targetPlant ? 'input-error' : ''}`}
+                  data-finder="plant"
+                  aria-label="Target Plant"
                 />
               </div>
             </div>

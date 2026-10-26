@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import FioriPageHeader from './FioriPageHeader';
 
 export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateHome }) {
   const [formData, setFormData] = useState({
@@ -76,35 +77,18 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
   return (
     <div className="fiori-app-view-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onBack}>
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Validate Material BOM</span>
-          <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>{systemKey}</span>
-        </div>
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            onClick={onBack}
-            title="Back to Bill of Materials"
-            aria-label="Back to Bill of Materials"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Validate Material BOM (PRE-CHECK)</h1>
-        </div>
-        <p className="fiori-ph-subtitle">
-          Pre-flight verification in SAP via RFC. Checks MAST, STAS, and STPO table records before production planning or copying.
-        </p>
-      </div>
+      <FioriPageHeader
+        title="Validate Material BOM (PRE-CHECK)"
+        subtitle="Pre-flight verification in SAP via RFC. Checks MAST, STAS, and STPO table records before production planning or copying."
+        onBack={onBack}
+        backTitle="Back to Bill of Materials"
+        systemKey={systemKey}
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Bill of Materials', onClick: onBack },
+          { label: 'Validate Material BOM' }
+        ]}
+      />
 
       <div className="fiori-view-body">
         {/* Error Notice */}
@@ -131,6 +115,8 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
                     placeholder="e.g. 100001"
                     value={formData.material}
                     onChange={(e) => setFormData((p) => ({ ...p, material: e.target.value }))}
+                    data-finder="material"
+                    aria-label="Validate Material"
                     autoFocus
                   />
                 </div>
@@ -146,8 +132,11 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
                     type="text"
                     className="sap-form-input"
                     placeholder="e.g. 1000"
+                    maxLength={4}
                     value={formData.plant}
                     onChange={(e) => setFormData((p) => ({ ...p, plant: e.target.value }))}
+                    data-finder="plant"
+                    aria-label="Validate Plant"
                   />
                 </div>
               </div>

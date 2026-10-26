@@ -1,3 +1,4 @@
+import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -33,7 +34,8 @@ import {
   startBomJob,
   getBomJob,
   cancelBomJob,
-  getActiveBomJob
+  getActiveBomJob,
+  getPlants
 } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
@@ -160,6 +162,18 @@ export default function BulkCreateBomView({
   const isProd = systemKey === 'PROD';
   const isLocked = isValidating || isExecuting;
   const showSlimHeader = Boolean(parsedBoms.length > 0 || preflightReport || isValidating || isExecuting);
+
+  // Plant tooltips map: code -> "1001 · Plant name (City)"
+  const [plantMap, setPlantMap] = useState({});
+  useEffect(() => {
+    getPlants().then((res) => {
+      const map = {};
+      (res?.data || []).forEach((p) => {
+        map[p.werks] = `${p.werks} · ${p.name1}${p.ort01 ? ' (' + p.ort01 + ')' : ''}`;
+      });
+      setPlantMap(map);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     activityTracker.setOperation('bulk_create_bom', isValidating || isExecuting);
@@ -520,56 +534,19 @@ export default function BulkCreateBomView({
   return (
     <div className="fiori-launchpad-root">
       {/* Page Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : (onNavigateHome || onBack)}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : (onNavigateBom || onBack)}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : onBack}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Create BOM
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Create Bulk BOM</span>
-        </div>
-
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : onBack}
-            title={isLocked ? 'Operation in progress' : 'Back to Create BOM'}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Create Bulk BOM</h1>
-        </div>
-        <p className="fiori-ph-subtitle">Mass create Bills of Materials from an Excel or TSV spreadsheet</p>
-      </div>
+      <FioriPageHeader
+        title="Create Bulk BOM"
+        subtitle="Mass create Bills of Materials from an Excel or TSV spreadsheet"
+        onBack={onBack}
+        backTitle={isLocked ? 'Operation in progress' : 'Back to Create BOM'}
+        isLocked={isLocked}
+        breadcrumbs={[
+          { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
+          { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },
+          { label: 'Create BOM', onClick: isLocked ? undefined : onBack },
+          { label: 'Create Bulk BOM' }
+        ]}
+      />
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
         {/* Workflow Steps Indicator */}
@@ -983,6 +960,7 @@ export default function BulkCreateBomView({
                                       <td
                                         rowSpan={span}
                                         className="col-plant"
+                                        title={plantMap[bom.plant] || bom.plant}
                                         style={{
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',

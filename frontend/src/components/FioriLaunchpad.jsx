@@ -1,3 +1,4 @@
+import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Layers,
@@ -358,32 +359,16 @@ export default function FioriLaunchpad({
       ) : activeModule ? (
         /* ================= LEVEL 2: DYNAMIC MODULE OPERATIONS (HUB - 5 CARDS) ================= */
         <>
-          <div className="fiori-ph">
-            <div className="fiori-bc">
-              <button
-                type="button"
-                className="fiori-bc-link"
-                onClick={() => handleSetView('home')}
-              >
-                Home
-              </button>
-              <span className="fiori-bc-sep">›</span>
-              <span className="fiori-bc-current">{activeModule.label}</span>
-            </div>
-            <div className="fiori-ph-title-row">
-              <button
-                type="button"
-                className="fiori-ph-back"
-                onClick={() => handleSetView('home')}
-                title="Back to Home"
-                aria-label="Back to Home"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <h1 className="fiori-ph-title">{activeModule.label}</h1>
-            </div>
-            <p className="fiori-ph-subtitle">Choose an operation</p>
-          </div>
+          <FioriPageHeader
+            title={activeModule.label}
+            subtitle="Choose an operation"
+            onBack={() => handleSetView('home')}
+            backTitle="Back to Home"
+            breadcrumbs={[
+              { label: 'Home', onClick: () => handleSetView('home') },
+              { label: activeModule.label }
+            ]}
+          />
 
           <div className="fiori-body">
             <div className="fiori-group-title">Operations</div>
@@ -413,40 +398,17 @@ export default function FioriLaunchpad({
       ) : parentGroup ? (
         /* ================= LEVEL 3: GROUP SUB-PAGE (Create BOM / Copy BOM - 2 CARDS) ================= */
         <>
-          <div className="fiori-ph">
-            <div className="fiori-bc">
-              <button
-                type="button"
-                className="fiori-bc-link"
-                onClick={() => handleSetView('home')}
-              >
-                Home
-              </button>
-              <span className="fiori-bc-sep">›</span>
-              <button
-                type="button"
-                className="fiori-bc-link"
-                onClick={() => handleSetView(parentGroup.moduleSubView)}
-              >
-                {parentGroup.moduleLabel}
-              </button>
-              <span className="fiori-bc-sep">›</span>
-              <span className="fiori-bc-current">{parentGroup.title}</span>
-            </div>
-            <div className="fiori-ph-title-row">
-              <button
-                type="button"
-                className="fiori-ph-back"
-                onClick={() => handleSetView(parentGroup.moduleSubView)}
-                title={`Back to ${parentGroup.moduleLabel}`}
-                aria-label={`Back to ${parentGroup.moduleLabel}`}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <h1 className="fiori-ph-title">{parentGroup.title}</h1>
-            </div>
-            <p className="fiori-ph-subtitle">{parentGroup.desc}</p>
-          </div>
+          <FioriPageHeader
+            title={parentGroup.title}
+            subtitle="Choose an operation"
+            onBack={() => handleSetView(parentGroup.moduleSubView)}
+            backTitle={`Back to ${parentGroup.moduleLabel}`}
+            breadcrumbs={[
+              { label: 'Home', onClick: () => handleSetView('home') },
+              { label: parentGroup.moduleLabel, onClick: () => handleSetView(parentGroup.moduleSubView) },
+              { label: parentGroup.title }
+            ]}
+          />
 
           <div className="fiori-body">
             <div className="fiori-group-title">Operations</div>

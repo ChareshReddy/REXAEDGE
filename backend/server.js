@@ -13,7 +13,8 @@ import debugRoutes from './routes/debug.js';
 import knowledgeBaseRoutes from './routes/knowledgeBase.js';
 import bomRoutes from './routes/bom.js';
 import sapRoutes from './routes/sap.js';
-import materialCheckRoutes from './routes/materialCheck.js';
+import materialsRoutes from './routes/materials.js';
+import plantRoutes from './routes/plants.js';
 import adminRoutes from './routes/admin.js';
 import { requireAuth } from './middleware/auth.js';
 import { supabaseService, verifyDatabaseConfiguration } from './services/supabaseClient.js';
@@ -72,7 +73,8 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/knowledge-base', knowledgeBaseRoutes);
 app.use('/api/bom', bomRoutes);
 app.use('/api/sap', sapRoutes);
-app.use('/api/materials', materialCheckRoutes);
+app.use('/api/materials', materialsRoutes);
+app.use('/api/plants', plantRoutes);
 
 // Server Permission & Discovery endpoint (returns permitted servers for logged-in user)
 app.get('/api/servers/available', requireAuth, async (req, res) => {

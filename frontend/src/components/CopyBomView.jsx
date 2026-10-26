@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
   Copy,
   CheckCircle2,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  Loader2
 } from 'lucide-react';
 import CreateBomForm from './CreateBomForm';
 import ConfirmationCard from './ConfirmationCard';
+import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction, verifyCopiedBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
-export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom }) {
+export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom, initialMaterial, initialPlant }) {
   const [proposedAction, setProposedAction] = useState(null);
   const [actionStatus, setActionStatus] = useState('pending'); // 'pending' | 'executing' | 'confirmed' | 'cancelled' | 'failed'
   const [executionResult, setExecutionResult] = useState(null);
@@ -37,7 +39,32 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
     return () => activityTracker.setConfirmation('copy_bom', false);
   }, [proposedAction, actionStatus]);
 
+  const abortControllerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const handleCancelChecking = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSubmitting(false);
+    setErrorMessage('');
+  };
+
   const handleFormSubmit = async (formData) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setErrorMessage('');
     setExecutionResult(null);
     setProposedAction(null);
@@ -56,8 +83,11 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
         summaryText,
         [],
         systemKey,
-        { actionType: 'copy_bom', copyBomParams: formData }
+        { actionType: 'copy_bom', copyBomParams: formData },
+        { signal: controller.signal }
       );
+
+      if (controller.signal.aborted) return;
 
       if (response.error) {
         setErrorMessage(response.reply || response.error || 'Failed to generate Copy BOM proposal.');
@@ -68,11 +98,19 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
         setErrorMessage(response.reply || 'Unexpected response from SAP.');
       }
     } catch (err) {
+      if (controller.signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError') {
+        return; // Cancelled by user - do not show error toast
+      }
       console.error('Error proposing Copy BOM:', err);
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Unable to submit Copy BOM request.';
       setErrorMessage(text);
     } finally {
-      setIsSubmitting(false);
+      if (!controller.signal.aborted) {
+        setIsSubmitting(false);
+      }
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -201,39 +239,19 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
   return (
     <div className="fiori-app-view-root">
       {/* Full-width Fiori Horizon Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onNavigateBom || onBack}>
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onBack}>
-            Copy BOM
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Copy Single BOM</span>
-          <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>{systemKey}</span>
-        </div>
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            onClick={onBack}
-            title="Back to Copy BOM"
-            aria-label="Back to Copy BOM"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Copy Single BOM</h1>
-        </div>
-        <p className="fiori-ph-subtitle">
-          CS01 Reference BOM Copy with automatic Alternative BOM generation (Rule 1) and recursive multi-level sub-assembly replication (Rule 2).
-        </p>
-      </div>
+      <FioriPageHeader
+        title="Copy Single BOM"
+        subtitle="CS01 Reference BOM Copy with automatic Alternative BOM generation (Rule 1) and recursive multi-level sub-assembly replication (Rule 2)."
+        onBack={onBack}
+        backTitle="Back to Copy BOM"
+        systemKey={systemKey}
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Bill of Materials', onClick: onNavigateBom || onBack },
+          { label: 'Copy BOM', onClick: onBack },
+          { label: 'Copy Single BOM' }
+        ]}
+      />
 
       <div className="fiori-view-body" style={{ padding: '16px 24px 28px' }}>
         {/* Error Notice */}
@@ -248,29 +266,39 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
         {!proposedAction && !executionResult && (
           <div className="sap-form-view-section" style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}>
             {isSubmitting ? (
-              <div className="sap-loading-card" style={{ maxWidth: 760, width: '100%', margin: '0 auto', textAlign: 'center', padding: '36px 20px' }}>
-                <span className="sap-spinner" style={{ width: 36, height: 36, borderWidth: 3, marginBottom: 16 }} />
-                <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--sap-text)', marginBottom: 8 }}>
+              <div
+                className="sap-loading-card"
+                style={{
+                  maxWidth: 760,
+                  width: '100%',
+                  margin: '0 auto',
+                  textAlign: 'center',
+                  padding: '24px 20px',
+                  borderRadius: 'var(--sap-radius)',
+                  border: '1px solid var(--sap-border)'
+                }}
+              >
+                <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
                   Checking BOMs in SAP...
                 </h4>
-                <p style={{ fontSize: '13px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto 20px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
                   Simulating multi-level BOM creation in target plant via BAPI TESTRUN to verify all components and plants before execution.
                 </p>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-ghost"
-                  onClick={onBack}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, margin: '0 auto' }}
+                  className="sap-btn sap-btn-secondary"
+                  onClick={handleCancelChecking}
+                  style={{ marginTop: 20 }}
                 >
-                  <ChevronLeft size={14} />
-                  <span>Back</span>
+                  Cancel
                 </button>
               </div>
             ) : (
               <CreateBomForm
                 onSubmit={handleFormSubmit}
                 onCancel={onBack}
-                initialValues={lastSubmittedForm || {}}
+                initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
                 hideHeader={true}
                 style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}
               />

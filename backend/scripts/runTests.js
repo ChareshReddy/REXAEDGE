@@ -41,7 +41,11 @@ const testFiles = [
   'test/bomBackgroundJobs.test.js',
   'test/bulkBomUiFlow.test.js',
   'test/bulkCopyAlternativeResolution.test.js',
-  'test/openRfcClientOptions.test.js'
+  'test/openRfcClientOptions.test.js',
+  'test/materialSearch.test.js',
+  'test/plants.test.js',
+  'test/materialPlantParity.test.js',
+  'test/searchRfcClient.test.js'
 ];
 
 const env = {

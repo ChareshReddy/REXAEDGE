@@ -25,6 +25,73 @@ export function setAuthToken(token) {
   }
 }
 
+let activePlantPrefetch = null;
+let lastPrefetchedServerId = null;
+const globalPlantCache = new Map(); // serverId -> { list, error }
+
+/**
+ * Initiates non-blocking background prefetch of plant catalog from T001W for the selected SAP server.
+ */
+export function prefetchPlants(serverId) {
+  const targetServerId =
+    serverId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null) ||
+    'default';
+
+  if (!targetServerId) return Promise.resolve([]);
+
+  // If already cached successfully, return cached list
+  const existing = globalPlantCache.get(targetServerId);
+  if (existing && !existing.error && existing.list?.length > 0) {
+    return Promise.resolve(existing.list);
+  }
+
+  // If already actively prefetching this server, return in-flight promise
+  if (activePlantPrefetch && lastPrefetchedServerId === targetServerId) {
+    return activePlantPrefetch;
+  }
+
+  lastPrefetchedServerId = targetServerId;
+  activePlantPrefetch = getPlants()
+    .then((res) => {
+      const list = res?.data || [];
+      globalPlantCache.set(targetServerId, { list, error: null });
+      return list;
+    })
+    .catch((err) => {
+      console.warn('[prefetchPlants] Background prefetch failed:', err.message);
+      globalPlantCache.set(targetServerId, {
+        list: [],
+        error: err.response?.data?.error || err.message || 'Could not verify plant'
+      });
+      return [];
+    })
+    .finally(() => {
+      activePlantPrefetch = null;
+    });
+
+  return activePlantPrefetch;
+}
+
+export function getPrefetchedPlants(serverId) {
+  const targetServerId =
+    serverId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null) ||
+    'default';
+  return globalPlantCache.get(targetServerId) || null;
+}
+
+export function getActivePlantPrefetchPromise(serverId) {
+  const targetServerId =
+    serverId ||
+    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null) ||
+    'default';
+  if (lastPrefetchedServerId === targetServerId && activePlantPrefetch) {
+    return activePlantPrefetch;
+  }
+  return null;
+}
+
 /**
  * Updates x-server-id header and synchronizes with localStorage
  */
@@ -35,6 +102,15 @@ export function setSelectedServerHeader(serverId) {
   } else {
     try { localStorage.removeItem('selected_server_id'); } catch (_) {}
     delete apiClient.defaults.headers.common['x-server-id'];
+  }
+
+  // Trigger non-blocking background prefetch for the newly selected server
+  if (serverId) {
+    prefetchPlants(serverId);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('sap-server-changed', { detail: { serverId } }));
   }
 }
 
@@ -129,8 +205,8 @@ export async function getBusinessPartners(options = {}) {
  * @param {Array} [history]
  * @param {string} [systemKey='DEV']
  */
-export async function sendChatMessage(message, history = [], systemKey = 'DEV', extra = {}) {
-  const response = await apiClient.post('/chat', { message, history, systemKey, ...extra });
+export async function sendChatMessage(message, history = [], systemKey = 'DEV', extra = {}, config = {}) {
+  const response = await apiClient.post('/chat', { message, history, systemKey, ...extra }, config);
   return response.data;
 }
 
@@ -209,8 +285,8 @@ export async function deleteKnowledgeBaseRule(id) {
  * @param {object} params { material, plant, bomUsage, alternativeBom }
  * @returns {Promise<{ success: boolean, materialExists?: boolean, plantValid?: boolean, bomExists?: boolean, alternativeValid?: boolean, availableAlternatives?: string[], componentCount?: number, message: string, errorCode?: string }>}
  */
-export async function validateSourceBom(params) {
-  const response = await apiClient.post('/bom/validate-source', params);
+export async function validateSourceBom(params, config = {}) {
+  const response = await apiClient.post('/bom/validate-source', params, config);
   return response.data;
 }
 
@@ -283,8 +359,8 @@ export async function createBulkBoms(payload) {
  * Starts an asynchronous background job for BOM pre-flight, validation, or execution.
  * @param {object} payload { type, items, boms, fileContent, fileName, copyHierarchy, skipErrors, confirmText, reason }
  */
-export async function startBomJob(payload) {
-  const response = await apiClient.post('/bom/jobs/start', payload);
+export async function startBomJob(payload, config = {}) {
+  const response = await apiClient.post('/bom/jobs/start', payload, config);
   return response.data;
 }
 
@@ -508,6 +584,53 @@ export async function adminSetUserPassword(userId, password, confirmPassword) {
   return response.data;
 }
 
+/**
+ * Searches SAP materials by description or number with optional plant, type and BOM checks.
+ */
+export async function searchMaterials(
+  { query, plant, limit = 20, mtart, checkBom = false, bomUsage = '1', mode },
+  options = {}
+) {
+  const params = { q: query, limit };
+  if (plant) params.plant = plant;
+  if (mtart) params.mtart = mtart;
+  if (checkBom) params.checkBom = checkBom;
+  if (bomUsage) params.bomUsage = bomUsage;
+  if (mode) params.mode = mode;
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/materials/search', config);
+  return response.data;
+}
+
+/**
+ * Fetches full master detail and plant extension status for a single material.
+ */
+export async function getMaterialDetail(matnr, { plant, bomUsage = '1' } = {}, options = {}) {
+  const params = {};
+  if (plant) params.plant = plant;
+  if (bomUsage) params.bomUsage = bomUsage;
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get(`/materials/${encodeURIComponent(matnr)}`, config);
+  return response.data;
+}
+
+/**
+ * Fetches SAP plant definitions from T001W with optional filtering, material extension check, and manual refresh.
+ */
+export async function getPlants({ q, material, refresh } = {}, options = {}) {
+  const params = {};
+  if (q) params.q = q;
+  if (material) params.material = material;
+  if (refresh) params.refresh = refresh;
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/plants', config);
+  return response.data;
+}
+
 export default apiClient;
+
 
 

@@ -488,7 +488,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             title="Refresh Administration Data"
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}
           >
-            <RefreshCw size={14} className={isLoading ? 'sap-spinner-icon' : ''} />
+            <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
             <span>Refresh</span>
           </button>
         </div>

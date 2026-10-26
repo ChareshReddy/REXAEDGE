@@ -139,7 +139,7 @@ input, select {
   justify-content: space-between;
   padding: 0 20px;
   position: relative;
-  z-index: 100;
+  z-index: 1000;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
   gap: 12px;
 }
@@ -1302,6 +1302,37 @@ input, select {
   max-height: 280px;
 }
 
+/* ==========================================================================
+   SHARED LOADING SPINNER ANIMATION (DEFINED ONCE)
+   ========================================================================== */
+@keyframes sap-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Backward-compatible keyframe aliases */
+@keyframes sapSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* Loading & Empty States */
 .sap-spinner {
   display: inline-block;
@@ -1311,24 +1342,42 @@ input, select {
   border-radius: 50%;
   border-top-color: #fff;
   animation: sap-spin 0.8s linear infinite;
+  transform-origin: center;
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .sap-spinner-blue {
   border-color: rgba(0, 112, 242, 0.2);
-  border-top-color: var(--sap-primary);
+  border-top-color: var(--sap-primary, #0070f2);
 }
 
-@keyframes sap-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.sap-spin {
+/* All SVG & Icon Spinners (Lucide Loader2, RefreshCw, etc.) */
+.sap-spin,
+.sap-spin-icon,
+.sap-spinner-icon,
+.spin,
+.animate-spin {
   display: inline-block;
   animation: sap-spin 0.8s linear infinite;
+  transform-origin: center;
   flex-shrink: 0;
+}
+
+/* ==========================================================================
+   PREFERS-REDUCED-MOTION ACCESSIBILITY
+   Functional feedback spinners maintain a gentle slow rotation (1.5s per turn)
+   rather than freezing, while decorative transitions are reduced.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .sap-spinner,
+  .sap-spin,
+  .sap-spin-icon,
+  .sap-spinner-icon,
+  .spin,
+  .animate-spin {
+    animation: sap-spin 1.5s linear infinite !important;
+  }
 }
 
 .sap-loading-state {
@@ -1646,7 +1695,7 @@ input, select {
     border-bottom: 2px solid var(--sap-primary);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
     padding: 16px 14px;
-    z-index: 200;
+    z-index: 1000;
   }
 
   .sap-mobile-user-info {
@@ -2639,14 +2688,7 @@ input[type="checkbox"]:disabled {
   margin: 0;
 }
 
-.sap-spin-icon {
-  animation: sapSpin 1s linear infinite;
-}
 
-@keyframes sapSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 /* Responsive Styles */
 @media (max-width: 768px) {
@@ -3831,7 +3873,7 @@ input[type="checkbox"]:disabled {
   background: #ffffff;
   border: 1px solid var(--sap-border);
   border-radius: 8px;
-  padding: 24px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3840,15 +3882,22 @@ input[type="checkbox"]:disabled {
   text-align: center;
 }
 
+.sap-loading-card .sap-spinner {
+  border-color: rgba(0, 112, 242, 0.2);
+  border-top-color: var(--sap-primary, #0070f2);
+}
+
 .sap-loading-card h4 {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--sap-text);
+  margin: 0;
 }
 
 .sap-loading-card p {
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--sap-text-muted);
+  margin: 0;
 }
 
 .sap-proposal-header-card {
@@ -4175,9 +4224,11 @@ input[type="checkbox"]:disabled {
 /* Page Header */
 .fiori-ph {
   background: #ffffff;
-  padding: 12px 32px 10px;
+  padding: 8px 32px 7px;
   border-bottom: 1px solid #d9d9d9;
   flex-shrink: 0;
+  position: relative;
+  z-index: 50;
 }
 
 .fiori-bc {
@@ -4187,7 +4238,7 @@ input[type="checkbox"]:disabled {
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .fiori-bc-link {
@@ -4222,7 +4273,9 @@ input[type="checkbox"]:disabled {
 .fiori-ph-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
 }
 
 .fiori-ph-back {

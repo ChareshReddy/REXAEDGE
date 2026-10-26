@@ -18,6 +18,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Modal from './Modal';
+import FioriPageHeader from './FioriPageHeader';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
@@ -27,10 +28,10 @@ function getTodayFormatted() {
   return `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`;
 }
 
-export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom }) {
+export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom, initialMaterial, initialPlant }) {
   const [headerData, setHeaderData] = useState({
-    material: '',
-    plant: '',
+    material: initialMaterial || '',
+    plant: initialPlant || '',
     bomUsage: '1',
     alternativeBom: '01',
     validFrom: getTodayFormatted(),
@@ -291,56 +292,18 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
   return (
     <div className="fiori-launchpad-root">
       {/* Page Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : (onNavigateHome || onBack)}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : (onNavigateBom || onBack)}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button
-            type="button"
-            className="fiori-bc-link"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : onBack}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            Create BOM
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Create Single BOM</span>
-        </div>
-
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            disabled={isLocked}
-            onClick={isLocked ? undefined : onBack}
-            title={isLocked ? 'Operation in progress' : 'Back'}
-            style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Create Single BOM</h1>
-        </div>
-        <p className="fiori-ph-subtitle">Create a new Bill of Materials header and component list</p>
-      </div>
+      <FioriPageHeader
+        title="Create Single BOM"
+        subtitle="Create a new Bill of Materials header and component list"
+        onBack={onBack}
+        isLocked={isLocked}
+        breadcrumbs={[
+          { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
+          { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },
+          { label: 'Create BOM', onClick: isLocked ? undefined : onBack },
+          { label: 'Create Single BOM' }
+        ]}
+      />
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
         {/* RESULT SCREEN */}
@@ -612,6 +575,8 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                     disabled={isLocked}
                     value={headerData.material}
                     onChange={(e) => handleHeaderChange('material', e.target.value)}
+                    data-finder="material"
+                    aria-label="Header Material"
                   />
                 </div>
 
@@ -625,6 +590,8 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                     disabled={isLocked}
                     value={headerData.plant}
                     onChange={(e) => handleHeaderChange('plant', e.target.value)}
+                    data-finder="plant"
+                    aria-label="Header Plant"
                   />
                 </div>
 
@@ -755,6 +722,8 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                             value={comp.component}
                             onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
                             style={{ padding: '6px 8px', fontSize: 12 }}
+                            data-finder="material"
+                            aria-label={`Component ${idx + 1}`}
                           />
                         </td>
                         <td>

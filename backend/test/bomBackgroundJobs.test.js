@@ -373,7 +373,8 @@ async function runTests() {
   bomJobManager.jobs.set(restartJobId, mockStaleSummary);
   bomJobManager.savePersistedSummaries();
 
-  // Reload summaries as done on server boot
+  // Reload summaries as done on server boot (empty memory before load)
+  bomJobManager.jobs.clear();
   bomJobManager.loadPersistedSummaries();
   const recoveredJob = bomJobManager.getJob(restartJobId);
 

@@ -1,3 +1,4 @@
+import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -23,7 +24,8 @@ import {
   startBomJob,
   getBomJob,
   cancelBomJob,
-  getActiveBomJob
+  getActiveBomJob,
+  getPlants
 } from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
 import activityTracker from '../services/activityTracker';
@@ -118,8 +120,29 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
     notProcessedCount: 0
   });
   const pollIntervalRef = useRef(null);
+  const validationAbortControllerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (validationAbortControllerRef.current) {
+        validationAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const fileInputRef = useRef(null);
+
+  // Plant tooltips map: code -> "1001 · Plant name (City)"
+  const [plantMap, setPlantMap] = useState({});
+  useEffect(() => {
+    getPlants().then((res) => {
+      const map = {};
+      (res?.data || []).forEach((p) => {
+        map[p.werks] = `${p.werks} · ${p.name1}${p.ort01 ? ' (' + p.ort01 + ')' : ''}`;
+      });
+      setPlantMap(map);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     activityTracker.setOperation('bulk_bom', isValidating || isExecuting);
@@ -416,16 +439,44 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
     }
   };
 
+  const handleCancelValidation = () => {
+    if (validationAbortControllerRef.current) {
+      validationAbortControllerRef.current.abort();
+      validationAbortControllerRef.current = null;
+    }
+    if (activeJobId) {
+      cancelBomJob(activeJobId).catch(() => {});
+    }
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setIsValidating(false);
+    setActiveJobId(null);
+    setParseError('');
+  };
+
   const handleValidateWithSap = async () => {
     if (parsedRows.length === 0) return;
+    if (validationAbortControllerRef.current) {
+      validationAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    validationAbortControllerRef.current = controller;
+
     setIsValidating(true);
     setParseError('');
 
     try {
-      const res = await startBomJob({
-        type: 'copy_validate',
-        items: parsedRows
-      });
+      const res = await startBomJob(
+        {
+          type: 'copy_validate',
+          items: parsedRows
+        },
+        { signal: controller.signal }
+      );
+
+      if (controller.signal.aborted) return;
 
       if (res.success && res.jobId) {
         setJobProgress({
@@ -442,9 +493,16 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
         setIsValidating(false);
       }
     } catch (err) {
+      if (controller.signal.aborted || err.name === 'CanceledError' || err.code === 'ERR_CANCELED' || err.name === 'AbortError') {
+        return; // Cancelled by user - do not show error
+      }
       console.error('Validation error:', err);
       setParseError(err.response?.data?.message || err.message || 'Validation failed.');
       setIsValidating(false);
+    } finally {
+      if (validationAbortControllerRef.current === controller) {
+        validationAbortControllerRef.current = null;
+      }
     }
   };
 
@@ -551,39 +609,19 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
   return (
     <div className="fiori-app-view-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
-      <div className="fiori-ph">
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onNavigateBom || onBack}>
-            Bill of Materials
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <button type="button" className="fiori-bc-link" onClick={onBack}>
-            Copy BOM
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Copy Bulk BOM</span>
-          <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>{systemKey}</span>
-        </div>
-        <div className="fiori-ph-title-row">
-          <button
-            type="button"
-            className="fiori-ph-back"
-            onClick={onBack}
-            title="Back to Copy BOM"
-            aria-label="Back to Copy BOM"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <h1 className="fiori-ph-title">Copy Bulk BOM</h1>
-        </div>
-        <p className="fiori-ph-subtitle">
-          Mass upload spreadsheet (.xlsx, .csv) to validate and duplicate multiple BOMs across plants sequentially via SAP RFC.
-        </p>
-      </div>
+      <FioriPageHeader
+        title="Copy Bulk BOM"
+        subtitle="Mass upload spreadsheet (.xlsx, .csv) to validate and duplicate multiple BOMs across plants sequentially via SAP RFC."
+        onBack={onBack}
+        backTitle="Back to Copy BOM"
+        systemKey={systemKey}
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Bill of Materials', onClick: onNavigateBom || onBack },
+          { label: 'Copy BOM', onClick: onBack },
+          { label: 'Copy Bulk BOM' }
+        ]}
+      />
 
       <div className="fiori-view-body wide">
         {/* Workflow Steps Indicator */}
@@ -697,36 +735,32 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
               )}
 
               {isValidating && (
-                <div style={{
-                  padding: '16px 20px',
-                  background: 'var(--sap-surface-hover)',
-                  border: '1px solid var(--sap-border)',
-                  borderRadius: 'var(--sap-radius)',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="sap-spinner" style={{ width: 22, height: 22, borderWidth: 2 }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '13.5px', color: 'var(--sap-text)' }}>
-                        Checking {parsedRows.length} BOM{parsedRows.length === 1 ? '' : 's'} in SAP...
-                      </div>
-                      <div style={{ fontSize: '11.5px', color: 'var(--sap-text-muted)' }}>
-                        Running multi-level simulation via SAP RFC TESTRUN across all levels.
-                      </div>
-                    </div>
-                  </div>
+                <div
+                  className="sap-loading-card"
+                  style={{
+                    maxWidth: 760,
+                    width: '100%',
+                    margin: '0 auto 16px',
+                    textAlign: 'center',
+                    padding: '24px 20px',
+                    borderRadius: 'var(--sap-radius)',
+                    border: '1px solid var(--sap-border)'
+                  }}
+                >
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                    Checking {parsedRows.length > 0 ? `${parsedRows.length} BOM${parsedRows.length === 1 ? '' : 's'}` : 'BOMs'} in SAP...
+                  </h4>
+                  <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                    Running multi-level simulation via SAP RFC TESTRUN across all levels.
+                  </p>
                   <button
                     type="button"
-                    className="sap-btn sap-btn-ghost sap-btn-sm"
-                    onClick={onBack || resetAll}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    className="sap-btn sap-btn-secondary"
+                    onClick={handleCancelValidation}
+                    style={{ marginTop: 20 }}
                   >
-                    <ChevronLeft size={13} />
-                    <span>Back</span>
+                    Cancel
                   </button>
                 </div>
               )}
@@ -756,13 +790,13 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                           <td>
                             <div className="bom-identity-cell">
                               <span className="mat-pill">{row.sourceMaterial}</span>
-                              <span className="sub-detail">Plant: <strong>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
+                              <span className="sub-detail">Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
                             </div>
                           </td>
                           <td>
                             <div className="bom-identity-cell">
                               <span className="mat-pill">{row.targetMaterial}</span>
-                              <span className="sub-detail">Plant: <strong>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
+                              <span className="sub-detail">Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
                             </div>
                           </td>
                           <td style={{ textAlign: 'center' }}>
