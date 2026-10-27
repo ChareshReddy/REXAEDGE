@@ -20,7 +20,7 @@ import {
   createBomFromData,
   rfcBatchCreateBoms
 } from '../services/bomCreateEngine.js';
-import { requireAuth, requireServerAccess, requireModuleAccess } from '../middleware/auth.js';
+import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { auditLogger } from '../services/auditLog.js';
 import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
@@ -35,7 +35,7 @@ router.use(requireModuleAccess(MODULE_KEYS.BOM));
  * GET /api/bom/ping
  * Checks RFC connectivity to SAP on permitted server.
  */
-router.get('/ping', requireServerAccess('read_only'), async (req, res) => {
+router.get('/ping', requireAppPermission('bom.*'), async (req, res) => {
   try {
     const pingResult = await pingRfcServer(req.selectedServer || {});
     if (!pingResult.success) {
@@ -55,7 +55,7 @@ router.get('/ping', requireServerAccess('read_only'), async (req, res) => {
  * Validates a source / reference BOM in SAP via fast RFC (CSAP_MAT_BOM_READ)
  * or fallback GUI Scripting.
  */
-router.post('/validate-source', requireServerAccess('read_only'), async (req, res) => {
+router.post('/validate-source', requireAppPermission(['bom.validate', 'bom.copy']), async (req, res) => {
   try {
     const { material, plant, bomUsage, alternativeBom } = req.body || {};
 
@@ -110,7 +110,7 @@ router.post('/validate-source', requireServerAccess('read_only'), async (req, re
  * POST /api/bom/read
  * Serves Single Level Display BOM for BOM Hierarchy Explorer.
  */
-router.post('/read', requireServerAccess('read_only'), async (req, res) => {
+router.post('/read', requireAppPermission('bom.display'), async (req, res) => {
   try {
     const { material, plant, bomUsage, alternativeBom } = req.body || {};
     const result = await rfcGetBomDisplayData({
@@ -121,6 +121,9 @@ router.post('/read', requireServerAccess('read_only'), async (req, res) => {
       multiLevel: false,
       server: req.selectedServer
     });
+    if (!result.success && result.errorCode === 'BOM_NOT_FOUND') {
+      return res.status(404).json(result);
+    }
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({
@@ -134,7 +137,7 @@ router.post('/read', requireServerAccess('read_only'), async (req, res) => {
  * POST /api/bom/create
  * Creates a Material BOM via CSAP_MAT_BOM_CREATE (Requires read_write permission).
  */
-router.post('/create', requireServerAccess('read_write'), async (req, res) => {
+router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
   try {
     const { material, plant, bomUsage, alternativeBom, validFrom, components } = req.body || {};
     const result = await rfcCreateBom({
@@ -173,7 +176,7 @@ router.post('/create', requireServerAccess('read_write'), async (req, res) => {
  * POST /api/bom/hierarchy
  * Serves Multi-Level component tree for BOM Hierarchy Explorer.
  */
-router.post('/hierarchy', requireServerAccess('read_only'), async (req, res) => {
+router.post('/hierarchy', requireAppPermission('bom.display'), async (req, res) => {
   try {
     const { material, plant, bomUsage, alternativeBom } = req.body || {};
     const result = await rfcGetBomDisplayData({
@@ -184,6 +187,9 @@ router.post('/hierarchy', requireServerAccess('read_only'), async (req, res) => 
       multiLevel: true,
       server: req.selectedServer
     });
+    if (!result.success && result.errorCode === 'BOM_NOT_FOUND') {
+      return res.status(404).json(result);
+    }
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({
@@ -197,7 +203,7 @@ router.post('/hierarchy', requireServerAccess('read_only'), async (req, res) => 
  * POST /api/bom/copy
  * Copies a BOM from source to target (Requires read_write permission).
  */
-router.post('/copy', requireServerAccess('read_write'), async (req, res) => {
+router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
   try {
     const {
       sourceMaterial,
@@ -250,7 +256,7 @@ router.post('/copy', requireServerAccess('read_write'), async (req, res) => {
  * POST /api/bom/verify-copy
  * Reads created target hierarchy back from SAP and strictly verifies against source hierarchy.
  */
-router.post('/verify-copy', requireServerAccess('read_only'), async (req, res) => {
+router.post('/verify-copy', requireAppPermission('bom.copy'), async (req, res) => {
   try {
     const {
       sourceMaterial,
@@ -314,7 +320,7 @@ router.post('/verify-copy', requireServerAccess('read_only'), async (req, res) =
  * POST /api/bom/delete
  * Deletes a BOM via CSAP_MAT_BOM_DELETE (Requires read_write permission).
  */
-router.post('/delete', requireServerAccess('read_write'), async (req, res) => {
+router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
   try {
     const { material, plant, bomUsage, alternativeBom } = req.body || {};
     const result = await rfcDeleteBom({
@@ -351,7 +357,7 @@ router.post('/delete', requireServerAccess('read_write'), async (req, res) => {
  * POST /api/bom/batch-validate
  * Validates an array of BOM copy requests against SAP on permitted server.
  */
-router.post('/batch-validate', requireServerAccess('read_only'), async (req, res) => {
+router.post('/batch-validate', requireAppPermission('bom.copy'), async (req, res) => {
   try {
     const { items = [], copyHierarchy = true } = req.body || {};
     if (items.length > MAX_BOMS) {
@@ -376,7 +382,7 @@ router.post('/batch-validate', requireServerAccess('read_only'), async (req, res
  * POST /api/bom/batch-copy
  * Executes batch BOM copy sequentially (Requires read_write permission).
  */
-router.post('/batch-copy', requireServerAccess('read_write'), async (req, res) => {
+router.post('/batch-copy', requireAppPermission('bom.copy'), async (req, res) => {
   try {
     const { items = [], skipErrors = true, copyHierarchy = true } = req.body || {};
     if (items.length > MAX_BOMS) {
@@ -413,7 +419,7 @@ router.post('/batch-copy', requireServerAccess('read_write'), async (req, res) =
  * GET /api/bom/template
  * Generates and downloads the official Excel template for Bulk BOM Copy.
  */
-router.get('/template', requireServerAccess('read_only'), (req, res) => {
+router.get('/template', requireAppPermission('bom.copy'), (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
     const sampleData = [
@@ -452,6 +458,67 @@ router.get('/template', requireServerAccess('read_only'), (req, res) => {
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'BOM_Copy_Template');
+
+    const instructionsData = [
+      {
+        'Column Name': 'Source Material',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'Material number of the existing source BOM in SAP'
+      },
+      {
+        'Column Name': 'Source Plant',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'Plant code where the source BOM is located (e.g. 1012)'
+      },
+      {
+        'Column Name': 'Target Plant',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'Plant code where the new BOM will be copied (e.g. 1001)'
+      },
+      {
+        'Column Name': 'Target Alternative',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'Target alternative number (e.g. 02, 12)'
+      },
+      {
+        'Column Name': 'Source BOM Usage',
+        'Required / Optional': 'Optional',
+        'Default Value': '1',
+        'Description': 'Source BOM usage code (defaults to 1 = Production)'
+      },
+      {
+        'Column Name': 'Source Alternative',
+        'Required / Optional': 'Optional',
+        'Default Value': '1',
+        'Description': 'Source alternative number (defaults to 1 or lowest alternative)'
+      },
+      {
+        'Column Name': 'Target Material',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Source Material',
+        'Description': 'Target material number (defaults to Source Material if empty)'
+      },
+      {
+        'Column Name': 'Target BOM Usage',
+        'Required / Optional': 'Optional',
+        'Default Value': '1',
+        'Description': 'Target BOM usage code (defaults to 1 = Production)'
+      }
+    ];
+
+    const instructionsWs = XLSX.utils.json_to_sheet(instructionsData);
+    instructionsWs['!cols'] = [
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 20 },
+      { wch: 60 }
+    ];
+    XLSX.utils.book_append_sheet(wb, instructionsWs, 'Instructions');
+
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Disposition', 'attachment; filename="BOM_Copy_Template.xlsx"');
@@ -493,7 +560,7 @@ function checkProdConfirmation(req, res) {
  * POST /api/bom/create-preflight
  * Runs pre-flight validation on either uploaded spreadsheet or structured BOM payload.
  */
-router.post('/create-preflight', requireServerAccess('read_only'), async (req, res) => {
+router.post('/create-preflight', requireAppPermission('bom.create'), async (req, res) => {
   try {
     let bomsToValidate = [];
     let parseInfo = null;
@@ -559,7 +626,7 @@ router.post('/create-preflight', requireServerAccess('read_only'), async (req, r
  * POST /api/bom/create-single
  * Creates a single BOM from user-supplied header and components (Requires read_write permission).
  */
-router.post('/create-single', requireServerAccess('read_write'), async (req, res) => {
+router.post('/create-single', requireAppPermission('bom.create'), async (req, res) => {
   try {
     if (!checkProdConfirmation(req, res)) return;
     const { bom } = req.body || {};
@@ -586,7 +653,7 @@ router.post('/create-single', requireServerAccess('read_write'), async (req, res
  * POST /api/bom/create-bulk
  * Executes bulk BOM creation sequentially (Requires read_write permission).
  */
-router.post('/create-bulk', requireServerAccess('read_write'), async (req, res) => {
+router.post('/create-bulk', requireAppPermission('bom.create'), async (req, res) => {
   try {
     if (!checkProdConfirmation(req, res)) return;
     const { boms = [], fileName = '' } = req.body || {};
@@ -620,72 +687,178 @@ router.post('/create-bulk', requireServerAccess('read_write'), async (req, res) 
  * GET /api/bom/create-template
  * Generates and downloads the official template for BOM Creation.
  */
-router.get('/create-template', requireServerAccess('read_only'), (req, res) => {
+router.get('/create-template', requireAppPermission('bom.create'), (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
     const sampleRows = [
       {
-        'Sequence Num*': '1',
-        'Material*': 'MAT_SAMPLE_01',
-        'Plant*': '1010',
-        'Usage*': '1',
-        'Alternative*': '01',
-        'Valid From*': '19.10.2026',
-        'Base quantity*': '1',
-        'BOM Status*': '01',
+        'Material': 'MAT_SAMPLE_01',
+        'Plant': '1010',
+        'Component': 'COMP_RAW_01',
+        'Quantity': '10',
+        'BOM Usage': '1',
+        'Alternative BOM': '01',
+        'Item Category': 'L',
+        'Valid From': '19.10.2026',
+        'Base Qty': '1',
+        'BOM Status': '01',
+        'Storage Location': '101A',
         'Alt Text': 'Production BOM Alternative 01',
-        'Item category': 'L',
-        'Component*': 'COMP_RAW_01',
-        'Quantity*': '10',
-        'StorageLocation*': '101A',
-        'REFERENCE NUMBER*': 'REF-001',
-        'CostingRelevncy*': 'X',
-        'Engineering*': 'X',
-        'Change No. To': ''
+        'Reference Number': 'REF-001',
+        'Costing Relevancy': 'X',
+        'Engineering': 'X',
+        'Change No': ''
       },
       {
-        'Sequence Num*': '1',
-        'Material*': 'MAT_SAMPLE_01',
-        'Plant*': '1010',
-        'Usage*': '1',
-        'Alternative*': '01',
-        'Valid From*': '19.10.2026',
-        'Base quantity*': '1',
-        'BOM Status*': '01',
+        'Material': 'MAT_SAMPLE_01',
+        'Plant': '1010',
+        'Component': 'COMP_RAW_02',
+        'Quantity': '5',
+        'BOM Usage': '1',
+        'Alternative BOM': '01',
+        'Item Category': 'L',
+        'Valid From': '19.10.2026',
+        'Base Qty': '1',
+        'BOM Status': '01',
+        'Storage Location': '101A',
         'Alt Text': 'Production BOM Alternative 01',
-        'Item category': 'L',
-        'Component*': 'COMP_RAW_02',
-        'Quantity*': '5',
-        'StorageLocation*': '101A',
-        'REFERENCE NUMBER*': 'REF-002',
-        'CostingRelevncy*': 'X',
-        'Engineering*': 'X',
-        'Change No. To': ''
+        'Reference Number': 'REF-002',
+        'Costing Relevancy': 'X',
+        'Engineering': 'X',
+        'Change No': ''
       }
     ];
 
     const ws = XLSX.utils.json_to_sheet(sampleRows);
     ws['!cols'] = [
-      { wch: 15 },
       { wch: 18 },
       { wch: 10 },
-      { wch: 8 },
-      { wch: 12 },
-      { wch: 14 },
-      { wch: 15 },
-      { wch: 12 },
-      { wch: 28 },
-      { wch: 14 },
       { wch: 18 },
       { wch: 12 },
-      { wch: 16 },
-      { wch: 22 },
+      { wch: 14 },
       { wch: 16 },
       { wch: 14 },
-      { wch: 16 }
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 14 }
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, 'Create_BOM_Template');
+
+    const instructionsData = [
+      {
+        'Column Name': 'Material',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'SAP Material Number for the header BOM'
+      },
+      {
+        'Column Name': 'Plant',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': '4-character SAP Plant code (e.g. 1010)'
+      },
+      {
+        'Column Name': 'Component',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'SAP Component / item material number'
+      },
+      {
+        'Column Name': 'Quantity',
+        'Required / Optional': 'Required',
+        'Default Value': 'None',
+        'Description': 'Component quantity per base unit (numeric, > 0)'
+      },
+      {
+        'Column Name': 'BOM Usage',
+        'Required / Optional': 'Optional',
+        'Default Value': '1',
+        'Description': 'SAP BOM usage code (1 = Production)'
+      },
+      {
+        'Column Name': 'Alternative BOM',
+        'Required / Optional': 'Optional',
+        'Default Value': '01',
+        'Description': '2-digit BOM alternative number (01 to 99)'
+      },
+      {
+        'Column Name': 'Item Category',
+        'Required / Optional': 'Optional',
+        'Default Value': 'L',
+        'Description': 'SAP BOM item category (L = Stock item)'
+      },
+      {
+        'Column Name': 'Valid From',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Today',
+        'Description': 'Valid-from date in DD.MM.YYYY format'
+      },
+      {
+        'Column Name': 'Base Qty',
+        'Required / Optional': 'Optional',
+        'Default Value': '1',
+        'Description': 'Base quantity for the header BOM'
+      },
+      {
+        'Column Name': 'BOM Status',
+        'Required / Optional': 'Optional',
+        'Default Value': '01',
+        'Description': 'BOM header status code (01 = Active)'
+      },
+      {
+        'Column Name': 'Storage Location',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'Issuing storage location (e.g. 101A)'
+      },
+      {
+        'Column Name': 'Alt Text',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'Alternative BOM description text'
+      },
+      {
+        'Column Name': 'Reference Number',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'Item reference note or drawing number (max 40 chars)'
+      },
+      {
+        'Column Name': 'Costing Relevancy',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'Set to "X" if component is relevant for costing'
+      },
+      {
+        'Column Name': 'Engineering',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'Set to "X" for engineering relevancy'
+      },
+      {
+        'Column Name': 'Change No',
+        'Required / Optional': 'Optional',
+        'Default Value': 'Empty',
+        'Description': 'SAP Engineering Change Order (ECO) number'
+      }
+    ];
+
+    const instructionsWs = XLSX.utils.json_to_sheet(instructionsData);
+    instructionsWs['!cols'] = [
+      { wch: 20 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 55 }
+    ];
+    XLSX.utils.book_append_sheet(wb, instructionsWs, 'Instructions');
+
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
     res.setHeader('Content-Disposition', 'attachment; filename="Create_BOM_Template.xlsx"');
@@ -708,82 +881,83 @@ router.get('/create-template', requireServerAccess('read_only'), (req, res) => {
  * Starts an asynchronous background job for Bulk Create/Copy BOM (Pre-flight, Validation, or Execution).
  * Returns immediately with { jobId } so the client can poll progress.
  */
-router.post('/jobs/start', async (req, res, next) => {
+router.post('/jobs/start', requireAppPermission((req) => {
+  const type = String(req.body?.type || '').toLowerCase();
+  if (type.startsWith('copy')) return 'bom.copy';
+  if (type.startsWith('create')) return 'bom.create';
+  return ['bom.create', 'bom.copy'];
+}), async (req, res, next) => {
   const { type } = req.body || {};
   const isWriteAction = type === 'create_bulk' || type === 'copy_bulk';
 
-  // Apply server permission check
-  const permCheck = requireServerAccess(isWriteAction ? 'read_write' : 'read_only');
-  return permCheck(req, res, async () => {
-    try {
-      if (isWriteAction && !checkProdConfirmation(req, res)) {
-        return;
-      }
+  try {
+    if (isWriteAction && !checkProdConfirmation(req, res)) {
+      return;
+    }
 
-      const {
-        items = [],
-        boms = [],
-        fileContent = null,
-        fileName = '',
-        copyHierarchy = true,
-        skipErrors = true
-      } = req.body || {};
+    const {
+      items = [],
+      boms = [],
+      fileContent = null,
+      fileName = '',
+      copyHierarchy = true,
+      skipErrors = true
+    } = req.body || {};
 
-      const jobItems = Array.isArray(items) && items.length > 0
-        ? items
-        : Array.isArray(boms)
-        ? boms
-        : [];
+    const jobItems = Array.isArray(items) && items.length > 0
+      ? items
+      : Array.isArray(boms)
+      ? boms
+      : [];
 
-      const startResult = bomJobManager.startJob({
-        type,
-        user: req.user,
-        server: req.selectedServer,
-        items: jobItems,
-        fileContent,
-        fileName,
-        options: { copyHierarchy, skipErrors }
-      });
+    const startResult = bomJobManager.startJob({
+      type,
+      user: req.user,
+      server: req.selectedServer,
+      items: jobItems,
+      fileContent,
+      fileName,
+      options: { copyHierarchy, skipErrors }
+    });
 
-      return res.status(202).json(startResult);
-    } catch (err) {
-      if (err.code === 'ACTIVE_JOB_EXISTS') {
-        return res.status(409).json({
-          success: false,
-          code: 'ACTIVE_JOB_EXISTS',
-          message: err.message,
-          activeJobId: err.activeJobId
-        });
-      }
-      if (err.code === 'BOM_LIMIT_EXCEEDED') {
-        return res.status(400).json({
-          success: false,
-          code: 'BOM_LIMIT_EXCEEDED',
-          message: err.message,
-          limit: err.limit,
-          actual: err.actual
-        });
-      }
-      if (err.code === 'EMPTY_PAYLOAD' || err.code === 'PARSE_ERROR') {
-        return res.status(400).json({
-          success: false,
-          message: err.message
-        });
-      }
-      console.error('[bom.js] jobs/start error:', err);
-      return res.status(500).json({
+    return res.status(202).json(startResult);
+  } catch (err) {
+    if (err.code === 'ACTIVE_JOB_EXISTS') {
+      return res.status(409).json({
         success: false,
-        message: `Failed to initialize background job: ${err.message}`
+        code: 'ACTIVE_JOB_EXISTS',
+        message: err.message,
+        activeJobId: err.activeJobId
       });
     }
-  });
+    if (err.code === 'BOM_LIMIT_EXCEEDED') {
+      return res.status(400).json({
+        success: false,
+        code: 'BOM_LIMIT_EXCEEDED',
+        message: err.message,
+        limit: err.limit,
+        actual: err.actual
+      });
+    }
+    if (err.code === 'EMPTY_PAYLOAD' || err.code === 'PARSE_ERROR') {
+      return res.status(400).json({
+        success: false,
+        message: err.message
+      });
+    }
+    console.error('[bom.js] jobs/start error:', err);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to initialize background job: ${err.message}`
+    });
+  }
 });
 
 /**
  * GET /api/bom/jobs/active
  * Checks if the current user has an active job running on the selected server.
  */
-router.get('/jobs/active', requireServerAccess('read_only'), (req, res) => {
+router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
   try {
     const active = bomJobManager.getActiveJob(req.user?.id || req.user?.email, req.selectedServer);
     return res.status(200).json({
@@ -803,7 +977,7 @@ router.get('/jobs/active', requireServerAccess('read_only'), (req, res) => {
  * GET /api/bom/jobs/:jobId
  * Returns the status, progress counters, current BOM, and per-BOM results.
  */
-router.get('/jobs/:jobId', requireServerAccess('read_only'), (req, res) => {
+router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
   try {
     const job = bomJobManager.getJob(req.params.jobId, req.user);
     if (!job) {
@@ -834,7 +1008,7 @@ router.get('/jobs/:jobId', requireServerAccess('read_only'), (req, res) => {
  * POST /api/bom/jobs/:jobId/cancel
  * Requests cancellation of a running background job.
  */
-router.post('/jobs/:jobId/cancel', requireServerAccess('read_only'), (req, res) => {
+router.post('/jobs/:jobId/cancel', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
   try {
     const cancelResult = bomJobManager.cancelJob(
       req.params.jobId,

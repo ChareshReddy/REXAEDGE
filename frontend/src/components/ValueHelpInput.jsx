@@ -175,7 +175,6 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
         <MaterialValueHelpModal
           isOpen={isOpen}
           initialValue={String(value || '')}
-          plant={plant}
           onSelect={handleSelection}
           onClose={handleClose}
         />

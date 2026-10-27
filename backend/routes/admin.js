@@ -5,8 +5,8 @@ import { supabaseService } from '../services/supabaseClient.js';
 import { auditLogger } from '../services/auditLog.js';
 import { getRfcConnectionParams } from '../services/sapRfcClient.js';
 import { decryptPassword } from '../utils/crypto.js';
-import { testServerConnection } from '../services/sapConnectionTest.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
+import { ALL_BOM_APPS } from '../config/modules.js';
 
 const router = express.Router();
 
@@ -268,14 +268,19 @@ router.post('/servers', async (req, res) => {
     });
 
     // Safe audit logging: NEVER log passwords
-    auditLogger.logAction({
+        auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
       actionType: 'admin_create_server',
       recordId: server.id,
       afterValues: {
         name: server.name,
+        ashost: server.ashost,
+        sysnr: server.sysnr,
+        client: server.client,
         environment: server.environment,
+        router: server.router,
+        gwserv: server.gwserv,
         sap_username: server.sap_username,
         has_password: Boolean(server.has_password),
         modules: server.modules
@@ -283,13 +288,6 @@ router.post('/servers', async (req, res) => {
       task: `Admin created SAP server ${server.name} (${server.environment}) with modules: ${(server.modules || []).join(', ') || 'none'}`,
       reason: 'Administrator action'
     });
-
-    // Trigger automatic background connection test if credentials exist
-    if (server.sap_username && server.has_password) {
-      testServerConnection(server, { persist: true }).catch((err) => {
-        console.warn('[Admin] Background connection test warning:', err.message);
-      });
-    }
 
     return res.status(201).json({
       success: true,
@@ -305,10 +303,6 @@ router.post('/servers', async (req, res) => {
   }
 });
 
-/**
- * PUT /api/admin/servers/:id
- * Updates an existing SAP server.
- */
 router.put('/servers/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -340,7 +334,7 @@ router.put('/servers/:id', async (req, res) => {
     delete safeAuditValues.sap_password;
     delete safeAuditValues.sap_password_encrypted;
 
-    auditLogger.logAction({
+        auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
       actionType: 'admin_edit_server',
@@ -355,13 +349,6 @@ router.put('/servers/:id', async (req, res) => {
       reason: 'Administrator action'
     });
 
-    // Trigger automatic background connection test if credentials exist
-    if (updated.sap_username && updated.has_password) {
-      testServerConnection(updated, { persist: true }).catch((err) => {
-        console.warn('[Admin] Background connection test warning:', err.message);
-      });
-    }
-
     return res.status(200).json({
       success: true,
       message: 'SAP server updated successfully.',
@@ -370,122 +357,6 @@ router.put('/servers/:id', async (req, res) => {
   } catch (err) {
     console.error('[Admin] Error updating server:', err.message);
     return res.status(400).json({ error: err.message || 'Failed to update SAP server.' });
-  }
-});
-
-/**
- * POST /api/admin/servers/test-connection
- * Tests RFC connectivity using the provided connection parameters and credentials.
- * Read-only check with no writes to SAP.
- */
-router.post('/servers/test-connection', async (req, res) => {
-  const {
-    serverId,
-    name,
-    ashost,
-    sysnr,
-    client,
-    lang = 'EN',
-    router: sapRouter,
-    gwserv,
-    sap_username,
-    sap_password
-  } = req.body || {};
-
-  let resolvedUsername = sap_username ? String(sap_username).trim() : '';
-  let resolvedPassword = sap_password ? String(sap_password).trim() : '';
-
-  // If on edit and password wasn't provided, resolve stored encrypted password from existing server
-  if (serverId && (!resolvedPassword || !resolvedUsername)) {
-    try {
-      const existing = await supabaseService.getServerById(serverId);
-      if (existing) {
-        if (!resolvedUsername) resolvedUsername = existing.sap_username || '';
-        if (!resolvedPassword && existing.sap_password_encrypted) {
-          resolvedPassword = decryptPassword(existing.sap_password_encrypted);
-        }
-      }
-    } catch (err) {
-      console.error('[Admin] Error resolving stored password for test connection:', err.message);
-    }
-  }
-
-  if (!resolvedUsername || !resolvedPassword) {
-    return res.status(400).json({
-      success: false,
-      error: 'SAP Username and SAP Password are required to test connection.'
-    });
-  }
-
-  try {
-    const testResult = await testServerConnection({
-      id: serverId,
-      name,
-      ashost,
-      sysnr,
-      client,
-      lang,
-      router: sapRouter,
-      gwserv,
-      sap_username: resolvedUsername,
-      sap_password: resolvedPassword
-    }, { persist: Boolean(serverId) });
-
-    if (testResult.overallStatus === 'FAIL') {
-      const isAuthFail = String(testResult.summary).includes('RFC_LOGON_FAILURE') || String(testResult.summary).includes('User or password incorrect') || testResult.checks.some((c) => c.id === 'rfc_logon' && c.status === 'FAIL' && /password|logon|auth/i.test(c.message));
-      return res.status(isAuthFail ? 401 : 400).json({
-        success: false,
-        error: testResult.summary,
-        connection_test: testResult
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: testResult.summary,
-      connection_test: testResult
-    });
-  } catch (err) {
-    const safeError = (err.message || 'RFC Connection Error').split(resolvedPassword).join('***');
-    return res.status(400).json({
-      success: false,
-      error: safeError
-    });
-  }
-});
-
-/**
- * POST /api/admin/servers/:id/test-connection
- * Runs the comprehensive 5-point test on an existing server by ID and persists results.
- */
-router.post('/servers/:id/test-connection', async (req, res) => {
-  const { id } = req.params;
-  const server = await supabaseService.getServerById(id);
-  if (!server) {
-    return res.status(404).json({ success: false, error: 'Server not found.' });
-  }
-
-  try {
-    const testResult = await testServerConnection(server, { persist: true });
-    return res.status(200).json({
-      success: testResult.overallStatus !== 'FAIL',
-      message: testResult.summary,
-      connection_test: testResult
-    });
-  } catch (err) {
-    const isMissingCol = String(err.message).includes('migration_server_connection_test.sql') || String(err.message).includes('connection_test column missing');
-    if (isMissingCol) {
-      console.error('[Admin] connection_test column missing - run migration_server_connection_test.sql');
-      return res.status(500).json({
-        success: false,
-        error: 'connection_test column missing - run migration_server_connection_test.sql',
-        migration_required: true
-      });
-    }
-    return res.status(400).json({
-      success: false,
-      error: err.message || 'Connection test failed.'
-    });
   }
 });
 
@@ -535,11 +406,20 @@ router.delete('/servers/:id', async (req, res) => {
 /**
  * GET /api/admin/permissions
  * Lists all active user-server permissions with joined emails and server names.
+ * Resilient to pre-migration database state (returns migrationPending: true and full BOM app grants).
  */
 router.get('/permissions', async (req, res) => {
   try {
     const permissions = await supabaseService.listPermissions();
-    return res.status(200).json({ success: true, permissions });
+    const migrationPending = Boolean(
+      permissions?.migrationPending ||
+      (Array.isArray(permissions) && permissions.some((p) => p.legacyFallback))
+    );
+    return res.status(200).json({
+      success: true,
+      permissions,
+      migrationPending
+    });
   } catch (err) {
     console.error('[Admin] Error listing permissions:', err.message);
     return res.status(500).json({ error: 'Failed to retrieve permissions.' });
@@ -553,6 +433,7 @@ router.get('/permissions', async (req, res) => {
 router.post('/permissions', async (req, res) => {
   const userId = req.body?.user_id || req.body?.userId;
   const serverId = req.body?.server_id || req.body?.serverId;
+  const permissions = req.body?.permissions;
 
   if (!userId) {
     return res.status(400).json({ error: 'user_id or userId is required.' });
@@ -566,7 +447,8 @@ router.post('/permissions', async (req, res) => {
     const permission = await supabaseService.grantPermission({
       userId: userId,
       serverId: serverId,
-      grantedBy: req.user.id
+      grantedBy: req.user.id,
+      permissions: permissions !== undefined ? permissions : ALL_BOM_APPS
     });
 
     auditLogger.logAction({
@@ -574,7 +456,7 @@ router.post('/permissions', async (req, res) => {
       sapUsername: req.user.email,
       actionType: 'admin_grant_permission',
       recordId: permission.id,
-      afterValues: { user_id: userId, server_id: serverId },
+      afterValues: { user_id: userId, server_id: serverId, permissions: permission.permissions },
       task: `Admin granted permission to user ${userId} on server ${serverId}`,
       reason: 'Administrator action'
     });
@@ -582,7 +464,8 @@ router.post('/permissions', async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'Permission granted successfully.',
-      permission
+      permission,
+      migrationPending: Boolean(permission.legacyFallback)
     });
   } catch (err) {
     console.error('[Admin] Error granting permission:', err.message);

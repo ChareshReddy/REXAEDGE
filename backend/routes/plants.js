@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { requireAuth, requireServerAccess, requireModuleAccess } from '../middleware/auth.js';
+import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getPlants } from '../services/plantService.js';
 
@@ -21,7 +21,7 @@ export const plantRateLimiter = rateLimit({
 // Enforce authentication, BOM module enablement, and server access
 router.use(requireAuth);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
-router.use(requireServerAccess('read_only'));
+router.use(requireAppPermission('bom.*'));
 
 /**
  * GET /api/plants?q=&material=&refresh=true|false

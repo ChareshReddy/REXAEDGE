@@ -1,221 +1,215 @@
 import React, { useState, useMemo } from 'react';
-import { AlertOctagon, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 /**
- * Parses and formats problem items, grouping them by hierarchy level.
+ * Cleans up and applies plain-language formatting to diagnostic error messages:
+ * - "Alternative 14 already exists in BOM A1BH0214C/1012/1" -> "Alternative 14 already exists for A1BH0214C in plant 1012."
+ * - Removes internal keys like material/plant/usage joined with slashes.
+ * - For sub-assemblies (level 1 or deeper), prefixes with "<material>: <message>".
+ * - Level 0 errors have NO prefix.
  */
-function parseAndGroupProblems(problems, fallbackMessage) {
+export function cleanDiagnosticMessage(raw, fallbackLevel = 0, fallbackParent = '') {
+  if (!raw) return '';
+  let str = String(raw).trim();
+
+  // Strip technical prefixes
+  str = str.replace(/^Cannot copy(?: BOM)?:\s*/i, '');
+  str = str.replace(/^SAP BAPI Error:\s*/i, '');
+
+  let level = fallbackLevel;
+  let parentMat = fallbackParent;
+
+  // Extract level and BOM parent if present, e.g. "(BOM of B1BH0214C, level 1)"
+  const bomOfMatch = str.match(/\(BOM of ([^,\)]+),\s*level\s*(\d+)\)/i);
+  if (bomOfMatch) {
+    parentMat = bomOfMatch[1].trim();
+    level = parseInt(bomOfMatch[2], 10);
+    str = str.replace(/\s*\(BOM of [^,\)]+,\s*level\s*\d+\)/i, '').trim();
+  } else {
+    const lvlOnlyMatch = str.match(/\(?\blevel\s*(\d+)\)?/i);
+    if (lvlOnlyMatch) {
+      level = parseInt(lvlOnlyMatch[1], 10);
+      str = str.replace(/\s*\(?\blevel\s*\d+\)?/i, '').trim();
+    }
+  }
+
+  const parentOnlyMatch = str.match(/\(BOM of ([^,\)]+)\)/i);
+  if (parentOnlyMatch) {
+    if (!parentMat) parentMat = parentOnlyMatch[1].trim();
+    str = str.replace(/\s*\(BOM of [^,\)]+\)/i, '').trim();
+  }
+
+  // Requirement 3: Plain wording transformations
+  // "Alternative 14 already exists in BOM A1BH0214C/1012/1" -> "Alternative 14 already exists for A1BH0214C in plant 1012."
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists in BOM\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'Alternative $1 already exists for $2 in plant $3.'
+  );
+
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists for\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'Alternative $1 already exists for $2 in plant $3.'
+  );
+
+  // "BOM Alternative 01 already exists in plant 1010 (STLAN=1) - skipped (strict no-overwrite)"
+  str = str.replace(
+    /BOM\s+Alternative\s+(\d+)\s+already exists in plant\s+([A-Za-z0-9]+)\s*\(STLAN=\d+\)[^\.]*/i,
+    'Alternative $1 already exists in plant $2.'
+  );
+
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists in plant\s+([A-Za-z0-9]+)\s*\(STLAN=\d+\)[^\.]*/i,
+    'Alternative $1 already exists in plant $2.'
+  );
+
+  // Generic "in BOM MAT/PLANT/USAGE" -> "for MAT in plant PLANT"
+  str = str.replace(
+    /\bin BOM\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'for $1 in plant $2.'
+  );
+
+  // Generic "for material MAT/PLANT/USAGE" -> "for material MAT in plant PLANT"
+  str = str.replace(
+    /\bfor material\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)(?:\/(\d+))?\.?/i,
+    'for material $1 in plant $2.'
+  );
+
+  // "with BOM usage X" -> clean up technical jargon
+  str = str.replace(/\s+with BOM usage\s+\d+/i, '');
+
+  str = str.trim();
+
+  // Requirement 2: Sub-assembly prefix (level 1 or deeper)
+  if (level >= 1 && parentMat) {
+    if (!str.startsWith(`${parentMat}:`)) {
+      str = `${parentMat}: ${str}`;
+    }
+  }
+
+  // Punctuation normalization
+  if (str && !/[.!?:;]$/.test(str)) {
+    str += '.';
+  }
+
+  return str;
+}
+
+/**
+ * Parses and splits problems into an array of clean items.
+ */
+export function splitProblems(problems, fallbackMessage) {
   let list = [];
 
   if (Array.isArray(problems) && problems.length > 0) {
     list = problems;
   } else if (typeof fallbackMessage === 'string' && fallbackMessage.trim()) {
-    const clean = fallbackMessage.replace(/^Cannot copy:\s*/i, '').trim();
-    // Split by comma followed by capitalized start of problem
-    list = clean.split(/,\s*(?=(?:Component|Material|Consistency|RFC|Error|The material)\b)/i);
+    let clean = fallbackMessage.replace(/^Cannot copy(?: BOM)?:\s*/i, '').trim();
+    list = clean.split(/,\s*(?=(?:Component|Material|Consistency|RFC|Error|The material|Alternative|BOM|Source)\b)/i);
   }
 
-  const itemsWithLevel = [];
-
-  for (const raw of list) {
-    if (!raw || !String(raw).trim()) continue;
-    const str = String(raw).trim();
-
-    // Extract level from string, e.g. "(BOM of 143, level 0)"
-    const lvlMatch = str.match(/level\s*(\d+)/i);
-    const level = lvlMatch ? parseInt(lvlMatch[1], 10) : 0;
-
-    // Remove redundant ", level X" from inside the parentheses for cleaner display
-    const text = str.replace(/,\s*level\s*\d+\)/i, ')');
-
-    itemsWithLevel.push({
-      level,
-      text,
-      raw: str
-    });
+  const flattened = [];
+  for (const item of list) {
+    if (!item) continue;
+    if (typeof item === 'string') {
+      const parts = item.split(/,\s*(?=(?:Component|Material|Consistency|RFC|Error|The material|Alternative|BOM|Source)\b)/i);
+      for (const p of parts) {
+        if (p && p.trim()) flattened.push(p.trim());
+      }
+    } else if (typeof item === 'object') {
+      flattened.push(item);
+    }
   }
 
-  // Ensure items are ordered by level ascending
-  itemsWithLevel.sort((a, b) => a.level - b.level);
+  const cleanedList = [];
+  const seen = new Set();
 
-  return itemsWithLevel;
+  for (const raw of flattened) {
+    let rawStr = typeof raw === 'string' ? raw : (raw.text || raw.message || '');
+    let lvl = typeof raw === 'object' && raw.level !== undefined ? raw.level : 0;
+    let parent = typeof raw === 'object' && raw.material ? raw.material : '';
+
+    const cleanedText = cleanDiagnosticMessage(rawStr, lvl, parent);
+    if (cleanedText && !seen.has(cleanedText)) {
+      seen.add(cleanedText);
+      cleanedList.push({
+        text: cleanedText,
+        raw: rawStr
+      });
+    }
+  }
+
+  return cleanedList;
 }
 
 /**
- * BlockedReasonsList: Renders blocked BOM copy problems as a readable grouped list.
- *
- * Requirements:
- * - Heading: "Cannot copy: X problems found in Y BOMs"
- * - Grouped bullets by Level ("Level 0", "Level 1"...)
- * - Show first 8 items with a "Show all" / "Show less" toggle
- * - Keep "blocked" state and clean styling
+ * Compact Diagnostic Message error display:
+ * - No bordered box
+ * - No "Cannot copy: N problem(s) found" header
+ * - No "LEVEL 0" label
+ * - Small red icon + message on one line (wraps only when long)
+ * - Normal row height
+ * - Max 3 visible, then "+N more" expanding in place
  */
 export default function BlockedReasonsList({
   problems = [],
   totalBoms = 0,
   message = '',
-  maxInitial = 8,
-  compact = false
+  maxInitial = 3
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const parsedItems = useMemo(
-    () => parseAndGroupProblems(problems, message),
+  const items = useMemo(
+    () => splitProblems(problems, message),
     [problems, message]
   );
 
-  const totalCount = parsedItems.length;
-
-  // Header text: "Cannot copy: 16 problems found in 30 BOMs"
-  const headingText = useMemo(() => {
-    if (totalCount === 0) {
-      return 'Cannot copy: Simulation failed in target plant';
-    }
-    const probWord = totalCount === 1 ? '1 problem' : `${totalCount} problems`;
-    const bomWord = totalBoms && totalBoms > 0
-      ? ` found in ${totalBoms} BOM${totalBoms === 1 ? '' : 's'}`
-      : ' found';
-    return `Cannot copy: ${probWord}${bomWord}`;
-  }, [totalCount, totalBoms]);
+  const totalCount = items.length;
 
   if (totalCount === 0) {
+    if (!message) return null;
+    const cleanMsg = cleanDiagnosticMessage(message);
     return (
-      <div className="sap-blocked-reasons-card" style={{
-        marginBottom: 12,
-        padding: compact ? '8px 12px' : '12px 16px',
-        background: 'rgba(239, 68, 68, 0.08)',
-        border: '1px solid var(--sap-error)',
-        borderRadius: 'var(--sap-radius)',
-        color: 'var(--sap-error)',
-        fontSize: '13px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8
-      }}>
-        <AlertOctagon size={16} style={{ flexShrink: 0 }} />
-        <span>{headingText}</span>
+      <div className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: '12px', lineHeight: 1.4 }}>
+        <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)', flexShrink: 0, marginTop: 2 }} />
+        <span style={{ color: 'var(--sap-text-dark, #0f172a)', wordBreak: 'break-word' }}>{cleanMsg}</span>
       </div>
     );
   }
 
-  // Items to display based on expand toggle
-  const visibleItems = isExpanded ? parsedItems : parsedItems.slice(0, maxInitial);
-  const hiddenCount = totalCount - maxInitial;
-
-  // Group visible items by level
-  const groupedByLevel = {};
-  for (const itm of visibleItems) {
-    if (!groupedByLevel[itm.level]) {
-      groupedByLevel[itm.level] = [];
-    }
-    groupedByLevel[itm.level].push(itm);
-  }
-
-  const sortedLevels = Object.keys(groupedByLevel)
-    .map(Number)
-    .sort((a, b) => a - b);
+  const visibleItems = isExpanded ? items : items.slice(0, maxInitial);
 
   return (
-    <div
-      className="sap-blocked-reasons-card"
-      style={{
-        marginBottom: compact ? 4 : 14,
-        padding: compact ? '8px 12px' : '12px 16px',
-        background: 'rgba(239, 68, 68, 0.07)',
-        border: '1px solid var(--sap-error)',
-        borderRadius: 'var(--sap-radius)',
-        color: 'var(--sap-text)',
-        fontSize: compact ? '12px' : '13px'
-      }}
-    >
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        color: 'var(--sap-error)',
-        fontWeight: 600,
-        fontSize: compact ? '12px' : '13.5px',
-        marginBottom: 8
-      }}>
-        <AlertOctagon size={compact ? 15 : 17} style={{ flexShrink: 0 }} />
-        <span>{headingText}</span>
-      </div>
+    <div className="sap-diagnostic-errors" style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '12px', lineHeight: 1.4 }}>
+      {visibleItems.map((item, idx) => (
+        <div key={idx} className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)', flexShrink: 0, marginTop: 2 }} />
+          <span style={{ color: 'var(--sap-text-dark, #0f172a)', wordBreak: 'break-word' }}>{item.text}</span>
+        </div>
+      ))}
 
-      {/* Grouped Bullets by Level */}
-      <div style={{ paddingLeft: compact ? 2 : 6 }}>
-        {sortedLevels.map((lvl) => (
-          <div key={lvl} style={{ marginTop: 6, marginBottom: 6 }}>
-            <div style={{
-              fontSize: '11px',
-              fontWeight: 700,
-              color: 'var(--sap-error)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              marginBottom: 3
-            }}>
-              <span style={{
-                display: 'inline-block',
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: 'var(--sap-error)'
-              }} />
-              Level {lvl}
-            </div>
-
-            <ul style={{ margin: '2px 0 4px 18px', padding: 0 }}>
-              {groupedByLevel[lvl].map((itm, idx) => (
-                <li
-                  key={idx}
-                  style={{
-                    fontSize: compact ? '11.5px' : '12.5px',
-                    lineHeight: '1.45',
-                    color: 'var(--sap-text)',
-                    marginBottom: 2
-                  }}
-                >
-                  {itm.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      {/* Show all / Show less toggle */}
       {totalCount > maxInitial && (
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(239, 68, 68, 0.15)' }}>
+        <div style={{ marginTop: 1 }}>
           <button
             type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
+            className="toggle-messages-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--sap-primary)',
+              color: 'var(--sap-link, #0070f2)',
               cursor: 'pointer',
-              fontSize: '12px',
+              padding: '1px 0',
+              fontSize: '11px',
               fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: 0
+              textAlign: 'left',
+              textDecoration: 'underline',
+              display: 'inline-block'
             }}
           >
-            {isExpanded ? (
-              <>
-                <span>Show first {maxInitial} only</span>
-                <ChevronUp size={14} />
-              </>
-            ) : (
-              <>
-                <span>Show all {totalCount} problems ({hiddenCount} more)</span>
-                <ChevronDown size={14} />
-              </>
-            )}
+            {isExpanded ? 'Show less' : `+${totalCount - maxInitial} more`}
           </button>
         </div>
       )}

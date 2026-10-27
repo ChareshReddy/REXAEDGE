@@ -1,31 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X, Check, Loader2, AlertCircle, Filter } from 'lucide-react';
+import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { searchMaterials } from '../services/api';
-
-const COMMON_MTARTS = [
-  { value: '', label: 'All Types' },
-  { value: 'FERT', label: 'FERT · Finished Product' },
-  { value: 'HALB', label: 'HALB · Semi-Finished' },
-  { value: 'ROH', label: 'ROH · Raw Material' },
-  { value: 'HAWA', label: 'HAWA · Trading Goods' },
-  { value: 'VERP', label: 'VERP · Packaging' }
-];
+import { lockScroll } from '../utils/scrollLock';
 
 export default function MaterialValueHelpModal({
   isOpen,
   initialValue = '',
-  plant: initialPlant = '',
   onSelect,
   onClose
 }) {
   const [searchTerm, setSearchTerm] = useState(initialValue || '');
-  const [selectedPlant, setSelectedPlant] = useState(initialPlant || '');
-  const [selectedMtart, setSelectedMtart] = useState('');
-  const [hasBomOnly, setHasBomOnly] = useState(false);
-
   const [materials, setMaterials] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [error, setError] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isEmptySearch, setIsEmptySearch] = useState(false);
@@ -37,18 +25,32 @@ export default function MaterialValueHelpModal({
   const rowRefs = useRef([]);
   const abortControllerRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
+  const requestIdRef = useRef(0);
 
-  // Sync initial search query and lock body scroll without reflow
+  const selectedIndexRef = useRef(0);
+  const materialsRef = useRef([]);
+  const lastSearchedTermRef = useRef(initialValue || '');
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    materialsRef.current = materials;
+  }, [materials]);
+
+  // Sync initial search query, lock body scroll, and clean up timers/aborts on open/close
   useEffect(() => {
     if (isOpen) {
       setSearchTerm(initialValue || '');
-      setSelectedPlant(initialPlant || '');
-      setSelectedMtart('');
-      setHasBomOnly(false);
       setSelectedIndex(0);
+      selectedIndexRef.current = 0;
+      lastSearchedTermRef.current = (initialValue || '').trim();
+      setIsRetrying(false);
 
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      const unlock = lockScroll();
 
       // Autofocus search input
       const timer = setTimeout(() => {
@@ -57,23 +59,66 @@ export default function MaterialValueHelpModal({
       }, 40);
 
       return () => {
-        document.body.style.overflow = originalOverflow;
+        unlock();
         clearTimeout(timer);
       };
-    }
-  }, [isOpen, initialValue, initialPlant]);
-
-  // Main fetch function
-  const fetchMaterials = useCallback(
-    async (query, mode = 'auto') => {
+    } else {
+      // Abort in-flight requests and clear pending debounce or auto-retry timers
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+      setIsRetrying(false);
+    }
+  }, [isOpen, initialValue]);
+
+  // Clean up all timers and in-flight controller on component unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Main fetch function - cancels previous request, ignores stale responses, auto-retries once on busy
+  const fetchMaterials = useCallback(
+    async (query, mode = 'auto', isRetry = false) => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
+
+      // Cancel previous in-flight request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      const currentReqId = ++requestIdRef.current;
+
       setIsLoading(true);
       setError(null);
+      if (!isRetry) {
+        setIsRetrying(false);
+      }
+      lastSearchedTermRef.current = (query || '').trim();
 
       const isQueryEmpty = !query || !query.trim();
       setIsEmptySearch(isQueryEmpty);
@@ -83,34 +128,55 @@ export default function MaterialValueHelpModal({
         const res = await searchMaterials(
           {
             query: query.trim(),
-            plant: selectedPlant.trim() || undefined,
-            mtart: selectedMtart || undefined,
-            checkBom: hasBomOnly,
             limit: fetchLimit,
             mode: mode === 'prefix' ? 'prefix' : undefined
           },
           { signal: controller.signal }
         );
 
-        if (controller.signal.aborted) return;
+        // Ignore cancelled requests or stale superseded responses
+        if (controller.signal.aborted || currentReqId !== requestIdRef.current) return;
 
         const list = res?.data || [];
         setMaterials(list);
+        materialsRef.current = list;
         setIsCapped(list.length >= 500);
-        setSelectedIndex(list.length > 0 ? 0 : -1);
+        const newIdx = list.length > 0 ? 0 : -1;
+        setSelectedIndex(newIdx);
+        selectedIndexRef.current = newIdx;
+        setIsRetrying(false);
+        setIsLoading(false);
       } catch (err) {
-        if (controller.signal.aborted) return;
+        // Ignore aborted requests or stale responses
+        if (controller.signal.aborted || currentReqId !== requestIdRef.current) return;
+
+        const isBusy =
+          err.response?.status === 503 ||
+          (err.message && err.message.toLowerCase().includes('busy')) ||
+          (err.response?.data?.error && String(err.response.data.error).toLowerCase().includes('busy'));
+
+        // If server is busy and we have not auto-retried yet, auto-retry once after 1.5 seconds
+        if (isBusy && !isRetry) {
+          setIsRetrying(true);
+          retryTimerRef.current = setTimeout(() => {
+            if (currentReqId === requestIdRef.current) {
+              fetchMaterials(query, mode, true);
+            }
+          }, 1500);
+          return;
+        }
+
+        setIsRetrying(false);
+        setIsLoading(false);
         console.warn('[MaterialValueHelp] Fetch error:', err.message);
         setError(err.response?.data?.error || err.message || 'Failed to load materials from SAP');
         setMaterials([]);
+        materialsRef.current = [];
         setSelectedIndex(-1);
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
+        selectedIndexRef.current = -1;
       }
     },
-    [selectedPlant, selectedMtart, hasBomOnly]
+    []
   );
 
   // Initial load when modal opens
@@ -119,14 +185,10 @@ export default function MaterialValueHelpModal({
       const q = initialValue || '';
       const isCleanPrefix = /^[A-Za-z0-9_-]+$/.test(q.trim());
       fetchMaterials(q, isCleanPrefix ? 'prefix' : 'auto');
-    } else {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
     }
   }, [isOpen, initialValue, fetchMaterials]);
 
-  // Handle live typeahead search with 250ms debounce
+  // Handle live typeahead search with ~300ms debounce
   const handleInputChange = (e) => {
     const val = e.target.value;
     setSearchTerm(val);
@@ -134,10 +196,14 @@ export default function MaterialValueHelpModal({
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      setIsRetrying(false);
+    }
 
     debounceTimerRef.current = setTimeout(() => {
       fetchMaterials(val, 'auto');
-    }, 250);
+    }, 300);
   };
 
   // Explicit form submit (Enter / click Search button)
@@ -149,76 +215,145 @@ export default function MaterialValueHelpModal({
     fetchMaterials(searchTerm, 'auto');
   };
 
-  // Keyboard navigation & Focus trap
-  const handleKeyDown = (e) => {
-    // Focus Trap
-    if (e.key === 'Tab') {
-      const dialog = modalDialogRef.current;
-      if (dialog) {
-        const focusable = dialog.querySelectorAll(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length > 0) {
-          const first = focusable[0];
-          const last = focusable[focusable.length - 1];
-          if (e.shiftKey) {
-            if (document.activeElement === first) {
-              e.preventDefault();
-              last.focus();
-              return;
-            }
-          } else {
-            if (document.activeElement === last) {
-              e.preventDefault();
-              first.focus();
-              return;
+  // Move highlighted row by delta (+1, -1, +8, -8, etc.) and scroll into view
+  const moveSelection = useCallback((delta) => {
+    const list = materialsRef.current;
+    if (!list || list.length === 0) return;
+    const current = selectedIndexRef.current >= 0 ? selectedIndexRef.current : 0;
+    const next = Math.max(0, Math.min(current + delta, list.length - 1));
+    setSelectedIndex(next);
+    selectedIndexRef.current = next;
+    rowRefs.current[next]?.scrollIntoView({ block: 'nearest' });
+  }, []);
+
+  // Document-level keydown handler (capturing phase) to prevent scrolling page behind
+  const handleDocumentKeyDown = useCallback(
+    (e) => {
+      if (!isOpen) return;
+
+      const isInput =
+        document.activeElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA' ||
+          document.activeElement.tagName === 'SELECT');
+
+      // Focus trap
+      if (e.key === 'Tab') {
+        const dialog = modalDialogRef.current;
+        if (dialog) {
+          const focusable = dialog.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first || !dialog.contains(document.activeElement)) {
+                e.preventDefault();
+                last.focus();
+              }
+            } else {
+              if (document.activeElement === last || !dialog.contains(document.activeElement)) {
+                e.preventDefault();
+                first.focus();
+              }
             }
           }
         }
-      }
-    }
-
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (materials.length > 0) {
-        const next = Math.min(selectedIndex + 1, materials.length - 1);
-        setSelectedIndex(next);
-        rowRefs.current[next]?.scrollIntoView({ block: 'nearest' });
-      }
-      return;
-    }
-
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (materials.length > 0) {
-        const prev = Math.max(selectedIndex - 1, 0);
-        setSelectedIndex(prev);
-        rowRefs.current[prev]?.scrollIntoView({ block: 'nearest' });
-      }
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      // If search input is focused and user hasn't selected a specific row via arrow keys, submit search
-      if (document.activeElement === searchInputRef.current && (selectedIndex < 0 || materials.length === 0)) {
-        handleSearchSubmit(e);
         return;
       }
-      // If a row is highlighted, select it
-      if (selectedIndex >= 0 && selectedIndex < materials.length) {
+
+      if (e.key === 'Escape') {
         e.preventDefault();
-        const selected = materials[selectedIndex];
-        onSelect(selected.matnr, selected);
+        e.stopPropagation();
+        onClose();
+        return;
       }
-    }
-  };
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(1);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(-1);
+        return;
+      }
+
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(8);
+        return;
+      }
+
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(-8);
+        return;
+      }
+
+      if (e.key === 'Home') {
+        if (!isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveSelection(-materialsRef.current.length);
+        }
+        return;
+      }
+
+      if (e.key === 'End') {
+        if (!isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveSelection(materialsRef.current.length);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const currentTerm = (searchTerm || '').trim();
+        const lastExecuted = (lastSearchedTermRef.current || '').trim();
+
+        // If search text changed since last executed search, execute search
+        if (currentTerm !== lastExecuted) {
+          if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+          }
+          fetchMaterials(searchTerm, 'auto');
+          return;
+        }
+
+        // Otherwise select highlighted row
+        const idx = selectedIndexRef.current;
+        const list = materialsRef.current;
+        if (idx >= 0 && idx < list.length) {
+          const selected = list[idx];
+          if (selected) {
+            onSelect(selected.matnr, selected);
+          }
+        }
+      }
+    },
+    [isOpen, moveSelection, onClose, searchTerm, fetchMaterials, onSelect]
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('keydown', handleDocumentKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleDocumentKeyDown, true);
+    };
+  }, [isOpen, handleDocumentKeyDown]);
 
   if (!isOpen) return null;
 
@@ -231,14 +366,15 @@ export default function MaterialValueHelpModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="material-f4-title"
     >
       <div
         ref={modalDialogRef}
+        tabIndex={-1}
         className="sap-f4-modal-dialog material"
+        style={{ outline: 'none' }}
       >
         {/* Header: Title & Close Button */}
         <div className="sap-f4-header">
@@ -360,84 +496,6 @@ export default function MaterialValueHelpModal({
               <span>Search</span>
             </button>
           </form>
-
-          {/* Compact Filter Row: Plant, MTART, Has BOM without wrapping */}
-          <div className="sap-f4-filters-row">
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              <Filter size={12} color="#64748b" />
-              <span style={{ fontWeight: 600 }}>Filters:</span>
-            </div>
-
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <label htmlFor="f4-plant-filter">Plant:</label>
-              <input
-                id="f4-plant-filter"
-                type="text"
-                placeholder="All (e.g. 1001)"
-                maxLength={4}
-                value={selectedPlant}
-                onChange={(e) => setSelectedPlant(e.target.value.toUpperCase())}
-                onBlur={() => fetchMaterials(searchTerm, 'auto')}
-                style={{
-                  width: 90,
-                  height: 28,
-                  padding: '0 8px',
-                  fontSize: 12,
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 4,
-                  textTransform: 'uppercase'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <label htmlFor="f4-mtart-filter">Type:</label>
-              <select
-                id="f4-mtart-filter"
-                value={selectedMtart}
-                onChange={(e) => {
-                  setSelectedMtart(e.target.value);
-                  setTimeout(() => fetchMaterials(searchTerm, 'auto'), 0);
-                }}
-                style={{
-                  height: 28,
-                  padding: '0 8px',
-                  fontSize: 12,
-                  border: '1px solid #cbd5e1',
-                  borderRadius: 4,
-                  background: '#ffffff'
-                }}
-              >
-                {COMMON_MTARTS.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <label
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                cursor: 'pointer',
-                userSelect: 'none',
-                flexShrink: 0
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={hasBomOnly}
-                onChange={(e) => {
-                  setHasBomOnly(e.target.checked);
-                  setTimeout(() => fetchMaterials(searchTerm, 'auto'), 0);
-                }}
-                style={{ margin: 0 }}
-              />
-              <span>Has BOM</span>
-            </label>
-          </div>
         </div>
 
         {/* Notice Banner (Empty Search / Capping / Loading / Error) */}
@@ -492,7 +550,11 @@ export default function MaterialValueHelpModal({
               }}
             >
               <Loader2 size={32} className="sap-spin" color="var(--sap-primary, #0a6ed1)" />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Searching SAP materials…</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>
+                {isRetrying
+                  ? 'SAP server is busy. Retrying in a moment…'
+                  : 'Searching SAP materials…'}
+              </span>
             </div>
           ) : error ? (
             <div
@@ -530,27 +592,39 @@ export default function MaterialValueHelpModal({
             </div>
           ) : (
             <table className="sap-f4-table">
+              <colgroup>
+                <col style={{ width: 190 }} />
+                <col />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 90 }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 170 }}>Material</th>
-                  <th>Material Description</th>
-                  <th style={{ width: 100, textAlign: 'center' }}>Material Type</th>
-                  <th style={{ width: 90, textAlign: 'center' }}>Language</th>
+                  <th style={{ width: 190, whiteSpace: 'nowrap' }}>Material</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Material Description</th>
+                  <th style={{ width: 110, minWidth: 110, textAlign: 'center', whiteSpace: 'nowrap' }}>Material Type</th>
+                  <th style={{ width: 90, minWidth: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
                 </tr>
               </thead>
               <tbody>
                 {materials.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
+
                   return (
                     <tr
                       key={`${item.matnr}-${idx}`}
                       ref={(el) => (rowRefs.current[idx] = el)}
                       className={isSelected ? 'selected' : ''}
-                      onClick={() => setSelectedIndex(idx)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedIndex(idx);
+                        selectedIndexRef.current = idx;
+                        modalDialogRef.current?.focus();
+                      }}
                       onDoubleClick={() => onSelect(item.matnr, item)}
                     >
-                      <td style={{ width: 170, fontFamily: 'monospace', fontWeight: 600, color: '#0a6ed1' }}>
-                        {item.matnr}
+                      <td style={{ width: 190, fontFamily: 'monospace', fontWeight: 600, color: '#0a6ed1' }}>
+                        <span style={{ verticalAlign: 'middle' }}>{item.matnr}</span>
                         {item.hasBom && (
                           <span
                             style={{
@@ -560,31 +634,42 @@ export default function MaterialValueHelpModal({
                               borderRadius: 3,
                               background: '#ecfdf5',
                               color: '#059669',
-                              border: '1px solid #a7f3d0'
+                              border: '1px solid #a7f3d0',
+                              verticalAlign: 'middle'
                             }}
                           >
                             BOM
                           </span>
                         )}
                       </td>
-                      <td title={item.maktx || ''} style={{ color: '#1e293b' }}>
+                      <td
+                        title={item.maktx || ''}
+                        style={{
+                          color: '#1e293b',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
                         {item.maktx || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>(no text)</span>}
                       </td>
-                      <td style={{ width: 100, textAlign: 'center' }}>
+                      <td style={{ width: 110, minWidth: 110, textAlign: 'center' }}>
                         <span
                           style={{
+                            display: 'inline-block',
                             background: '#f1f5f9',
-                            padding: '2px 6px',
+                            padding: '2px 8px',
                             borderRadius: 3,
                             fontSize: 11,
                             fontWeight: 500,
-                            color: '#475569'
+                            color: '#475569',
+                            textAlign: 'center'
                           }}
                         >
                           {item.mtart || '-'}
                         </span>
                       </td>
-                      <td style={{ width: 90, textAlign: 'center', color: '#64748b' }}>
+                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', color: '#64748b' }}>
                         {item.spras || 'E'}
                       </td>
                     </tr>

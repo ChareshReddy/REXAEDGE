@@ -149,15 +149,15 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
     <div className="fiori-app-view-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
-        title="Delete Material BOM (CS02)"
-        subtitle="Safely archive or delete specific BOM alternatives in SAP without GUI popups. Strict human confirmation gates prevent accidental data loss."
+        title="Delete BOM"
+        subtitle="Safely delete specific BOM alternatives in SAP with confirmation."
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
         breadcrumbs={[
           { label: 'Home', onClick: onNavigateHome || onBack },
           { label: 'Bill of Materials', onClick: onBack },
-          { label: 'Delete Material BOM' }
+          { label: 'Delete BOM' }
         ]}
       />
 
@@ -191,7 +191,7 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
                   Verifying BOM Existence in SAP...
                 </h4>
                 <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                  Checking material and plant records prior to deletion proposal.
+                  Validating material and plant records prior to deletion proposal.
                 </p>
                 <button
                   type="button"

@@ -22,7 +22,7 @@ import { enforceHttps, safeLogger } from './middleware/security.js';
 import { verifyAllToolsSafety } from './config/riskLevels.js';
 import { listSystems, DEFAULT_SYSTEM, getSystemConfig } from './config/systemRegistry.js';
 import { validateEncryptionKey } from './utils/crypto.js';
-import { MODULE_REGISTRY } from './config/modules.js';
+import { MODULE_REGISTRY, ALL_BOM_APPS } from './config/modules.js';
 
 // Load environment configuration
 dotenv.config();
@@ -113,7 +113,7 @@ app.get('/api/modules', requireAuth, async (req, res) => {
     }
     return res.status(200).json({
       success: true,
-      modules: Array.from(permittedModuleSet)
+        modules: Array.from(permittedModuleSet)
     });
   } catch (err) {
     console.error('Error fetching modules:', err.message);
@@ -130,7 +130,8 @@ app.get('/api/servers/:id/modules', requireAuth, async (req, res) => {
       return res.status(200).json({
         success: true,
         serverId: id,
-        modules: MODULE_REGISTRY.map((m) => m.key)
+        modules: MODULE_REGISTRY.map((m) => m.key),
+        permissions: [...ALL_BOM_APPS]
       });
     }
 
@@ -150,7 +151,8 @@ app.get('/api/servers/:id/modules', requireAuth, async (req, res) => {
     return res.status(200).json({
       success: true,
       serverId: id,
-      modules
+      modules,
+      permissions: accessCheck.permissions || []
     });
   } catch (err) {
     console.error('Error fetching server modules:', err.message);

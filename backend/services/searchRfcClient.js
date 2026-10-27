@@ -129,6 +129,7 @@ export async function runSearchRfc(
   // 1. Concurrency Limiter: At most 2 concurrent searches per server
   if (holder.activeCount >= MAX_CONCURRENT_SEARCHES) {
     let waitTimer = null;
+    let queueAbortListener = null;
     try {
       await new Promise((resolve, reject) => {
         const queueEntry = { resolve, reject };
@@ -145,25 +146,32 @@ export async function runSearchRfc(
 
         // If client aborts while waiting in queue
         if (signal) {
-          signal.addEventListener(
-            'abort',
-            () => {
-              clearTimeout(waitTimer);
-              const idx = holder.waitQueue.indexOf(queueEntry);
-              if (idx !== -1) holder.waitQueue.splice(idx, 1);
-              const cancelErr = new Error('Search request was cancelled.');
-              cancelErr.status = 499;
-              reject(cancelErr);
-            },
-            { once: true }
-          );
+          queueAbortListener = () => {
+            clearTimeout(waitTimer);
+            const idx = holder.waitQueue.indexOf(queueEntry);
+            if (idx !== -1) holder.waitQueue.splice(idx, 1);
+            const cancelErr = new Error('Search request was cancelled.');
+            cancelErr.status = 499;
+            reject(cancelErr);
+          };
+          signal.addEventListener('abort', queueAbortListener, { once: true });
         }
 
         holder.waitQueue.push(queueEntry);
       });
     } finally {
       if (waitTimer) clearTimeout(waitTimer);
+      if (signal && queueAbortListener) {
+        signal.removeEventListener('abort', queueAbortListener);
+      }
     }
+  }
+
+  // Check if aborted while in queue just as slot was granted
+  if (signal?.aborted) {
+    const cancelErr = new Error('Search request was cancelled.');
+    cancelErr.status = 499;
+    throw cancelErr;
   }
 
   // Slot acquired
@@ -175,6 +183,23 @@ export async function runSearchRfc(
 
   let client = holder.client;
   let hasFailed = false;
+  let slotReleased = false;
+
+  const releaseSlot = () => {
+    if (slotReleased) return;
+    slotReleased = true;
+    holder.activeCount = Math.max(0, holder.activeCount - 1);
+
+    // If waitQueue has waiting callers, wake the next one immediately
+    if (holder.waitQueue.length > 0) {
+      const next = holder.waitQueue.shift();
+      if (next.timer) clearTimeout(next.timer);
+      next.resolve();
+    } else if (holder.activeCount === 0 && !hasFailed && holder.client) {
+      // Schedule idle closure after 2 minutes
+      scheduleIdleClosure(holder);
+    }
+  };
 
   try {
     // 2. Health check before use / auto-reconnect
@@ -201,6 +226,10 @@ export async function runSearchRfc(
     const abortPromise = new Promise((_, reject) => {
       if (signal) {
         abortListener = () => {
+          // Immediately release concurrency slot accounting & wake queue
+          releaseSlot();
+          // Discard connection in background without blocking slot accounting
+          discardClient(holder).catch(() => {});
           const cancelErr = new Error('Search request was cancelled.');
           cancelErr.status = 499;
           reject(cancelErr);
@@ -226,20 +255,12 @@ export async function runSearchRfc(
   } catch (err) {
     hasFailed = true;
     // 4. Protection: Never leave a connection open after an error or timeout
-    await discardClient(holder);
+    if (holder.client) {
+      await discardClient(holder);
+    }
     throw err;
   } finally {
-    holder.activeCount = Math.max(0, holder.activeCount - 1);
-
-    // If waitQueue has waiting callers, wake the next one immediately
-    if (holder.waitQueue.length > 0) {
-      const next = holder.waitQueue.shift();
-      if (next.timer) clearTimeout(next.timer);
-      next.resolve();
-    } else if (holder.activeCount === 0 && !hasFailed && holder.client) {
-      // 5. Schedule idle closure after 2 minutes
-      scheduleIdleClosure(holder);
-    }
+    releaseSlot();
   }
 }
 

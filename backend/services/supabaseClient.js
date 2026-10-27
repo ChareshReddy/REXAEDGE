@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import { MODULE_KEYS, isModuleAvailable } from '../config/modules.js';
+import { MODULE_KEYS, isModuleAvailable, BOM_APP_KEYS, ALL_BOM_APPS, normalizePermissions } from '../config/modules.js';
 import { encryptPassword, maskSapUsername } from '../utils/crypto.js';
 import fs from 'fs';
 import path from 'path';
@@ -118,6 +118,31 @@ export function verifyDatabaseConfiguration() {
 }
 
 /**
+ * Detects whether an error from Supabase / PostgREST / Postgres is due to the
+ * 'permissions' column not existing in public.user_server_permissions.
+ * Handles Postgres 42703 (undefined_column), PostgREST PGRST204 / PGRST100, and error text variants.
+ */
+export function isMissingPermissionsColumn(error) {
+  if (!error) return false;
+  const msg = String(error.message || '').toLowerCase();
+  const details = String(error.details || '').toLowerCase();
+  const hint = String(error.hint || '').toLowerCase();
+  const code = String(error.code || '');
+
+  if (code === '42703' || code === 'PGRST204') return true;
+  if (msg.includes('permissions') && (
+    msg.includes('does not exist') ||
+    msg.includes('not exist') ||
+    msg.includes('schema cache') ||
+    msg.includes('could not find') ||
+    msg.includes('unknown column')
+  )) return true;
+  if (details.includes('permissions') && (details.includes('does not exist') || details.includes('schema cache'))) return true;
+  if (hint.includes('permissions')) return true;
+  return false;
+}
+
+/**
  * Determines whether the in-memory fallback adapter should be used.
  * Strictly allowed ONLY when NODE_ENV is 'test'.
  */
@@ -221,6 +246,7 @@ class InMemorySupabaseStore {
         id: '20000000-0000-0000-0000-000000000001',
         user_id: '00000000-0000-0000-0000-000000000001', // admin
         server_id: '10000000-0000-0000-0000-000000000001',
+        permissions: [...ALL_BOM_APPS],
         granted_by: '00000000-0000-0000-0000-000000000001',
         granted_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
@@ -228,6 +254,7 @@ class InMemorySupabaseStore {
         id: '20000000-0000-0000-0000-000000000002',
         user_id: '00000000-0000-0000-0000-000000000001', // admin
         server_id: '10000000-0000-0000-0000-000000000002',
+        permissions: [...ALL_BOM_APPS],
         granted_by: '00000000-0000-0000-0000-000000000001',
         granted_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
@@ -235,6 +262,7 @@ class InMemorySupabaseStore {
         id: '20000000-0000-0000-0000-000000000003',
         user_id: '00000000-0000-0000-0000-000000000001', // admin
         server_id: '10000000-0000-0000-0000-000000000003',
+        permissions: [...ALL_BOM_APPS],
         granted_by: '00000000-0000-0000-0000-000000000001',
         granted_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
@@ -242,6 +270,7 @@ class InMemorySupabaseStore {
         id: '20000000-0000-0000-0000-000000000004',
         user_id: '00000000-0000-0000-0000-000000000002', // standard user
         server_id: '10000000-0000-0000-0000-000000000001', // Sandbox only
+        permissions: [...ALL_BOM_APPS],
         granted_by: '00000000-0000-0000-0000-000000000001',
         granted_at: new Date('2026-01-02T00:00:00Z').toISOString()
       }
@@ -459,8 +488,7 @@ class InMemorySupabaseStore {
         credentials_status: isConfigured ? 'saved' : 'not_set',
         is_active: s.is_active,
         created_at: s.created_at,
-        modules: this.getServerModules(s.id),
-        connection_test: s.connection_test || null
+        modules: this.getServerModules(s.id)
       };
       // Password is write-only and NEVER returned in API responses
       return base;
@@ -470,17 +498,10 @@ class InMemorySupabaseStore {
   getServerById(id) {
     const s = this.servers.find((srv) => srv.id === id);
     if (!s) return null;
-    return { ...s, modules: this.getServerModules(s.id), connection_test: s.connection_test || null };
+    return { ...s, modules: this.getServerModules(s.id) };
   }
 
   createServer(serverData) {
-    if (serverData.modules !== undefined) {
-      const invalid = (serverData.modules || []).filter((k) => !isModuleAvailable(k));
-      if (invalid.length > 0) {
-        throw new Error(`Cannot enable coming soon or invalid module(s): ${invalid.join(', ')}`);
-      }
-    }
-
     const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
     const env = String(serverData.environment || 'SANDBOX').toUpperCase();
     if (!validEnvs.includes(env)) {
@@ -507,7 +528,6 @@ class InMemorySupabaseStore {
       sap_username: serverData.sap_username ? String(serverData.sap_username).trim() : null,
       sap_password_encrypted: encryptedPassword,
       is_active: serverData.is_active !== undefined ? Boolean(serverData.is_active) : true,
-      connection_test: serverData.connection_test || null,
       created_at: new Date().toISOString()
     };
     this.servers.push(newServer);
@@ -547,9 +567,6 @@ class InMemorySupabaseStore {
     if (serverData.router !== undefined) server.router = serverData.router;
     if (serverData.gwserv !== undefined) server.gwserv = serverData.gwserv;
     if (serverData.is_active !== undefined) server.is_active = Boolean(serverData.is_active);
-    if (serverData.connection_test !== undefined) {
-      server.connection_test = serverData.connection_test;
-          }
 
     if (serverData.sap_username !== undefined) {
       server.sap_username = serverData.sap_username ? String(serverData.sap_username).trim() : null;
@@ -590,9 +607,13 @@ class InMemorySupabaseStore {
         return true;
   }
 
+  setColumnMissing(isMissing) {
+    this.columnMissing = Boolean(isMissing);
+  }
+
   // --- Permissions Operations ---
   listPermissions() {
-    return this.permissions.map((p) => {
+    const list = this.permissions.map((p) => {
       const user = this.users.find((u) => u.id === p.user_id);
       const server = this.servers.find((s) => s.id === p.server_id);
       return {
@@ -602,24 +623,30 @@ class InMemorySupabaseStore {
         server_id: p.server_id,
         server_name: server?.name || 'unknown',
         server_environment: server?.environment || 'DEV',
+        permissions: this.columnMissing ? [...ALL_BOM_APPS] : normalizePermissions(p.permissions || []),
         granted_by: p.granted_by,
-        granted_at: p.granted_at
+        granted_at: p.granted_at,
+        legacyFallback: Boolean(this.columnMissing || p.legacyFallback)
       };
     });
+    list.migrationPending = Boolean(this.columnMissing);
+    return list;
   }
 
   getUserPermissions(userId) {
     return this.permissions.filter((p) => p.user_id === userId);
   }
 
-  grantPermission({ userId, serverId, grantedBy }) {
+  grantPermission({ userId, serverId, grantedBy, permissions = ALL_BOM_APPS }) {
     const existingIdx = this.permissions.findIndex(
       (p) => p.user_id === userId && p.server_id === serverId
     );
+    const normalized = normalizePermissions(permissions);
     const permRecord = {
       id: existingIdx !== -1 ? this.permissions[existingIdx].id : crypto.randomUUID(),
       user_id: userId,
       server_id: serverId,
+      permissions: normalized,
       granted_by: grantedBy,
       granted_at: new Date().toISOString()
     };
@@ -639,7 +666,7 @@ class InMemorySupabaseStore {
   }
 
   getAvailableServersForUser(userId, role) {
-    const formatServer = (s) => {
+    const formatServer = (s, perms) => {
       const hasPassword = Boolean(s.sap_password_encrypted);
       const isConfigured = Boolean(s.sap_username && hasPassword);
       return {
@@ -649,41 +676,43 @@ class InMemorySupabaseStore {
         sap_username: role === 'admin' ? (s.sap_username || null) : maskSapUsername(s.sap_username),
         has_password: hasPassword,
         credentials_status: isConfigured ? 'saved' : 'not_set',
-        is_active: s.is_active
+        is_active: s.is_active,
+        permissions: role === 'admin' ? [...ALL_BOM_APPS] : normalizePermissions(perms || [])
       };
     };
 
-    // If user is admin, they have access to all active servers
+    // If user is admin, they have access to all active servers with all apps
     if (role === 'admin') {
       return this.servers
         .filter((s) => s.is_active)
-        .map(formatServer);
+        .map((s) => formatServer(s, ALL_BOM_APPS));
     }
 
     // Join user permissions with active servers
     const userPerms = this.permissions.filter((p) => p.user_id === userId);
-    const permittedServerIds = new Set(userPerms.map((p) => p.server_id));
+    const permMap = new Map(userPerms.map((p) => [p.server_id, p.permissions]));
 
     return this.servers
-      .filter((s) => s.is_active && permittedServerIds.has(s.id))
-      .map(formatServer);
+      .filter((s) => s.is_active && permMap.has(s.id))
+      .map((s) => formatServer(s, permMap.get(s.id)));
   }
 
   checkUserServerAccess(userId, serverId, role) {
     const server = this.servers.find((s) => s.id === serverId && s.is_active);
     if (!server) {
-      return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null };
+      return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
     }
     if (role === 'admin') {
-      return { permitted: true, server };
+      return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
     }
     const perm = this.permissions.find(
       (p) => p.user_id === userId && p.server_id === serverId
     );
     if (!perm) {
-      return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null };
+      return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null, permissions: [] };
     }
-    return { permitted: true, server };
+    const permissions = normalizePermissions(perm.permissions || []);
+    return { permitted: true, server, permissions };
   }
 }
 
@@ -1035,8 +1064,7 @@ export const supabaseService = {
           sap_username: username,
           has_password: hasPassword,
           credentials_status: isConfigured ? 'saved' : 'not_set',
-          modules,
-          connection_test: s.connection_test || null
+          modules
         };
       })
     );
@@ -1069,7 +1097,7 @@ export const supabaseService = {
     } catch (_) {
       modules = [MODULE_KEYS.BOM];
     }
-    return { ...data, modules, connection_test: data.connection_test || null };
+    return { ...data, modules };
   },
 
   // Synchronous server lookup from in-memory cache and persisted credentials
@@ -1153,28 +1181,17 @@ export const supabaseService = {
       throw new Error(`Database error creating SAP server: ${serverErr.message}`);
     }
 
-    // 2. Atomic module insertion
-    const targetModules = serverData.modules !== undefined ? serverData.modules : [MODULE_KEYS.BOM];
-    if (targetModules.length > 0) {
-      const moduleRows = targetModules.map((k) => ({
-        server_id: createdServer.id,
-        module_key: k,
-        enabled_by: serverData.createdBy || null,
-        enabled_at: new Date().toISOString()
-      }));
-
-      const { error: modErr } = await liveSupabase
+    // 2. Atomic module insertion (defaults to BOM for backward compatibility)
+    try {
+      await liveSupabase
         .from('server_modules')
-        .insert(moduleRows);
-
-      if (modErr) {
-        // Atomic cleanup: rollback server row so nothing is saved
-        try {
-          await liveSupabase.from('sap_servers').delete().eq('id', createdServer.id);
-        } catch (_) {}
-        throw new Error(`Database error saving server modules: ${modErr.message}`);
-      }
-    }
+        .insert([{
+          server_id: createdServer.id,
+          module_key: MODULE_KEYS.BOM,
+          enabled_by: serverData.createdBy || null,
+          enabled_at: new Date().toISOString()
+        }]);
+    } catch (_) {}
 
     // 3. Read back from database to verify persistence
     const readBack = await this.getServerById(createdServer.id);
@@ -1207,13 +1224,6 @@ export const supabaseService = {
 
   // Admin: Update Server
   async updateServer(id, serverData) {
-    if (serverData.modules !== undefined) {
-      const invalid = (serverData.modules || []).filter((k) => !isModuleAvailable(k));
-      if (invalid.length > 0) {
-        throw new Error(`Cannot enable coming soon or invalid module(s): ${invalid.join(', ')}`);
-      }
-    }
-
     if (serverData.environment !== undefined) {
       const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
       const env = String(serverData.environment).toUpperCase();
@@ -1230,7 +1240,7 @@ export const supabaseService = {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const allowedFields = ['name', 'ashost', 'sysnr', 'client', 'lang', 'environment', 'router', 'gwserv', 'is_active', 'connection_test'];
+    const allowedFields = ['name', 'ashost', 'sysnr', 'client', 'lang', 'environment', 'router', 'gwserv', 'is_active'];
     const updatePayload = {};
     for (const key of allowedFields) {
       if (serverData[key] !== undefined) {
@@ -1253,9 +1263,6 @@ export const supabaseService = {
 
     updatePayload.updated_at = new Date().toISOString();
 
-    if (serverData.connection_test !== undefined) {
-          }
-
     if (Object.keys(updatePayload).length > 1) {
       let { error: updateErr } = await liveSupabase
         .from('sap_servers')
@@ -1263,16 +1270,8 @@ export const supabaseService = {
         .eq('id', id);
 
       if (updateErr) {
-        if (updatePayload.connection_test !== undefined && (String(updateErr.message).includes('connection_test') || String(updateErr.message).includes('column') || String(updateErr.code) === 'PGRST204')) {
-        console.error('[Supabase] connection_test column missing - run migration_server_connection_test.sql');
-        throw new Error('Database error: connection_test column missing - run migration_server_connection_test.sql');
-      }
       throw new Error('Database error updating SAP server: ' + (updateErr.message || 'unknown'));
       }
-    }
-
-    if (serverData.modules !== undefined) {
-      await this.setServerModules(id, serverData.modules, serverData.updatedBy || null);
     }
 
     const readBack = await this.getServerById(id);
@@ -1320,53 +1319,156 @@ export const supabaseService = {
         return true;
   },
 
-  // Admin: List Permissions
+  knownMissingPermissionsColumn: false,
+  simulateMissingPermissionsColumn: false,
+
+  setSimulateMissingPermissionsColumn(val) {
+    this.simulateMissingPermissionsColumn = Boolean(val);
+    this.knownMissingPermissionsColumn = Boolean(val);
+    if (inMemorySupabase) {
+      inMemorySupabase.setColumnMissing(val);
+    }
+  },
+
+  resetColumnDetection() {
+    this.knownMissingPermissionsColumn = false;
+    this.simulateMissingPermissionsColumn = false;
+    if (inMemorySupabase) {
+      inMemorySupabase.setColumnMissing(false);
+    }
+  },
+
+  // Admin: List Permissions (Dual-State Resilient)
   async listPermissions() {
     if (shouldUseInMemory()) {
+      if (this.simulateMissingPermissionsColumn) {
+        const results = inMemorySupabase.listPermissions();
+        results.migrationPending = true;
+        return results;
+      }
       return inMemorySupabase.listPermissions();
     }
     if (!liveSupabase) {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const { data, error } = await liveSupabase
+    if (!this.knownMissingPermissionsColumn) {
+      const { data, error } = await liveSupabase
+        .from('user_server_permissions')
+        .select(`
+          id,
+          user_id,
+          server_id,
+          permissions,
+          granted_by,
+          granted_at,
+          users!user_id (email),
+          sap_servers (name, environment)
+        `);
+
+      if (!error) {
+        this.knownMissingPermissionsColumn = false;
+        const results = (data || []).map((p) => ({
+          id: p.id,
+          user_id: p.user_id,
+          user_email: p.users?.email || 'unknown',
+          server_id: p.server_id,
+          server_name: p.sap_servers?.name || 'unknown',
+          server_environment: p.sap_servers?.environment || 'DEV',
+          permissions: normalizePermissions(p.permissions || []),
+          granted_by: p.granted_by,
+          granted_at: p.granted_at,
+          legacyFallback: false
+        }));
+        results.migrationPending = false;
+        return results;
+      }
+
+      if (!isMissingPermissionsColumn(error)) {
+        throw new Error(`Database error listing permissions: ${error.message}`);
+      }
+
+      this.knownMissingPermissionsColumn = true;
+      console.warn(`[Admin] user_server_permissions.permissions column does not exist (${error.message}). Operating in backward-compatible legacy mode (all existing server grants receive full BOM app access).`);
+    }
+
+    // Pre-migration fallback: query existing columns without permissions
+    const { data: legacyData, error: legacyErr } = await liveSupabase
       .from('user_server_permissions')
       .select(`
         id,
         user_id,
         server_id,
+        access_level,
         granted_by,
         granted_at,
         users!user_id (email),
         sap_servers (name, environment)
       `);
 
-    if (error) {
-      throw new Error(`Database error listing permissions: ${error.message}`);
+    if (legacyErr) {
+      throw new Error(`Database error listing legacy permissions: ${legacyErr.message}`);
     }
 
-    return (data || []).map((p) => ({
+    const results = (legacyData || []).map((p) => ({
       id: p.id,
       user_id: p.user_id,
       user_email: p.users?.email || 'unknown',
       server_id: p.server_id,
       server_name: p.sap_servers?.name || 'unknown',
       server_environment: p.sap_servers?.environment || 'DEV',
+      permissions: [...ALL_BOM_APPS],
       granted_by: p.granted_by,
-      granted_at: p.granted_at
+      granted_at: p.granted_at,
+      legacyFallback: true
     }));
+    results.migrationPending = true;
+    return results;
   },
 
-  // Admin: Grant Permission
-  async grantPermission({ userId, serverId, grantedBy, accessLevel = 'read_write' }) {
+  // Admin: Grant Permission (Dual-State Resilient)
+  async grantPermission({ userId, serverId, grantedBy, permissions = ALL_BOM_APPS, accessLevel = 'read_write' }) {
     if (shouldUseInMemory()) {
-      return inMemorySupabase.grantPermission({ userId, serverId, grantedBy });
+      if (this.simulateMissingPermissionsColumn) {
+        const record = inMemorySupabase.grantPermission({ userId, serverId, grantedBy, permissions: ALL_BOM_APPS });
+        return { ...record, legacyFallback: true };
+      }
+      return inMemorySupabase.grantPermission({ userId, serverId, grantedBy, permissions });
     }
     if (!liveSupabase) {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const { data, error } = await liveSupabase
+    const normalized = normalizePermissions(permissions);
+
+    if (!this.knownMissingPermissionsColumn) {
+      const { data, error } = await liveSupabase
+        .from('user_server_permissions')
+        .upsert({
+          user_id: userId,
+          server_id: serverId,
+          permissions: normalized,
+          access_level: accessLevel || 'read_write',
+          granted_by: grantedBy,
+          granted_at: new Date().toISOString()
+        }, { onConflict: 'user_id,server_id' })
+        .select()
+        .single();
+
+      if (!error) {
+        return data;
+      }
+
+      if (!isMissingPermissionsColumn(error)) {
+        throw new Error(`Database error granting permission: ${error.message}`);
+      }
+
+      this.knownMissingPermissionsColumn = true;
+      console.warn(`[Admin] user_server_permissions.permissions column missing on grantPermission (${error.message}). Falling back to legacy upsert without permissions column.`);
+    }
+
+    // Pre-migration fallback: upsert without permissions column
+    const { data: legData, error: legErr } = await liveSupabase
       .from('user_server_permissions')
       .upsert({
         user_id: userId,
@@ -1378,10 +1480,15 @@ export const supabaseService = {
       .select()
       .single();
 
-    if (error) {
-      throw new Error(`Database error granting permission: ${error.message}`);
+    if (legErr) {
+      throw new Error(`Database error granting permission (legacy fallback): ${legErr.message}`);
     }
-    return data;
+
+    return {
+      ...legData,
+      permissions: [...ALL_BOM_APPS],
+      legacyFallback: true
+    };
   },
 
   // Admin: Revoke Permission
@@ -1404,9 +1511,28 @@ export const supabaseService = {
     return true;
   },
 
-  // User: Get Permitted Servers
+  // User: Get Permitted Servers (Dual-State Resilient)
   async getAvailableServersForUser(userId, role) {
     if (shouldUseInMemory()) {
+      if (this.simulateMissingPermissionsColumn && role !== 'admin') {
+        const userPerms = inMemorySupabase.permissions.filter((p) => p.user_id === userId);
+        const permServerIds = new Set(userPerms.map((p) => p.server_id));
+        return inMemorySupabase.servers
+          .filter((s) => s.is_active && permServerIds.has(s.id))
+          .map((s) => {
+            const hasPassword = Boolean(s.sap_password_encrypted);
+            return {
+              id: s.id,
+              name: s.name,
+              environment: s.environment,
+              sap_username: maskSapUsername(s.sap_username),
+              has_password: hasPassword,
+              credentials_status: (s.sap_username && hasPassword) ? 'saved' : 'not_set',
+              is_active: s.is_active,
+              permissions: [...ALL_BOM_APPS]
+            };
+          });
+      }
       return inMemorySupabase.getAvailableServersForUser(userId, role);
     }
     if (!liveSupabase) {
@@ -1433,17 +1559,58 @@ export const supabaseService = {
           is_active: s.is_active,
           sap_username: s.sap_username,
           has_password: hasPass,
-          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set'
+          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
+          permissions: [...ALL_BOM_APPS]
         };
       });
     }
 
-    const { data, error } = await liveSupabase
-      .from('user_server_permissions')
-      .select(`
-        sap_servers (*)
-      `)
-      .eq('user_id', userId);
+    let data;
+    let error;
+
+    if (!this.knownMissingPermissionsColumn) {
+      const res = await liveSupabase
+        .from('user_server_permissions')
+        .select(`
+          permissions,
+          sap_servers (*)
+        `)
+        .eq('user_id', userId);
+      data = res.data;
+      error = res.error;
+    }
+
+    if (this.knownMissingPermissionsColumn || (error && isMissingPermissionsColumn(error))) {
+      this.knownMissingPermissionsColumn = true;
+      console.warn('[Database] permissions column missing in getAvailableServersForUser. Falling back to legacy query.');
+      const res = await liveSupabase
+        .from('user_server_permissions')
+        .select(`
+          sap_servers (*)
+        `)
+        .eq('user_id', userId);
+
+      if (res.error) {
+        throw new Error(`Database error fetching permitted servers: ${res.error.message}`);
+      }
+
+      return (res.data || [])
+        .filter((item) => item.sap_servers && item.sap_servers.is_active)
+        .map((item) => {
+          const s = item.sap_servers;
+          const hasPass = Boolean(s.sap_password_encrypted);
+          return {
+            id: s.id,
+            name: s.name,
+            environment: s.environment,
+            is_active: s.is_active,
+            sap_username: maskSapUsername(s.sap_username),
+            has_password: hasPass,
+            credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
+            permissions: [...ALL_BOM_APPS]
+          };
+        });
+    }
 
     if (error) {
       throw new Error(`Database error fetching permitted servers: ${error.message}`);
@@ -1461,14 +1628,26 @@ export const supabaseService = {
           is_active: s.is_active,
           sap_username: maskSapUsername(s.sap_username),
           has_password: hasPass,
-          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set'
+          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
+          permissions: normalizePermissions(item.permissions || [])
         };
       });
   },
 
-  // Security: Check Per-Server Access on Request
+  // Security: Check Per-Server Access on Request (Dual-State Resilient)
   async checkUserServerAccess(userId, serverId, role) {
     if (shouldUseInMemory()) {
+      if (this.simulateMissingPermissionsColumn && role !== 'admin') {
+        const server = inMemorySupabase.servers.find((s) => s.id === serverId && s.is_active);
+        if (!server) {
+          return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
+        }
+        const hasPerm = inMemorySupabase.permissions.some((p) => p.user_id === userId && p.server_id === serverId);
+        if (!hasPerm) {
+          return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null, permissions: [] };
+        }
+        return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
+      }
       return inMemorySupabase.checkUserServerAccess(userId, serverId, role);
     }
     if (!liveSupabase) {
@@ -1477,27 +1656,54 @@ export const supabaseService = {
 
     const server = await this.getServerById(serverId);
     if (!server || !server.is_active) {
-      return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null };
+      return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
     }
     if (role === 'admin') {
-      return { permitted: true, server };
+      return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
     }
 
-    const { data: perm, error } = await liveSupabase
-      .from('user_server_permissions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('server_id', serverId)
-      .single();
+    let perm;
+    let error;
+
+    if (!this.knownMissingPermissionsColumn) {
+      const res = await liveSupabase
+        .from('user_server_permissions')
+        .select('id, permissions')
+        .eq('user_id', userId)
+        .eq('server_id', serverId)
+        .single();
+      perm = res.data;
+      error = res.error;
+    }
+
+    if (this.knownMissingPermissionsColumn || (error && isMissingPermissionsColumn(error))) {
+      this.knownMissingPermissionsColumn = true;
+      console.warn('[Database] permissions column missing in checkUserServerAccess. Falling back to legacy query.');
+      const res = await liveSupabase
+        .from('user_server_permissions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('server_id', serverId)
+        .single();
+
+      if (res.error && res.error.code !== 'PGRST116') {
+        throw new Error(`Database error verifying user server access: ${res.error.message}`);
+      }
+
+      if (!res.data) {
+        return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null, permissions: [] };
+      }
+      return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
+    }
 
     if (error && error.code !== 'PGRST116') {
       throw new Error(`Database error verifying user server access: ${error.message}`);
     }
 
     if (!perm) {
-      return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null };
+      return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null, permissions: [] };
     }
-    return { permitted: true, server };
+    return { permitted: true, server, permissions: normalizePermissions(perm.permissions || []) };
   },
 
   // Audit: Persist audit log entry if table configured, no silent swallow

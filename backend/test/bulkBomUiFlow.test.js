@@ -99,7 +99,7 @@ console.log('3. Testing Initial State (Upload File Step)...');
 const htmlInitial = renderToStaticMarkup(React.createElement(BulkCreateBomView, { systemKey: 'DEV' }));
 assert(htmlInitial.includes('Upload Spreadsheet'), 'Upload panel must be visible initially');
 assert(htmlInitial.includes('Download Template'), 'Download template button must be visible');
-assert(htmlInitial.includes('Upload File'), 'Workflow step 1 must be present');
+assert(htmlInitial.includes('Upload file'), 'Workflow step 1 must be present');
 assert(htmlInitial.includes('active'), 'Step 1 must be active initially');
 console.log('   ✓ Step 1 active, upload box displayed, no premature SAP calls');
 
@@ -149,22 +149,22 @@ const htmlValidated = renderToStaticMarkup(
 );
 
 // Preview table must be rendered
-assert(htmlValidated.includes('Pre-flight Validation Preview'), 'Table header must show');
+assert(htmlValidated.includes('Data Preview'), 'Table header must show');
 assert(htmlValidated.includes('Ready'), 'Ready badge must show');
 assert(htmlValidated.includes('sap-badge-success'), 'Ready status badge has sap-badge-success');
 assert(htmlValidated.includes('Validation Summary:'), 'Summary label must be present');
 assert(htmlValidated.includes('Ready: 2'), 'Summary ready count must show 2');
-assert(htmlValidated.includes('Create 2 Ready BOM(s)'), 'Create 2 Ready BOM(s) button must show');
+assert(htmlValidated.includes('Create BOMs (2)') || htmlValidated.includes('Create 2 Ready BOM(s)'), 'Create BOMs button must show');
 assert(!htmlValidated.includes('disabled="" style="padding:9px 24px"'), 'Execute button must be enabled when readyCount > 0');
-assert(htmlValidated.includes('Re-validate') || htmlValidated.includes('Validate with SAP'), 'Validate button present in footer');
+assert(htmlValidated.includes('Re-validate data') || htmlValidated.includes('Validate data') || htmlValidated.includes('Re-validate') || htmlValidated.includes('Validate with SAP'), 'Validate data button present in footer');
 console.log('   ✓ Validated preview renders in place with Ready badges and enabled Create button');
 
 // 5. Test Bulk Copy BOM (BulkBomView) Shared Consistency
 console.log('5. Testing Bulk Copy BOM Visual & Step Consistency...');
 const htmlCopyInitial = renderToStaticMarkup(React.createElement(BulkBomView, { systemKey: 'DEV' }));
-assert(htmlCopyInitial.includes('Upload File'), 'Bulk Copy must have 3-step indicator');
-assert(htmlCopyInitial.includes('SAP Pre-flight Validation'), 'Bulk Copy step 2 wording matches');
-assert(htmlCopyInitial.includes('Sequential Execution'), 'Bulk Copy step 3 wording matches');
+assert(htmlCopyInitial.includes('Upload file'), 'Bulk Copy must have 3-step indicator');
+assert(htmlCopyInitial.includes('Validate data'), 'Bulk Copy step 2 wording matches');
+assert(htmlCopyInitial.includes('Copy BOMs'), 'Bulk Copy step 3 wording matches');
 console.log('   ✓ Both screens share identical step indicators and visual workflow');
 
 console.log('\n============================================================');

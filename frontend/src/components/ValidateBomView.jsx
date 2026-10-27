@@ -79,15 +79,15 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
     <div className="fiori-app-view-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
-        title="Validate Material BOM (PRE-CHECK)"
-        subtitle="Pre-flight verification in SAP via RFC. Checks MAST, STAS, and STPO table records before production planning or copying."
+        title="Validate BOM"
+        subtitle="Check that a material and its BOM are ready in SAP before you create or copy."
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
         breadcrumbs={[
           { label: 'Home', onClick: onNavigateHome || onBack },
           { label: 'Bill of Materials', onClick: onBack },
-          { label: 'Validate Material BOM' }
+          { label: 'Validate BOM' }
         ]}
       />
 

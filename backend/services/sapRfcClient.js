@@ -310,7 +310,7 @@ export async function rfcReadBom(params = {}) {
     material,
     plant,
     bomUsage = '1',
-    alternativeBom = '1'
+    alternativeBom = ''
   } = params;
 
   if (!material || !String(material).trim()) {
@@ -336,7 +336,7 @@ export async function rfcReadBom(params = {}) {
       material: String(material).trim().toUpperCase(),
       plant: '',
       bomUsage: String(bomUsage || '1').trim(),
-      alternativeBom: String(alternativeBom || '1').trim(),
+      alternativeBom: String(alternativeBom || '').trim(),
       componentCount: 0,
       components: []
     };
@@ -348,8 +348,8 @@ export async function rfcReadBom(params = {}) {
   const cleanUsg = String(bomUsage || '1').trim();
   const cleanAlt = alternativeBom !== undefined && alternativeBom !== null ? String(alternativeBom).trim() : '';
 
-  // Mock mode handling
-  if (process.env.USE_MOCK_SAP === 'true') {
+  // Mock mode handling (when no custom RFC client is passed)
+  if (process.env.USE_MOCK_SAP === 'true' && !params.client) {
     const matchingUsage = activeMockBoms.filter(
       (b) =>
         (String(b.material).toUpperCase() === cleanMat ||
@@ -375,6 +375,7 @@ export async function rfcReadBom(params = {}) {
     }
 
     const availableAlternatives = [...new Set(matchingUsage.map((b) => String(b.alternativeBom || '01')))];
+    availableAlternatives.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
     let found = null;
     if (cleanAlt) {
@@ -382,15 +383,16 @@ export async function rfcReadBom(params = {}) {
       found = matchingUsage.find(
         (b) =>
           String(b.alternativeBom || '1').padStart(2, '0') === altPad ||
-          parseInt(b.alternativeBom || '1', 10) === parseInt(cleanAlt, 10)
+          parseInt(b.alternativeBom || '1', 10) === parseInt(cleanAlt, 10) ||
+          String(b.alternativeBom || '1') === cleanAlt
       );
       if (!found) {
         return {
-          success: true,
-          bomExists: false,
+          success: false,
+          bomExists: true,
           alternativeExists: false,
           errorCode: 'ALTERNATIVE_NOT_FOUND',
-          message: `Alternative BOM ${cleanAlt} does not exist for material ${cleanMat} in plant ${cleanPlt}. Available alternatives: ${availableAlternatives.join(', ')}`,
+          message: `Alternative ${cleanAlt} does not exist for this BOM. Available alternatives: ${availableAlternatives.join(', ')}.`,
           material: cleanMat,
           plant: cleanPlt,
           bomUsage: cleanUsg,
@@ -402,29 +404,15 @@ export async function rfcReadBom(params = {}) {
         };
       }
     } else {
-      // Blank alternative:
-      const alt01 = matchingUsage.find((b) => String(b.alternativeBom || '1').padStart(2, '0') === '01' || parseInt(b.alternativeBom || '1', 10) === 1);
-      if (alt01) {
-        found = alt01;
-      } else if (availableAlternatives.length === 1) {
-        found = matchingUsage[0];
-      } else {
-        return {
-          success: false,
-          bomExists: true,
-          alternativeExists: false,
-          errorCode: 'ALTERNATIVE_SELECTION_REQUIRED',
-          message: `Alternative BOM was not specified and alternative 01 does not exist for material ${cleanMat} in plant ${cleanPlt}. Available alternatives: ${availableAlternatives.join(', ')}. Please specify an alternative.`,
-          material: cleanMat,
-          plant: cleanPlt,
-          bomUsage: cleanUsg,
-          alternativeBom: '',
-          allAlternatives: availableAlternatives,
-          availableAlternatives,
-          componentCount: 0,
-          components: []
-        };
-      }
+      // Empty alternative: read FIRST existing alternative (lowest STLAL, compared numerically)
+      const lowestAlt = availableAlternatives[0];
+      const lowestPad = String(lowestAlt).padStart(2, '0');
+      found = matchingUsage.find(
+        (b) =>
+          String(b.alternativeBom || '1').padStart(2, '0') === lowestPad ||
+          parseInt(b.alternativeBom || '1', 10) === parseInt(lowestAlt, 10) ||
+          String(b.alternativeBom || '1') === String(lowestAlt)
+      );
     }
 
     const comps = found.components || [];
@@ -512,22 +500,24 @@ export async function rfcReadBom(params = {}) {
     const matchingUsageRows = allMastRows.filter((r) => r.stlan === cleanUsg);
     const mastRows = matchingUsageRows.length > 0 ? matchingUsageRows : allMastRows;
     const availableAlternatives = [...new Set(mastRows.map((r) => r.stlal))];
+    availableAlternatives.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
     let targetMast = null;
     if (cleanAlt) {
       targetMast = mastRows.find(
         (r) =>
           r.stlal === cleanAlt.padStart(2, '0') ||
-          parseInt(r.stlal, 10) === parseInt(cleanAlt, 10)
+          parseInt(r.stlal, 10) === parseInt(cleanAlt, 10) ||
+          r.stlal === cleanAlt
       );
 
       if (!targetMast) {
         return {
-          success: true,
-          bomExists: false,
+          success: false,
+          bomExists: true,
           alternativeExists: false,
           errorCode: 'ALTERNATIVE_NOT_FOUND',
-          message: `Alternative BOM ${cleanAlt} does not exist for material ${cleanMat} in plant ${cleanPlt}. Available alternatives: ${availableAlternatives.join(', ')}`,
+          message: `Alternative ${cleanAlt} does not exist for this BOM. Available alternatives: ${availableAlternatives.join(', ')}.`,
           material: cleanMat,
           plant: cleanPlt,
           bomUsage: cleanUsg,
@@ -539,29 +529,14 @@ export async function rfcReadBom(params = {}) {
         };
       }
     } else {
-      // Blank alternative:
-      const alt01 = mastRows.find((r) => r.stlal === '01' || parseInt(r.stlal, 10) === 1);
-      if (alt01) {
-        targetMast = alt01;
-      } else if (availableAlternatives.length === 1) {
-        targetMast = mastRows[0];
-      } else {
-        return {
-          success: false,
-          bomExists: true,
-          alternativeExists: false,
-          errorCode: 'ALTERNATIVE_SELECTION_REQUIRED',
-          message: `Alternative BOM was not specified and alternative 01 does not exist for material ${cleanMat} in plant ${cleanPlt}. Available alternatives: ${availableAlternatives.join(', ')}. Please specify an alternative.`,
-          material: cleanMat,
-          plant: cleanPlt,
-          bomUsage: cleanUsg,
-          alternativeBom: '',
-          allAlternatives: availableAlternatives,
-          availableAlternatives,
-          componentCount: 0,
-          components: []
-        };
-      }
+      // Empty alternative: read FIRST existing alternative (lowest STLAL, compared numerically)
+      const lowestAlt = availableAlternatives[0];
+      targetMast = mastRows.find(
+        (r) =>
+          r.stlal === String(lowestAlt).padStart(2, '0') ||
+          parseInt(r.stlal, 10) === parseInt(lowestAlt, 10) ||
+          r.stlal === String(lowestAlt)
+      );
     }
 
     const activeMast = targetMast;
@@ -746,6 +721,19 @@ export async function rfcValidateSourceBom(params = {}) {
   });
 
   if (!readResult.success) {
+    if (readResult.errorCode === 'ALTERNATIVE_NOT_FOUND') {
+      return {
+        success: false,
+        materialExists: true,
+        plantValid: true,
+        bomExists: true,
+        alternativeValid: false,
+        errorCode: 'ALTERNATIVE_NOT_FOUND',
+        message: readResult.message,
+        availableAlternatives: readResult.availableAlternatives || [],
+        allAlternatives: readResult.allAlternatives || []
+      };
+    }
     return {
       success: false,
       materialExists: false,
@@ -855,8 +843,8 @@ export async function rfcCreateBom(params = {}) {
     getRfcConnectionParams(params.server);
   }
 
-  // Mock mode handling
-  if (process.env.USE_MOCK_SAP === 'true') {
+  // Mock mode handling (when no custom RFC client is passed)
+  if (process.env.USE_MOCK_SAP === 'true' && !params.client) {
     if (params.testRun) {
       const unmaintained = normalizedComponents.filter((c) =>
         String(c.COMPONENT).includes('BAD') ||
@@ -1899,7 +1887,7 @@ export async function batchQueryMakt(client, materials, targetLang = 'E') {
   const uniqueMats = [...new Set(materials.map((m) => String(m).trim().toUpperCase()).filter(Boolean))];
   const descMap = {};
 
-  if (process.env.USE_MOCK_SAP === 'true' || !client) {
+  if (!client) {
     for (const m of uniqueMats) {
       const trimmed = formatMaterialNumber(m);
       const bomHeader = activeMockBoms.find(
@@ -2002,7 +1990,7 @@ export async function batchQuerySubBom(client, materials, plant) {
   const uniqueMats = [...new Set(materials.map((m) => String(m).trim().toUpperCase()).filter(Boolean))];
   const subBomMats = new Set();
 
-  if (process.env.USE_MOCK_SAP === 'true' || !client) {
+  if (!client) {
     for (const m of uniqueMats) {
       const trimmed = formatMaterialNumber(m);
       const hasMock = activeMockBoms.some(
@@ -2057,32 +2045,53 @@ export async function batchQuerySubBom(client, materials, plant) {
  */
 export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt) {
   loadMockBoms();
-  if (process.env.USE_MOCK_SAP === 'true' || !client) {
+  if (!client) {
     const trimmed = formatMaterialNumber(cleanMat);
     const sapMat = toSapMatnr(cleanMat);
+    const matchingUsage = activeMockBoms.filter(
+      (b) =>
+        (String(b.material).toUpperCase() === cleanMat ||
+          toSapMatnr(b.material) === sapMat ||
+          formatMaterialNumber(b.material) === trimmed) &&
+        String(b.plant) === cleanPlt &&
+        String(b.bomUsage || '1') === cleanUsg
+    );
+    if (matchingUsage.length === 0) return null;
+
+    const availableAlts = [...new Set(matchingUsage.map((b) => String(b.alternativeBom || '01')))];
+    availableAlts.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
     let found = null;
     if (cleanAlt) {
       const altPad = String(cleanAlt).padStart(2, '0');
-      found = activeMockBoms.find(
+      found = matchingUsage.find(
         (b) =>
-          (String(b.material).toUpperCase() === cleanMat || toSapMatnr(b.material) === sapMat || formatMaterialNumber(b.material) === trimmed) &&
-          String(b.plant) === cleanPlt &&
-          String(b.bomUsage || '1') === cleanUsg &&
-          (String(b.alternativeBom || '1').padStart(2, '0') === altPad || String(b.alternativeBom || '1') === String(cleanAlt))
+          String(b.alternativeBom || '1').padStart(2, '0') === altPad ||
+          parseInt(b.alternativeBom || '1', 10) === parseInt(cleanAlt, 10) ||
+          String(b.alternativeBom || '1') === String(cleanAlt)
       );
-    }
-    if (!found) {
-      found = activeMockBoms.find(
+      if (!found) return null;
+    } else {
+      const lowestAlt = availableAlts[0];
+      const lowestPad = String(lowestAlt).padStart(2, '0');
+      found = matchingUsage.find(
         (b) =>
-          (String(b.material).toUpperCase() === cleanMat || toSapMatnr(b.material) === sapMat || formatMaterialNumber(b.material) === trimmed) &&
-          String(b.plant) === cleanPlt &&
-          String(b.bomUsage || '1') === cleanUsg
+          String(b.alternativeBom || '1').padStart(2, '0') === lowestPad ||
+          parseInt(b.alternativeBom || '1', 10) === parseInt(lowestAlt, 10) ||
+          String(b.alternativeBom || '1') === String(lowestAlt)
       );
+      if (!found) return null;
     }
-    if (!found) return null;
+
+    const resolvedAlt = found.alternativeBom
+      ? String(found.alternativeBom).padStart(2, '0')
+      : (availableAlts[0] ? String(availableAlts[0]).padStart(2, '0') : '01');
+
     return {
       bomNumber: found.bomNumber || '00785396',
-      alternative: cleanAlt ? String(cleanAlt).padStart(2, '0') : (found.alternativeBom ? String(found.alternativeBom).padStart(2, '0') : '01'),
+      alternative: resolvedAlt,
+      availableAlternatives: availableAlts,
+      allAlternatives: availableAlts,
       baseQty: found.baseQty || '100',
       baseUnit: found.baseUnit || 'PAA',
       validFrom: found.validFrom || '',
@@ -2131,20 +2140,33 @@ export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, clean
 
   if (mastRows.length === 0) return null;
 
-  const availableAlts = [...new Set(mastRows.filter((r) => r.stlan === cleanUsg).map((r) => r.stlal))];
+  const matchingUsageRows = mastRows.filter((r) => r.stlan === cleanUsg);
+  if (matchingUsageRows.length === 0) return null;
+
+  const availableAlts = [...new Set(matchingUsageRows.map((r) => r.stlal))];
+  availableAlts.sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
   let matched = null;
   if (cleanAlt) {
     const targetAltPad = String(cleanAlt).padStart(2, '0');
-    matched = mastRows.find((r) => r.stlan === cleanUsg && (r.stlal === targetAltPad || parseInt(r.stlal, 10) === parseInt(cleanAlt, 10)));
+    matched = matchingUsageRows.find(
+      (r) =>
+        r.stlal === targetAltPad ||
+        parseInt(r.stlal, 10) === parseInt(cleanAlt, 10) ||
+        r.stlal === String(cleanAlt)
+    );
+    if (!matched) return null;
   } else {
-    const alt01 = mastRows.find((r) => r.stlan === cleanUsg && (r.stlal === '01' || parseInt(r.stlal, 10) === 1));
-    if (alt01) {
-      matched = alt01;
-    } else if (availableAlts.length === 1) {
-      matched = mastRows.find((r) => r.stlan === cleanUsg);
-    } else {
-      return null;
-    }
+    // When alternative is empty, pick FIRST one (lowest STLAL, compared numerically)
+    const lowestAlt = availableAlts[0];
+    const targetAltPad = String(lowestAlt).padStart(2, '0');
+    matched = matchingUsageRows.find(
+      (r) =>
+        r.stlal === targetAltPad ||
+        parseInt(r.stlal, 10) === parseInt(lowestAlt, 10) ||
+        r.stlal === String(lowestAlt)
+    );
+    if (!matched) return null;
   }
 
   const stlnr = matched.stlnr;
@@ -2247,6 +2269,8 @@ export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, clean
   return {
     bomNumber: stlnr,
     alternative: stlal,
+    availableAlternatives: availableAlts,
+    allAlternatives: availableAlts,
     baseQty,
     baseUnit: baseUnit || 'PAA',
     validFrom,
@@ -2274,7 +2298,7 @@ export async function rfcGetBomDisplayData(params = {}) {
     material,
     plant,
     bomUsage = '1',
-    alternativeBom = '1',
+    alternativeBom = '',
     multiLevel = false,
     maxDepth = 10
   } = params;
@@ -2289,7 +2313,7 @@ export async function rfcGetBomDisplayData(params = {}) {
       rawMaterial: '',
       plant: String(plant || '').trim(),
       bomUsage: String(bomUsage || '1').trim(),
-      alternativeBom: String(alternativeBom || '1').trim(),
+      alternativeBom: String(alternativeBom || '').trim(),
       componentCount: 0,
       components: []
     };
@@ -2304,7 +2328,7 @@ export async function rfcGetBomDisplayData(params = {}) {
       rawMaterial: String(material).trim().toUpperCase(),
       plant: '',
       bomUsage: String(bomUsage || '1').trim(),
-      alternativeBom: String(alternativeBom || '1').trim(),
+      alternativeBom: String(alternativeBom || '').trim(),
       componentCount: 0,
       components: []
     };
@@ -2313,7 +2337,7 @@ export async function rfcGetBomDisplayData(params = {}) {
   const cleanMat = String(material).trim().toUpperCase();
   const cleanPlt = String(plant).trim().toUpperCase();
   const cleanUsg = String(bomUsage || '1').trim();
-  const cleanAlt = String(alternativeBom || '1').trim();
+  const cleanAlt = alternativeBom !== undefined && alternativeBom !== null ? String(alternativeBom).trim() : '';
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
   const client = params.client || (isMock ? null : await openRfcClient(params.server || {}));
@@ -2332,16 +2356,43 @@ export async function rfcGetBomDisplayData(params = {}) {
     // 1. Fetch root BOM
     const rootBom = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt);
     if (!rootBom) {
+      if (cleanAlt) {
+        // User typed an alternative. Check if any alternatives exist for this BOM.
+        const checkAnyAlt = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, '');
+        if (checkAnyAlt && checkAnyAlt.availableAlternatives && checkAnyAlt.availableAlternatives.length > 0) {
+          // Requirement 2: BOM exists, but specified alternative does not exist
+          return {
+            success: false,
+            bomExists: true,
+            alternativeExists: false,
+            errorCode: 'ALTERNATIVE_NOT_FOUND',
+            message: `Alternative ${cleanAlt} does not exist for this BOM. Available alternatives: ${checkAnyAlt.availableAlternatives.join(', ')}.`,
+            material: formatMaterialNumber(cleanMat),
+            rawMaterial: cleanMat,
+            plant: cleanPlt,
+            bomUsage: cleanUsg,
+            alternativeBom: cleanAlt,
+            allAlternatives: checkAnyAlt.availableAlternatives,
+            availableAlternatives: checkAnyAlt.availableAlternatives,
+            componentCount: 0,
+            components: []
+          };
+        }
+      }
+
+      // Requirement 3: Only when NO BOM exists at all for the material/plant/usage
       return {
         success: false,
         bomExists: false,
         errorCode: 'BOM_NOT_FOUND',
-        message: `No BOM exists for Material ${cleanMat} in Plant ${cleanPlt} (Usage ${cleanUsg}).`,
+        message: `No BOM exists for material ${cleanMat} in plant ${cleanPlt}.`,
         material: formatMaterialNumber(cleanMat),
         rawMaterial: cleanMat,
         plant: cleanPlt,
         bomUsage: cleanUsg,
         alternativeBom: cleanAlt,
+        allAlternatives: [],
+        availableAlternatives: [],
         componentCount: 0,
         components: []
       };
@@ -2383,7 +2434,7 @@ export async function rfcGetBomDisplayData(params = {}) {
 
         const currentBom = (parentMat === cleanMat)
           ? rootBom
-          : await fetchDirectBom(client, parentMat, cleanPlt, cleanUsg, '1');
+          : await fetchDirectBom(client, parentMat, cleanPlt, cleanUsg, '');
 
         if (!currentBom || !currentBom.components) return;
 
@@ -2464,9 +2515,13 @@ export async function rfcGetBomDisplayData(params = {}) {
       plant: cleanPlt,
       bomUsage: cleanUsg,
       alternativeBom: rootBom.alternative || cleanAlt,
+      availableAlternatives: rootBom.availableAlternatives || [rootBom.alternative || cleanAlt],
+      allAlternatives: rootBom.availableAlternatives || [rootBom.alternative || cleanAlt],
       header: {
         bomNumber: rootBom.bomNumber || '-',
         alternative: rootBom.alternative || cleanAlt,
+        availableAlternatives: rootBom.availableAlternatives || [rootBom.alternative || cleanAlt],
+        allAlternatives: rootBom.availableAlternatives || [rootBom.alternative || cleanAlt],
         plant: cleanPlt,
         usage: cleanUsg,
         baseQty: rootBom.baseQty || '100',

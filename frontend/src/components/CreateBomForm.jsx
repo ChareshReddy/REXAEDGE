@@ -180,8 +180,8 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
               <Copy size={18} />
             </div>
             <div>
-              <h4>Copy Material BOM (CS01)</h4>
-              <p>CS01 Reference BOM Copy with automatic Alternative BOM generation (Rule 1) and recursive multi-level sub-assembly replication (Rule 2).</p>
+              <h4>Copy Single BOM</h4>
+              <p>Copy a BOM to another plant, with automatic alternative numbers and sub-assemblies.</p>
             </div>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                 {isValidating ? (
                   <>
                     <Loader2 size={14} className="sap-spin" />
-                    <span>Validating BOM in SAP (RFC)...</span>
+                    <span>Validating BOM in SAP...</span>
                   </>
                 ) : isValidated ? (
                   <>
@@ -322,7 +322,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
             {isValidating && (
               <div className="sap-source-val-card sap-val-loading">
                 <Loader2 size={15} className="sap-spin" style={{ color: 'var(--sap-primary)' }} />
-                <span>Checking SAP CS03 transaction for reference BOM...</span>
+                <span>Validating SAP master records for reference BOM...</span>
               </div>
             )}
 

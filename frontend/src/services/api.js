@@ -536,19 +536,11 @@ export async function deleteAdminServer(id) {
   return response.data;
 }
 
-export async function testServerConnection(connectionData) {
-  const response = await apiClient.post('/admin/servers/test-connection', connectionData);
-  return response.data;
-}
-
-export async function testServerById(serverId) {
-  const response = await apiClient.post(`/admin/servers/${serverId}/test-connection`);
-  return response.data;
-}
-
 export async function getAdminPermissions() {
   const response = await apiClient.get('/admin/permissions');
-  return response.data?.permissions || [];
+  const perms = response.data?.permissions || [];
+  perms.migrationPending = Boolean(response.data?.migrationPending);
+  return perms;
 }
 
 export async function grantAdminPermission(permissionData) {

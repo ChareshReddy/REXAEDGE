@@ -5834,13 +5834,16 @@ export async function validateSourceBom(params) {
       };
     }
 
+    const sortedAlts = [...(match.availableAlternatives || ['01'])].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
     if (cleanAlt) {
-      if (!match.availableAlternatives.includes(cleanAlt)) {
+      const matchFound = sortedAlts.some(a => a === cleanAlt || a.padStart(2, '0') === cleanAlt.padStart(2, '0') || parseInt(a, 10) === parseInt(cleanAlt, 10));
+      if (!matchFound) {
         return {
           success: false,
           errorCode: 'ALTERNATIVE_NOT_FOUND',
-          availableAlternatives: [...match.availableAlternatives],
-          message: `Alternative BOM ${cleanAlt} does not exist for material ${cleanMat} in plant ${cleanPlant} with BOM usage ${cleanUsage}.`
+          availableAlternatives: sortedAlts,
+          message: `Alternative BOM ${cleanAlt} does not exist for this BOM. Available alternatives: ${sortedAlts.join(', ')}.`
         };
       }
       return {
@@ -5849,7 +5852,8 @@ export async function validateSourceBom(params) {
         plantValid: true,
         bomExists: true,
         alternativeValid: true,
-        availableAlternatives: [...match.availableAlternatives],
+        alternativeBom: cleanAlt,
+        availableAlternatives: sortedAlts,
         componentCount: match.componentCount || 1,
         message: 'Source BOM validated successfully.'
       };
@@ -5861,7 +5865,8 @@ export async function validateSourceBom(params) {
       plantValid: true,
       bomExists: true,
       alternativeValid: true,
-      availableAlternatives: [...match.availableAlternatives],
+      alternativeBom: sortedAlts[0] || '01',
+      availableAlternatives: sortedAlts,
       componentCount: match.componentCount || 1,
       message: 'Source BOM validated successfully.'
     };

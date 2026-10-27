@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
+import { lockScroll } from '../utils/scrollLock';
 
 /**
  * Shared accessible Modal dialog component.
@@ -46,9 +47,8 @@ export default function Modal({
     // Capture the trigger element before opening
     previouslyFocusedElementRef.current = document.activeElement;
 
-    // Prevent scrolling on the page behind the modal
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    // Prevent scrolling on the page behind the modal with no layout shift
+    const unlock = lockScroll();
 
     // Move initial focus into modal
     const focusTimer = setTimeout(() => {
@@ -70,7 +70,7 @@ export default function Modal({
 
     return () => {
       clearTimeout(focusTimer);
-      document.body.style.overflow = originalOverflow;
+      unlock();
       if (
         previouslyFocusedElementRef.current &&
         typeof previouslyFocusedElementRef.current.focus === 'function'

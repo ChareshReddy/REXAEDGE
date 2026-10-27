@@ -121,14 +121,14 @@ export default function ConfirmationCard({
   const getCardHeader = () => {
     if (type === 'copy_bom') {
       return {
-        title: `Copy BOM Confirmation Required (CS01 Automation)`,
+        title: `Copy BOM Confirmation Required`,
         icon: <Copy size={16} color="var(--sap-primary)" />,
         accentClass: 'sap-confirm-card-info'
       };
     }
     if (type === 'delete_bom') {
       return {
-        title: `Delete BOM Confirmation Required (ZBOM_COPY)`,
+        title: `Delete BOM Confirmation Required`,
         icon: <Trash2 size={16} color="var(--sap-error)" />,
         accentClass: 'sap-confirm-card-danger'
       };
@@ -531,7 +531,7 @@ export default function ConfirmationCard({
             </div>
 
             <div style={{ marginTop: 10, fontSize: '12px', color: 'var(--sap-text-muted)' }}>
-              ℹ️ Executed directly via SAP RFC/BAPI connection. BOM operations are verified and committed directly in SAP S/4HANA.
+              ℹ️ Executed directly in SAP. BOM operations are verified and committed in your SAP system.
             </div>
 
             {/* Extra safety guard checkbox for deletes */}

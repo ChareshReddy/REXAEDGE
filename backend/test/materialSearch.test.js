@@ -235,6 +235,26 @@ console.log('8. Testing detail isolation and strict plant filter enforcement...'
   console.log('   ✓ Detail isolation and strict plant filtering verified without cross-contamination');
 }
 
+// 9. Single-Flight Coalescing (Identical in-flight queries share 1 execution)
+console.log('9. Testing identical in-flight queries sharing (single-flight deduplication)...');
+{
+  const server = { id: 'SRV_SINGLE_FLIGHT', ashost: 'mock' };
+  const query = 'COALESCE_TEST';
+
+  // Fire 3 identical in-flight searches simultaneously
+  const p1 = searchMaterials({ query, server });
+  const p2 = searchMaterials({ query, server });
+  const p3 = searchMaterials({ query, server });
+
+  const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+
+  assert(Array.isArray(r1), 'Results 1 is array');
+  assert.strictEqual(r1, r2, 'Call 1 and Call 2 shared identical in-flight result reference');
+  assert.strictEqual(r2, r3, 'Call 2 and Call 3 shared identical in-flight result reference');
+
+  console.log('   ✓ Identical in-flight queries successfully coalesce into 1 shared call');
+}
+
 console.log('\n============================================================');
 console.log('  ALL MATERIAL SEARCH & STATUS TESTS PASSED (100%)          ');
 console.log('============================================================\n');

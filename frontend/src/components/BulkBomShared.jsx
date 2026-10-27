@@ -9,39 +9,127 @@ import {
 import { getBomJob, cancelBomJob } from '../services/api';
 
 /**
- * 1. Shared 3-Step Workflow Indicator
- * Upload File -> SAP Pre-flight Validation -> Sequential Execution
+ * Standard column specifications for Bulk Upload helper chips
  */
-export function BulkWorkflowSteps({ activeStep = 1, style = {}, maxWidth = 1100 }) {
+export const COPY_BULK_COLUMNS = [
+  { label: 'Source Material', required: true },
+  { label: 'Source Plant', required: true },
+  { label: 'Target Plant', required: true },
+  { label: 'Target Alternative', required: true },
+  { label: 'Source BOM Usage', default: '1' },
+  { label: 'Source Alternative', default: '1' },
+  { label: 'Target Material', default: 'Source' },
+  { label: 'Target BOM Usage', default: '1' }
+];
+
+export const CREATE_BULK_COLUMNS = [
+  { label: 'Material', required: true },
+  { label: 'Plant', required: true },
+  { label: 'Component', required: true },
+  { label: 'Quantity', required: true },
+  { label: 'BOM Usage', default: '1' },
+  { label: 'Alternative BOM', default: '01' },
+  { label: 'Item Category', default: 'L' },
+  { label: 'Valid From', default: 'Today' },
+  { label: 'Base Qty', default: '1' },
+  { label: 'BOM Status', default: '01' }
+];
+
+/**
+ * Lightweight columns helper chips displayed below the dropzone
+ */
+export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns:', style = {} }) {
+  if (!columns || columns.length === 0) return null;
+  return (
+    <div className="sap-bulk-columns-guide" style={{ marginTop: 14, ...style }}>
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--sap-text-muted, #64748b)',
+          marginBottom: 8,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--sap-text-subtle, #94a3b8)' }}>
+          (* required)
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {columns.map((col, idx) => (
+          <span
+            key={idx}
+            className={`sap-col-chip ${col.required ? 'required' : 'optional'}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11.5,
+              padding: '3px 9px',
+              borderRadius: 'var(--radius-full, 9999px)',
+              background: col.required ? 'var(--sap-badge-bg, rgba(0, 112, 242, 0.08))' : 'var(--sap-surface-subtle, #f1f5f9)',
+              color: col.required ? 'var(--sap-primary, #0070f2)' : 'var(--sap-text-muted, #475569)',
+              border: col.required ? '1px solid rgba(0, 112, 242, 0.25)' : '1px solid var(--sap-border-subtle, #e2e8f0)',
+              fontWeight: col.required ? 600 : 500
+            }}
+          >
+            {col.required && <span style={{ color: 'var(--sap-error, #dc2626)', fontWeight: 700 }}>*</span>}
+            <span>{col.label}</span>
+            {col.default && (
+              <span style={{ fontSize: 10.5, color: 'var(--sap-text-subtle, #64748b)', opacity: 0.85 }}>
+                (def: {col.default})
+              </span>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 1. Shared 3-Step Workflow Indicator
+ * Step 1: Upload file
+ * Step 2: Validate data
+ * Step 3: Create BOMs (for create) / Copy BOMs (for copy)
+ */
+export function BulkWorkflowSteps({ activeStep = 1, style = {}, maxWidth, mode = 'create', type }) {
+  const resolvedMaxWidth = maxWidth !== undefined ? maxWidth : (activeStep === 1 ? 750 : 1100);
+  const isCopy = (mode === 'copy' || type === 'copy');
+  const step3Label = isCopy ? 'Copy BOMs' : 'Create BOMs';
   return (
     <div
       className="sap-bulk-steps-bar"
       style={{
-        maxWidth,
+        maxWidth: resolvedMaxWidth,
         width: '100%',
-        margin: '0 auto 14px',
+        margin: '0 auto 16px',
         borderRadius: 8,
         border: '1px solid var(--sap-border, #e2e8f0)',
+        transition: 'max-width 0.2s ease',
         ...style
       }}
     >
       <div className={`sap-bulk-step ${activeStep >= 1 ? 'active' : ''}`}>
         <span className="step-num">1</span>
-        <span>Upload File</span>
+        <span>Upload file</span>
       </div>
       <div className="step-arrow">
         <ArrowRight size={12} />
       </div>
       <div className={`sap-bulk-step ${activeStep >= 2 ? 'active' : ''}`}>
         <span className="step-num">2</span>
-        <span>SAP Pre-flight Validation</span>
+        <span>Validate data</span>
       </div>
       <div className="step-arrow">
         <ArrowRight size={12} />
       </div>
       <div className={`sap-bulk-step ${activeStep >= 3 ? 'active' : ''}`}>
         <span className="step-num">3</span>
-        <span>Sequential Execution</span>
+        <span>{step3Label}</span>
       </div>
     </div>
   );
@@ -154,7 +242,7 @@ export function BulkJobProgressCard({
   jobCurrentBom = null,
   isCancelling = false,
   onCancelJob,
-  validationLabel = 'Validating in SAP',
+  validationLabel = 'Validating data in SAP',
   executionLabel = 'Creating BOMs in SAP',
   style = {}
 }) {

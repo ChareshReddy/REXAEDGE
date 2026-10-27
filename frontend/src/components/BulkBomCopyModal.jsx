@@ -282,7 +282,7 @@ export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete 
       ? '\n\n⚠️ Note: Some rows have WARNINGS (target alternative may already exist and conflict).'
       : '';
 
-    const confirmMsg = `Are you sure you want to copy ${executableRows.length} Bill of Materials in SAP?${warningNotice}\n\nOperation will be executed sequentially via high-speed SAP RFC.`;
+    const confirmMsg = `Are you sure you want to copy ${executableRows.length} Bill of Materials in SAP?${warningNotice}\n\nOperation will be executed sequentially in SAP.`;
     if (!window.confirm(confirmMsg)) {
       return;
     }
@@ -397,7 +397,7 @@ export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete 
             </div>
             <div>
               <h3>Bulk BOM Copy via Excel</h3>
-              <p>Upload a spreadsheet to validate and copy multiple Bills of Materials simultaneously via SAP RFC.</p>
+              <p>Upload a spreadsheet to validate and copy multiple Bills of Materials simultaneously.</p>
             </div>
           </div>
           <button
@@ -713,7 +713,7 @@ export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete 
                 {isExecuting ? (
                   <>
                     <span className="sap-spinner" />
-                    <span>Executing Sequential RFC Copy...</span>
+                    <span>Executing Sequential Copy...</span>
                   </>
                 ) : (
                   <>

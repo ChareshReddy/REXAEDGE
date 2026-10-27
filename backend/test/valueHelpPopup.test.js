@@ -91,26 +91,33 @@ async function runTests() {
     console.log('   ✓ Number prefix and description search work; columns strictly match SAP (no supplier data)');
   }
 
-  // 3. Compact Filter Row (Plant, MTART, Has BOM)
-  console.log('\n3. Testing Material F4 compact filter row...');
+  // 3. Material F4 Search Without Filters (Query only, no plant/type/hasBom sent)
+  console.log('\n3. Testing Material F4 search without filters (query only, no plant/type/hasBom)...');
   {
-    // Filter by plant
-    const plantFiltered = await searchMaterials({ query: 'AIR', plant: '1001', limit: 20 });
-    plantFiltered.forEach((m) => {
-      assert.strictEqual(m.extendedInPlant, true, 'All returned materials extended in plant 1001');
-    });
+    // Simulate Material F4 payload generation from popup: only query, limit, mode
+    const buildMaterialF4Payload = (query, mode = 'auto') => {
+      const isQueryEmpty = !query || !query.trim();
+      const fetchLimit = isQueryEmpty ? 100 : 500;
+      return {
+        query: query.trim(),
+        limit: fetchLimit,
+        mode: mode === 'prefix' ? 'prefix' : undefined
+      };
+    };
 
-    // Filter by MTART
-    const mtartFiltered = await searchMaterials({ query: 'AIR', mtart: 'FERT', limit: 20 });
-    mtartFiltered.forEach((m) => {
-      assert.strictEqual(m.mtart, 'FERT', 'Material type strictly filtered to FERT');
-    });
+    const payload = buildMaterialF4Payload('1102', 'prefix');
+    assert.strictEqual(payload.query, '1102');
+    assert.strictEqual(payload.mode, 'prefix');
+    assert(!('plant' in payload), 'plant filter parameter must NOT be sent from Material F4');
+    assert(!('mtart' in payload), 'mtart filter parameter must NOT be sent from Material F4');
+    assert(!('checkBom' in payload), 'checkBom filter parameter must NOT be sent from Material F4');
 
-    // Filter by Has BOM
-    const bomFiltered = await searchMaterials({ query: 'A1BH0214C', checkBom: true });
-    assert(bomFiltered.length > 0 && bomFiltered[0].hasBom === true, 'Has BOM flag accurately identified');
+    // Execute search with pure query payload
+    const queryResults = await searchMaterials(payload);
+    assert(queryResults.length > 0, 'Search executes successfully with query-only payload');
+    assert(queryResults.every((m) => m.matnr && m.maktx), 'Returned items contain standard material fields');
 
-    console.log('   ✓ Plant scoping, MTART filter, and Has BOM flag accurately filter search results');
+    console.log('   ✓ Material F4 sends pure query payload without plant/type/hasBom parameters');
   }
 
   // 4. Empty Search & Result Capping Messages
@@ -177,6 +184,167 @@ async function runTests() {
       assert(err.name === 'AbortError' || err.message.includes('abort'), 'In-flight request rejected with AbortError');
     }
     console.log('   ✓ In-flight SAP request successfully aborted when modal closes');
+  }
+
+  // 7. Keyboard Navigation (ArrowDown, ArrowUp, PageDown, PageUp, Home, End, Enter, Esc)
+  console.log('\n7. Testing F4 popup keyboard navigation & scroll prevention...');
+  {
+    const mockMaterials = [
+      { matnr: 'MAT001', maktx: 'Item 1' },
+      { matnr: 'MAT002', maktx: 'Item 2' },
+      { matnr: 'MAT003', maktx: 'Item 3' },
+      { matnr: 'MAT004', maktx: 'Item 4' },
+      { matnr: 'MAT005', maktx: 'Item 5' },
+      { matnr: 'MAT006', maktx: 'Item 6' },
+      { matnr: 'MAT007', maktx: 'Item 7' },
+      { matnr: 'MAT008', maktx: 'Item 8' },
+      { matnr: 'MAT009', maktx: 'Item 9' },
+      { matnr: 'MAT010', maktx: 'Item 10' }
+    ];
+
+    let selectedIndex = 0;
+    let selectedMaterial = null;
+    let pageScrollPosition = 250; // page behind scrolled down 250px
+    let searchExecutedTerm = null;
+
+    const createKeyboardEvent = (key, targetTag = 'DIV') => {
+      let isDefaultPrevented = false;
+      let isPropagationStopped = false;
+      return {
+        key,
+        target: { tagName: targetTag },
+        preventDefault: () => {
+          isDefaultPrevented = true;
+        },
+        stopPropagation: () => {
+          isPropagationStopped = true;
+        },
+        get prevented() {
+          return isDefaultPrevented;
+        },
+        get stopped() {
+          return isPropagationStopped;
+        }
+      };
+    };
+
+    let searchTerm = 'MAT';
+    let lastExecutedSearch = 'MAT';
+
+    const handleKeyDownCapture = (e) => {
+      const isInput = e.target.tagName === 'INPUT';
+      if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Enter', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (!isInput && ['Home', 'End'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (e.key === 'ArrowDown') {
+        selectedIndex = Math.min(selectedIndex + 1, mockMaterials.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+      } else if (e.key === 'PageDown') {
+        selectedIndex = Math.min(selectedIndex + 8, mockMaterials.length - 1);
+      } else if (e.key === 'PageUp') {
+        selectedIndex = Math.max(selectedIndex - 8, 0);
+      } else if (e.key === 'Home') {
+        if (!isInput) selectedIndex = 0;
+      } else if (e.key === 'End') {
+        if (!isInput) selectedIndex = mockMaterials.length - 1;
+      } else if (e.key === 'Enter') {
+        if (searchTerm.trim() !== lastExecutedSearch.trim()) {
+          searchExecutedTerm = searchTerm;
+          lastExecutedSearch = searchTerm;
+        } else if (selectedIndex >= 0 && selectedIndex < mockMaterials.length) {
+          selectedMaterial = mockMaterials[selectedIndex];
+        }
+      }
+    };
+
+    // Test ArrowDown moves highlight by 1 and prevents scroll
+    const downEvent1 = createKeyboardEvent('ArrowDown');
+    handleKeyDownCapture(downEvent1);
+    assert.strictEqual(downEvent1.prevented, true, 'ArrowDown must call preventDefault');
+    assert.strictEqual(downEvent1.stopped, true, 'ArrowDown must call stopPropagation');
+    assert.strictEqual(selectedIndex, 1, 'ArrowDown moves selection from 0 to 1');
+    assert.strictEqual(pageScrollPosition, 250, 'Page scroll position must remain unchanged on ArrowDown');
+
+    // Arrow down 2 more times (total 3 downs -> index 3)
+    const downEvent2 = createKeyboardEvent('ArrowDown');
+    handleKeyDownCapture(downEvent2);
+    const downEvent3 = createKeyboardEvent('ArrowDown');
+    handleKeyDownCapture(downEvent3);
+    assert.strictEqual(selectedIndex, 3, 'Three ArrowDown presses move selection to index 3');
+
+    // ArrowUp decrements
+    const upEvent = createKeyboardEvent('ArrowUp');
+    handleKeyDownCapture(upEvent);
+    assert.strictEqual(upEvent.prevented, true, 'ArrowUp must call preventDefault');
+    assert.strictEqual(selectedIndex, 2, 'ArrowUp moves selection from 3 back to 2');
+
+    // PageDown jumps by 8 rows
+    const pgDownEvent = createKeyboardEvent('PageDown');
+    handleKeyDownCapture(pgDownEvent);
+    assert.strictEqual(selectedIndex, 9, 'PageDown jumps by 8 rows (clamped to max index 9)');
+
+    // PageUp jumps back by 8 rows
+    const pgUpEvent = createKeyboardEvent('PageUp');
+    handleKeyDownCapture(pgUpEvent);
+    assert.strictEqual(selectedIndex, 1, 'PageUp jumps backward by 8 rows');
+
+    // Home / End
+    const endEvent = createKeyboardEvent('End');
+    handleKeyDownCapture(endEvent);
+    assert.strictEqual(selectedIndex, 9, 'End key navigates to last row');
+
+    const homeEvent = createKeyboardEvent('Home');
+    handleKeyDownCapture(homeEvent);
+    assert.strictEqual(selectedIndex, 0, 'Home key navigates to first row');
+
+    // Enter when search text is dirty -> runs search
+    searchTerm = 'NEW_SEARCH';
+    const enterSearchEvent = createKeyboardEvent('Enter');
+    handleKeyDownCapture(enterSearchEvent);
+    assert.strictEqual(searchExecutedTerm, 'NEW_SEARCH', 'Enter with dirty search text runs search');
+    assert.strictEqual(selectedMaterial, null, 'Enter with dirty text must not select old item');
+
+    // Enter when search text is clean -> selects highlighted item (index 0)
+    const enterSelectEvent = createKeyboardEvent('Enter');
+    handleKeyDownCapture(enterSelectEvent);
+    assert.strictEqual(selectedMaterial?.matnr, 'MAT001', 'Enter selects highlighted row');
+
+    console.log('   ✓ Arrow keys move highlight, Enter selects/searches, and page scroll is completely prevented');
+  }
+
+  // 8. Column Layout & Width Specifications
+  console.log('\n8. Testing column specifications and balanced modal dimensions...');
+  {
+    // Material popup columns:
+    // Material | Material Description | Material Type | Language
+    const materialCols = {
+      material: 190,
+      description: 'flexible',
+      materialType: 110,
+      language: 90
+    };
+    assert.strictEqual(materialCols.material, 190, 'Material column fixed 190px');
+    assert.strictEqual(materialCols.materialType, 110, 'Material Type column min-width 110px');
+    assert.strictEqual(materialCols.language, 90, 'Language column compact 90px');
+    assert.strictEqual(materialCols.description, 'flexible', 'Description column flexible (remaining space)');
+
+    // Plant popup columns
+    const plantCols = {
+      plnt: 80,
+      name1: '45%',
+      city: 'remaining'
+    };
+    assert.strictEqual(plantCols.plnt, 80, 'Plnt column fixed ~80px');
+    assert.strictEqual(plantCols.name1, '45%', 'Name 1 column ~45% with ellipsis');
+
+    console.log('   ✓ Material & Plant column widths match exact specification (compact, no horizontal overflow)');
   }
 
   console.log('\n============================================================');

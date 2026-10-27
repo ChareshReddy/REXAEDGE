@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Key, Check, AlertCircle, Loader2 } from 'lucide-react';
 import Modal from './Modal';
+import PasswordInput from './PasswordInput';
 import { checkPasswordRules } from '../utils/passwordPolicy';
 import { adminSetUserPassword, changeUserPassword } from '../services/api';
 
@@ -29,10 +30,6 @@ export default function PasswordModal({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -42,9 +39,6 @@ export default function PasswordModal({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setShowCurrentPassword(false);
-      setShowNewPassword(false);
-      setShowConfirmPassword(false);
       setErrorMessage('');
       setIsLoading(false);
     } else {
@@ -148,60 +142,18 @@ export default function PasswordModal({
               >
                 Current Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
               </label>
-              <div className="sap-input-group" style={{ position: 'relative' }}>
-                <span
-                  style={{
-                    position: 'absolute',
-                    left: 14,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--sap-text-muted, #64748b)',
-                    pointerEvents: 'none',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <Key size={17} />
-                </span>
-                <input
-                  id="sap-current-pwd"
-                  type={showCurrentPassword ? 'text' : 'password'}
-                  className="sap-input sap-password-input"
-                  style={{ paddingLeft: 42, paddingRight: 44, height: 40, fontSize: 13, boxSizing: 'border-box' }}
-                  placeholder="Enter current password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                  required
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  className="sap-input-addon-btn"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  disabled={isLoading}
-                  aria-label={showCurrentPassword ? 'Hide password' : 'Show password'}
-                  tabIndex={-1}
-                  style={{
-                    position: 'absolute',
-                    right: 6,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    height: 32,
-                    width: 32,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--sap-text-muted, #64748b)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {showCurrentPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                </button>
-              </div>
+              <PasswordInput
+                id="sap-current-pwd"
+                placeholder="Enter current password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                disabled={isLoading}
+                autoComplete="current-password"
+                required
+                autoFocus
+                leftIcon={<Key size={17} />}
+                inputStyle={{ height: 40, fontSize: 13 }}
+              />
             </div>
           )}
 
@@ -214,60 +166,18 @@ export default function PasswordModal({
             >
               New Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
             </label>
-            <div className="sap-input-group" style={{ position: 'relative' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  left: 14,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--sap-text-muted, #64748b)',
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <Key size={17} />
-              </span>
-              <input
-                id="sap-new-pwd"
-                type={showNewPassword ? 'text' : 'password'}
-                className="sap-input sap-password-input"
-                style={{ paddingLeft: 42, paddingRight: 44, height: 40, fontSize: 13, boxSizing: 'border-box' }}
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                disabled={isLoading}
-                autoComplete="new-password"
-                required
-                autoFocus={mode === 'admin'}
-              />
-              <button
-                type="button"
-                className="sap-input-addon-btn"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                disabled={isLoading}
-                aria-label={showNewPassword ? 'Hide password' : 'Show password'}
-                tabIndex={-1}
-                style={{
-                  position: 'absolute',
-                  right: 6,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  height: 32,
-                  width: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--sap-text-muted, #64748b)',
-                  cursor: 'pointer'
-                }}
-              >
-                {showNewPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            </div>
+            <PasswordInput
+              id="sap-new-pwd"
+              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              disabled={isLoading}
+              autoComplete="new-password"
+              required
+              autoFocus={mode === 'admin'}
+              leftIcon={<Key size={17} />}
+              inputStyle={{ height: 40, fontSize: 13 }}
+            />
           </div>
 
           {/* Confirm Password */}
@@ -279,59 +189,17 @@ export default function PasswordModal({
             >
               Confirm Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
             </label>
-            <div className="sap-input-group" style={{ position: 'relative' }}>
-              <span
-                style={{
-                  position: 'absolute',
-                  left: 14,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--sap-text-muted, #64748b)',
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                <Key size={17} />
-              </span>
-              <input
-                id="sap-confirm-pwd"
-                type={showConfirmPassword ? 'text' : 'password'}
-                className="sap-input sap-password-input"
-                style={{ paddingLeft: 42, paddingRight: 44, height: 40, fontSize: 13, boxSizing: 'border-box' }}
-                placeholder="Re-enter new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={isLoading}
-                autoComplete="new-password"
-                required
-              />
-              <button
-                type="button"
-                className="sap-input-addon-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                disabled={isLoading}
-                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                tabIndex={-1}
-                style={{
-                  position: 'absolute',
-                  right: 6,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  height: 32,
-                  width: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--sap-text-muted, #64748b)',
-                  cursor: 'pointer'
-                }}
-              >
-                {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            </div>
+            <PasswordInput
+              id="sap-confirm-pwd"
+              placeholder="Re-enter new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
+              autoComplete="new-password"
+              required
+              leftIcon={<Key size={17} />}
+              inputStyle={{ height: 40, fontSize: 13 }}
+            />
           </div>
 
           {/* Password Requirements Checklist */}

@@ -139,6 +139,10 @@ try {
   assert(createViewHtml.includes('Download Template'), 'BulkCreateBomView header must render Download Template button');
   assert(createViewHtml.includes('.xlsx,.xls,.tsv,.txt'), 'File input accept attribute must include supported extensions');
   assert(createViewHtml.includes('Supports tab-separated text saved as .XLS'), 'Drop zone must display supported format hint');
+  assert(createViewHtml.includes('Upload file'), 'Step 1 label must be Upload file');
+  assert(createViewHtml.includes('Validate data'), 'Step 2 label must be Validate data');
+  assert(createViewHtml.includes('Create BOMs'), 'Step 3 label must be Create BOMs');
+  assert(!createViewHtml.includes('Required Excel Columns:'), 'BulkCreateBomView must not include Required Excel Columns helper chips');
   console.log('✓ PASS: BulkCreateBomView successfully renders shared BulkUploadPanel with Download Template button in header\n');
 
   // Test 4: Render BulkBomView (Bulk Copy) using BulkUploadPanel (empty / upload state)
@@ -157,10 +161,11 @@ try {
   assert(copyViewHtml.includes('Download Template'), 'BulkBomView header must render Download Template button');
   assert(copyViewHtml.includes('sap-btn sap-btn-secondary'), 'Template button in header must have secondary button styling');
   assert(copyViewHtml.includes('.xlsx, .xls, .csv'), 'File input accept attribute must match Bulk Copy formats');
-  assert(copyViewHtml.includes('Required Excel Columns:'), 'BulkBomView children must include Required Excel Columns guide card');
-  assert(copyViewHtml.includes('Source Material'), 'Columns guide must render required Source Material pill');
-  assert(copyViewHtml.includes('Target Alternative'), 'Columns guide must render required Target Alternative pill');
-  console.log('✓ PASS: BulkBomView upload state renders identical shared BulkUploadPanel layout with header template button and column guide\n');
+  assert(copyViewHtml.includes('Upload file'), 'Step 1 label must be Upload file');
+  assert(copyViewHtml.includes('Validate data'), 'Step 2 label must be Validate data');
+  assert(copyViewHtml.includes('Copy BOMs'), 'Step 3 label must be Copy BOMs');
+  assert(!copyViewHtml.includes('Required Excel Columns:'), 'BulkBomView must not include Required Excel Columns helper chips');
+  console.log('✓ PASS: BulkBomView upload state renders identical shared BulkUploadPanel layout without column helper chips\n');
 
   // Test 5: Template button event firing verification
   console.log('Test 5: Verify template button onClick handler execution...');
