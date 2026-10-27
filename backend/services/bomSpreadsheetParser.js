@@ -65,6 +65,8 @@ const HEADER_SYNONYMS = {
   idnrk: 'component',
 
   quantity: 'quantity',
+  componentqty: 'quantity',
+  componentquantity: 'quantity',
   compqty: 'quantity',
   menge: 'quantity',
 
@@ -249,6 +251,22 @@ export function parseBomSpreadsheet(bufferOrString) {
       headerMap[origHeader] = canonical;
     }
   });
+
+  const recognizedCanonicals = new Set(Object.values(headerMap));
+  const missingRequired = [];
+  if (!recognizedCanonicals.has('material')) missingRequired.push('Material');
+  if (!recognizedCanonicals.has('plant')) missingRequired.push('Plant');
+  if (!recognizedCanonicals.has('component')) missingRequired.push('Component');
+  if (!recognizedCanonicals.has('quantity')) missingRequired.push('Quantity');
+
+  if (missingRequired.length > 0) {
+    return {
+      boms: [],
+      totalRows: 0,
+      invalidCount: 0,
+      errors: [`Missing required column${missingRequired.length > 1 ? 's' : ''}: ${missingRequired.join(', ')}. Please check your spreadsheet headers.`]
+    };
+  }
 
   const parsedRows = [];
   const globalErrors = [];

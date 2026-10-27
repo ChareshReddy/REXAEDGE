@@ -64,8 +64,8 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
               <Trash2 size={18} />
             </div>
             <div>
-              <h4>Delete Material BOM (CS02)</h4>
-              <p>Safely archive or delete specific BOM alternatives in SAP without GUI popups. Strict human confirmation gates prevent accidental data loss.</p>
+              <h4>Delete BOM</h4>
+              <p>Safely delete specific BOM alternatives in SAP with confirmation.</p>
             </div>
           </div>
         </div>

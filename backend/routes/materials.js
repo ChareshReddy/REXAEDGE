@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import { requireAuth, requireServerAccess, requireModuleAccess } from '../middleware/auth.js';
+import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { searchMaterials, getMaterialDetail } from '../services/materialSearchService.js';
 import materialCheckRouter from './materialCheck.js';
@@ -23,7 +23,7 @@ export const materialSearchRateLimiter = rateLimit({
 // Enforce authentication, BOM module enablement, and server access on all materials routes
 router.use(requireAuth);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
-router.use(requireServerAccess('read_only'));
+router.use(requireAppPermission('bom.*'));
 
 // Forward POST / and POST /check to existing material maintenance check handler for 100% backward compatibility
 router.use('/', materialCheckRouter);
@@ -32,7 +32,7 @@ router.use('/', materialCheckRouter);
  * GET /api/materials/search?q=&plant=&limit=20&mtart=&checkBom=&bomUsage=
  * Searches materials by description (MAKTG uppercase) or material number.
  */
-router.get('/search', materialSearchRateLimiter, requireServerAccess('read_only'), async (req, res) => {
+router.get('/search', materialSearchRateLimiter, requireAppPermission('bom.*'), async (req, res) => {
   const abortController = new AbortController();
   req.on('close', () => {
     if (!res.writableEnded) {
@@ -85,7 +85,7 @@ router.get('/search', materialSearchRateLimiter, requireServerAccess('read_only'
  * GET /api/materials/:matnr?plant=
  * Retrieves full detail and plant extension status for a specific material number.
  */
-router.get('/:matnr', materialSearchRateLimiter, requireServerAccess('read_only'), async (req, res) => {
+router.get('/:matnr', materialSearchRateLimiter, requireAppPermission('bom.*'), async (req, res) => {
   const abortController = new AbortController();
   req.on('close', () => {
     if (!res.writableEnded) {

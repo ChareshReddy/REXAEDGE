@@ -57,8 +57,8 @@ export default function ValidateBomModal({ isOpen, onClose }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Validate Material BOM"
-      subtitle="Pre-flight verification in SAP via RFC"
+      title="Validate BOM"
+      subtitle="Check that a material and its BOM are ready in SAP before you create or copy."
       icon={ShieldCheck}
       iconColor="var(--sap-warning)"
       iconBadgeBg="var(--sap-warning-bg)"
@@ -145,7 +145,7 @@ export default function ValidateBomModal({ isOpen, onClose }) {
             {isLoading ? (
               <>
                 <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                <span>Checking in SAP...</span>
+                <span>Validating in SAP...</span>
               </>
             ) : (
               <>

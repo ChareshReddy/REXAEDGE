@@ -29,11 +29,12 @@ import {
 } from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
 import activityTracker from '../services/activityTracker';
-import BlockedReasonsList from './BlockedReasonsList';
+import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   BulkWorkflowSteps,
   BulkFileInfoBar,
-  BulkJobProgressCard
+  BulkJobProgressCard,
+  COPY_BULK_COLUMNS
 } from './BulkBomShared';
 
 /**
@@ -90,35 +91,56 @@ function normalizeRowKeys(rawRow) {
   return normalized;
 }
 
-export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom }) {
-  const [file, setFile] = useState(null);
-  const [parsedRows, setParsedRows] = useState([]);
+export default function BulkBomView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateHome,
+  onNavigateBom,
+  initialParsedRows = [],
+  initialValidationReport = null,
+  initialExecutionReport = null,
+  initialIsValidating = false,
+  initialJobProgress = null,
+  initialActiveJobId = null
+}) {
+  const [file, setFile] = useState(
+    initialParsedRows.length > 0 || initialExecutionReport || initialIsValidating
+      ? { name: 'Batch_BOM_Copy.xlsx' }
+      : null
+  );
+  const [parsedRows, setParsedRows] = useState(
+    initialExecutionReport?.results || initialParsedRows
+  );
   const [parseError, setParseError] = useState('');
 
   // Validation phase state
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationReport, setValidationReport] = useState(null);
+  const [isValidating, setIsValidating] = useState(initialIsValidating);
+  const [validationReport, setValidationReport] = useState(initialValidationReport);
 
   // Execution phase state
   const [isExecuting, setIsExecuting] = useState(false);
   const [skipErrors, setSkipErrors] = useState(true);
   const [copyHierarchy, setCopyHierarchy] = useState(true);
-  const [executionReport, setExecutionReport] = useState(null);
-  const [activeStep, setActiveStep] = useState(1); // 1: Upload, 2: Validate, 3: Execute/Results
+  const [executionReport, setExecutionReport] = useState(initialExecutionReport);
+  const [activeStep, setActiveStep] = useState(
+    initialExecutionReport ? 3 : (initialParsedRows.length > 0 || initialIsValidating) ? 2 : 1
+  ); // 1: Upload, 2: Validate, 3: Execute/Results
 
   // Background Job States
-  const [activeJobId, setActiveJobId] = useState(null);
-  const [activeJobType, setActiveJobType] = useState(null);
+  const [activeJobId, setActiveJobId] = useState(initialActiveJobId);
+  const [activeJobType, setActiveJobType] = useState(initialActiveJobId ? 'copy_validate' : null);
   const [jobCurrentBom, setJobCurrentBom] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [jobProgress, setJobProgress] = useState({
-    current: 0,
-    total: 0,
-    percent: 0,
-    successCount: 0,
-    failedCount: 0,
-    notProcessedCount: 0
-  });
+  const [jobProgress, setJobProgress] = useState(
+    initialJobProgress || {
+      current: 0,
+      total: 0,
+      percent: 0,
+      successCount: 0,
+      failedCount: 0,
+      notProcessedCount: 0
+    }
+  );
   const pollIntervalRef = useRef(null);
   const validationAbortControllerRef = useRef(null);
 
@@ -225,6 +247,8 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                       sourceAltBom: match.sourceAltBom || row.sourceAltBom,
                       status: match.status,
                       message: match.message,
+                      problems: match.problems || match.rawErrors,
+                      totalBomsSimulated: match.totalBomsSimulated || match.totalBoms,
                       componentCount: match.componentCount || 0
                     };
                   }
@@ -262,6 +286,8 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                     sourceAltBom: match.sourceAltBom || row.sourceAltBom,
                     status: match.status === 'SUCCESS' ? 'SUCCESS' : match.status === 'NOT_PROCESSED' ? 'NOT_PROCESSED' : 'FAILED',
                     message: match.message,
+                    problems: match.problems || match.rawErrors,
+                    totalBomsSimulated: match.totalBomsSimulated || match.totalBoms,
                     bomNumber: match.bomNumber || '',
                     totalLevels: match.totalLevels || 1,
                     totalBoms: match.totalBoms || 1
@@ -370,6 +396,38 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
           return;
         }
 
+        // Validate presence of required columns in the sheet headers
+        const sampleRow = rawJson[0] || {};
+        const recognizedFields = new Set();
+        Object.keys(sampleRow).forEach((key) => {
+          const k = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (k.includes('srcmat') || k.includes('sourcemat') || (k.includes('source') && k.includes('mat')) || k === 'matnr') {
+            recognizedFields.add('sourceMaterial');
+          } else if (k.includes('srcplant') || k.includes('sourceplant') || (k.includes('source') && k.includes('plant')) || (k.includes('source') && k.includes('werks'))) {
+            recognizedFields.add('sourcePlant');
+          } else if (k.includes('tgtplant') || k.includes('targetplant') || (k.includes('target') && k.includes('plant')) || (k.includes('target') && k.includes('werks'))) {
+            recognizedFields.add('targetPlant');
+          } else if (k.includes('tgtalt') || k.includes('targetalt') || (k.includes('target') && k.includes('alt')) || (k.includes('target') && k.includes('stlal'))) {
+            recognizedFields.add('targetAltBom');
+          }
+        });
+
+        if (recognizedFields.size === 0) {
+          setParseError('Could not recognize any valid BOM columns. Please use the sample template.');
+          return;
+        }
+
+        const missingRequired = [];
+        if (!recognizedFields.has('sourceMaterial')) missingRequired.push('Source Material');
+        if (!recognizedFields.has('sourcePlant')) missingRequired.push('Source Plant');
+        if (!recognizedFields.has('targetPlant')) missingRequired.push('Target Plant');
+        if (!recognizedFields.has('targetAltBom')) missingRequired.push('Target Alternative');
+
+        if (missingRequired.length > 0) {
+          setParseError(`Missing required column${missingRequired.length > 1 ? 's' : ''}: ${missingRequired.join(', ')}. Please verify your spreadsheet headers.`);
+          return;
+        }
+
         const normalized = rawJson
           .map((row, index) => {
             const norm = normalizeRowKeys(row);
@@ -434,7 +492,67 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
       ];
       const ws = XLSX.utils.json_to_sheet(sample);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'BOM_Template');
+      XLSX.utils.book_append_sheet(wb, ws, 'BOM_Copy_Template');
+
+      const instructionsData = [
+        {
+          'Column Name': 'Source Material',
+          'Required / Optional': 'Required',
+          'Default Value': 'None',
+          'Description': 'Material number of the existing source BOM in SAP'
+        },
+        {
+          'Column Name': 'Source Plant',
+          'Required / Optional': 'Required',
+          'Default Value': 'None',
+          'Description': 'Plant code where the source BOM is located (e.g. 1012)'
+        },
+        {
+          'Column Name': 'Target Plant',
+          'Required / Optional': 'Required',
+          'Default Value': 'None',
+          'Description': 'Plant code where the new BOM will be copied (e.g. 1001)'
+        },
+        {
+          'Column Name': 'Target Alternative',
+          'Required / Optional': 'Required',
+          'Default Value': 'None',
+          'Description': 'Target alternative number (e.g. 02, 12)'
+        },
+        {
+          'Column Name': 'Source BOM Usage',
+          'Required / Optional': 'Optional',
+          'Default Value': '1',
+          'Description': 'Source BOM usage code (defaults to 1 = Production)'
+        },
+        {
+          'Column Name': 'Source Alternative',
+          'Required / Optional': 'Optional',
+          'Default Value': '1',
+          'Description': 'Source alternative number (defaults to 1 or lowest alternative)'
+        },
+        {
+          'Column Name': 'Target Material',
+          'Required / Optional': 'Optional',
+          'Default Value': 'Source Material',
+          'Description': 'Target material number (defaults to Source Material if empty)'
+        },
+        {
+          'Column Name': 'Target BOM Usage',
+          'Required / Optional': 'Optional',
+          'Default Value': '1',
+          'Description': 'Target BOM usage code (defaults to 1 = Production)'
+        }
+      ];
+      const instructionsWs = XLSX.utils.json_to_sheet(instructionsData);
+      instructionsWs['!cols'] = [
+        { wch: 22 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 60 }
+      ];
+      XLSX.utils.book_append_sheet(wb, instructionsWs, 'Instructions');
+
       XLSX.writeFile(wb, 'BOM_Copy_Template.xlsx');
     }
   };
@@ -518,7 +636,7 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
       ? '\n\n⚠️ Note: Some rows have WARNINGS (target alternative may already exist and conflict).'
       : '';
 
-    const confirmMsg = `Are you sure you want to copy ${executableRows.length} Bill of Materials in SAP?${warningNotice}\n\nOperation will be executed sequentially via high-speed SAP RFC.`;
+    const confirmMsg = `Are you sure you want to copy ${executableRows.length} Bill of Materials in SAP?${warningNotice}\n\nOperation will copy ${executableRows.length} BOM(s) in SAP.`;
     if (!window.confirm(confirmMsg)) {
       return;
     }
@@ -607,166 +725,101 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
   const errorCount = parsedRows.filter((r) => r.status === 'ERROR' || r.status === 'FAILED').length;
 
   return (
-    <div className="fiori-app-view-root">
+    <div className="fiori-launchpad-root">
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
         title="Copy Bulk BOM"
-        subtitle="Mass upload spreadsheet (.xlsx, .csv) to validate and duplicate multiple BOMs across plants sequentially via SAP RFC."
+        subtitle="Upload a spreadsheet to copy multiple BOMs across plants with automatic alternative numbers."
         onBack={onBack}
-        backTitle="Back to Copy BOM"
+        backTitle={isExecuting ? 'Operation in progress' : 'Back to Copy BOM'}
+        isLocked={isExecuting}
         systemKey={systemKey}
         breadcrumbs={[
-          { label: 'Home', onClick: onNavigateHome || onBack },
-          { label: 'Bill of Materials', onClick: onNavigateBom || onBack },
-          { label: 'Copy BOM', onClick: onBack },
+          { label: 'Home', onClick: isExecuting ? undefined : (onNavigateHome || onBack) },
+          { label: 'Bill of Materials', onClick: isExecuting ? undefined : (onNavigateBom || onBack) },
+          { label: 'Copy BOM', onClick: isExecuting ? undefined : onBack },
           { label: 'Copy Bulk BOM' }
         ]}
       />
 
-      <div className="fiori-view-body wide">
+      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
         {/* Workflow Steps Indicator */}
-        <BulkWorkflowSteps activeStep={activeStep} />
+        <BulkWorkflowSteps activeStep={activeStep} type="copy" />
 
-        {/* Error Notification */}
-        {parseError && parsedRows.length > 0 && (
-          <div className="sap-form-alert sap-form-alert-error" style={{ maxWidth: 1100, width: '100%', margin: '0 auto 14px' }}>
-            <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-            <span>{parseError}</span>
-          </div>
-        )}
-
-        {/* Main Content Workspace Card */}
-        <div className="sap-structured-form-card" style={{ maxWidth: 1100, width: '100%', margin: '0 auto', padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: parsedRows.length === 0 ? '20px 24px' : '12px 16px' }}>
-          {parsedRows.length === 0 ? (
-            <BulkUploadPanel
-              title="Upload Spreadsheet"
-              helperText="Mass upload spreadsheet (.xlsx, .xls, .csv) to validate and duplicate multiple BOMs across plants sequentially via SAP RFC."
-              acceptedFormats=".xlsx, .xls, .csv"
-              supportedFormatsText="Supports .xlsx, .xls, and .csv with Source & Target BOM columns"
-              fileName={file?.name || ''}
-              onFile={processFile}
-              loading={isValidating}
-              loadingText="Validating with SAP master records..."
-              disabled={isExecuting || isValidating}
-              templateAction={{
-                label: 'Download Template',
-                onClick: handleDownloadTemplate,
-                disabled: isExecuting
-              }}
-              error={parseError}
-              onClear={resetAll}
-            >
-              {/* Template Helper Card */}
-              <div className="sap-template-guide-card" style={{ marginTop: 8 }}>
-                <h5>Required Excel Columns:</h5>
-                <div className="sap-columns-pill-grid">
-                  <span className="col-pill required">Source Material</span>
-                  <span className="col-pill required">Source Plant</span>
-                  <span className="col-pill optional">Source BOM Usage (def: 1)</span>
-                  <span className="col-pill required">Source Alternative</span>
-                  <span className="col-pill optional">Target Material (def: Source)</span>
-                  <span className="col-pill required">Target Plant</span>
-                  <span className="col-pill optional">Target BOM Usage (def: 1)</span>
-                  <span className="col-pill required">Target Alternative</span>
+        {/* RESULTS SCREEN (STEP 3) */}
+        {executionReport ? (
+          <div>
+            {/* Success / Partial Banner */}
+            {executionReport.failedCount === 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--sap-success-bg)',
+                  border: '1px solid var(--sap-success-border)',
+                  color: 'var(--sap-success)',
+                  marginBottom: 20
+                }}
+              >
+                <CheckCircle2 size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed Successfully</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                    Successfully copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s) across {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total entries.
+                  </p>
                 </div>
               </div>
-            </BulkUploadPanel>
-          ) : (
-            <div className="sap-bulk-table-view">
-              {/* ACTIVE BACKGROUND JOB PROGRESS CARD */}
-              <BulkJobProgressCard
-                isValidating={isValidating}
-                isExecuting={isExecuting}
-                activeJobId={activeJobId}
-                jobProgress={jobProgress}
-                jobCurrentBom={jobCurrentBom}
-                isCancelling={isCancelling}
-                onCancelJob={handleCancelJob}
-                validationLabel="Validating Copy Rows"
-                executionLabel="Executing Batch Copy"
-              />
-
-              {/* File Info Bar */}
-              <BulkFileInfoBar
-                fileName={file?.name || ''}
-                countText={`${parsedRows.length} rows`}
-                isLocked={isExecuting || isValidating}
-                onDownloadTemplate={handleDownloadTemplate}
-                onChangeFile={resetAll}
-              />
-
-              {/* Summary Counter Badges */}
-              {validationReport && (
-                <div className="sap-bulk-status-summary">
-                  <div className="status-stat valid">
-                    <CheckCircle2 size={14} />
-                    <span>{validCount} Ready</span>
-                  </div>
-                  <div className="status-stat warning">
-                    <AlertTriangle size={14} />
-                    <span>{warningCount} Warnings</span>
-                  </div>
-                  <div className="status-stat error">
-                    <XCircle size={14} />
-                    <span>{errorCount} Errors</span>
-                  </div>
-                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label style={{ fontSize: '11px', color: 'var(--sap-success-text)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', background: 'var(--sap-success-bg)', border: '1px solid var(--sap-success-border)', padding: '2px 6px', borderRadius: 'var(--radius-sm)' }}>
-                      <input
-                        type="checkbox"
-                        checked={copyHierarchy}
-                        onChange={(e) => setCopyHierarchy(e.target.checked)}
-                        disabled={isExecuting}
-                      />
-                      <span>Copy Full Hierarchy</span>
-                    </label>
-                    <label style={{ fontSize: '11px', color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                      <input
-                        type="checkbox"
-                        checked={skipErrors}
-                        onChange={(e) => setSkipErrors(e.target.checked)}
-                        disabled={isExecuting}
-                      />
-                      Skip errors
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {isValidating && (
-                <div
-                  className="sap-loading-card"
-                  style={{
-                    maxWidth: 760,
-                    width: '100%',
-                    margin: '0 auto 16px',
-                    textAlign: 'center',
-                    padding: '24px 20px',
-                    borderRadius: 'var(--sap-radius)',
-                    border: '1px solid var(--sap-border)'
-                  }}
-                >
-                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
-                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                    Checking {parsedRows.length > 0 ? `${parsedRows.length} BOM${parsedRows.length === 1 ? '' : 's'}` : 'BOMs'} in SAP...
-                  </h4>
-                  <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                    Running multi-level simulation via SAP RFC TESTRUN across all levels.
+            ) : (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--sap-warning-bg)',
+                  border: '1px solid var(--sap-warning-border)',
+                  color: 'var(--sap-warning)',
+                  marginBottom: 20
+                }}
+              >
+                <AlertTriangle size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Issues</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.failedCount ?? 0} failed out of {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total.
                   </p>
-                  <button
-                    type="button"
-                    className="sap-btn sap-btn-secondary"
-                    onClick={handleCancelValidation}
-                    style={{ marginTop: 20 }}
-                  >
-                    Cancel
-                  </button>
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Results Table Card */}
+            <div className="sap-card" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                    Execution Results
+                  </h3>
+                  <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
+                    Execution report for {parsedRows.length} BOM(s)
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-secondary"
+                  onClick={handleExportResults}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+                >
+                  <Download size={14} />
+                  <span>Export Report (.xlsx)</span>
+                </button>
+              </div>
 
               {/* Grid Table */}
-              <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
+              <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Execution Results Table">
                 <table className="sap-bulk-table">
                   <thead>
                     <tr>
@@ -775,7 +828,7 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                       <th>Target BOM</th>
                       <th style={{ width: 80, textAlign: 'center' }}>Items</th>
                       <th style={{ width: 100 }}>Status</th>
-                      <th>Diagnostic / RFC Message</th>
+                      <th>Diagnostic Message</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -811,25 +864,26 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                               {isRowValid && <CheckCircle2 size={11} />}
                               {isRowWarn && <AlertTriangle size={11} />}
                               {isRowError && <XCircle size={11} />}
-                              {row.status === 'PENDING' && 'Not validated'}
-                              {row.status === 'VALID' && 'Ready'}
-                              {row.status === 'WARNING' && 'Warning'}
-                              {row.status === 'ERROR' && 'Error'}
                               {row.status === 'SUCCESS' && 'Copied'}
                               {row.status === 'FAILED' && 'Failed'}
+                              {row.status === 'NOT_PROCESSED' && 'Skipped'}
                             </span>
                           </td>
                           <td>
                             <div className="message-cell">
-                              {isRowError && (row.problems?.length > 0 || (row.message && row.message.startsWith('Cannot copy:'))) ? (
+                              {isRowError ? (
                                 <BlockedReasonsList
                                   problems={row.problems || row.message}
                                   totalBoms={row.totalBomsSimulated}
                                   message={row.message}
-                                  compact={true}
                                 />
+                              ) : isRowValid ? (
+                                <span className="cell-msg-text cell-msg-valid" style={{ color: 'var(--sap-success, #059669)', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
+                                  <CheckCircle2 size={12} style={{ flexShrink: 0 }} />
+                                  <span>{cleanDiagnosticMessage(row.message) || 'Ready to copy.'}</span>
+                                </span>
                               ) : (
-                                <span className="cell-msg-text">{row.message}</span>
+                                <span className="cell-msg-text">{cleanDiagnosticMessage(row.message)}</span>
                               )}
                               {row.bomNumber && (
                                 <span className="bom-num-tag">SAP BOM: {row.bomNumber}</span>
@@ -842,84 +896,329 @@ export default function BulkBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* Action Controls Bar */}
-        <div className="sap-bulk-modal-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {executionReport && (
-              <button
-                type="button"
-                className="sap-btn sap-btn-secondary"
-                onClick={handleExportResults}
-                style={{ height: 28, fontSize: '11px', padding: '0 10px' }}
-              >
-                <Download size={13} />
-                <span>Export Report (.xlsx)</span>
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={onBack}
-              disabled={isExecuting}
-              style={{ height: 28, fontSize: '11px', padding: '0 10px' }}
-            >
-              Launchpad
-            </button>
-
-            {parsedRows.length > 0 && !executionReport && (
-              <>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-primary"
+                  onClick={onBack}
+                  style={{ padding: '9px 20px' }}
+                >
+                  Return to Launchpad
+                </button>
                 <button
                   type="button"
                   className="sap-btn sap-btn-secondary"
-                  onClick={handleValidateWithSap}
-                  disabled={isValidating || isExecuting}
-                  style={{ height: 28, fontSize: '11px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  onClick={resetAll}
+                  style={{ padding: '9px 20px' }}
                 >
-                  {isValidating ? (
-                    <>
-                      <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                      <span>Validating with SAP...</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck size={13} />
-                      <span>{validationReport ? 'Re-validate' : 'Validate with SAP'}</span>
-                    </>
-                  )}
+                  Upload Another File
                 </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* UPLOAD (STEP 1) OR PREVIEW (STEP 2) */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: parsedRows.length > 0 ? 16 : 24 }}>
+            {parsedRows.length === 0 ? (
+              /* Step 1: Upload Panel (Clean, 750px centered, no boxed card) */
+              <BulkUploadPanel
+                title="Upload Spreadsheet"
+                helperText="Upload a spreadsheet to copy multiple Bills of Materials in SAP."
+                acceptedFormats=".xlsx, .xls, .csv"
+                supportedFormatsText="Supports .xlsx, .xls, and .csv with Source & Target BOM columns"
+                fileName={file?.name || ''}
+                onFile={processFile}
+                loading={isValidating}
+                loadingText="Validating your data in SAP..."
+                disabled={isExecuting || isValidating}
+                templateAction={{
+                  label: 'Download Template',
+                  onClick: handleDownloadTemplate,
+                  disabled: isExecuting
+                }}
+                error={parseError}
+                onClear={resetAll}
+              />
+            ) : (
+              /* Step 2: Validation Preview */
+              <>
+                {/* Background Job Progress Card */}
+                <BulkJobProgressCard
+                  isValidating={isValidating}
+                  isExecuting={isExecuting}
+                  activeJobId={activeJobId}
+                  jobProgress={jobProgress}
+                  jobCurrentBom={jobCurrentBom}
+                  isCancelling={isCancelling}
+                  onCancelJob={handleCancelJob}
+                  validationLabel="Validating data in SAP"
+                  executionLabel="Copying BOMs in SAP"
+                />
 
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-primary execute-batch-copy-btn"
-                  onClick={handleExecuteBatchCopy}
-                  disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
-                  style={{ height: 28, fontSize: '11px', padding: '0 12px', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                >
-                  {isExecuting ? (
-                    <>
-                      <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                      <span>Executing Sequential RFC Copy...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={13} />
-                      <span>Execute Batch Copy ({validationReport ? validCount + warningCount : 0})</span>
-                    </>
-                  )}
-                </button>
+                {/* File Info Bar */}
+                <BulkFileInfoBar
+                  fileName={file?.name || ''}
+                  countText={`${parsedRows.length} BOM${parsedRows.length === 1 ? '' : 's'}`}
+                  isLocked={isExecuting || isValidating}
+                  onDownloadTemplate={handleDownloadTemplate}
+                  onChangeFile={resetAll}
+                />
+
+                {/* Error Alert */}
+                {parseError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 16px',
+                      borderRadius: 'var(--radius-md, 6px)',
+                      background: 'var(--sap-error-bg, #fef2f2)',
+                      border: '1px solid var(--sap-error-border, #fecaca)',
+                      color: 'var(--sap-error, #dc2626)',
+                      fontSize: 13
+                    }}
+                  >
+                    <XCircle size={18} style={{ flexShrink: 0 }} />
+                    <span>{parseError}</span>
+                  </div>
+                )}
+
+                {/* PRE-FLIGHT PREVIEW TABLE CARD */}
+                <div className="sap-card" style={{ padding: 20 }}>
+                  {/* Header & Controls */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                        Data Preview
+                      </h3>
+                      <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
+                        {parsedRows.length} BOM(s) found across spreadsheet
+                      </div>
+                    </div>
+
+                    {/* Options */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <label style={{ fontSize: '12px', color: 'var(--sap-text-body)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={copyHierarchy}
+                          onChange={(e) => setCopyHierarchy(e.target.checked)}
+                          disabled={isExecuting}
+                        />
+                        <span>Copy Full Hierarchy</span>
+                      </label>
+                      <label style={{ fontSize: '12px', color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={skipErrors}
+                          onChange={(e) => setSkipErrors(e.target.checked)}
+                          disabled={isExecuting}
+                        />
+                        <span>Skip errors</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Grid Table */}
+                  <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
+                    <table className="sap-bulk-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 36 }}>#</th>
+                          <th>Source BOM</th>
+                          <th>Target BOM</th>
+                          <th style={{ width: 80, textAlign: 'center' }}>Items</th>
+                          <th style={{ width: 100 }}>Status</th>
+                          <th>Diagnostic Message</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {parsedRows.map((row, idx) => {
+                          const isRowValid = row.status === 'VALID' || row.status === 'SUCCESS';
+                          const isRowWarn = row.status === 'WARNING';
+                          const isRowError = row.status === 'ERROR' || row.status === 'FAILED';
+
+                          return (
+                            <tr key={row.id || idx} className={`row-status-${row.status.toLowerCase()}`}>
+                              <td style={{ fontWeight: 600, color: 'var(--sap-text-muted)', fontSize: '11px' }}>{idx + 1}</td>
+                              <td>
+                                <div className="bom-identity-cell">
+                                  <span className="mat-pill">{row.sourceMaterial}</span>
+                                  <span className="sub-detail">Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="bom-identity-cell">
+                                  <span className="mat-pill">{row.targetMaterial}</span>
+                                  <span className="sub-detail">Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {row.componentCount !== undefined && row.componentCount > 0 ? (
+                                  <span className="comp-count-badge">{row.componentCount}</span>
+                                ) : (
+                                  <span style={{ color: 'var(--sap-text-subtle)' }}>-</span>
+                                )}
+                              </td>
+                              <td>
+                                <span className={`sap-status-chip chip-${row.status.toLowerCase()}`}>
+                                  {isRowValid && <CheckCircle2 size={11} />}
+                                  {isRowWarn && <AlertTriangle size={11} />}
+                                  {isRowError && <XCircle size={11} />}
+                                  {row.status === 'PENDING' && 'Not validated'}
+                                  {row.status === 'VALID' && 'Ready'}
+                                  {row.status === 'WARNING' && 'Warning'}
+                                  {row.status === 'ERROR' && 'Error'}
+                                  {row.status === 'SUCCESS' && 'Copied'}
+                                  {row.status === 'FAILED' && 'Failed'}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="message-cell">
+                                  {isRowError ? (
+                                    <BlockedReasonsList
+                                      problems={row.problems || row.message}
+                                      totalBoms={row.totalBomsSimulated}
+                                      message={row.message}
+                                    />
+                                  ) : isRowValid ? (
+                                    <span className="cell-msg-text cell-msg-valid" style={{ color: 'var(--sap-success, #059669)', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
+                                      <CheckCircle2 size={12} style={{ flexShrink: 0 }} />
+                                      <span>{cleanDiagnosticMessage(row.message) || 'Ready to copy.'}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="cell-msg-text">{cleanDiagnosticMessage(row.message)}</span>
+                                  )}
+                                  {row.bomNumber && (
+                                    <span className="bom-num-tag">SAP BOM: {row.bomNumber}</span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Sticky Summary & Action Controls Footer */}
+                  <div
+                    className="bulk-preview-sticky-footer"
+                    style={{
+                      position: 'sticky',
+                      bottom: 0,
+                      zIndex: 10,
+                      background: 'var(--sap-card-bg, #ffffff)',
+                      borderTop: '1px solid var(--sap-border, #e2e8f0)',
+                      boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.05)',
+                      padding: '14px 20px',
+                      margin: '20px -20px -20px -20px',
+                      borderRadius: '0 0 var(--radius-lg, 8px) var(--radius-lg, 8px)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: 12
+                    }}
+                  >
+                    {/* Summary counts */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-dark)', marginRight: 4 }}>
+                        Validation Summary:
+                      </span>
+                      {!validationReport ? (
+                        <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          Not validated ({parsedRows.length} BOM{parsedRows.length === 1 ? '' : 's'})
+                        </span>
+                      ) : (
+                        <>
+                          <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
+                            Ready: {validCount}
+                          </span>
+                          {warningCount > 0 && (
+                            <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                              Warnings: {warningCount}
+                            </span>
+                          )}
+                          <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
+                            Errors: {errorCount}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Actions: Secondary on left, Primary on right */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <button
+                        type="button"
+                        className="sap-btn sap-btn-secondary"
+                        disabled={isExecuting || isValidating}
+                        onClick={resetAll}
+                      >
+                        Clear & Upload Another
+                      </button>
+
+                      <button
+                        type="button"
+                        className="sap-btn sap-btn-secondary validate-with-sap-btn"
+                        onClick={handleValidateWithSap}
+                        disabled={isValidating || isExecuting || parsedRows.length === 0}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '9px 18px'
+                        }}
+                      >
+                        {isValidating ? (
+                          <>
+                            <Loader2 size={15} className="sap-spin" />
+                            <span>Validating your data in SAP...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck size={15} />
+                            <span>{validationReport ? 'Re-validate data' : 'Validate data'}</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="sap-btn sap-btn-primary execute-batch-copy-btn"
+                        disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
+                        onClick={handleExecuteBatchCopy}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '9px 24px'
+                        }}
+                      >
+                        {isExecuting ? (
+                          <>
+                            <Loader2 size={16} className="sap-spin" />
+                            <span>
+                              {jobProgress.total > 0
+                                ? `Copying ${jobProgress.current} of ${jobProgress.total}...`
+                                : 'Copying in SAP...'}
+                            </span>
+                          </>
+                        ) : (
+                          <span>Copy BOMs ({validationReport ? validCount + warningCount : 0})</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </>
             )}
           </div>
-        </div>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
 }

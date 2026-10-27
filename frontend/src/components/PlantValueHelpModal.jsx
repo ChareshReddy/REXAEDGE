@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { getPlants } from '../services/api';
+import { lockScroll } from '../utils/scrollLock';
 
 export default function PlantValueHelpModal({
   isOpen,
@@ -22,14 +23,22 @@ export default function PlantValueHelpModal({
   const rowRefs = useRef([]);
   const abortControllerRef = useRef(null);
 
+  const selectedIndexRef = useRef(0);
+  const filteredPlantsRef = useRef([]);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    selectedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
   // Sync initial query when opened and lock body scroll
   useEffect(() => {
     if (isOpen) {
       setSearchTerm(initialValue || '');
       setSelectedIndex(0);
+      selectedIndexRef.current = 0;
 
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
+      const unlock = lockScroll();
 
       // Autofocus search input
       const timer = setTimeout(() => {
@@ -38,7 +47,7 @@ export default function PlantValueHelpModal({
       }, 40);
 
       return () => {
-        document.body.style.overflow = originalOverflow;
+        unlock();
         clearTimeout(timer);
       };
     }
@@ -62,7 +71,9 @@ export default function PlantValueHelpModal({
         if (controller.signal.aborted) return;
         const list = res?.data || [];
         setAllPlants(list);
-        setSelectedIndex(list.length > 0 ? 0 : -1);
+        const newIdx = list.length > 0 ? 0 : -1;
+        setSelectedIndex(newIdx);
+        selectedIndexRef.current = newIdx;
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
@@ -94,70 +105,136 @@ export default function PlantValueHelpModal({
     });
   }, [allPlants, searchTerm]);
 
-  // Keyboard navigation & Focus trap
-  const handleKeyDown = (e) => {
-    // Focus Trap
-    if (e.key === 'Tab') {
-      const dialog = modalDialogRef.current;
-      if (dialog) {
-        const focusable = dialog.querySelectorAll(
-          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length > 0) {
-          const first = focusable[0];
-          const last = focusable[focusable.length - 1];
-          if (e.shiftKey) {
-            if (document.activeElement === first) {
-              e.preventDefault();
-              last.focus();
-              return;
-            }
-          } else {
-            if (document.activeElement === last) {
-              e.preventDefault();
-              first.focus();
-              return;
+  useEffect(() => {
+    filteredPlantsRef.current = filteredPlants;
+  }, [filteredPlants]);
+
+  // Move highlighted row by delta (+1, -1, +8, -8, etc.) and scroll into view
+  const moveSelection = useCallback((delta) => {
+    const list = filteredPlantsRef.current;
+    if (!list || list.length === 0) return;
+    const current = selectedIndexRef.current >= 0 ? selectedIndexRef.current : 0;
+    const next = Math.max(0, Math.min(current + delta, list.length - 1));
+    setSelectedIndex(next);
+    selectedIndexRef.current = next;
+    rowRefs.current[next]?.scrollIntoView({ block: 'nearest' });
+  }, []);
+
+  // Document-level keydown handler (capturing phase) to prevent scrolling page behind
+  const handleDocumentKeyDown = useCallback(
+    (e) => {
+      if (!isOpen) return;
+
+      const isInput =
+        document.activeElement &&
+        (document.activeElement.tagName === 'INPUT' ||
+          document.activeElement.tagName === 'TEXTAREA' ||
+          document.activeElement.tagName === 'SELECT');
+
+      // Focus trap
+      if (e.key === 'Tab') {
+        const dialog = modalDialogRef.current;
+        if (dialog) {
+          const focusable = dialog.querySelectorAll(
+            'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusable.length > 0) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey) {
+              if (document.activeElement === first || !dialog.contains(document.activeElement)) {
+                e.preventDefault();
+                last.focus();
+              }
+            } else {
+              if (document.activeElement === last || !dialog.contains(document.activeElement)) {
+                e.preventDefault();
+                first.focus();
+              }
             }
           }
         }
+        return;
       }
-    }
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      onClose();
-      return;
-    }
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (filteredPlants.length > 0) {
-        const next = Math.min(selectedIndex + 1, filteredPlants.length - 1);
-        setSelectedIndex(next);
-        rowRefs.current[next]?.scrollIntoView({ block: 'nearest' });
-      }
-      return;
-    }
-
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (filteredPlants.length > 0) {
-        const prev = Math.max(selectedIndex - 1, 0);
-        setSelectedIndex(prev);
-        rowRefs.current[prev]?.scrollIntoView({ block: 'nearest' });
-      }
-      return;
-    }
-
-    if (e.key === 'Enter') {
-      if (selectedIndex >= 0 && selectedIndex < filteredPlants.length) {
+      if (e.key === 'Escape') {
         e.preventDefault();
-        const sel = filteredPlants[selectedIndex];
-        onSelect(sel.werks, sel);
+        e.stopPropagation();
+        onClose();
+        return;
       }
-    }
-  };
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(1);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(-1);
+        return;
+      }
+
+      if (e.key === 'PageDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(8);
+        return;
+      }
+
+      if (e.key === 'PageUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        moveSelection(-8);
+        return;
+      }
+
+      if (e.key === 'Home') {
+        if (!isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveSelection(-filteredPlantsRef.current.length);
+        }
+        return;
+      }
+
+      if (e.key === 'End') {
+        if (!isInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          moveSelection(filteredPlantsRef.current.length);
+        }
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const idx = selectedIndexRef.current;
+        const list = filteredPlantsRef.current;
+        if (idx >= 0 && idx < list.length) {
+          const selected = list[idx];
+          if (selected) {
+            onSelect(selected.werks, selected);
+          }
+        }
+      }
+    },
+    [isOpen, moveSelection, onClose, onSelect]
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    window.addEventListener('keydown', handleDocumentKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleDocumentKeyDown, true);
+    };
+  }, [isOpen, handleDocumentKeyDown]);
 
   if (!isOpen) return null;
 
@@ -170,14 +247,15 @@ export default function PlantValueHelpModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="plant-f4-title"
     >
       <div
         ref={modalDialogRef}
+        tabIndex={-1}
         className="sap-f4-modal-dialog plant"
+        style={{ outline: 'none' }}
       >
         {/* Header */}
         <div className="sap-f4-header">
@@ -316,7 +394,7 @@ export default function PlantValueHelpModal({
               }}
             >
               <Loader2 size={32} className="sap-spin" color="var(--sap-primary, #0a6ed1)" />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Loading SAP plants from T001W…</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Loading SAP plants…</span>
             </div>
           ) : error ? (
             <div
@@ -343,11 +421,16 @@ export default function PlantValueHelpModal({
             </div>
           ) : (
             <table className="sap-f4-table">
+              <colgroup>
+                <col style={{ width: 80 }} />
+                <col style={{ width: '45%' }} />
+                <col />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 90 }}>Plnt</th>
-                  <th>Name 1</th>
-                  <th style={{ width: 220 }}>City / Location</th>
+                  <th style={{ width: 80, whiteSpace: 'nowrap' }}>Plnt</th>
+                  <th style={{ width: '45%', whiteSpace: 'nowrap' }}>Name 1</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>City / Location</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,31 +441,56 @@ export default function PlantValueHelpModal({
                       key={`${p.werks}-${idx}`}
                       ref={(el) => (rowRefs.current[idx] = el)}
                       className={isSelected ? 'selected' : ''}
-                      onClick={() => setSelectedIndex(idx)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedIndex(idx);
+                        selectedIndexRef.current = idx;
+                        modalDialogRef.current?.focus();
+                      }}
                       onDoubleClick={() => onSelect(p.werks, p)}
                     >
-                      <td style={{ width: 90, fontFamily: 'monospace', fontWeight: 700, color: '#0a6ed1' }}>
-                        {p.werks}
+                      <td style={{ width: 80, fontFamily: 'monospace', fontWeight: 700, color: '#0a6ed1' }}>
+                        <span style={{ verticalAlign: 'middle' }}>{p.werks}</span>
                         {p.isExtended && (
                           <span
+                            title="Maintained in Plant"
                             style={{
-                              marginLeft: 6,
-                              fontSize: 9.5,
+                              marginLeft: 5,
+                              fontSize: 9,
                               padding: '1px 4px',
                               borderRadius: 3,
                               background: '#eff6ff',
                               color: '#1d4ed8',
-                              border: '1px solid #bfdbfe'
+                              border: '1px solid #bfdbfe',
+                              verticalAlign: 'middle'
                             }}
                           >
-                            Maintained
+                            Ext
                           </span>
                         )}
                       </td>
-                      <td title={p.name1 || ''} style={{ color: '#1e293b', fontWeight: 500 }}>
+                      <td
+                        title={p.name1 || ''}
+                        style={{
+                          width: '45%',
+                          color: '#1e293b',
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
                         {p.name1 || '-'}
                       </td>
-                      <td title={p.ort01 || ''} style={{ width: 220, color: '#64748b' }}>
+                      <td
+                        title={p.ort01 || ''}
+                        style={{
+                          color: '#64748b',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
                         {p.ort01 || '-'}
                       </td>
                     </tr>

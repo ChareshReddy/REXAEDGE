@@ -321,7 +321,7 @@ async function runTests() {
   assert.strictEqual(blankSingleRes.alternativeBom, '03');
   console.log('   ✓ Blank alternative selects the single existing alternative when exactly one exists');
 
-  // (c) Blank alternative with multiple alternatives and no 01 -> must error and list alternatives
+  // (c) Blank alternative with multiple alternatives and no 01 -> must read first existing alternative (02)
   const multiAltNo01Client = {
     call: async (fm, params) => {
       if (params.QUERY_TABLE === 'MAST') {
@@ -343,11 +343,23 @@ async function runTests() {
     alternativeBom: '',
     client: multiAltNo01Client
   });
-  assert.strictEqual(blankMultiRes.success, false);
-  assert.strictEqual(blankMultiRes.errorCode, 'ALTERNATIVE_SELECTION_REQUIRED');
-  assert.match(blankMultiRes.message, /Alternative BOM was not specified and alternative 01 does not exist/i);
-  assert.match(blankMultiRes.message, /02, 05/i);
-  console.log('   ✓ Blank alternative rejects with ALTERNATIVE_SELECTION_REQUIRED when 01 absent and multiple exist');
+  assert.strictEqual(blankMultiRes.success, true);
+  assert.strictEqual(blankMultiRes.alternativeBom, '02');
+  console.log('   ✓ Blank alternative selects the first existing alternative (02) when 01 is absent');
+
+  // (d) Typed missing alternative (01) -> must error and list available alternatives
+  const typedMissingRes = await rfcReadBom({
+    material: 'MULTIMAT',
+    plant: '1010',
+    bomUsage: '1',
+    alternativeBom: '01',
+    client: multiAltNo01Client
+  });
+  assert.strictEqual(typedMissingRes.success, false);
+  assert.strictEqual(typedMissingRes.errorCode, 'ALTERNATIVE_NOT_FOUND');
+  assert.match(typedMissingRes.message, /Alternative (?:BOM )?01 does not exist/i);
+  assert.match(typedMissingRes.message, /02, 05/i);
+  console.log('   ✓ Typed missing alternative rejects with ALTERNATIVE_NOT_FOUND and lists available alternatives');
 
 
   // 10. BAPI payload padding & alphanumeric preservation in rfcCreateBom

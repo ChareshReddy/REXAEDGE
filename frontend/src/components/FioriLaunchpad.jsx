@@ -19,7 +19,7 @@ import {
   FolderPlus,
   Files
 } from 'lucide-react';
-import { MODULE_REGISTRY, MODULE_STATUS, hasCardPermission } from '@shared/modules.js';
+import { MODULE_REGISTRY, MODULE_STATUS, hasCardPermission, ALL_BOM_APPS, normalizePermissions } from '@shared/modules.js';
 
 export const ICON_MAP = {
   Layers,
@@ -107,6 +107,13 @@ export default function FioriLaunchpad({
     }
   };
 
+  const bomPerms = normalizePermissions(
+    Array.isArray(userPermissions)
+      ? userPermissions
+      : (userPermissions?.permissions || userPermissions?.actions || [])
+  );
+  const bomAppCount = userRole === 'admin' ? ALL_BOM_APPS.length : bomPerms.length;
+
   // 1. Filter modules strictly based on role and current server enablement
   // - Admin ALWAYS sees every registered module/card, independent of servers and server_modules
   // - Coming soon tiles visible ONLY to admins (hidden for regular users)
@@ -118,7 +125,13 @@ export default function FioriLaunchpad({
     if (mod.status === MODULE_STATUS.COMING_SOON) {
       return false;
     }
-    return enabledModules.includes(mod.key);
+    if (!enabledModules.includes(mod.key)) {
+      return false;
+    }
+    if (mod.key === 'bom' && bomPerms.length === 0) {
+      return false;
+    }
+    return true;
   });
 
   // 2. Derive unique groups in the order they appear in MODULE_REGISTRY (dynamic, no hardcoded groups)
@@ -302,10 +315,10 @@ export default function FioriLaunchpad({
                           <div className="fiori-tile-icon">
                             <Icon size={32} strokeWidth={1.7} />
                           </div>
-                          {mod.kpiNum && (
+                          {(mod.key === 'bom' ? bomAppCount > 0 : mod.kpiNum) && (
                             <div className="fiori-tile-kpi">
-                              {mod.kpiNum}
-                              <small>{mod.kpiLabel}</small>
+                              {mod.key === 'bom' ? bomAppCount : mod.kpiNum}
+                              <small>{mod.key === 'bom' ? (bomAppCount === 1 ? 'feature' : 'features') : mod.kpiLabel}</small>
                             </div>
                           )}
                         </div>
@@ -315,7 +328,7 @@ export default function FioriLaunchpad({
                 </div>
               </div>
             ) : (
-              /* Empty Launchpad State when zero modules are enabled for this server */
+              /* Empty Launchpad State when zero modules or features are enabled for this server */
               <div
                 style={{
                   display: 'flex',
@@ -364,6 +377,7 @@ export default function FioriLaunchpad({
             subtitle="Choose an operation"
             onBack={() => handleSetView('home')}
             backTitle="Back to Home"
+            systemKey={systemKey}
             breadcrumbs={[
               { label: 'Home', onClick: () => handleSetView('home') },
               { label: activeModule.label }
@@ -403,6 +417,7 @@ export default function FioriLaunchpad({
             subtitle="Choose an operation"
             onBack={() => handleSetView(parentGroup.moduleSubView)}
             backTitle={`Back to ${parentGroup.moduleLabel}`}
+            systemKey={systemKey}
             breadcrumbs={[
               { label: 'Home', onClick: () => handleSetView('home') },
               { label: parentGroup.moduleLabel, onClick: () => handleSetView(parentGroup.moduleSubView) },

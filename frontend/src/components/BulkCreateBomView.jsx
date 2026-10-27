@@ -7,6 +7,7 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   XCircle,
   Play,
   RefreshCw,
@@ -23,9 +24,11 @@ import BulkUploadPanel from './BulkUploadPanel';
 import {
   BulkWorkflowSteps,
   BulkFileInfoBar,
-  BulkJobProgressCard
+  BulkJobProgressCard,
+  CREATE_BULK_COLUMNS
 } from './BulkBomShared';
 import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
+import { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   preflightCreateBoms,
   createBulkBoms,
@@ -44,16 +47,26 @@ export default function BulkCreateBomView({
   onBack,
   onNavigateHome,
   onNavigateBom,
-  initialPreflightReport = null
+  initialPreflightReport = null,
+  initialExecutionReport = null,
+  initialIsValidating = false,
+  initialJobProgress = null,
+  initialActiveJobId = null
 }) {
   const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState(initialPreflightReport ? 'Sample_BOM_File.xlsx' : '');
+  const [fileName, setFileName] = useState(
+    initialExecutionReport ? 'Sample_BOM_File.xlsx' : initialPreflightReport ? 'Sample_BOM_File.xlsx' : ''
+  );
   const [fileBase64, setFileBase64] = useState('');
-  const [parsedBoms, setParsedBoms] = useState(initialPreflightReport?.boms || []);
-  const [activeStep, setActiveStep] = useState(initialPreflightReport ? 2 : 1);
+  const [parsedBoms, setParsedBoms] = useState(
+    initialExecutionReport?.boms || initialPreflightReport?.boms || []
+  );
+  const [activeStep, setActiveStep] = useState(
+    initialExecutionReport ? 3 : (initialPreflightReport || initialIsValidating) ? 2 : 1
+  );
 
   // Pre-flight states
-  const [isValidating, setIsValidating] = useState(false);
+  const [isValidating, setIsValidating] = useState(initialIsValidating);
   const [preflightReport, setPreflightReport] = useState(initialPreflightReport);
   const [parseError, setParseError] = useState('');
   const [expandedMessageBoms, setExpandedMessageBoms] = useState(new Set());
@@ -84,19 +97,19 @@ export default function BulkCreateBomView({
 
     const addError = (msg) => {
       if (!msg || typeof msg !== 'string') return;
-      const trimmed = msg.trim();
-      if (trimmed && !seen.has(trimmed)) {
-        seen.add(trimmed);
-        errorList.push(trimmed);
+      const cleaned = cleanDiagnosticMessage(msg);
+      if (cleaned && !seen.has(cleaned)) {
+        seen.add(cleaned);
+        errorList.push(cleaned);
       }
     };
 
     const addWarning = (msg) => {
       if (!msg || typeof msg !== 'string') return;
-      const trimmed = msg.trim();
-      if (trimmed && !seen.has(trimmed)) {
-        seen.add(trimmed);
-        warningList.push(trimmed);
+      const cleaned = cleanDiagnosticMessage(msg);
+      if (cleaned && !seen.has(cleaned)) {
+        seen.add(cleaned);
+        warningList.push(cleaned);
       }
     };
 
@@ -140,22 +153,24 @@ export default function BulkCreateBomView({
   const [confirmText, setConfirmText] = useState('');
   const [businessReason, setBusinessReason] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
-  const [executionReport, setExecutionReport] = useState(null);
+  const [executionReport, setExecutionReport] = useState(initialExecutionReport);
 
   // Background Job States
-  const [activeJobId, setActiveJobId] = useState(null);
-  const [activeJobType, setActiveJobType] = useState(null);
+  const [activeJobId, setActiveJobId] = useState(initialActiveJobId);
+  const [activeJobType, setActiveJobType] = useState(initialActiveJobId ? 'create_preflight' : null);
   const [jobCurrentBom, setJobCurrentBom] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [jobProgress, setJobProgress] = useState({
-    current: 0,
-    total: 0,
-    percent: 0,
-    successCount: 0,
-    failedCount: 0,
-    skippedCount: 0,
-    notProcessedCount: 0
-  });
+  const [jobProgress, setJobProgress] = useState(
+    initialJobProgress || {
+      current: 0,
+      total: 0,
+      percent: 0,
+      successCount: 0,
+      failedCount: 0,
+      skippedCount: 0,
+      notProcessedCount: 0
+    }
+  );
   const pollIntervalRef = useRef(null);
 
   const fileInputRef = useRef(null);
@@ -232,9 +247,9 @@ export default function BulkCreateBomView({
           if (type === 'create_preflight') {
             setIsValidating(false);
             if (job.status === 'STOPPED_ON_CONNECTION_DROP') {
-              setParseError(`Pre-flight stopped: SAP connection dropped. (${job.error || 'Network error'})`);
+              setParseError(`Data validation stopped: SAP connection dropped. (${job.error || 'Network error'})`);
             } else if (job.status === 'FAILED') {
-              setParseError(job.error || 'Pre-flight validation failed.');
+              setParseError(job.error || 'Data validation failed.');
             } else {
               setPreflightReport({
                 success: true,
@@ -401,7 +416,7 @@ export default function BulkCreateBomView({
         });
         startJobPolling(res.jobId, 'create_preflight');
       } else {
-        setParseError(res.message || 'Failed to start pre-flight validation job.');
+        setParseError(res.message || 'Failed to start data validation job.');
         setIsValidating(false);
       }
     } catch (err) {
@@ -540,6 +555,7 @@ export default function BulkCreateBomView({
         onBack={onBack}
         backTitle={isLocked ? 'Operation in progress' : 'Back to Create BOM'}
         isLocked={isLocked}
+        systemKey={systemKey}
         breadcrumbs={[
           { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
           { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },
@@ -550,7 +566,7 @@ export default function BulkCreateBomView({
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
         {/* Workflow Steps Indicator */}
-        <BulkWorkflowSteps activeStep={activeStep} />
+        <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
         {executionReport ? (
           <div>
@@ -742,13 +758,13 @@ export default function BulkCreateBomView({
               /* Shared Bulk Upload Panel (shown before upload) */
               <BulkUploadPanel
                 title="Upload Spreadsheet"
-                helperText="Accepts tab-delimited text saved as .XLS, or real .xlsx and .xls files."
+                helperText="Upload a spreadsheet to create multiple Bills of Materials in SAP."
                 acceptedFormats=".xlsx,.xls,.tsv,.txt"
                 supportedFormatsText="Supports tab-separated text saved as .XLS, or Excel .xlsx / .xls"
                 fileName={fileName}
                 onFile={handleFileProcess}
                 loading={isValidating}
-                loadingText="Validating data with SAP master records..."
+                loadingText="Validating your data in SAP..."
                 disabled={isLocked}
                 templateAction={{
                   label: 'Download Template',
@@ -769,7 +785,7 @@ export default function BulkCreateBomView({
                   jobCurrentBom={jobCurrentBom}
                   isCancelling={isCancelling}
                   onCancelJob={handleCancelJob}
-                  validationLabel="Validating BOMs in SAP"
+                  validationLabel="Validating data in SAP"
                   executionLabel="Creating BOMs in SAP"
                 />
 
@@ -807,7 +823,7 @@ export default function BulkCreateBomView({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
-                        Pre-flight Validation Preview
+                        Data Preview
                       </h3>
                       <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
                         {allBoms.length} BOM(s) found across {totalComponentRows} component row(s)
@@ -1219,14 +1235,20 @@ export default function BulkCreateBomView({
                                           key={mIdx}
                                           className={`bom-msg-item bom-msg-${item.type}`}
                                           style={{
-                                            color: item.type === 'error' ? 'var(--sap-error, #b00)' : 'var(--sap-warning, #d97706)',
+                                            color: item.type === 'error' ? 'var(--sap-error, #dc2626)' : 'var(--sap-warning, #d97706)',
                                             display: 'flex',
-                                            alignItems: 'baseline',
+                                            alignItems: 'flex-start',
                                             gap: 6
                                           }}
                                         >
-                                          <span style={{ fontSize: 14, lineHeight: 1 }}>•</span>
-                                          <span style={{ wordBreak: 'break-word' }}>{item.text}</span>
+                                          <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
+                                            {item.type === 'error' ? (
+                                              <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)' }} />
+                                            ) : (
+                                              <AlertTriangle size={13} style={{ color: 'var(--sap-warning, #d97706)' }} />
+                                            )}
+                                          </span>
+                                          <span style={{ wordBreak: 'break-word', color: 'var(--sap-text-dark, #0f172a)' }}>{item.text}</span>
                                         </div>
                                       ))}
                                       {messages.all.length > 3 && (
@@ -1331,12 +1353,12 @@ export default function BulkCreateBomView({
                       {isValidating ? (
                         <>
                           <Loader2 size={15} className="sap-spin" />
-                          <span>Validating with SAP...</span>
+                          <span>Validating your data in SAP...</span>
                         </>
                       ) : (
                         <>
                           <ShieldCheck size={15} />
-                          <span>{hasValidated ? 'Re-validate' : 'Validate with SAP'}</span>
+                          <span>{hasValidated ? 'Re-validate data' : 'Validate data'}</span>
                         </>
                       )}
                     </button>
@@ -1358,7 +1380,7 @@ export default function BulkCreateBomView({
                           </span>
                         </>
                       ) : (
-                        <span>Create {readyCount} Ready BOM(s)</span>
+                        <span>Create BOMs ({readyCount})</span>
                       )}
                     </button>
                   </div>
@@ -1379,7 +1401,7 @@ export default function BulkCreateBomView({
         >
           <div style={{ padding: 4 }}>
             <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--sap-text-dark)' }}>
-              You are about to sequentially create <strong>{readyCount}</strong> BOM(s) in SAP from file <strong>{fileName}</strong>:
+              You are about to create <strong>{readyCount}</strong> BOM(s) in SAP from file <strong>{fileName}</strong>:
             </p>
 
             <div

@@ -12,7 +12,7 @@ import activityTracker from '../services/activityTracker';
 const INITIAL_GREETING = {
   id: 'welcome',
   sender: 'assistant',
-  text: "Hello! I am your **SAP AI Operations Assistant**.\n\nYou can ask questions about Bills of Materials, or use the quick actions below to **Copy BOM** (CS01 Copy-From), **Bulk Copy (Excel)**, or **Delete BOM** (ZBOM_COPY). All write and delete actions require your explicit confirmation before execution.",
+  text: "Hello! I am your **SAP AI Operations Assistant**.\n\nYou can ask questions about Bills of Materials, or use the quick actions below to **Copy BOM**, **Bulk Copy (Excel)**, or **Delete BOM**. All write and delete actions require your explicit confirmation before execution.",
   data: null,
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };

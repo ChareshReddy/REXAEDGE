@@ -298,6 +298,7 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
         subtitle="Create a new Bill of Materials header and component list"
         onBack={onBack}
         isLocked={isLocked}
+        systemKey={systemKey}
         breadcrumbs={[
           { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
           { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },

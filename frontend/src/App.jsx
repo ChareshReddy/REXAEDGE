@@ -44,9 +44,10 @@ import {
   prefetchPlants,
   getServerModules
 } from './services/api';
-import { MODULE_REGISTRY, getModuleKeyForAction } from '@shared/modules.js';
+import { MODULE_REGISTRY, getModuleKeyForAction, getAppKeyForAction, normalizePermissions, ALL_BOM_APPS, hasCardPermission } from '@shared/modules.js';
 import nextItPointLogo from './assets/next_it_point_logo.png';
 import activityTracker from './services/activityTracker';
+import { HEADER_BRAND_TITLE } from './config/branding';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -80,6 +81,12 @@ export default function App() {
       (activeTab === 'launchpad' && typeof launchpadSubView === 'string' && launchpadSubView.startsWith('bom'))
     )
   );
+
+  const currentPermittedApps = user?.role === 'admin'
+    ? ALL_BOM_APPS
+    : normalizePermissions(selectedServer?.permissions || []);
+  const activeAppKey = getAppKeyForAction(activeTab);
+  const hasAppAccess = !activeAppKey || user?.role === 'admin' || currentPermittedApps.includes(activeAppKey);
 
   // Logout confirmation modal state
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -403,7 +410,7 @@ export default function App() {
             <img src={nextItPointLogo} alt="Next IT Point" className="sap-brand-logo-img" />
           </div>
           <span className="sap-brand-divider">|</span>
-          <span className="sap-brand-title">SAP AI Operations Assistant</span>
+          <span className="sap-brand-title">{HEADER_BRAND_TITLE}</span>
         </div>
 
         {/* Desktop actions and user badge */}
@@ -417,7 +424,7 @@ export default function App() {
                 className="sap-system-static-label"
                 title={`${selectedServer?.name || ''}${selectedServer?.environment ? ` (${selectedServer.environment})` : ''}`}
               >
-                {selectedServer?.name}
+                <span className="sap-system-static-name">{selectedServer?.name}</span>
                 {selectedServer?.environment && (
                   <span className="sap-system-env-tag">
                     ({selectedServer.environment})
@@ -755,6 +762,7 @@ export default function App() {
                     });
                     return items;
                   })
+                  .filter((op) => hasCardPermission(op, currentPermittedApps, user?.role))
                   .map((op) => {
                     const iconMap = {
                       Search,
@@ -825,7 +833,7 @@ export default function App() {
             onOpenAction={(action) => setActiveTab(action)}
             enabledModules={enabledModules}
             userRole={user.role}
-            userPermissions={user.permissions}
+            userPermissions={currentPermittedApps}
             selectedGroup={selectedHomeGroup}
             onSelectGroup={setSelectedHomeGroup}
             isLoading={isLoadingServers}
@@ -951,7 +959,62 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'create_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
+        {/* App Permission Guard: Direct URL or deep link to non-permitted app */}
+        {activeTab !== 'launchpad' && activeTab !== 'admin' && !hasAppAccess && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '60px 24px',
+              textAlign: 'center',
+              maxWidth: 520,
+              margin: '60px auto',
+              background: 'var(--sap-card-bg)',
+              borderRadius: 'var(--radius-xl)',
+              border: '1px solid var(--sap-border-subtle)',
+              boxShadow: 'var(--sap-shadow-md)'
+            }}
+          >
+            <div
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--sap-error-bg)',
+                color: 'var(--sap-error)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16
+              }}
+            >
+              <ShieldCheck size={30} />
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--sap-text-dark)', margin: '0 0 8px' }}>
+              You don't have access to this feature
+            </h2>
+            <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+              You do not have permission to run this feature on{' '}
+              <strong>{selectedServer?.name || 'this server'}</strong>.
+              Please switch to another server or contact an administrator to request access.
+            </p>
+            <button
+              type="button"
+              className="sap-btn sap-btn-primary"
+              onClick={() => {
+                setActiveTab('launchpad');
+                setLaunchpadSubView('home');
+              }}
+              style={{ padding: '8px 18px', fontSize: 13 }}
+            >
+              Back to Launchpad
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
           <CreateBomView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -971,7 +1034,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'bulk_create_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_create_bom') || enabledModules.includes(getModuleKeyForAction('bulk_create_bom'))) && (
+        {activeTab === 'bulk_create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_create_bom') || enabledModules.includes(getModuleKeyForAction('bulk_create_bom'))) && (
           <BulkCreateBomView
             systemKey={currentSystem}
             onBack={() => {
@@ -989,7 +1052,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'copy_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('copy_bom') || enabledModules.includes(getModuleKeyForAction('copy_bom'))) && (
+        {activeTab === 'copy_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('copy_bom') || enabledModules.includes(getModuleKeyForAction('copy_bom'))) && (
           <CopyBomView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -1009,7 +1072,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'bulk_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_bom') || enabledModules.includes(getModuleKeyForAction('bulk_bom'))) && (
+        {activeTab === 'bulk_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_bom') || enabledModules.includes(getModuleKeyForAction('bulk_bom'))) && (
           <BulkBomView
             systemKey={currentSystem}
             onBack={() => {
@@ -1027,7 +1090,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'delete_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('delete_bom') || enabledModules.includes(getModuleKeyForAction('delete_bom'))) && (
+        {activeTab === 'delete_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('delete_bom') || enabledModules.includes(getModuleKeyForAction('delete_bom'))) && (
           <DeleteBomView
             systemKey={currentSystem}
             onBack={() => {
@@ -1041,7 +1104,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'bom_explorer' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bom_explorer') || enabledModules.includes(getModuleKeyForAction('bom_explorer'))) && (
+        {activeTab === 'bom_explorer' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bom_explorer') || enabledModules.includes(getModuleKeyForAction('bom_explorer'))) && (
           <BomExplorerView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -1057,7 +1120,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'validate_bom' && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('validate_bom') || enabledModules.includes(getModuleKeyForAction('validate_bom'))) && (
+        {activeTab === 'validate_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('validate_bom') || enabledModules.includes(getModuleKeyForAction('validate_bom'))) && (
           <ValidateBomView
             systemKey={currentSystem}
             onBack={() => {

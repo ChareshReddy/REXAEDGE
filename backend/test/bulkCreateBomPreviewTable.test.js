@@ -573,7 +573,7 @@ try {
   assert(html12Rows.includes('Validation Summary:'), 'Sticky footer must render Validation Summary label');
   assert(html12Rows.includes('Ready: 6'), 'Sticky footer must display Ready count');
   assert(html12Rows.includes('Clear &amp; Upload Another') || html12Rows.includes('Clear & Upload Another'), 'Sticky footer must include Clear & Upload Another button');
-  assert(html12Rows.includes('Create 6 Ready BOM(s)'), 'Sticky footer must include accessible Create Ready BOM(s) button');
+  assert(html12Rows.includes('Create BOMs (6)') || html12Rows.includes('Create 6 Ready BOM(s)'), 'Sticky footer must include accessible Create BOMs button');
   console.log('✓ PASS: Sticky footer renders summary counts and accessible action buttons\n');
 
   // -------------------------------------------------------------------------

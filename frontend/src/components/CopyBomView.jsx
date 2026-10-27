@@ -241,7 +241,7 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
       {/* Full-width Fiori Horizon Header */}
       <FioriPageHeader
         title="Copy Single BOM"
-        subtitle="CS01 Reference BOM Copy with automatic Alternative BOM generation (Rule 1) and recursive multi-level sub-assembly replication (Rule 2)."
+        subtitle="Copy a BOM to another plant, with automatic alternative numbers and sub-assemblies."
         onBack={onBack}
         backTitle="Back to Copy BOM"
         systemKey={systemKey}
@@ -280,10 +280,10 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
               >
                 <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
                 <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                  Checking BOMs in SAP...
+                  Validating BOMs in SAP...
                 </h4>
                 <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                  Simulating multi-level BOM creation in target plant via BAPI TESTRUN to verify all components and plants before execution.
+                  Simulating multi-level BOM creation in the target plant to verify all components and plants before execution.
                 </p>
                 <button
                   type="button"
@@ -313,7 +313,7 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
               <ShieldCheck size={20} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
               <div>
                 <h4>Human Confirmation Gate: Verify BOM Copy Proposal</h4>
-                <p>Review the source and target parameters below. Confirming will execute the copy via direct SAP RFC.</p>
+                <p>Review the source and target parameters below. Confirming will execute the copy in SAP.</p>
               </div>
             </div>
 

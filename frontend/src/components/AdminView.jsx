@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
+  ChevronDown,
   Users,
   Server,
   KeyRound,
@@ -18,9 +19,7 @@ import {
   Check,
   Eye,
   EyeOff,
-  Zap,
-  Info,
-  XCircle
+  Info
 } from 'lucide-react';
 import {
   getAdminUsers,
@@ -30,16 +29,49 @@ import {
   createAdminServer,
   updateAdminServer,
   deleteAdminServer,
-  testServerConnection,
-  testServerById,
   getAdminPermissions,
   grantAdminPermission,
   revokeAdminPermission
 } from '../services/api';
-import { MODULE_REGISTRY, MODULE_STATUS, MODULE_KEYS } from '@shared/modules.js';
+import { MODULE_REGISTRY, MODULE_STATUS, MODULE_KEYS, BOM_APP_LIST, ALL_BOM_APPS, normalizePermissions, formatPermissionsSummary, getPermissionsSummaryParts } from '@shared/modules.js';
 import activityTracker from '../services/activityTracker';
 import Modal from './Modal';
 import PasswordModal from './PasswordModal';
+import PasswordInput from './PasswordInput';
+
+/**
+ * TriStateCheckbox: Accessible checkbox with HTML5 indeterminate state support
+ */
+function TriStateCheckbox({ checked, indeterminate, onChange, disabled, id, ariaLabel }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = Boolean(indeterminate);
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      id={id}
+      aria-label={ariaLabel}
+      type="checkbox"
+      checked={Boolean(checked)}
+      disabled={disabled}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: 16,
+        height: 16,
+        margin: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        accentColor: 'var(--sap-primary, #0a6ed1)',
+        flexShrink: 0
+      }}
+    />
+  );
+}
 
 export default function AdminView({ currentUser, onBack, onNavigateHome }) {
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'servers' | 'permissions'
@@ -54,6 +86,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
   const [users, setUsers] = useState([]);
   const [servers, setServers] = useState([]);
   const [permissions, setPermissions] = useState([]);
+  const [permissionsError, setPermissionsError] = useState('');
+  const [migrationPending, setMigrationPending] = useState(false);
 
   // Filter queries
   const [userSearch, setUserSearch] = useState('');
@@ -86,20 +120,18 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
     sap_password: ''
   });
   const [serverSubmitting, setServerSubmitting] = useState(false);
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [testConnResult, setTestConnResult] = useState(null);
-  const [testingRowServerId, setTestingRowServerId] = useState(null);
-  const [selectedTestDetails, setSelectedTestDetails] = useState(null);
 
   // Grant Permission Modal
-
   const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
+  const [isEditingPermission, setIsEditingPermission] = useState(false);
   const [grantFormData, setGrantFormData] = useState({
     user_id: '',
-    server_id: ''
+    server_id: '',
+    permissions: [...ALL_BOM_APPS]
   });
   const [grantSubmitting, setGrantSubmitting] = useState(false);
   const [grantModalError, setGrantModalError] = useState('');
+  const [expandedModules, setExpandedModules] = useState({ bom: true });
 
   // Reusable confirmation modal state (for delete confirmations & warnings)
   const [confirmModal, setConfirmModal] = useState({
@@ -113,33 +145,71 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
   });
 
   useEffect(() => {
-    const isBusy = userSubmitting || serverSubmitting || testingConnection || grantSubmitting || confirmModal.isLoading;
+    const isBusy = userSubmitting || serverSubmitting || grantSubmitting || confirmModal.isLoading;
     activityTracker.setOperation('admin_ops', isBusy);
     return () => {
       activityTracker.setOperation('admin_ops', false);
     };
-  }, [userSubmitting, serverSubmitting, testingConnection, grantSubmitting, confirmModal.isLoading]);
+  }, [userSubmitting, serverSubmitting, grantSubmitting, confirmModal.isLoading]);
 
-  // Load all admin data
+  // Load all admin data independently with Promise.allSettled
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage('');
+    setPermissionsError('');
     try {
-      const [usersData, serversData, permsData] = await Promise.all([
+      const [usersResult, serversResult, permsResult] = await Promise.allSettled([
         getAdminUsers(),
         getAdminServers(),
         getAdminPermissions()
       ]);
-      setUsers(usersData || []);
-      setServers(serversData || []);
-      setPermissions(permsData || []);
 
-      // Pre-select first user and server for grant form if available
-      if (usersData?.length && !grantFormData.user_id) {
-        setGrantFormData((prev) => ({ ...prev, user_id: usersData[0].id }));
+      const globalErrors = [];
+
+      // 1. Users Tab
+      if (usersResult.status === 'fulfilled') {
+        const usersList = usersResult.value || [];
+        setUsers(usersList);
+        if (usersList.length && !grantFormData.user_id) {
+          setGrantFormData((prev) => ({ ...prev, user_id: usersList[0].id }));
+        }
+      } else {
+        const userErr = usersResult.reason?.response?.data?.error || usersResult.reason?.message || 'Failed to retrieve users.';
+        console.error('[Admin] Error loading users:', usersResult.reason);
+        globalErrors.push(`Users: ${userErr}`);
       }
-      if (serversData?.length && !grantFormData.server_id) {
-        setGrantFormData((prev) => ({ ...prev, server_id: serversData[0].id }));
+
+      // 2. SAP Servers Tab
+      if (serversResult.status === 'fulfilled') {
+        const serversList = serversResult.value || [];
+        setServers(serversList);
+        if (serversList.length && !grantFormData.server_id) {
+          setGrantFormData((prev) => ({ ...prev, server_id: serversList[0].id }));
+        }
+      } else {
+        const serverErr = serversResult.reason?.response?.data?.error || serversResult.reason?.message || 'Failed to retrieve SAP servers.';
+        console.error('[Admin] Error loading servers:', serversResult.reason);
+        globalErrors.push(`SAP Servers: ${serverErr}`);
+      }
+
+      // 3. Access Permissions Tab
+      if (permsResult.status === 'fulfilled') {
+        const permsList = permsResult.value || [];
+        setPermissions(permsList);
+        if (permsList.migrationPending || permsList.some((p) => p.legacyFallback)) {
+          setMigrationPending(true);
+        } else {
+          setMigrationPending(false);
+        }
+      } else {
+        const permErr = permsResult.reason?.response?.data?.error || permsResult.reason?.message || 'Failed to retrieve permissions.';
+        console.error('[Admin] Error loading access permissions:', permsResult.reason);
+        setPermissionsError(permErr);
+      }
+
+      // If Users or Servers failed, show at top-level; if only permissions failed, tab shows its own error
+      if (globalErrors.length > 0) {
+        setErrorMessage(globalErrors.join(' | '));
       }
     } catch (err) {
       console.error('Failed to load admin data:', err);
@@ -221,7 +291,6 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
   // --- Server Handlers ---
   const handleOpenAddServer = () => {
     setEditingServerId(null);
-    setTestConnResult(null);
     setServerModalError('');
     setServerFormData({
       name: '',
@@ -242,7 +311,6 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
 
   const handleOpenEditServer = (server) => {
     setEditingServerId(server.id);
-    setTestConnResult(null);
     setServerModalError('');
     setServerFormData({
       name: server.name,
@@ -259,66 +327,6 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
       sap_password: ''
     });
     setIsServerModalOpen(true);
-  };
-
-  const handleTestConnection = async () => {
-    setTestingConnection(true);
-    setTestConnResult(null);
-    try {
-      const res = await testServerConnection({
-        serverId: editingServerId,
-        name: serverFormData.name,
-        ashost: serverFormData.ashost,
-        sysnr: serverFormData.sysnr,
-        client: serverFormData.client,
-        lang: serverFormData.lang,
-        router: serverFormData.router,
-        gwserv: serverFormData.gwserv,
-        sap_username: serverFormData.sap_username,
-        sap_password: serverFormData.sap_password
-      });
-      if (res.success) {
-        setTestConnResult({
-          success: true,
-          message: res.message || 'RFC Connection test successful.',
-          data: res.connection_test
-        });
-      } else {
-        setTestConnResult({
-          success: false,
-          message: res.error || res.message || 'RFC Connection test failed.',
-          data: res.connection_test
-        });
-      }
-    } catch (err) {
-      setTestConnResult({
-        success: false,
-        message: err.response?.data?.error || err.message || 'RFC Connection test failed.'
-      });
-    } finally {
-      setTestingConnection(false);
-    }
-  };
-
-  const handleRowTestConnection = async (server) => {
-    setTestingRowServerId(server.id);
-    try {
-      const res = await testServerById(server.id);
-      if (res?.connection_test) {
-        setServers((prev) =>
-          prev.map((s) => (s.id === server.id ? { ...s, connection_test: res.connection_test } : s))
-        );
-        setSelectedTestDetails({
-          serverId: server.id,
-          serverName: server.name,
-          data: res.connection_test
-        });
-      }
-    } catch (err) {
-      alert(`Connection test failed for ${server.name}: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setTestingRowServerId(null);
-    }
   };
 
   const executeSaveServer = async () => {
@@ -402,10 +410,15 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
     setGrantSubmitting(true);
     setGrantModalError('');
     try {
-      await grantAdminPermission(grantFormData);
-      triggerNotice('Access permission granted successfully.');
-      setGrantFormData({ user_id: '', server_id: '' });
+      await grantAdminPermission({
+        user_id: grantFormData.user_id,
+        server_id: grantFormData.server_id,
+        permissions: normalizePermissions(grantFormData.permissions || [])
+      });
+      triggerNotice(isEditingPermission ? 'Feature permissions updated successfully.' : 'Access permission granted successfully.');
+      setGrantFormData({ user_id: '', server_id: '', permissions: [...ALL_BOM_APPS] });
       setIsGrantModalOpen(false);
+      setIsEditingPermission(false);
       setGrantModalError('');
       await loadData();
     } catch (err) {
@@ -413,6 +426,94 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
     } finally {
       setGrantSubmitting(false);
     }
+  };
+
+  const handleOpenGrantModal = () => {
+    setIsEditingPermission(false);
+    setGrantFormData({
+      user_id: '',
+      server_id: '',
+      permissions: [...ALL_BOM_APPS]
+    });
+    setGrantModalError('');
+    setExpandedModules({ bom: true });
+    setIsGrantModalOpen(true);
+  };
+
+  const handleEditPermission = (perm) => {
+    setIsEditingPermission(true);
+    setGrantFormData({
+      user_id: perm.user_id,
+      server_id: perm.server_id,
+      permissions: normalizePermissions(perm.permissions || [])
+    });
+    setGrantModalError('');
+    setExpandedModules({ bom: true });
+    setIsGrantModalOpen(true);
+  };
+
+  const toggleModuleExpanded = (modKey) => {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [modKey]: !prev[modKey]
+    }));
+  };
+
+  const handleToggleModule = (mod) => {
+    const modApps = mod.apps || [];
+    if (modApps.length === 0) return;
+    const modAppKeys = modApps.map((a) => a.key);
+    const currentPerms = grantFormData.permissions || [];
+    const selectedModApps = currentPerms.filter((k) => modAppKeys.includes(k));
+    const allChecked = selectedModApps.length === modAppKeys.length;
+
+    let updatedPerms;
+    if (allChecked) {
+      // Clear all apps of this module
+      updatedPerms = currentPerms.filter((k) => !modAppKeys.includes(k));
+    } else {
+      // Select all apps of this module
+      updatedPerms = Array.from(new Set([...currentPerms, ...modAppKeys]));
+    }
+    setGrantFormData({
+      ...grantFormData,
+      permissions: normalizePermissions(updatedPerms)
+    });
+  };
+
+  const hasWriteApp = (grantFormData.permissions || []).some((p) =>
+    p === 'bom.create' || p === 'bom.copy' || p === 'bom.delete'
+  );
+
+  const toggleAppPermission = (appKey) => {
+    const current = new Set(grantFormData.permissions || []);
+    if (appKey === 'bom.display' && hasWriteApp) {
+      return;
+    }
+    if (current.has(appKey)) {
+      current.delete(appKey);
+    } else {
+      current.add(appKey);
+    }
+    const nextList = normalizePermissions(Array.from(current));
+    setGrantFormData({ ...grantFormData, permissions: nextList });
+  };
+
+  const handleSelectAllApps = () => {
+    const allAvailableKeys = MODULE_REGISTRY
+      .filter((m) => m.status === MODULE_STATUS.AVAILABLE && Array.isArray(m.apps))
+      .flatMap((m) => m.apps.map((a) => a.key));
+    setGrantFormData({
+      ...grantFormData,
+      permissions: normalizePermissions(allAvailableKeys)
+    });
+  };
+
+  const handleClearAllApps = () => {
+    setGrantFormData({
+      ...grantFormData,
+      permissions: []
+    });
   };
 
   const handleRevokePermission = (perm) => {
@@ -452,7 +553,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
 
   const filteredPermissions = permissions.filter((p) =>
     (p.user_email && p.user_email.toLowerCase().includes(permSearch.toLowerCase())) ||
-    (p.server_name && p.server_name.toLowerCase().includes(permSearch.toLowerCase()))
+    (p.server_name && p.server_name.toLowerCase().includes(permSearch.toLowerCase())) ||
+    (p.permissions && formatPermissionsSummary(p.permissions).toLowerCase().includes(permSearch.toLowerCase()))
   );
 
   return (
@@ -551,7 +653,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
               padding: '1px 6px',
               fontSize: 11
             }}>
-              {permissions.length}
+              {permissionsError ? '!' : permissions.length}
             </span>
           </button>
         </div>
@@ -756,7 +858,6 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                     <th>Host / Gateway</th>
                     <th>Sys / Client</th>
                     <th>SAP Credentials</th>
-                    <th>Connection Test</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
@@ -831,62 +932,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                             )}
                           </div>
                         </td>
-                        <td>
-                          {s.connection_test ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                <span style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  fontSize: 10.5,
-                                  fontWeight: 600,
-                                  color: s.connection_test.overallStatus === 'PASS'
-                                    ? 'var(--sap-success, #059669)'
-                                    : s.connection_test.overallStatus === 'WARN'
-                                    ? 'var(--sap-warning-text, #b45309)'
-                                    : 'var(--sap-error, #dc2626)',
-                                  background: s.connection_test.overallStatus === 'PASS'
-                                    ? 'var(--sap-success-light, #ecfdf5)'
-                                    : s.connection_test.overallStatus === 'WARN'
-                                    ? 'var(--sap-warning-bg, #fffbeb)'
-                                    : 'var(--sap-error-bg, #fef2f2)',
-                                  border: `1px solid ${
-                                    s.connection_test.overallStatus === 'PASS'
-                                      ? 'var(--sap-success-border, #a7f3d0)'
-                                      : s.connection_test.overallStatus === 'WARN'
-                                      ? 'var(--sap-warning-border, #fde68a)'
-                                      : 'var(--sap-error-border, #fecaca)'
-                                  }`,
-                                  padding: '1px 6px',
-                                  borderRadius: 'var(--radius-xs)'
-                                }}>
-                                  {s.connection_test.overallStatus === 'PASS' ? (
-                                    <Check size={11} />
-                                  ) : (
-                                    <AlertTriangle size={11} />
-                                  )}
-                                  {s.connection_test.overallStatus === 'PASS' ? 'Ready' : s.connection_test.overallStatus === 'WARN' ? 'Warnings' : 'Failed'}
-                                </span>
-                                <button
-                                  type="button"
-                                  className="sap-btn-link"
-                                  style={{ fontSize: 10.5, textDecoration: 'underline', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--sap-primary)' }}
-                                  onClick={() => setSelectedTestDetails(selectedTestDetails?.serverId === s.id ? null : { serverId: s.id, serverName: s.name, data: s.connection_test })}
-                                >
-                                  {selectedTestDetails?.serverId === s.id ? 'Hide' : 'Details'}
-                                </button>
-                              </div>
-                              <span style={{ fontSize: 10, color: 'var(--sap-text-muted)' }}>
-                                {s.connection_test.tested_at ? new Date(s.connection_test.tested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: 11, color: 'var(--sap-text-subtle)', fontStyle: 'italic' }}>
-                              Not tested
-                            </span>
-                          )}
-                        </td>
+                        
                         <td>
                           <span className={`sap-status-pill ${s.is_active ? 'is-active' : 'is-inactive'}`}>
                             <span className={`sap-status-dot ${s.is_active ? 'is-active' : 'is-inactive'}`} />
@@ -895,20 +941,6 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 2 }}>
-                            <button
-                              type="button"
-                              className="sap-btn sap-btn-ghost"
-                              onClick={() => handleRowTestConnection(s)}
-                              disabled={testingRowServerId === s.id}
-                              title="Run Test Connection"
-                              style={{ color: 'var(--sap-primary)', padding: '2px 5px' }}
-                            >
-                              {testingRowServerId === s.id ? (
-                                <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                              ) : (
-                                <Zap size={13} />
-                              )}
-                            </button>
                             <button
                               type="button"
                               className="sap-btn sap-btn-ghost"
@@ -930,52 +962,11 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                           </div>
                         </td>
                       </tr>
-                      {selectedTestDetails?.serverId === s.id && selectedTestDetails.data && (
-                        <tr key={`${s.id}-details`} style={{ background: 'var(--sap-surface-subtle, #f8fafc)' }}>
-                          <td colSpan={8} style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11.5 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <strong style={{ color: 'var(--sap-text-dark)' }}>Latest Connection Test Results for {s.name}:</strong>
-                                <span style={{ fontSize: 11, color: 'var(--sap-text-muted)' }}>
-                                  {selectedTestDetails.data.tested_at ? new Date(selectedTestDetails.data.tested_at).toLocaleString() : ''}
-                                </span>
-                              </div>
-                              {(selectedTestDetails.data.checks || []).map((check) => (
-                                <div key={check.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
-                                  {check.status === 'PASS' ? (
-                                    <CheckCircle2 size={14} color="var(--sap-success, #059669)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  ) : check.status === 'WARN' ? (
-                                    <AlertTriangle size={14} color="var(--sap-warning-text, #d97706)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  ) : check.status === 'INFO' ? (
-                                    <Info size={14} color="var(--sap-primary, #2563eb)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  ) : (
-                                    <XCircle size={14} color="var(--sap-error, #dc2626)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  )}
-                                  <div>
-                                    <span style={{ fontWeight: 600, marginRight: 5 }}>{check.name}:</span>
-                                    <span style={{
-                                      color: check.status === 'FAIL'
-                                        ? 'var(--sap-error, #dc2626)'
-                                        : check.status === 'WARN'
-                                        ? 'var(--sap-warning-text, #b45309)'
-                                        : check.status === 'INFO'
-                                        ? 'var(--sap-primary, #2563eb)'
-                                        : 'inherit'
-                                    }}>
-                                      {check.message}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                       </React.Fragment>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
+                      <td colSpan={7} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
                         No SAP servers found matching query.
                       </td>
                     </tr>
@@ -990,7 +981,60 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             TAB 3: PERMISSIONS MATRIX & MANAGEMENT
            ========================================================================= */}
         {activeTab === 'permissions' && (
-          <div>
+          <div style={{ maxWidth: 840, width: '100%' }}>
+            {/* Database Migration Pending Notice */}
+            {migrationPending && (
+              <div
+                style={{
+                  background: 'var(--sap-info-bg, #e8f4fd)',
+                  border: '1px solid var(--sap-info-border, #b8daff)',
+                  color: 'var(--sap-info-text, #004085)',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10
+                }}
+              >
+                <Info size={16} style={{ flexShrink: 0, marginTop: 2, color: 'var(--sap-primary)' }} />
+                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                  <strong>Database Migration Pending:</strong> The granular <code>permissions</code> column has not yet been applied to <code>public.user_server_permissions</code>. The system is operating in backward-compatible mode: existing server grants are displayed with full BOM feature access so users remain unblocked. To enable granular per-feature permissions, run <code>supabase/migrations/20261027_per_user_per_server_app_permissions.sql</code> in your Supabase SQL Editor.
+                </div>
+              </div>
+            )}
+
+            {/* Permissions Tab Specific Error */}
+            {permissionsError && (
+              <div
+                style={{
+                  background: 'var(--sap-error-bg, #fde8e8)',
+                  border: '1px solid var(--sap-error-border, #f8b4b4)',
+                  color: 'var(--sap-error-text, #9b1c1c)',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span><strong>Access Permissions unavailable:</strong> {permissionsError}</span>
+                </div>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-secondary"
+                  onClick={loadData}
+                  style={{ fontSize: 11, height: 26, padding: '0 8px' }}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
             {/* Header row with search and Grant Permission button */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%' }}>
@@ -1014,7 +1058,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                 <button
                   type="button"
                   className="sap-btn sap-btn-primary"
-                  onClick={() => setIsGrantModalOpen(true)}
+                  onClick={handleOpenGrantModal}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
                 >
                   <Plus size={14} />
@@ -1023,68 +1067,165 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
               </div>
             </div>
 
-            {/* Permissions Table - Compact & Scrollable */}
-            <div className="sap-admin-table-scroll" tabIndex={0} role="region" aria-label="Access Permissions Table">
-              <table className="sap-admin-compact-table">
+            {/* Permissions Table - Fixed Layout with Explicit Content-Based Widths */}
+            <div className="sap-admin-table-scroll" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%', overflowX: 'auto' }}>
+              <table className="sap-admin-compact-table" style={{ width: '100%', minWidth: 840, tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 240 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 95 }} />
+                  <col style={{ width: 195 }} />
+                  <col style={{ width: 95 }} />
+                  <col style={{ width: 75 }} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>User Email</th>
-                    <th>Target SAP Server</th>
-                    <th>Environment</th>
-                    <th>Granted At</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ width: 240 }}>User Email</th>
+                    <th style={{ width: 140 }}>Target SAP Server</th>
+                    <th style={{ width: 95 }}>Environment</th>
+                    <th style={{ width: 195 }}>Permitted Features</th>
+                    <th style={{ width: 95 }}>Granted At</th>
+                    <th style={{ width: 75, textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredPermissions.length > 0 ? (
-                    filteredPermissions.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ fontWeight: 500, color: 'var(--sap-text-dark)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Users size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                            <span>{p.user_email}</span>
-                          </div>
-                        </td>
-                        <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                            <span>{p.server_name}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`sap-env-badge ${
-                            p.server_environment === 'PROD'
-                              ? 'sap-env-badge-prod'
-                              : p.server_environment === 'QA'
-                              ? 'sap-env-badge-qa'
-                              : p.server_environment === 'SANDBOX'
-                              ? 'sap-env-badge-sandbox'
-                              : 'sap-env-badge-dev'
-                          }`}>
-                            {p.server_environment || 'DEV'}
-                          </span>
-                        </td>
-                        <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
-                          {p.granted_at ? new Date(p.granted_at).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 2 }}>
-                            <button
-                              type="button"
-                              className="sap-btn sap-btn-ghost"
-                              onClick={() => handleRevokePermission(p)}
-                              title="Revoke Permission"
-                              style={{ color: 'var(--sap-error)', padding: '2px 5px' }}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                    filteredPermissions.map((p) => {
+                      const summaryParts = getPermissionsSummaryParts(p.permissions);
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ fontWeight: 500, color: 'var(--sap-text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.user_email}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                              <Users size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.user_email}>
+                                {p.user_email}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.server_name}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                              <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.server_name}>
+                                {p.server_name}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span className={`sap-env-badge ${
+                              p.server_environment === 'PROD'
+                                ? 'sap-env-badge-prod'
+                                : p.server_environment === 'QA'
+                                ? 'sap-env-badge-qa'
+                                : p.server_environment === 'SANDBOX'
+                                ? 'sap-env-badge-sandbox'
+                                : 'sap-env-badge-dev'
+                            }`}>
+                              {p.server_environment || 'DEV'}
+                            </span>
+                          </td>
+                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', maxWidth: '100%', verticalAlign: 'middle' }}>
+                              <span
+                                tabIndex={0}
+                                title={summaryParts.tooltip}
+                                aria-label={`Permitted features: ${summaryParts.tooltip}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  padding: '2px 8px',
+                                  borderRadius: 'var(--radius-sm, 4px)',
+                                  fontSize: 11.5,
+                                  fontWeight: 600,
+                                  background: summaryParts.isNone
+                                    ? 'var(--sap-warning-bg, #fff3cd)'
+                                    : 'var(--sap-primary-light, #e8f0fe)',
+                                  color: summaryParts.isNone
+                                    ? 'var(--sap-warning-text, #856404)'
+                                    : 'var(--sap-primary, #0a6ed1)',
+                                  border: `1px solid ${summaryParts.isNone ? 'var(--sap-warning-border, #ffeeba)' : 'var(--sap-primary-border, #b3d7ff)'}`,
+                                  maxWidth: '100%',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  cursor: 'help'
+                                }}
+                              >
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {summaryParts.text}
+                                </span>
+                                {summaryParts.pillCount > 0 && (
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: '0 5px',
+                                      height: 16,
+                                      borderRadius: 8,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      background: 'var(--sap-primary, #0a6ed1)',
+                                      color: '#ffffff',
+                                      flexShrink: 0
+                                    }}
+                                  >
+                                    +{summaryParts.pillCount}
+                                  </span>
+                                )}
+                              </span>
+                              {(p.legacyFallback || migrationPending) && (
+                                <span
+                                  title="Legacy server grant - full feature access fallback"
+                                  tabIndex={0}
+                                  style={{
+                                    marginLeft: 6,
+                                    fontSize: 10,
+                                    padding: '1px 5px',
+                                    borderRadius: 3,
+                                    background: 'var(--sap-surface-empty, #f1f5f9)',
+                                    color: 'var(--sap-text-muted, #64748b)',
+                                    border: '1px solid var(--sap-border-subtle, #cbd5e1)',
+                                    fontWeight: 500,
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  Legacy
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.granted_at ? new Date(p.granted_at).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', gap: 4 }}>
+                              <button
+                                type="button"
+                                className="sap-btn sap-btn-ghost"
+                                onClick={() => handleEditPermission(p)}
+                                title="Edit Permitted Features"
+                                style={{ color: 'var(--sap-primary)', padding: '2px 6px' }}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="sap-btn sap-btn-ghost"
+                                onClick={() => handleRevokePermission(p)}
+                                title="Revoke Permission"
+                                style={{ color: 'var(--sap-error)', padding: '2px 6px' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={5} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
+                      <td colSpan={6} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
                         No permission grants found.
                       </td>
                     </tr>
@@ -1129,14 +1270,13 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
 
           <div className="sap-form-group">
             <label className="sap-form-label">Initial / Temporary Password</label>
-            <input
-              type="password"
-              className="sap-input"
+            <PasswordInput
               placeholder="Minimum 6 characters"
               value={userFormData.password}
               onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
               required
               minLength={6}
+              autoComplete="new-password"
             />
           </div>
 
@@ -1330,9 +1470,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                     <label className="sap-form-label">
                       SAP Password {editingServerId ? '(Leave blank to keep current)' : ''}
                     </label>
-                    <input
-                      type="password"
-                      className="sap-input"
+                    <PasswordInput
                       placeholder={editingServerId ? '••••••••  (Unchanged)' : 'Enter RFC password'}
                       value={serverFormData.sap_password}
                       onChange={(e) => setServerFormData({ ...serverFormData, sap_password: e.target.value })}
@@ -1340,182 +1478,9 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                     />
                   </div>
                 </div>
-
-                <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="sap-btn sap-btn-secondary"
-                      onClick={handleTestConnection}
-                      disabled={testingConnection || (!serverFormData.sap_username && !serverFormData.ashost)}
-                      style={{ height: 30, fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                    >
-                      {testingConnection ? (
-                        <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                      ) : (
-                        <Zap size={13} color="var(--sap-primary)" />
-                      )}
-                      <span>{testingConnection ? 'Testing Connection...' : 'Test Connection'}</span>
-                    </button>
-                    <span style={{ fontSize: 11, color: 'var(--sap-text-subtle)' }}>
-                      Opens a read-only RFC_PING to verify host and credentials.
-                    </span>
-                  </div>
-
-                  {testConnResult && (
-                    <div style={{
-                      padding: '10px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: 12,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 7,
-                      background: testConnResult.success ? 'var(--sap-success-bg, #ecfdf5)' : 'var(--sap-error-bg, #fef2f2)',
-                      border: `1px solid ${testConnResult.success ? 'var(--sap-success-border, #a7f3d0)' : 'var(--sap-error-border, #fecaca)'}`
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, color: testConnResult.success ? 'var(--sap-success, #059669)' : 'var(--sap-error, #dc2626)' }}>
-                        {testConnResult.success ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                        <span>{testConnResult.message}</span>
-                      </div>
-                      {testConnResult.data?.checks && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                          {testConnResult.data.checks.map((check) => (
-                            <div key={check.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 11.5 }}>
-                              {check.status === 'PASS' ? (
-                                <CheckCircle2 size={13} color="var(--sap-success, #059669)" style={{ flexShrink: 0, marginTop: 2 }} />
-                              ) : check.status === 'WARN' ? (
-                                <AlertTriangle size={13} color="var(--sap-warning-text, #d97706)" style={{ flexShrink: 0, marginTop: 2 }} />
-                              ) : check.status === 'INFO' ? (
-                                <Info size={13} color="var(--sap-primary, #2563eb)" style={{ flexShrink: 0, marginTop: 2 }} />
-                              ) : (
-                                <XCircle size={13} color="var(--sap-error, #dc2626)" style={{ flexShrink: 0, marginTop: 2 }} />
-                              )}
-                              <div>
-                                <span style={{ fontWeight: 600, marginRight: 5 }}>{check.name}:</span>
-                                <span style={{
-                                  color: check.status === 'FAIL'
-                                    ? 'var(--sap-error, #dc2626)'
-                                    : check.status === 'WARN'
-                                    ? 'var(--sap-warning-text, #b45309)'
-                                    : check.status === 'INFO'
-                                    ? 'var(--sap-primary, #2563eb)'
-                                    : 'inherit'
-                                }}>
-                                  {check.message}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
               </div>
 
-              {/* Module Access Card */}
-              <div style={{
-                marginTop: 12,
-                marginBottom: 16,
-                padding: '12px 14px',
-                background: 'var(--sap-surface-subtle)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--sap-border-subtle)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                    Module Access
-                  </label>
-                  <span style={{ fontSize: 11, color: 'var(--sap-text-muted)' }}>
-                    {(serverFormData.modules || []).length} enabled
-                  </span>
-                </div>
-
-                {(!serverFormData.modules || serverFormData.modules.length === 0) && (
-                  <div style={{
-                    padding: '6px 10px',
-                    marginBottom: 10,
-                    background: 'var(--sap-warning-bg)',
-                    border: '1px solid var(--sap-warning-border)',
-                    borderRadius: 'var(--radius-md)',
-                    color: 'var(--sap-warning-text)',
-                    fontSize: 12,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}>
-                    <AlertTriangle size={14} />
-                    <span>No modules enabled. Users will see an empty launchpad.</span>
-                  </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {MODULE_REGISTRY.map((mod) => {
-                    const isSoon = mod.status === MODULE_STATUS.COMING_SOON;
-                    const isChecked = !isSoon && (serverFormData.modules || []).includes(mod.key);
-
-                    return (
-                      <div
-                        key={mod.key}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '6px 10px',
-                          borderRadius: 'var(--radius-md)',
-                          border: isChecked ? '1px solid var(--sap-primary-border)' : '1px solid var(--sap-border-subtle)',
-                          background: isSoon ? 'var(--sap-surface-empty)' : isChecked ? 'var(--sap-primary-light)' : 'var(--sap-card-bg)',
-                          opacity: isSoon ? 0.65 : 1,
-                          cursor: isSoon ? 'not-allowed' : 'pointer',
-                          userSelect: 'none'
-                        }}
-                        onClick={() => {
-                          if (isSoon) return;
-                          const current = serverFormData.modules || [];
-                          const next = current.includes(mod.key)
-                            ? current.filter((k) => k !== mod.key)
-                            : [...current, mod.key];
-                          setServerFormData({ ...serverFormData, modules: next });
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          id={`mod-check-${mod.key}`}
-                          checked={isChecked}
-                          disabled={isSoon}
-                          onChange={() => {}}
-                          style={{ cursor: isSoon ? 'not-allowed' : 'pointer' }}
-                        />
-                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: isSoon ? 'var(--sap-text-muted)' : 'var(--sap-text-dark)' }}>
-                              {mod.label}
-                            </span>
-                            {isSoon && (
-                              <span style={{
-                                fontSize: 9,
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                padding: '1px 4px',
-                                borderRadius: 'var(--radius-xs)',
-                                background: 'var(--sap-surface-empty)',
-                                color: 'var(--sap-text-muted)'
-                              }}>
-                                Soon
-                              </span>
-                            )}
-                          </div>
-                          <span style={{ fontSize: 10, color: 'var(--sap-text-subtle)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {mod.group}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, marginBottom: 16 }}>
                 <input
                   type="checkbox"
                   id="server-active-check"
@@ -1550,16 +1515,17 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
       </Modal>
 
       {/* =========================================================================
-          MODAL: GRANT PERMISSION
+          MODAL: GRANT / EDIT PERMISSION
          ========================================================================= */}
       <Modal
         isOpen={isGrantModalOpen}
         onClose={() => setIsGrantModalOpen(false)}
-        title="Grant Server Access Permission"
-        subtitle="Assign user access to a specific SAP server environment"
+        title={isEditingPermission ? "Edit Permitted Features" : "Grant Server & Feature Permissions"}
+        subtitle="Configure which features this user can run on the SAP server"
         icon={KeyRound}
         isLoading={grantSubmitting}
-        maxWidth={460}
+        maxWidth={540}
+        style={{ maxHeight: '90vh', overflowY: 'auto' }}
       >
         <form onSubmit={handleGrantPermission}>
           {grantModalError && (
@@ -1575,7 +1541,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
               value={grantFormData.user_id}
               onChange={(e) => setGrantFormData({ ...grantFormData, user_id: e.target.value })}
               required
-              autoFocus
+              disabled={isEditingPermission}
+              autoFocus={!isEditingPermission}
             >
               <option value="" disabled>-- Select a User --</option>
               {users.map((u) => (
@@ -1591,12 +1558,256 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
               value={grantFormData.server_id}
               onChange={(e) => setGrantFormData({ ...grantFormData, server_id: e.target.value })}
               required
+              disabled={isEditingPermission}
             >
               <option value="" disabled>-- Select a Server --</option>
               {servers.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.environment})</option>
               ))}
             </select>
+          </div>
+
+          {/* Permitted Applications Accordion */}
+          <div style={{
+            marginTop: 14,
+            marginBottom: 16,
+            padding: '14px',
+            background: 'var(--sap-surface-subtle, #f8fafc)',
+            borderRadius: 'var(--radius-lg, 8px)',
+            border: '1px solid var(--sap-border-subtle, #e2e8f0)'
+          }}>
+            {migrationPending && (
+              <div style={{
+                background: 'var(--sap-info-bg, #e8f4fd)',
+                border: '1px solid var(--sap-info-border, #b8daff)',
+                color: 'var(--sap-info-text, #004085)',
+                padding: '6px 10px',
+                borderRadius: 'var(--radius-sm, 4px)',
+                fontSize: 11.5,
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <Info size={14} style={{ flexShrink: 0 }} />
+                <span><strong>Migration pending:</strong> Grants are currently saved with full BOM feature access until the database column is added.</span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                Permitted Features
+              </label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-ghost"
+                  onClick={handleSelectAllApps}
+                  style={{ fontSize: 11, padding: '2px 8px', height: 'auto', fontWeight: 600, color: 'var(--sap-primary)' }}
+                >
+                  Select all
+                </button>
+                <span style={{ color: 'var(--sap-border-subtle)' }}>|</span>
+                <button
+                  type="button"
+                  className="sap-btn sap-btn-ghost"
+                  onClick={handleClearAllApps}
+                  style={{ fontSize: 11, padding: '2px 8px', height: 'auto', fontWeight: 600, color: 'var(--sap-text-muted)' }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Module Accordion List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {MODULE_REGISTRY.map((mod) => {
+                const isAvailable = mod.status === MODULE_STATUS.AVAILABLE;
+                const modApps = mod.apps || [];
+                const totalApps = modApps.length;
+                const currentPerms = grantFormData.permissions || [];
+                const selectedModApps = currentPerms.filter((k) => modApps.some((a) => a.key === k));
+                const allChecked = totalApps > 0 && selectedModApps.length === totalApps;
+                const isIndeterminate = selectedModApps.length > 0 && selectedModApps.length < totalApps;
+                const isExpanded = Boolean(expandedModules[mod.key]);
+
+                if (!isAvailable) {
+                  // Coming Soon module: greyed out, "Coming soon" tag, not expandable, not selectable
+                  return (
+                    <div
+                      key={mod.key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        borderRadius: 'var(--radius-md, 6px)',
+                        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
+                        background: 'var(--sap-surface-empty, #f8fafc)',
+                        opacity: 0.65,
+                        cursor: 'not-allowed',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          type="checkbox"
+                          disabled
+                          checked={false}
+                          style={{ width: 16, height: 16, margin: 0, cursor: 'not-allowed' }}
+                          aria-label={`${mod.label} (Coming soon)`}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-muted)' }}>
+                            {mod.label}
+                          </span>
+                          <span style={{ fontSize: 11.5, color: 'var(--sap-text-subtle, #94a3b8)', marginTop: 1 }}>
+                            {mod.desc}
+                          </span>
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 10,
+                        background: '#e2e8f0',
+                        color: '#64748b',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        flexShrink: 0
+                      }}>
+                        Coming soon
+                      </span>
+                    </div>
+                  );
+                }
+
+                // Available module: Tri-state checkbox, count, expand chevron, and sub-apps
+                return (
+                  <div
+                    key={mod.key}
+                    style={{
+                      borderRadius: 'var(--radius-md, 6px)',
+                      border: isExpanded
+                        ? '1px solid var(--sap-primary-border, #b3d7ff)'
+                        : '1px solid var(--sap-border-subtle, #cbd5e1)',
+                      background: '#fff',
+                      overflow: 'hidden',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                  >
+                    {/* Module Accordion Header */}
+                    <div
+                      onClick={() => toggleModuleExpanded(mod.key)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        background: isExpanded ? 'var(--sap-primary-light, #f0f7ff)' : '#fff'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                        <TriStateCheckbox
+                          checked={allChecked}
+                          indeterminate={isIndeterminate}
+                          onChange={() => handleToggleModule(mod)}
+                          ariaLabel={`Select all ${mod.label} features`}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                              {mod.label} – {selectedModApps.length} of {totalApps} features
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 11.5, color: 'var(--sap-text-muted)', marginTop: 1 }}>
+                            {mod.desc}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', marginLeft: 8 }}>
+                        <ChevronDown
+                          size={16}
+                          style={{
+                            color: 'var(--sap-text-muted)',
+                            transform: isExpanded ? 'rotate(180deg)' : 'none',
+                            transition: 'transform 0.2s ease',
+                            flexShrink: 0
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Sub-Apps List (when expanded) */}
+                    {isExpanded && (
+                      <div style={{
+                        padding: '10px 12px',
+                        background: 'var(--sap-surface-subtle, #f8fafc)',
+                        borderTop: '1px solid var(--sap-border-subtle, #e2e8f0)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8
+                      }}>
+                        {modApps.map((app) => {
+                          const isChecked = currentPerms.includes(app.key);
+                          const isLocked = (app.key === 'bom.display' && hasWriteApp) ||
+                            (isChecked && modApps.some((other) => other.key !== app.key && currentPerms.includes(other.key) && other.implies?.includes(app.key)));
+
+                          return (
+                            <label
+                              key={app.key}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 10,
+                                padding: '8px 10px',
+                                borderRadius: 'var(--radius-md, 6px)',
+                                border: isChecked
+                                  ? '1px solid var(--sap-primary-border, #b3d7ff)'
+                                  : '1px solid var(--sap-border-subtle, #e2e8f0)',
+                                background: isChecked
+                                  ? '#ffffff'
+                                  : 'var(--sap-card-bg, #ffffff)',
+                                cursor: isLocked ? 'default' : 'pointer',
+                                userSelect: 'none',
+                                boxShadow: isChecked ? '0 1px 2px rgba(10,110,209,0.06)' : 'none'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isLocked}
+                                onChange={() => toggleAppPermission(app.key)}
+                                style={{ marginTop: 2, cursor: isLocked ? 'default' : 'pointer', accentColor: 'var(--sap-primary, #0a6ed1)' }}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-dark)' }}>
+                                    {app.label}
+                                  </span>
+                                  {isLocked && (
+                                    <span style={{ fontSize: 10.5, color: 'var(--sap-text-muted)', fontStyle: 'italic' }}>
+                                      (Required by Create / Copy / Delete)
+                                    </span>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 11.5, color: 'var(--sap-text-muted)', marginTop: 2 }}>
+                                  {app.description}
+                                </span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
@@ -1614,7 +1825,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
               disabled={grantSubmitting}
               style={{ minWidth: 100 }}
             >
-              {grantSubmitting ? 'Granting...' : 'Grant Access'}
+              {grantSubmitting ? 'Saving...' : isEditingPermission ? 'Save Permissions' : 'Grant Access'}
             </button>
           </div>
         </form>

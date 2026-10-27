@@ -59,8 +59,8 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
     };
   }, [isLoading]);
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
+  const handleSearch = async (e, overrideAlt = null) => {
+    if (e && e.preventDefault) e.preventDefault();
 
     if (!searchParams.material.trim() || !searchParams.plant.trim()) {
       setErrorMessage('Please enter both Material and Plant to inspect the BOM.');
@@ -71,11 +71,13 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
     setErrorMessage('');
     setBomData(null);
 
+    const targetAlt = overrideAlt !== null ? String(overrideAlt).trim() : searchParams.alternativeBom.trim();
+
     const payload = {
       material: searchParams.material.trim().toUpperCase(),
       plant: searchParams.plant.trim().toUpperCase(),
       bomUsage: searchParams.bomUsage.trim() || '1',
-      alternativeBom: searchParams.alternativeBom.trim() || undefined
+      alternativeBom: targetAlt || undefined
     };
 
     try {
@@ -89,17 +91,22 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
       if (!res.success) {
         setErrorMessage(res.message || 'BOM not found in SAP for given parameters.');
       } else if (!res.bomExists && res.bomExists !== undefined) {
-        setErrorMessage(`No BOM exists for Material ${payload.material} in Plant ${payload.plant} (Usage ${payload.bomUsage}).`);
+        setErrorMessage(res.message || `No BOM exists for Material ${payload.material} in Plant ${payload.plant}.`);
       } else {
         setBomData(res);
       }
     } catch (err) {
       console.error('Error querying BOM in SAP:', err);
-      const text = err.response?.data?.message || err.message || 'Error communicating with SAP RFC service.';
+      const text = err.response?.data?.message || err.message || 'Error communicating with SAP service.';
       setErrorMessage(text);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSwitchAlternative = (newAlt) => {
+    setSearchParams((prev) => ({ ...prev, alternativeBom: String(newAlt) }));
+    handleSearch(null, newAlt);
   };
 
   const components = useMemo(() => {
@@ -201,7 +208,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
     <div className="fiori-app-view-root">
       {/* Full-width Fiori Horizon Header (Identical to Homepage / Operations Header) */}
       <FioriPageHeader
-        title="BOM Hierarchy Explorer (CS03)"
+        title="Display BOM"
         subtitle="View a material's BOM components and structure."
         onBack={onBack}
         backTitle="Back to Bill of Materials"
@@ -209,7 +216,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
         breadcrumbs={[
           { label: 'Home', onClick: onNavigateHome || onBack },
           { label: 'Bill of Materials', onClick: onBack },
-          { label: 'BOM Hierarchy Explorer' }
+          { label: 'Display BOM' }
         ]}
       />
 
@@ -239,7 +246,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                   value={searchParams.material}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, material: e.target.value }))}
                   style={{ paddingLeft: 30 }}
-                  aria-label="Explorer Material"
+                  aria-label="Display BOM Material"
                 />
               </div>
             </div>
@@ -258,7 +265,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                   value={searchParams.plant}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, plant: e.target.value }))}
                   style={{ paddingLeft: 30 }}
-                  aria-label="Explorer Plant"
+                  aria-label="Display BOM Plant"
                 />
               </div>
             </div>
@@ -331,7 +338,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
               ) : (
                 <>
                   <Search size={13} />
-                  <span>Read BOM via RFC</span>
+                  <span>Display BOM</span>
                 </>
               )}
             </button>
@@ -340,33 +347,70 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
       </div>
 
       {/* BOM Data View */}
-      {bomData && (
-        <div className="sap-bom-explorer-results" style={{ width: '100%', maxWidth: 1100, margin: '0 auto 20px', paddingBottom: 0 }}>
-          {/* Header Metadata Card */}
-          <div className="sap-result-meta-grid" style={{ marginBottom: 16 }}>
-            <div className="sap-result-meta-item">
-              <span className="sap-result-meta-label">BOM Number (STLNR)</span>
-              <strong className="sap-result-meta-val">{bomData.header?.bomNumber || bomData.header?.stlnr || '-'}</strong>
+      {bomData && (() => {
+        const currentAlternative = bomData.alternativeBom || bomData.header?.alternative || bomData.header?.stlal || '01';
+        const availableAlternatives = bomData.availableAlternatives || bomData.allAlternatives || bomData.header?.availableAlternatives || [];
+
+        return (
+          <div className="sap-bom-explorer-results" style={{ width: '100%', maxWidth: 1100, margin: '0 auto 20px', paddingBottom: 0 }}>
+            {/* Header Metadata Card */}
+            <div className="sap-result-meta-grid" style={{ marginBottom: 16 }}>
+              <div className="sap-result-meta-item">
+                <span className="sap-result-meta-label">BOM Number (STLNR)</span>
+                <strong className="sap-result-meta-val">{bomData.header?.bomNumber || bomData.header?.stlnr || '-'}</strong>
+              </div>
+              <div className="sap-result-meta-item">
+                <span className="sap-result-meta-label">Alternative (STLAL)</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span className="sap-badge sap-badge-primary" style={{ fontSize: '12px', padding: '3px 8px', alignSelf: 'flex-start', fontWeight: 600 }}>
+                    Alternative {String(currentAlternative).padStart(2, '0')}
+                  </span>
+                  {availableAlternatives.length > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
+                      <span style={{ fontSize: '11px', color: 'var(--sap-text-muted)', fontWeight: 500 }}>Switch:</span>
+                      {availableAlternatives.map((alt) => {
+                        const isCurrent = String(alt).padStart(2, '0') === String(currentAlternative).padStart(2, '0') || parseInt(alt, 10) === parseInt(currentAlternative, 10);
+                        return (
+                          <button
+                            key={alt}
+                            type="button"
+                            className={`sap-badge ${isCurrent ? 'sap-badge-primary' : 'sap-badge-neutral'}`}
+                            style={{
+                              cursor: isCurrent ? 'default' : 'pointer',
+                              border: isCurrent ? '1px solid var(--sap-primary)' : '1px solid var(--sap-border-subtle)',
+                              background: isCurrent ? 'var(--sap-primary)' : 'var(--sap-card-bg)',
+                              color: isCurrent ? '#ffffff' : 'var(--sap-text)',
+                              fontSize: '11px',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontWeight: isCurrent ? 600 : 500,
+                              lineHeight: 1.2
+                            }}
+                            disabled={isCurrent || isLoading}
+                            onClick={() => handleSwitchAlternative(alt)}
+                            title={isCurrent ? `Currently viewing Alternative ${alt}` : `Switch to Alternative ${alt}`}
+                          >
+                            {String(alt).padStart(2, '0')}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="sap-result-meta-item">
+                <span className="sap-result-meta-label">Base Quantity</span>
+                <strong className="sap-result-meta-val">
+                  {bomData.header?.baseQty || '1'} {bomData.header?.baseUnit || 'ST'}
+                </strong>
+              </div>
+              <div className="sap-result-meta-item">
+                <span className="sap-result-meta-label">Total Components</span>
+                <strong className="sap-result-meta-val" style={{ color: 'var(--sap-primary)' }}>
+                  {components.length}
+                </strong>
+              </div>
             </div>
-            <div className="sap-result-meta-item">
-              <span className="sap-result-meta-label">Alternative (STLAL)</span>
-              <span className="sap-badge sap-badge-primary" style={{ fontSize: '13px', padding: '3px 8px' }}>
-                {bomData.header?.alternative || bomData.header?.stlal || '01'}
-              </span>
-            </div>
-            <div className="sap-result-meta-item">
-              <span className="sap-result-meta-label">Base Quantity</span>
-              <strong className="sap-result-meta-val">
-                {bomData.header?.baseQty || '1'} {bomData.header?.baseUnit || 'ST'}
-              </strong>
-            </div>
-            <div className="sap-result-meta-item">
-              <span className="sap-result-meta-label">Total Components</span>
-              <strong className="sap-result-meta-val" style={{ color: 'var(--sap-primary)' }}>
-                {components.length}
-              </strong>
-            </div>
-          </div>
 
           {/* Components Table with In-Table Filter */}
           <div className="sap-table-card" style={{ height: 'auto', flex: 'none', marginBottom: 20 }}>
@@ -520,7 +564,8 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
             </div>
           </div>
         </div>
-      )}
+      );
+      })()}
       </div>
     </div>
   );

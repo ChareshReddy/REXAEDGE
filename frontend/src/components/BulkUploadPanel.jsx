@@ -17,13 +17,18 @@ export default function BulkUploadPanel({
   loadingText = 'Validating data with SAP master records...',
   disabled = false,
   templateAction,
+  onDownloadTemplate,
+  templateButtonText = 'Download Template',
   onClear,
   clearHandler,
+  onClearFile,
   error,
   parseError,
   inputRef,
+  columns = [],
   children,
   className = '',
+  containerStyle = {},
   style = {}
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -31,7 +36,17 @@ export default function BulkUploadPanel({
   const fileInputRef = inputRef || localInputRef;
 
   const activeError = error || parseError;
-  const activeClear = onClear || clearHandler;
+  const activeClear = onClear || clearHandler || onClearFile;
+
+  const resolvedTemplateAction =
+    templateAction ||
+    (onDownloadTemplate
+      ? {
+          label: templateButtonText,
+          onClick: onDownloadTemplate,
+          disabled
+        }
+      : null);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -76,20 +91,21 @@ export default function BulkUploadPanel({
   };
 
   const isTemplateDisabled =
-    disabled || (templateAction && typeof templateAction === 'object' && templateAction.disabled);
+    disabled || (resolvedTemplateAction && typeof resolvedTemplateAction === 'object' && resolvedTemplateAction.disabled);
 
   const handleTemplateClick = (e) => {
     e.stopPropagation();
     if (isTemplateDisabled) return;
-    if (typeof templateAction === 'function') {
-      templateAction(e);
-    } else if (templateAction && typeof templateAction.onClick === 'function') {
-      templateAction.onClick(e);
+    if (typeof resolvedTemplateAction === 'function') {
+      resolvedTemplateAction(e);
+    } else if (resolvedTemplateAction && typeof resolvedTemplateAction.onClick === 'function') {
+      resolvedTemplateAction.onClick(e);
     }
   };
 
   const templateLabel =
-    (templateAction && typeof templateAction === 'object' && templateAction.label) ||
+    (resolvedTemplateAction && typeof resolvedTemplateAction === 'object' && resolvedTemplateAction.label) ||
+    templateButtonText ||
     'Download Template';
 
   return (
@@ -99,12 +115,15 @@ export default function BulkUploadPanel({
         display: 'flex',
         flexDirection: 'column',
         gap: 16,
+        maxWidth: 750,
+        margin: '0 auto',
         width: '100%',
+        ...containerStyle,
         ...style
       }}
     >
       {/* Upload Header: Title, Subtitle, and Right-Aligned Download Template Button */}
-      {(title || helperText || templateAction) && (
+      {(title || helperText || resolvedTemplateAction) && (
         <div
           className="bulk-upload-header"
           style={{
@@ -115,20 +134,20 @@ export default function BulkUploadPanel({
             gap: 12
           }}
         >
-          <div>
+          <div style={{ flex: '1 1 260px', minWidth: 240 }}>
             {title && (
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
                 {title}
               </h3>
             )}
             {helperText && (
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-muted)' }}>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-muted)', lineHeight: 1.4 }}>
                 {helperText}
               </p>
             )}
           </div>
 
-          {templateAction && (
+          {resolvedTemplateAction && (
             <button
               type="button"
               className="sap-btn sap-btn-secondary"
@@ -140,10 +159,12 @@ export default function BulkUploadPanel({
                 alignItems: 'center',
                 gap: 6,
                 fontSize: 13,
-                padding: '7px 14px'
+                fontWeight: 600,
+                padding: '7px 14px',
+                flexShrink: 0
               }}
             >
-              <Download size={15} />
+              <Download size={14} />
               <span>{templateLabel}</span>
             </button>
           )}
@@ -262,6 +283,8 @@ export default function BulkUploadPanel({
           <span>{activeError}</span>
         </div>
       )}
+
+
 
       {children}
     </div>

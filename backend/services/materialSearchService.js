@@ -320,6 +320,71 @@ async function loadStatusTexts(client, serverId) {
   }
 }
 
+// In-flight searches map for coalescing identical queries (same server, query, plant, flags)
+// Map<cacheKey, InFlightSearchEntry>
+const inFlightSearches = new Map();
+
+class InFlightSearchEntry {
+  constructor(executeFn) {
+    this.controller = new AbortController();
+    this.subscribers = new Set();
+    this.settled = false;
+    this.promise = (async () => {
+      try {
+        const res = await executeFn(this.controller.signal);
+        return res;
+      } finally {
+        this.settled = true;
+      }
+    })();
+  }
+
+  addSubscriber(signal) {
+    if (signal?.aborted) {
+      const err = new Error('Search request was aborted.');
+      err.name = 'AbortError';
+      err.status = 499;
+      return Promise.reject(err);
+    }
+
+    const sub = { signal };
+    this.subscribers.add(sub);
+
+    return new Promise((resolve, reject) => {
+      const onAbort = () => {
+        this.removeSubscriber(sub);
+        const err = new Error('Search request was aborted.');
+        err.name = 'AbortError';
+        err.status = 499;
+        reject(err);
+      };
+
+      if (signal) {
+        signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      this.promise
+        .then((res) => {
+          if (signal) signal.removeEventListener('abort', onAbort);
+          this.subscribers.delete(sub);
+          resolve(res);
+        })
+        .catch((err) => {
+          if (signal) signal.removeEventListener('abort', onAbort);
+          this.subscribers.delete(sub);
+          reject(err);
+        });
+    });
+  }
+
+  removeSubscriber(sub) {
+    this.subscribers.delete(sub);
+    if (this.subscribers.size === 0 && !this.settled) {
+      this.controller.abort();
+    }
+  }
+}
+
 /**
  * Searches SAP materials via RFC_READ_TABLE on MAKT, enriched via MARA, MARC, T141T, and MAST.
  *
@@ -360,7 +425,7 @@ export async function searchMaterials({
   const flags = `limit=${cleanLimit}&mtart=${mtart || ''}&checkBom=${shouldCheckBom}&usage=${cleanUsage}&mode=${mode || ''}`;
   const cacheKey = `${serverId}:${cleanPlant}:${sanitizedQuery}:${flags}`;
 
-  // Check In-Memory LRU Cache
+  // 1. Check In-Memory LRU Cache
   const cachedResult = materialSearchCache.get(cacheKey);
   if (cachedResult) {
     return cachedResult;
@@ -373,266 +438,290 @@ export async function searchMaterials({
     server?.system_type === 'MOCK' ||
     !server?.ashost;
 
-  if (isMock) {
-    const mockRes = searchMockMaterials({
-      query: sanitizedQuery,
-      plant: cleanPlant,
-      limit: cleanLimit,
-      mtart,
-      checkBom: shouldCheckBom
-    });
-    // Cache for 60s
-    materialSearchCache.set(cacheKey, mockRes, 60 * 1000);
-    return mockRes;
-  }
-
-  return await runSearchRfc({ server, signal, timeoutMs }, async (client) => {
-    // 1. Build MAKT search WHERE clause based on mode and query shape
-    const isNum = /^\d+$/.test(sanitizedQuery);
-    const hasDigits = /\d/.test(sanitizedQuery);
-    const isPrefixMode =
-      mode === 'prefix' ||
-      (mode !== 'description' &&
-        (isNum || (hasDigits && !/\s/.test(sanitizedQuery) && sanitizedQuery.length <= 18)));
-
-    let maktWhere = "SPRAS = 'E'";
-
-    if (!sanitizedQuery || sanitizedQuery === '*') {
-      // Empty search / initial value help list: SPRAS = 'E' without query restriction
-    } else if (isNum) {
-      const padded = toSapMatnr(sanitizedQuery);
-      // Key prefix search: uses primary index on MATNR
-      maktWhere += ` AND ( MATNR = '${padded}' OR MATNR LIKE '${sanitizedQuery}%' )`;
-    } else if (isPrefixMode) {
-      // Key prefix search for material codes: uses index on MATNR
-      const prefixTerm = sanitizedQuery.toUpperCase().replace(/\*/g, '%');
-      maktWhere += ` AND ( MATNR LIKE '${prefixTerm}%' )`;
-    } else {
-      // Description words search
-      const tokens = sanitizedQuery.toUpperCase().split(/\s+/).filter(Boolean);
-      if (tokens.length > 0) {
-        const descClause = tokens
-          .map((tok) => `MAKTG LIKE '%${tok.replace(/\*/g, '%')}%'`)
-          .join(' AND ');
-        maktWhere += ` AND ( ${descClause} )`;
+  // 2. Coalesce identical in-flight queries
+  let inFlight = inFlightSearches.get(cacheKey);
+  if (!inFlight) {
+    inFlight = new InFlightSearchEntry(async (sharedSignal) => {
+      if (isMock) {
+        if (sharedSignal?.aborted) {
+          const abortErr = new Error('Search request was aborted.');
+          abortErr.name = 'AbortError';
+          abortErr.status = 499;
+          throw abortErr;
+        }
+        const mockRes = searchMockMaterials({
+          query: sanitizedQuery,
+          plant: cleanPlant,
+          limit: cleanLimit,
+          mtart,
+          checkBom: shouldCheckBom
+        });
+        materialSearchCache.set(cacheKey, mockRes, 60 * 1000);
+        return mockRes;
       }
-    }
 
-    // If plant is specified, fetch up to 3x limit to allow MARC filtering
-    const maktFetchLimit = cleanPlant ? Math.min(cleanLimit * 3, 100) : cleanLimit;
+      return await runSearchRfc({ server, signal: sharedSignal, timeoutMs }, async (client) => {
+        // 1. Build MAKT search WHERE clause based on mode and query shape
+        const isNum = /^\d+$/.test(sanitizedQuery);
+        const hasDigits = /\d/.test(sanitizedQuery);
+        const isPrefixMode =
+          mode === 'prefix' ||
+          (mode !== 'description' &&
+            (isNum || (hasDigits && !/\s/.test(sanitizedQuery) && sanitizedQuery.length <= 18)));
 
-    const maktRes = await client.call('RFC_READ_TABLE', {
-      QUERY_TABLE: 'MAKT',
-      DELIMITER: '|',
-      OPTIONS: formatRfcTableOptions(maktWhere),
-      FIELDS: [
-        { FIELDNAME: 'MATNR' },
-        { FIELDNAME: 'MAKTX' },
-        { FIELDNAME: 'MAKTG' }
-      ],
-      DATA: [],
-      ROWCOUNT: maktFetchLimit
-    });
+        let maktWhere = "SPRAS = 'E'";
 
-    const maktRows = parseRfcRows(maktRes).map((r) => ({
-      matnr: r.MATNR,
-      maktx: r.MAKTX,
-      maktg: r.MAKTG
-    })).filter((r) => Boolean(r.matnr));
+        if (!sanitizedQuery || sanitizedQuery === '*') {
+          // Empty search / initial value help list: SPRAS = 'E' without query restriction
+        } else if (isNum) {
+          const padded = toSapMatnr(sanitizedQuery);
+          // Key prefix search: uses primary index on MATNR
+          maktWhere += ` AND ( MATNR = '${padded}' OR MATNR LIKE '${sanitizedQuery}%' )`;
+        } else if (isPrefixMode) {
+          // Key prefix search for material codes: uses index on MATNR
+          const prefixTerm = sanitizedQuery.toUpperCase().replace(/\*/g, '%');
+          maktWhere += ` AND ( MATNR LIKE '${prefixTerm}%' )`;
+        } else {
+          // Description words search
+          const tokens = sanitizedQuery.toUpperCase().split(/\s+/).filter(Boolean);
+          if (tokens.length > 0) {
+            const descClause = tokens
+              .map((tok) => `MAKTG LIKE '%${tok.replace(/\*/g, '%')}%'`)
+              .join(' AND ');
+            maktWhere += ` AND ( ${descClause} )`;
+          }
+        }
 
-    if (maktRows.length === 0) {
-      materialSearchCache.set(cacheKey, [], 60 * 1000);
-      return [];
-    }
+        // If plant is specified, fetch up to 3x limit to allow MARC filtering
+        const maktFetchLimit = cleanPlant ? Math.min(cleanLimit * 3, 100) : cleanLimit;
 
-    let candidateMatnrs = [...new Set(maktRows.map((r) => r.matnr))];
-
-    // Cap candidate pool before parallel queries (up to cleanLimit * 2 if filtering by plant, else cleanLimit)
-    const initialPool = candidateMatnrs.slice(0, cleanPlant ? Math.min(cleanLimit * 2, 60) : cleanLimit);
-
-    if (initialPool.length === 0) {
-      materialSearchCache.set(cacheKey, [], 60 * 1000);
-      return [];
-    }
-
-    // 2. Parallel Enrichment: MARA, MARC (if plant), MAST (if checkBom), and T141T on the same RFC connection
-    const matChunks = chunkArray(initialPool, 20);
-
-    // (a) MARA task
-    const maraTask = Promise.all(
-      matChunks.map((chunk) => {
-        const maraWhere = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
-        return client.call('RFC_READ_TABLE', {
-          QUERY_TABLE: 'MARA',
+        const maktRes = await client.call('RFC_READ_TABLE', {
+          QUERY_TABLE: 'MAKT',
           DELIMITER: '|',
-          OPTIONS: formatRfcTableOptions(maraWhere),
+          OPTIONS: formatRfcTableOptions(maktWhere),
           FIELDS: [
             { FIELDNAME: 'MATNR' },
-            { FIELDNAME: 'MTART' },
-            { FIELDNAME: 'MEINS' },
-            { FIELDNAME: 'MSTAE' },
-            { FIELDNAME: 'LVORM' }
+            { FIELDNAME: 'MAKTX' },
+            { FIELDNAME: 'MAKTG' }
           ],
-          DATA: []
+          DATA: [],
+          ROWCOUNT: maktFetchLimit
         });
-      })
-    );
 
-    // (b) MARC task (if plant restriction specified)
-    const marcTask = cleanPlant
-      ? Promise.all(
+        const maktRows = parseRfcRows(maktRes).map((r) => ({
+          matnr: r.MATNR,
+          maktx: r.MAKTX,
+          maktg: r.MAKTG
+        })).filter((r) => Boolean(r.matnr));
+
+        if (maktRows.length === 0) {
+          materialSearchCache.set(cacheKey, [], 60 * 1000);
+          return [];
+        }
+
+        let candidateMatnrs = [...new Set(maktRows.map((r) => r.matnr))];
+
+        // Cap candidate pool before parallel queries (up to cleanLimit * 2 if filtering by plant, else cleanLimit)
+        const initialPool = candidateMatnrs.slice(0, cleanPlant ? Math.min(cleanLimit * 2, 60) : cleanLimit);
+
+        if (initialPool.length === 0) {
+          materialSearchCache.set(cacheKey, [], 60 * 1000);
+          return [];
+        }
+
+        // 2. Parallel Enrichment: MARA, MARC (if plant), MAST (if checkBom), and T141T on the same RFC connection
+        const matChunks = chunkArray(initialPool, 20);
+
+        // (a) MARA task
+        const maraTask = Promise.all(
           matChunks.map((chunk) => {
-            const matClause = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
-            const marcWhere = `WERKS = '${cleanPlant}' AND ( ${matClause} )`;
+            const maraWhere = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
             return client.call('RFC_READ_TABLE', {
-              QUERY_TABLE: 'MARC',
+              QUERY_TABLE: 'MARA',
               DELIMITER: '|',
-              OPTIONS: formatRfcTableOptions(marcWhere),
+              OPTIONS: formatRfcTableOptions(maraWhere),
               FIELDS: [
                 { FIELDNAME: 'MATNR' },
-                { FIELDNAME: 'WERKS' },
-                { FIELDNAME: 'MMSTA' },
-                { FIELDNAME: 'MMSTD' },
+                { FIELDNAME: 'MTART' },
+                { FIELDNAME: 'MEINS' },
+                { FIELDNAME: 'MSTAE' },
                 { FIELDNAME: 'LVORM' }
               ],
               DATA: []
             });
           })
-        )
-      : Promise.resolve([]);
+        );
 
-    // (c) MAST task (if BOM check requested)
-    const mastTask = shouldCheckBom
-      ? Promise.all(
-          matChunks.map((chunk) => {
-            const matClause = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
-            const mastWhere = cleanPlant
-              ? `WERKS = '${cleanPlant}' AND STLAN = '${cleanUsage}' AND ( ${matClause} )`
-              : `STLAN = '${cleanUsage}' AND ( ${matClause} )`;
-            return client.call('RFC_READ_TABLE', {
-              QUERY_TABLE: 'MAST',
-              DELIMITER: '|',
-              OPTIONS: formatRfcTableOptions(mastWhere),
-              FIELDS: [
-                { FIELDNAME: 'MATNR' },
-                { FIELDNAME: 'WERKS' },
-                { FIELDNAME: 'STLAN' },
-                { FIELDNAME: 'STLNR' }
-              ],
-              DATA: []
-            });
-          })
-        )
-      : Promise.resolve([]);
+        // (b) MARC task (if plant restriction specified)
+        const marcTask = cleanPlant
+          ? Promise.all(
+              matChunks.map((chunk) => {
+                const matClause = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
+                const marcWhere = `WERKS = '${cleanPlant}' AND ( ${matClause} )`;
+                return client.call('RFC_READ_TABLE', {
+                  QUERY_TABLE: 'MARC',
+                  DELIMITER: '|',
+                  OPTIONS: formatRfcTableOptions(marcWhere),
+                  FIELDS: [
+                    { FIELDNAME: 'MATNR' },
+                    { FIELDNAME: 'WERKS' },
+                    { FIELDNAME: 'MMSTA' },
+                    { FIELDNAME: 'MMSTD' },
+                    { FIELDNAME: 'LVORM' }
+                  ],
+                  DATA: []
+                });
+              })
+            )
+          : Promise.resolve([]);
 
-    // (d) T141T task
-    const statusTask = loadStatusTexts(client, serverId);
+        // (c) MAST task (if BOM check requested)
+        const mastTask = shouldCheckBom
+          ? Promise.all(
+              matChunks.map((chunk) => {
+                const matClause = chunk.map((m) => `MATNR = '${m}'`).join(' OR ');
+                const mastWhere = cleanPlant
+                  ? `WERKS = '${cleanPlant}' AND STLAN = '${cleanUsage}' AND ( ${matClause} )`
+                  : `STLAN = '${cleanUsage}' AND ( ${matClause} )`;
+                return client.call('RFC_READ_TABLE', {
+                  QUERY_TABLE: 'MAST',
+                  DELIMITER: '|',
+                  OPTIONS: formatRfcTableOptions(mastWhere),
+                  FIELDS: [
+                    { FIELDNAME: 'MATNR' },
+                    { FIELDNAME: 'WERKS' },
+                    { FIELDNAME: 'STLAN' },
+                    { FIELDNAME: 'STLNR' }
+                  ],
+                  DATA: []
+                });
+              })
+            )
+          : Promise.resolve([]);
 
-    // Execute independent enrichment queries in parallel
-    const [maraResponses, marcResponses, mastResponses, statusMap] = await Promise.all([
-      maraTask,
-      marcTask,
-      mastTask,
-      statusTask
-    ]);
+        // (d) T141T task
+        const statusTask = loadStatusTexts(client, serverId);
 
-    // Parse MARA records
-    const maraByMatnr = new Map();
-    maraResponses.forEach((res) => {
-      parseRfcRows(res).forEach((r) => {
-        if (r.MATNR) {
-          maraByMatnr.set(r.MATNR, {
-            mtart: r.MTART,
-            meins: r.MEINS,
-            mstae: r.MSTAE,
-            lvorm: r.LVORM
+        // Execute independent enrichment queries in parallel
+        const [maraResponses, marcResponses, mastResponses, statusMap] = await Promise.all([
+          maraTask,
+          marcTask,
+          mastTask,
+          statusTask
+        ]);
+
+        // Parse MARA records
+        const maraByMatnr = new Map();
+        maraResponses.forEach((res) => {
+          parseRfcRows(res).forEach((r) => {
+            if (r.MATNR) {
+              maraByMatnr.set(r.MATNR, {
+                mtart: r.MTART,
+                meins: r.MEINS,
+                mstae: r.MSTAE,
+                lvorm: r.LVORM
+              });
+            }
+          });
+        });
+
+        // Parse MARC records
+        const marcByMatnr = new Map();
+        const validPlantMatnrs = new Set();
+        marcResponses.forEach((res) => {
+          parseRfcRows(res).forEach((r) => {
+            if (r.MATNR) {
+              validPlantMatnrs.add(r.MATNR);
+              marcByMatnr.set(r.MATNR, {
+                werks: r.WERKS,
+                mmsta: r.MMSTA,
+                mmstd: r.MMSTD,
+                lvorm: r.LVORM
+              });
+            }
+          });
+        });
+
+        // Parse MAST BOM records
+        const bomExistsSet = new Set();
+        mastResponses.forEach((res) => {
+          parseRfcRows(res).forEach((r) => {
+            if (r.MATNR) {
+              bomExistsSet.add(r.MATNR);
+            }
+          });
+        });
+
+        // Filter by plant if cleanPlant was specified
+        let finalCandidates = cleanPlant
+          ? initialPool.filter((m) => validPlantMatnrs.has(m))
+          : initialPool;
+
+        // Filter by MTART if requested
+        if (mtart) {
+          const allowedTypes = mtart.toUpperCase().split(',').map((t) => t.trim()).filter(Boolean);
+          finalCandidates = finalCandidates.filter((m) => {
+            const mara = maraByMatnr.get(m);
+            return mara && allowedTypes.includes(mara.mtart.toUpperCase());
           });
         }
-      });
-    });
 
-    // Parse MARC records
-    const marcByMatnr = new Map();
-    const validPlantMatnrs = new Set();
-    marcResponses.forEach((res) => {
-      parseRfcRows(res).forEach((r) => {
-        if (r.MATNR) {
-          validPlantMatnrs.add(r.MATNR);
-          marcByMatnr.set(r.MATNR, {
-            werks: r.WERKS,
-            mmsta: r.MMSTA,
-            mmstd: r.MMSTD,
-            lvorm: r.LVORM
-          });
+        // Limit final candidates to cleanLimit
+        finalCandidates = finalCandidates.slice(0, cleanLimit);
+
+        if (finalCandidates.length === 0) {
+          materialSearchCache.set(cacheKey, [], 60 * 1000);
+          return [];
         }
+
+        // Build final response objects
+        const results = finalCandidates.map((m) => {
+          const makt = maktRows.find((r) => r.matnr === m) || {};
+          const mara = maraByMatnr.get(m) || {};
+          const marc = marcByMatnr.get(m);
+
+          const mmsta = marc?.mmsta || '';
+          const mstae = mara.mstae || '';
+          const statusText = (mmsta && statusMap[mmsta]) || (mstae && statusMap[mstae]) || '';
+          const lvorm = mara.lvorm || marc?.lvorm || '';
+
+          return {
+            matnr: fromSapMatnr(m),
+            maktx: makt.maktx || '',
+            mtart: mara.mtart || '',
+            meins: mara.meins || '',
+            mstae,
+            mmsta,
+            statusText,
+            lvorm,
+            hasBom: shouldCheckBom ? bomExistsSet.has(m) : undefined,
+            extendedInPlant: cleanPlant ? Boolean(marc) : false
+          };
+        });
+
+        // Cache TTL: 60s if includes status or hasBom, 5 min (300s) for plain description lookup
+        const hasStatusOrBom = shouldCheckBom || Boolean(cleanPlant);
+        const ttlMs = hasStatusOrBom ? 60 * 1000 : 5 * 60 * 1000;
+        materialSearchCache.set(cacheKey, results, ttlMs);
+
+        return results;
       });
     });
 
-    // Parse MAST BOM records
-    const bomExistsSet = new Set();
-    mastResponses.forEach((res) => {
-      parseRfcRows(res).forEach((r) => {
-        if (r.MATNR) {
-          bomExistsSet.add(r.MATNR);
-        }
-      });
-    });
+    inFlightSearches.set(cacheKey, inFlight);
+  }
 
-    // Filter by plant if cleanPlant was specified
-    let finalCandidates = cleanPlant
-      ? initialPool.filter((m) => validPlantMatnrs.has(m))
-      : initialPool;
-
-    // Filter by MTART if requested
-    if (mtart) {
-      const allowedTypes = mtart.toUpperCase().split(',').map((t) => t.trim()).filter(Boolean);
-      finalCandidates = finalCandidates.filter((m) => {
-        const mara = maraByMatnr.get(m);
-        return mara && allowedTypes.includes(mara.mtart.toUpperCase());
-      });
+  try {
+    return await inFlight.addSubscriber(signal);
+  } finally {
+    if (inFlight.settled || inFlight.subscribers.size === 0) {
+      if (inFlightSearches.get(cacheKey) === inFlight) {
+        inFlightSearches.delete(cacheKey);
+      }
     }
-
-    // Limit final candidates to cleanLimit
-    finalCandidates = finalCandidates.slice(0, cleanLimit);
-
-    if (finalCandidates.length === 0) {
-      materialSearchCache.set(cacheKey, [], 60 * 1000);
-      return [];
-    }
-
-    // Build final response objects
-    const results = finalCandidates.map((m) => {
-      const makt = maktRows.find((r) => r.matnr === m) || {};
-      const mara = maraByMatnr.get(m) || {};
-      const marc = marcByMatnr.get(m);
-
-      const mmsta = marc?.mmsta || '';
-      const mstae = mara.mstae || '';
-      const statusText = (mmsta && statusMap[mmsta]) || (mstae && statusMap[mstae]) || '';
-      const lvorm = mara.lvorm || marc?.lvorm || '';
-
-      return {
-        matnr: fromSapMatnr(m),
-        maktx: makt.maktx || '',
-        mtart: mara.mtart || '',
-        meins: mara.meins || '',
-        mstae,
-        mmsta,
-        statusText,
-        lvorm,
-        hasBom: shouldCheckBom ? bomExistsSet.has(m) : undefined,
-        extendedInPlant: cleanPlant ? Boolean(marc) : false
-      };
-    });
-
-    // Cache TTL: 60s if includes status or hasBom, 5 min (300s) for plain description lookup
-    const hasStatusOrBom = shouldCheckBom || Boolean(cleanPlant);
-    const ttlMs = hasStatusOrBom ? 60 * 1000 : 5 * 60 * 1000;
-    materialSearchCache.set(cacheKey, results, ttlMs);
-
-    return results;
-  });
+  }
 }
+
 
 /**
  * Retrieves detailed material information for a single material number.
