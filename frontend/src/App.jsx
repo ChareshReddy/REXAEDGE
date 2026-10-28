@@ -45,9 +45,8 @@ import {
   getServerModules
 } from './services/api';
 import { MODULE_REGISTRY, getModuleKeyForAction, getAppKeyForAction, normalizePermissions, ALL_BOM_APPS, hasCardPermission } from '@shared/modules.js';
-import nextItPointLogo from './assets/next_it_point_logo.png';
+import rexaEdgeLogo from './assets/rexaedge_logo.png';
 import activityTracker from './services/activityTracker';
-import { HEADER_BRAND_TITLE } from './config/branding';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -405,12 +404,30 @@ export default function App() {
     <div className="sap-app-root">
       {/* SAP Shell Top Header */}
       <header className="sap-shell-header">
-        <div className="sap-brand">
-          <div className="sap-brand-logo-container" title="Next IT Point">
-            <img src={nextItPointLogo} alt="Next IT Point" className="sap-brand-logo-img" />
+        <div
+          className="sap-brand"
+          onClick={() => {
+            setActiveTab('launchpad');
+            setLaunchpadSubView('home');
+            setSelectedHomeGroup('');
+          }}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveTab('launchpad');
+              setLaunchpadSubView('home');
+              setSelectedHomeGroup('');
+            }
+          }}
+          title="RexaEdge - Return to Launchpad"
+          aria-label="RexaEdge - Return to Launchpad"
+        >
+          <div className="sap-brand-logo-container" title="RexaEdge">
+            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
           </div>
-          <span className="sap-brand-divider">|</span>
-          <span className="sap-brand-title">{HEADER_BRAND_TITLE}</span>
         </div>
 
         {/* Desktop actions and user badge */}
