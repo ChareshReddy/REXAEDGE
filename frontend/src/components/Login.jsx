@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser } from '../services/api';
-import nextItPointLogo from '../assets/next_it_point_logo.png';
+import rexaEdgeLogo from '../assets/rexaedge_logo.png';
 
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -55,14 +55,12 @@ export default function Login({ onLoginSuccess }) {
 
   return (
     <div className="sap-login-viewport">
-      {/* Top Shell Header with Next IT Point Brand Logo (Identical to Dashboard) */}
+      {/* Top Shell Header with RexaEdge Brand Logo */}
       <header className="sap-shell-header">
         <div className="sap-brand">
           <div className="sap-brand-logo-container">
-            <img src={nextItPointLogo} alt="Next IT Point Logo" className="sap-brand-logo-img" />
+            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
           </div>
-          <span className="sap-brand-divider">|</span>
-          <span className="sap-brand-title">RexaEdge</span>
         </div>
       </header>
 
