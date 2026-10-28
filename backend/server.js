@@ -44,7 +44,7 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost';
 
 // Trust proxy for secure cookies and rate-limiting when behind reverse proxy
 app.set('trust proxy', 1);
@@ -55,9 +55,18 @@ app.use(safeLogger);
 app.use(express.json());
 app.use(cookieParser());
 
+// Allowed CORS origins (supporting default HTTP port 80 where port is omitted by browsers)
+const allowedOrigins = Array.from(new Set([
+  FRONTEND_URL,
+  'http://localhost',
+  'http://127.0.0.1',
+  'http://localhost:80',
+  'http://127.0.0.1:80'
+])).filter(Boolean);
+
 // CORS configuration supporting credentials (cookies)
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-server-id', 'X-Server-Id']

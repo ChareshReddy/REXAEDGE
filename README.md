@@ -174,12 +174,17 @@ npm run dev       # Starts backend server on http://localhost:5000
 cd frontend
 npm install
 npm run build     # Verify production build
-npm run dev       # Starts frontend dev server on http://localhost:5173
+npm run dev       # Starts frontend dev server on http://localhost (port 80)
 ```
 
-Open `http://localhost:5173` in your browser. Default login credentials:
+Open `http://localhost` in your browser. Default login credentials:
 - **Username**: `SAP_USER`
 - **Password**: Any non-empty password (in mock mode)
+
+> [!NOTE] Running on Port 80
+> Port 80 is the standard HTTP port:
+> - **Windows**: Starting the Vite dev server or preview on port 80 typically requires launching your terminal (PowerShell / CMD) as **Administrator**. Also make sure no other web service is occupying port 80 (such as IIS / `W3SVC`, Apache, or Skype).
+> - **Linux / macOS / WSL**: Ports below 1024 are privileged. Run with `sudo npm run dev` (or `sudo npm run preview`), or grant Node permission via `sudo setcap 'cap_net_bind_service=+ep' $(which node)`.
 
 ---
 
