@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Check } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser } from '../services/api';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
@@ -55,29 +55,94 @@ export default function Login({ onLoginSuccess }) {
 
   return (
     <div className="sap-login-viewport">
-      {/* Top Shell Header with RexaEdge Brand Logo */}
-      <header className="sap-shell-header">
-        <div className="sap-brand">
-          <div className="sap-brand-logo-container">
+      {/* =====================================================================
+          LEFT PANEL (~50% width): Flat Solid Dark Navy, Wireframe Window Illustration
+         ===================================================================== */}
+      <div className="sap-login-left-panel">
+        <div className="sap-login-left-pattern" aria-hidden="true" />
+
+        {/* Top-left: RexaEdge Brand Logo in white rounded container */}
+        <div className="sap-login-brand-top">
+          <div className="sap-brand-logo-container" title="RexaEdge">
             <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
           </div>
         </div>
-      </header>
 
-      {/* Main Login Canvas Body */}
-      <div className="sap-login-canvas">
-        <div className="sap-login-card">
-          <div className="sap-login-header">
-            <div className="sap-login-icon-box">
-              <ShieldCheck size={24} color="var(--sap-primary)" />
-            </div>
-            <div>
-              <h2>Welcome to RexaEdge</h2>
-              <p>Sign in to continue</p>
+        {/* Center: Wireframe Window Illustration & Headline */}
+        <div className="sap-login-hero-content">
+          <div className="sap-login-window-wrapper" aria-hidden="true">
+            <div className="sap-login-window-backdrop" />
+            <div className="sap-login-window-illustration">
+              <div className="sap-login-window-header">
+                <div className="sap-login-window-dots">
+                  <span className="sap-login-window-dot" />
+                  <span className="sap-login-window-dot" />
+                  <span className="sap-login-window-dot" />
+                </div>
+                <div className="sap-login-window-bar" />
+              </div>
+
+              <div className="sap-login-window-grid">
+                {/* Active solid white card with checkmark badge */}
+                <div className="sap-login-card-active">
+                  <div className="sap-login-card-check-circle">
+                    <Check size={13} strokeWidth={3} />
+                  </div>
+                  <div className="sap-login-card-bars">
+                    <div className="sap-login-card-bar-dark" />
+                    <div className="sap-login-card-bar-subtle" />
+                  </div>
+                </div>
+
+                {/* 3 dashed wireframe cards */}
+                <div className="sap-login-card-dashed">
+                  <div className="sap-login-card-bar-wire-top" />
+                  <div className="sap-login-card-bar-wire-sub" />
+                </div>
+                <div className="sap-login-card-dashed">
+                  <div className="sap-login-card-bar-wire-top" />
+                  <div className="sap-login-card-bar-wire-sub" />
+                </div>
+                <div className="sap-login-card-dashed">
+                  <div className="sap-login-card-bar-wire-top" />
+                  <div className="sap-login-card-bar-wire-sub" />
+                </div>
+              </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="sap-login-body">
+          <h1 className="sap-login-hero-heading">SAP modules, one portal.</h1>
+          <p className="sap-login-hero-subline">
+            Work in the SAP modules your administrator has enabled for you, with access set per module and per feature.
+          </p>
+        </div>
+
+        {/* Bottom balance spacer */}
+        <div style={{ height: 44 }} aria-hidden="true" />
+      </div>
+
+      {/* =====================================================================
+          RIGHT PANEL (~50% width): White Background, Direct Form, Centered Column
+         ===================================================================== */}
+      <div className="sap-login-right-panel">
+        {/* Mobile-only logo (< 900px viewport) */}
+        <div className="sap-login-mobile-logo">
+          <div className="sap-brand-logo-container" title="RexaEdge">
+            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
+          </div>
+        </div>
+
+        <div className="sap-login-canvas">
+          <div className="sap-login-lock-circle">
+            <Lock size={18} color="#ffffff" strokeWidth={2.2} />
+          </div>
+
+          <div className="sap-login-header-direct">
+            <h2>Welcome to RexaEdge</h2>
+            <p>Sign in to continue</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="sap-login-body-direct">
             {errorMessage && (
               <div className="sap-alert sap-alert-error" role="alert">
                 <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -87,10 +152,20 @@ export default function Login({ onLoginSuccess }) {
 
             <div className="sap-form-group">
               <label className="sap-form-label" htmlFor="sap-email">
-                Email Address
+                Email address
               </label>
               <div className="sap-input-group">
-                <span className="sap-input-icon-left" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-muted)', pointerEvents: 'none' }}>
+                <span
+                  className="sap-input-icon-left"
+                  style={{
+                    position: 'absolute',
+                    left: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--sap-text-muted)',
+                    pointerEvents: 'none'
+                  }}
+                >
                   <Mail size={15} />
                 </span>
                 <input
@@ -128,9 +203,8 @@ export default function Login({ onLoginSuccess }) {
 
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-btn-navy-login"
               disabled={isLoading}
-              style={{ width: '100%', height: 38, fontSize: 13, marginTop: 4, fontWeight: 600 }}
             >
               {isLoading ? (
                 <>
@@ -144,14 +218,18 @@ export default function Login({ onLoginSuccess }) {
                 </>
               )}
             </button>
+
+            <p className="sap-login-admin-note">
+              Accounts are created and managed by your administrators.
+            </p>
           </form>
         </div>
-      </div>
 
-      {/* Subtle Centered Footer */}
-      <footer className="sap-login-footer">
-        © {new Date().getFullYear()} RexaEdge · a product of Next IT Point
-      </footer>
+        {/* Footer centered at bottom of right panel */}
+        <footer className="sap-login-footer">
+          © {new Date().getFullYear()} RexaEdge · a product of Next IT Point
+        </footer>
+      </div>
     </div>
   );
 }

@@ -72,6 +72,58 @@ assert(cssContent.includes('.sap-login-canvas'), '.sap-login-canvas must be defi
 assert(cssContent.includes('.sap-login-footer'), '.sap-login-footer must be defined in index.css');
 console.log('   ✓ Viewport, canvas, and sticky bottom footer classes cleanly defined in index.css');
 
+// Test 5: Verify two-panel split screen, wireframe window illustration, and hero lines
+console.log('\nTest 5: Verify split-screen panels, wireframe illustration, and hero lines...');
+assert(
+  loginContent.includes('sap-login-left-panel'),
+  'Login page must contain left brand panel'
+);
+assert(
+  loginContent.includes('sap-login-right-panel'),
+  'Login page must contain right card panel'
+);
+assert(
+  loginContent.includes('sap-login-window-illustration'),
+  'Left panel must contain wireframe window illustration'
+);
+assert(
+  loginContent.includes('sap-login-card-active'),
+  'Left panel must contain active module card'
+);
+assert(
+  loginContent.includes('sap-login-card-dashed'),
+  'Left panel must contain dashed wireframe cards'
+);
+assert(
+  !loginContent.includes('sap-login-bom-card'),
+  'Old BOM tree mock card must be removed'
+);
+assert(
+  loginContent.includes('SAP modules, one portal.'),
+  'Hero heading must be "SAP modules, one portal."'
+);
+assert(
+  loginContent.includes('Work in the SAP modules your administrator has enabled for you, with access set per module and per feature.'),
+  'Hero line must match expected copy'
+);
+assert(
+  loginContent.includes('Accounts are created and managed by your administrators.'),
+  'Must include administrator note below button'
+);
+assert(
+  loginContent.includes('sap-btn-navy-login'),
+  'Button must use dark navy button class sap-btn-navy-login'
+);
+assert(
+  cssContent.includes('.sap-login-left-panel'),
+  '.sap-login-left-panel must be defined in index.css'
+);
+assert(
+  cssContent.includes('.sap-login-right-panel'),
+  '.sap-login-right-panel must be defined in index.css'
+);
+console.log('   ✓ Two-panel split layout, wireframe illustration, and hero value proposition verified');
+
 console.log('\n============================================================');
 console.log('  ALL LOGIN PAGE UI TESTS PASSED SUCCESSFULLY! (100%)       ');
 console.log('============================================================\n');
