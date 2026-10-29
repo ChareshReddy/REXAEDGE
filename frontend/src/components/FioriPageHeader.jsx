@@ -28,7 +28,7 @@ export default function FioriPageHeader({
             <React.Fragment key={idx}>
               {idx > 0 && <span className="fiori-bc-sep">›</span>}
               {b.onClick ? (
-                <button type="button" className="fiori-bc-link" onClick={b.onClick}>
+                <button type="button" className="fiori-bc-link sap-button" style={{ padding: '2px 8px', fontSize: 12 }} onClick={b.onClick}>
                   {b.label}
                 </button>
               ) : (
@@ -50,17 +50,17 @@ export default function FioriPageHeader({
           {onBack && (
             <button
               type="button"
-              className="fiori-ph-back"
+              className="fiori-ph-back sap-button"
               onClick={isLocked ? undefined : onBack}
               title={backTitle || (isLocked ? 'Operation in progress' : 'Back')}
               aria-label={backTitle || 'Back'}
-              style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
+              style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1, padding: '4px 8px' }}
             >
               <ChevronLeft size={16} />
             </button>
           )}
 
-          <h1 className="fiori-ph-title">{title}</h1>
+          <h1 className="fiori-ph-title sap-screen-title">{title}</h1>
 
           {systemKey && !breadcrumbs && (
             <span className="sap-view-system-pill" style={{ marginLeft: 6 }}>
@@ -73,7 +73,7 @@ export default function FioriPageHeader({
       </div>
 
       {/* Subtitle */}
-      {subtitle && <p className="fiori-ph-subtitle">{subtitle}</p>}
+      {subtitle && <p className="fiori-ph-subtitle sap-label">{subtitle}</p>}
     </div>
   );
 }

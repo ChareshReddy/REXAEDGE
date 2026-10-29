@@ -303,21 +303,21 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderTop: '1px solid var(--sap-border-subtle)', background: 'var(--sap-surface-subtle)' }}>
+          <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-workspace-bg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button
                 type="button"
-                className={`sap-btn ${viewMode === 'items' ? 'sap-btn-secondary active-mode' : 'sap-btn-ghost'}`}
+                className={`sap-button ${viewMode === 'items' ? 'active' : ''}`}
                 onClick={() => setViewMode('items')}
-                style={{ height: 28, fontSize: '11px', padding: '0 8px' }}
+                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 10px' }}
               >
                 <span>Single Level Items</span>
               </button>
               <button
                 type="button"
-                className={`sap-btn ${viewMode === 'hierarchy' ? 'sap-btn-secondary active-mode' : 'sap-btn-ghost'}`}
+                className={`sap-button ${viewMode === 'hierarchy' ? 'active' : ''}`}
                 onClick={() => setViewMode('hierarchy')}
-                style={{ height: 28, fontSize: '11px', padding: '0 8px' }}
+                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 10px' }}
               >
                 <FolderTree size={13} />
                 <span>Multi-Level Hierarchy</span>
@@ -326,9 +326,9 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
 
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               disabled={isLoading}
-              style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
             >
               {isLoading ? (
                 <>
@@ -337,7 +337,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                 </>
               ) : (
                 <>
-                  <Search size={13} />
+                  <Search size={14} />
                   <span>Display BOM</span>
                 </>
               )}

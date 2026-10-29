@@ -798,9 +798,9 @@ export default function BulkBomView({
 
             {/* Results Table Card */}
             <div className="sap-card" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                  <h3 className="sap-section-header" style={{ margin: 0 }}>
                     Execution Results
                   </h3>
                   <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
@@ -809,7 +809,7 @@ export default function BulkBomView({
                 </div>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button sap-btn sap-btn-secondary"
                   onClick={handleExportResults}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
                 >
@@ -819,8 +819,8 @@ export default function BulkBomView({
               </div>
 
               {/* Grid Table */}
-              <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Execution Results Table">
-                <table className="sap-bulk-table">
+              <div className="sap-bulk-grid-container sap-table-container" tabIndex={0} role="region" aria-label="Execution Results Table">
+                <table className="sap-table sap-bulk-table">
                   <thead>
                     <tr>
                       <th style={{ width: 36 }}>#</th>
@@ -901,17 +901,17 @@ export default function BulkBomView({
               <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-primary"
+                  className="sap-button primary"
                   onClick={onBack}
-                  style={{ padding: '9px 20px' }}
+                  style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
                 >
                   Return to Launchpad
                 </button>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button"
                   onClick={resetAll}
-                  style={{ padding: '9px 20px' }}
+                  style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
                 >
                   Upload Another File
                 </button>
@@ -1154,23 +1154,26 @@ export default function BulkBomView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <button
                         type="button"
-                        className="sap-btn sap-btn-secondary"
+                        className="sap-button"
                         disabled={isExecuting || isValidating}
                         onClick={resetAll}
+                        style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
                       >
                         Clear & Upload Another
                       </button>
 
                       <button
                         type="button"
-                        className="sap-btn sap-btn-secondary validate-with-sap-btn"
+                        className="sap-button validate-with-sap-btn"
                         onClick={handleValidateWithSap}
                         disabled={isValidating || isExecuting || parsedRows.length === 0}
                         style={{
+                          height: 30,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          padding: '9px 18px'
+                          padding: '0 18px',
+                          fontSize: 'var(--sap-size-button)'
                         }}
                       >
                         {isValidating ? (
@@ -1188,14 +1191,16 @@ export default function BulkBomView({
 
                       <button
                         type="button"
-                        className="sap-btn sap-btn-primary execute-batch-copy-btn"
+                        className="sap-button primary execute-batch-copy-btn"
                         disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
                         onClick={handleExecuteBatchCopy}
                         style={{
+                          height: 30,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          padding: '9px 24px'
+                          padding: '0 24px',
+                          fontSize: 'var(--sap-size-button)'
                         }}
                       >
                         {isExecuting ? (

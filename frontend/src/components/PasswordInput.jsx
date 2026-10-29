@@ -85,10 +85,10 @@ const PasswordInput = forwardRef(function PasswordInput(
           className="sap-password-left-icon"
           style={{
             position: 'absolute',
-            left: 12,
+            left: 8,
             top: '50%',
             transform: 'translateY(-50%)',
-            color: 'var(--sap-text-muted, #64748b)',
+            color: 'var(--sap-text-secondary)',
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -122,8 +122,9 @@ const PasswordInput = forwardRef(function PasswordInput(
         className={className}
         style={{
           width: '100%',
-          paddingLeft: leftIcon ? 38 : 12,
-          paddingRight: 38,
+          height: 30,
+          paddingLeft: leftIcon ? 34 : 10,
+          paddingRight: 34,
           boxSizing: 'border-box',
           ...style,
           ...inputStyle
@@ -146,21 +147,20 @@ const PasswordInput = forwardRef(function PasswordInput(
         title={showPassword ? 'Hide password' : 'Show password'}
         style={{
           position: 'absolute',
-          right: 6,
+          right: 4,
           top: '50%',
           transform: 'translateY(-50%)',
-          width: 28,
-          height: 28,
+          width: 26,
+          height: 26,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           background: 'transparent',
           border: 'none',
-          borderRadius: 4,
+          borderRadius: 2,
           padding: 0,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          color: 'var(--sap-text-muted, #64748b)',
-          transition: 'color 0.15s ease, background-color 0.15s ease',
+          color: 'var(--sap-text-secondary)',
           zIndex: 2
         }}
       >

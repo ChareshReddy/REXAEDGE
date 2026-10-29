@@ -150,7 +150,7 @@ export default function BulkUploadPanel({
           {resolvedTemplateAction && (
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               disabled={isTemplateDisabled}
               onClick={isTemplateDisabled ? undefined : handleTemplateClick}
               title={templateLabel}
@@ -158,9 +158,10 @@ export default function BulkUploadPanel({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                fontSize: 13,
-                fontWeight: 600,
-                padding: '7px 14px',
+                fontSize: 'var(--sap-size-button)',
+                fontWeight: 500,
+                height: 30,
+                padding: '0 14px',
                 flexShrink: 0
               }}
             >
@@ -246,15 +247,16 @@ export default function BulkUploadPanel({
           <div style={{ marginTop: 16 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               disabled={disabled || loading}
               onClick={handleClearClick}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                fontSize: 12,
-                padding: '6px 14px'
+                fontSize: 'var(--sap-size-button)',
+                height: 30,
+                padding: '0 14px'
               }}
             >
               <RefreshCw size={13} />

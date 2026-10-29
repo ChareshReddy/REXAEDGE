@@ -279,20 +279,20 @@ export default function PlantValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn"
+            className="sap-modal-close-btn sap-button"
             title="Cancel (Esc)"
             aria-label="Close dialog"
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
+              height: 28,
+              minHeight: 28,
+              padding: '0 8px',
               cursor: 'pointer',
-              display: 'flex',
-              padding: 4,
-              borderRadius: 4
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
@@ -304,12 +304,13 @@ export default function PlantValueHelpModal({
               setSelectedIndex(0);
             }}
             className="sap-f4-search-row"
+            style={{ display: 'flex', gap: 8, alignItems: 'center' }}
           >
             <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
               <Search
-                size={15}
-                color="#64748b"
-                style={{ position: 'absolute', left: 10, pointerEvents: 'none' }}
+                size={14}
+                color="var(--sap-text-secondary)"
+                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
               />
               <input
                 ref={searchInputRef}
@@ -319,16 +320,13 @@ export default function PlantValueHelpModal({
                   setSearchTerm(e.target.value);
                   setSelectedIndex(0);
                 }}
+                className="sap-input"
                 placeholder="Search plant code, name, or city… (e.g. 1001 or Delhi)"
                 style={{
                   width: '100%',
-                  height: 36,
-                  padding: '0 32px 0 34px',
-                  fontSize: 13,
-                  border: '1px solid var(--sap-border-input, #cbd5e1)',
-                  borderRadius: 6,
-                  outline: 'none',
-                  background: '#ffffff',
+                  height: 30,
+                  padding: '0 28px 0 28px',
+                  fontSize: 'var(--sap-size-input)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -342,10 +340,10 @@ export default function PlantValueHelpModal({
                   }}
                   style={{
                     position: 'absolute',
-                    right: 8,
+                    right: 6,
                     background: 'transparent',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: 'var(--sap-text-secondary)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -360,11 +358,11 @@ export default function PlantValueHelpModal({
 
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               style={{
-                height: 36,
-                padding: '0 18px',
-                fontSize: 12.5,
+                height: 30,
+                padding: '0 14px',
+                fontSize: 'var(--sap-size-button)',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -420,7 +418,7 @@ export default function PlantValueHelpModal({
               </p>
             </div>
           ) : (
-            <table className="sap-f4-table">
+            <table className="sap-table sap-f4-table">
               <colgroup>
                 <col style={{ width: 80 }} />
                 <col style={{ width: '45%' }} />
@@ -502,11 +500,11 @@ export default function PlantValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer">
-          <div className="sap-f4-footer-preview">
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-panel-bg)' }}>
+          <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredPlants[selectedIndex] ? (
               <span title={`${filteredPlants[selectedIndex].werks} - ${filteredPlants[selectedIndex].name1 || ''}`}>
-                Selected: <strong style={{ color: '#1e293b' }}>{filteredPlants[selectedIndex].werks}</strong>
+                Selected: <strong style={{ color: 'var(--sap-text-primary)' }}>{filteredPlants[selectedIndex].werks}</strong>
                 {filteredPlants[selectedIndex].name1 ? ` - ${filteredPlants[selectedIndex].name1}` : ''}
               </span>
             ) : (
@@ -514,19 +512,19 @@ export default function PlantValueHelpModal({
             )}
           </div>
 
-          <div className="sap-f4-footer-actions">
+          <div className="sap-f4-footer-actions" style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               onClick={onClose}
-              style={{ height: 32, fontSize: 12, padding: '0 14px' }}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
             >
               <X size={14} style={{ marginRight: 4 }} />
               <span>Cancel (Esc)</span>
             </button>
             <button
               type="button"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               disabled={selectedIndex < 0 || !filteredPlants[selectedIndex]}
               onClick={() => {
                 if (selectedIndex >= 0 && filteredPlants[selectedIndex]) {
@@ -535,11 +533,9 @@ export default function PlantValueHelpModal({
                 }
               }}
               style={{
-                height: 32,
-                fontSize: 12,
-                padding: '0 16px',
-                background: '#16a34a',
-                borderColor: '#15803d'
+                height: 30,
+                fontSize: 'var(--sap-size-button)',
+                padding: '0 16px'
               }}
             >
               <Check size={14} style={{ marginRight: 4 }} />

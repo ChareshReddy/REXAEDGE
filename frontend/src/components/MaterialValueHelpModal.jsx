@@ -381,44 +381,45 @@ export default function MaterialValueHelpModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
-                background: 'rgba(255,255,255,0.14)',
-                padding: '3px 7px',
-                borderRadius: 4,
+                background: 'rgba(255,255,255,0.4)',
+                padding: '2px 6px',
+                borderRadius: 2,
                 fontSize: 11,
                 fontWeight: 700,
-                letterSpacing: 0.5
+                letterSpacing: 0.5,
+                border: '1px solid var(--sap-border-color)'
               }}
             >
               F4
             </span>
-            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--sap-size-section-header)', fontWeight: 600 }}>
               {modalTitle}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn"
+            className="sap-modal-close-btn sap-button"
             title="Cancel (Esc)"
             aria-label="Close dialog"
             style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
+              height: 28,
+              minHeight: 28,
+              padding: '0 8px',
               cursor: 'pointer',
-              display: 'flex',
-              padding: 4,
-              borderRadius: 4
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Top Search Bar & Filters */}
         <div className="sap-f4-search-area">
           {/* Main search bar */}
-          <form onSubmit={handleSearchSubmit} className="sap-f4-search-row">
+          <form onSubmit={handleSearchSubmit} className="sap-f4-search-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div
               style={{
                 position: 'relative',
@@ -428,25 +429,22 @@ export default function MaterialValueHelpModal({
               }}
             >
               <Search
-                size={15}
-                color="#64748b"
-                style={{ position: 'absolute', left: 10, pointerEvents: 'none' }}
+                size={14}
+                color="var(--sap-text-secondary)"
+                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
               />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={handleInputChange}
+                className="sap-input"
                 placeholder="Search material number or description… (Enter to search)"
                 style={{
                   width: '100%',
-                  height: 36,
-                  padding: '0 32px 0 34px',
-                  fontSize: 13,
-                  border: '1px solid var(--sap-border-input, #cbd5e1)',
-                  borderRadius: 6,
-                  outline: 'none',
-                  background: '#ffffff',
+                  height: 30,
+                  padding: '0 28px 0 28px',
+                  fontSize: 'var(--sap-size-input)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -460,10 +458,10 @@ export default function MaterialValueHelpModal({
                   }}
                   style={{
                     position: 'absolute',
-                    right: 8,
+                    right: 6,
                     background: 'transparent',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: 'var(--sap-text-secondary)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -478,11 +476,11 @@ export default function MaterialValueHelpModal({
 
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               style={{
-                height: 36,
-                padding: '0 18px',
-                fontSize: 12.5,
+                height: 30,
+                padding: '0 14px',
+                fontSize: 'var(--sap-size-button)',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -591,19 +589,19 @@ export default function MaterialValueHelpModal({
               </p>
             </div>
           ) : (
-            <table className="sap-f4-table">
+            <table className="sap-table sap-f4-table">
               <colgroup>
-                <col style={{ width: 190 }} />
-                <col />
-                <col style={{ width: 110 }} />
-                <col style={{ width: 90 }} />
+                <col style={{ width: '25%' }} />
+                <col style={{ width: '49%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '11%' }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 190, whiteSpace: 'nowrap' }}>Material</th>
-                  <th style={{ whiteSpace: 'nowrap' }}>Material Description</th>
-                  <th style={{ width: 110, minWidth: 110, textAlign: 'center', whiteSpace: 'nowrap' }}>Material Type</th>
-                  <th style={{ width: 90, minWidth: 90, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                  <th style={{ width: '25%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                  <th style={{ width: '49%', textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
+                  <th style={{ width: '15%', textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
+                  <th style={{ width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
                 </tr>
               </thead>
               <tbody>
@@ -623,19 +621,17 @@ export default function MaterialValueHelpModal({
                       }}
                       onDoubleClick={() => onSelect(item.matnr, item)}
                     >
-                      <td style={{ width: 190, fontFamily: 'monospace', fontWeight: 600, color: '#0a6ed1' }}>
+                      <td style={{ width: '25%', fontFamily: 'var(--sap-font-mono)', fontWeight: 600 }}>
                         <span style={{ verticalAlign: 'middle' }}>{item.matnr}</span>
                         {item.hasBom && (
                           <span
+                            className="sap-type-badge"
                             style={{
                               marginLeft: 6,
-                              fontSize: 9.5,
-                              padding: '1px 4px',
-                              borderRadius: 3,
-                              background: '#ecfdf5',
-                              color: '#059669',
-                              border: '1px solid #a7f3d0',
-                              verticalAlign: 'middle'
+                              fontSize: 10,
+                              background: '#E2F3E5',
+                              color: '#1B6A2A',
+                              borderColor: '#A8DDB5'
                             }}
                           >
                             BOM
@@ -645,31 +641,20 @@ export default function MaterialValueHelpModal({
                       <td
                         title={item.maktx || ''}
                         style={{
-                          color: '#1e293b',
+                          width: '49%',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
                         }}
                       >
-                        {item.maktx || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>(no text)</span>}
+                        {item.maktx || <span style={{ color: 'var(--sap-text-secondary)', fontStyle: 'italic' }}>(no text)</span>}
                       </td>
-                      <td style={{ width: 110, minWidth: 110, textAlign: 'center' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            background: '#f1f5f9',
-                            padding: '2px 8px',
-                            borderRadius: 3,
-                            fontSize: 11,
-                            fontWeight: 500,
-                            color: '#475569',
-                            textAlign: 'center'
-                          }}
-                        >
+                      <td style={{ width: '15%', textAlign: 'center' }}>
+                        <span className="sap-type-badge">
                           {item.mtart || '-'}
                         </span>
                       </td>
-                      <td style={{ width: 90, minWidth: 90, textAlign: 'center', color: '#64748b' }}>
+                      <td style={{ width: '11%', textAlign: 'center', color: 'var(--sap-text-secondary)' }}>
                         {item.spras || 'E'}
                       </td>
                     </tr>
@@ -681,11 +666,11 @@ export default function MaterialValueHelpModal({
         </div>
 
         {/* Footer: Selection Summary & Action Buttons */}
-        <div className="sap-f4-footer">
-          <div className="sap-f4-footer-preview">
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-panel-bg)' }}>
+          <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && materials[selectedIndex] ? (
               <span title={`${materials[selectedIndex].matnr} - ${materials[selectedIndex].maktx || ''}`}>
-                Selected: <strong style={{ color: '#1e293b' }}>{materials[selectedIndex].matnr}</strong>
+                Selected: <strong style={{ color: 'var(--sap-text-primary)' }}>{materials[selectedIndex].matnr}</strong>
                 {materials[selectedIndex].maktx ? ` - ${materials[selectedIndex].maktx}` : ''}
               </span>
             ) : (
@@ -693,19 +678,19 @@ export default function MaterialValueHelpModal({
             )}
           </div>
 
-          <div className="sap-f4-footer-actions">
+          <div className="sap-f4-footer-actions" style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               onClick={onClose}
-              style={{ height: 32, fontSize: 12, padding: '0 14px' }}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
             >
               <X size={14} style={{ marginRight: 4 }} />
               <span>Cancel (Esc)</span>
             </button>
             <button
               type="button"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               disabled={selectedIndex < 0 || !materials[selectedIndex]}
               onClick={() => {
                 if (selectedIndex >= 0 && materials[selectedIndex]) {
@@ -714,11 +699,9 @@ export default function MaterialValueHelpModal({
                 }
               }}
               style={{
-                height: 32,
-                fontSize: 12,
-                padding: '0 16px',
-                background: '#16a34a',
-                borderColor: '#15803d'
+                height: 30,
+                fontSize: 'var(--sap-size-button)',
+                padding: '0 16px'
               }}
             >
               <Check size={14} style={{ marginRight: 4 }} />

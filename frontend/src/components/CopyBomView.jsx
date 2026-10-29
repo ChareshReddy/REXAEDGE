@@ -287,9 +287,9 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
                 </p>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button"
                   onClick={handleCancelChecking}
-                  style={{ marginTop: 20 }}
+                  style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
                 >
                   Cancel
                 </button>
@@ -437,21 +437,21 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
               </div>
 
               {/* Bottom Actions */}
-              <div className="sap-result-actions">
+              <div className="sap-result-actions sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button"
                   onClick={onBack}
-                  style={{ height: 32, fontSize: '12px', padding: '0 12px' }}
+                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
                 >
                   <ArrowLeft size={13} />
                   <span>Return to Launchpad</span>
                 </button>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-primary"
+                  className="sap-button primary"
                   onClick={handleReset}
-                  style={{ height: 32, fontSize: '12px', padding: '0 12px' }}
+                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
                 >
                   <Copy size={13} />
                   <span>Copy Another BOM</span>

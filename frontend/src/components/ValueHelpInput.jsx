@@ -129,7 +129,7 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
         disabled={disabled}
         readOnly={readOnly}
         placeholder={placeholder}
-        className={`sap-form-input ${className}`}
+        className={`sap-input sap-form-input ${className}`}
         style={{
           paddingRight: 28,
           boxSizing: 'border-box',
@@ -145,29 +145,25 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
         tabIndex={-1}
         onClick={handleIconClick}
         disabled={disabled || readOnly}
-        className="sap-value-help-btn"
+        className="sap-value-help-btn sap-button"
         title="Value Help (F4)"
         aria-label="Value Help (F4)"
         style={{
           position: 'absolute',
-          right: 4,
+          right: 2,
           top: '50%',
           transform: 'translateY(-50%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: 22,
-          height: 22,
-          background: 'transparent',
-          border: 'none',
-          borderRadius: 4,
+          width: 20,
+          height: 20,
+          borderRadius: 2,
           padding: 0,
-          cursor: disabled || readOnly ? 'default' : 'pointer',
-          color: disabled ? '#cbd5e1' : '#64748b',
-          transition: 'color 0.15s ease, background-color 0.15s ease'
+          cursor: disabled || readOnly ? 'default' : 'pointer'
         }}
       >
-        <Search size={13} strokeWidth={2.2} />
+        <Search size={12} strokeWidth={2.2} />
       </button>
 
       {/* Popups */}

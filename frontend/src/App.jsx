@@ -403,7 +403,7 @@ export default function App() {
   return (
     <div className="sap-app-root">
       {/* SAP Shell Top Header */}
-      <header className="sap-shell-header">
+      <header className="sap-shell-header sap-toolbar">
         <div
           className="sap-brand"
           onClick={() => {
@@ -434,7 +434,7 @@ export default function App() {
         <div className="sap-shell-actions">
           {/* Dynamic SAP Server Selector (populated from permitted servers) */}
           <div className="sap-system-select-wrapper">
-            <span className="sap-system-label">Server:</span>
+            <span className="sap-system-label sap-label">Server:</span>
             {availableServers.length === 1 ? (
               // Single server: read-only label in header style with neutral env tag
               <span
@@ -454,7 +454,7 @@ export default function App() {
                 <select
                   value={selectedServer?.id || ''}
                   onChange={(e) => handleServerChange(e.target.value)}
-                  className={`sap-system-select ${selectedServer?.environment === 'PROD' ? 'prod' : ''}`}
+                  className={`sap-system-select sap-input ${selectedServer?.environment === 'PROD' ? 'prod' : ''}`}
                 >
                   {availableServers.map((srv) => (
                     <option key={srv.id} value={srv.id}>
@@ -479,11 +479,11 @@ export default function App() {
           {availableServers.length > 0 && (
             <>
               {/* SAP GUI Session Selector */}
-              <div className="sap-session-select-wrapper" ref={sessionDropdownRef}>
-                <span className="sap-session-label">Session:</span>
+              <div className="sap-session-select-wrapper sap-statusbar" ref={sessionDropdownRef}>
+                <span className="sap-session-label sap-label">Session:</span>
                 <button
                   type="button"
-                  className={`sap-session-selector-btn ${sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'error' : ''}`}
+                  className={`sap-session-selector-btn sap-button ${sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'error' : ''}`}
                   onClick={() => setIsSessionDropdownOpen(!isSessionDropdownOpen)}
                   title={sapSession.message || 'Click to select active SAP GUI session'}
                 >
@@ -564,7 +564,7 @@ export default function App() {
 
               {/* Dynamic SAP Session Status Badge */}
               <span
-                className={`sap-session-pill status-${(sapSession.status || 'checking').toLowerCase()} ${
+                className={`sap-session-pill sap-statusbar status-${(sapSession.status || 'checking').toLowerCase()} ${
                   sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'status-selected_session_unavailable' : ''
                 }`}
                 title={sapSession.message || `SAP Status: ${sapSession.status}`}
@@ -603,7 +603,7 @@ export default function App() {
           {user.role === 'admin' && (
             <button
               type="button"
-              className={`sap-btn ${activeTab === 'admin' ? 'sap-btn-primary' : 'sap-btn-ghost'} sap-admin-nav-btn`}
+              className={`sap-button sap-btn ${activeTab === 'admin' ? 'sap-btn-primary' : 'sap-btn-ghost'} sap-admin-nav-btn`}
               onClick={() => setActiveTab(activeTab === 'admin' ? 'launchpad' : 'admin')}
               title="Enterprise Administration & Permissions"
               style={{
@@ -613,11 +613,8 @@ export default function App() {
                 fontSize: 12,
                 height: 32,
                 padding: '0 12px',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: 600,
-                background: activeTab === 'admin' ? 'var(--sap-admin-pill-bg)' : 'rgba(255,255,255,0.08)',
-                color: 'var(--sap-shell-text)',
-                border: '1px solid rgba(255,255,255,0.18)'
+                borderRadius: 2,
+                fontWeight: 600
               }}
             >
               <ShieldCheck size={15} />
@@ -629,12 +626,13 @@ export default function App() {
           <div className="sap-user-menu-wrapper" ref={userMenuRef}>
             <button
               type="button"
-              className={`sap-user-avatar-btn ${isUserMenuOpen ? 'active' : ''}`}
+              className={`sap-user-avatar-btn sap-button ${isUserMenuOpen ? 'active' : ''}`}
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
               title={user.email}
               aria-label={`User profile menu for ${user.email}`}
               aria-expanded={isUserMenuOpen}
               aria-haspopup="true"
+              style={{ borderRadius: 2 }}
             >
               <div className={`sap-user-avatar-circle ${user.role === 'admin' ? 'admin' : ''}`}>
                 {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
@@ -890,16 +888,16 @@ export default function App() {
             >
               <Server size={30} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--sap-text-dark)', margin: '0 0 8px' }}>
+            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
               Add a SAP server first
             </h2>
             <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
               No SAP server has been added to the system yet. To perform operations in this module, please add and configure an SAP server in the Administration panel.
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="sap-toolbar" style={{ display: 'flex', gap: 12 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button sap-btn sap-btn-primary"
                 onClick={() => setActiveTab('admin')}
                 style={{ padding: '8px 18px', fontSize: 13 }}
               >
@@ -908,7 +906,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button sap-btn sap-btn-secondary"
                 onClick={() => {
                   setActiveTab('launchpad');
                   setLaunchpadSubView('bom_operations');
@@ -954,7 +952,7 @@ export default function App() {
             >
               <ShieldCheck size={30} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--sap-text-dark)', margin: '0 0 8px' }}>
+            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
               Not Available For This Server
             </h2>
             <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
@@ -964,7 +962,7 @@ export default function App() {
             </p>
             <button
               type="button"
-              className="sap-btn sap-btn-primary"
+              className="sap-button sap-btn sap-btn-primary"
               onClick={() => {
                 setActiveTab('launchpad');
                 setLaunchpadSubView('home');
@@ -1009,7 +1007,7 @@ export default function App() {
             >
               <ShieldCheck size={30} />
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--sap-text-dark)', margin: '0 0 8px' }}>
+            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
               You don't have access to this feature
             </h2>
             <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
@@ -1019,7 +1017,7 @@ export default function App() {
             </p>
             <button
               type="button"
-              className="sap-btn sap-btn-primary"
+              className="sap-button sap-btn sap-btn-primary"
               onClick={() => {
                 setActiveTab('launchpad');
                 setLaunchpadSubView('home');
@@ -1194,10 +1192,10 @@ export default function App() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
           <button
             type="button"
-            className="sap-btn sap-btn-secondary"
+            className="sap-button sap-btn sap-btn-secondary"
             onClick={handleCloseLogoutModal}
             disabled={isLoggingOut}
           >
@@ -1205,7 +1203,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className="sap-btn sap-btn-primary"
+            className="sap-button sap-btn destructive sap-button-danger sap-btn-primary"
             onClick={handleConfirmLogout}
             disabled={isLoggingOut}
           >
