@@ -1,7 +1,9 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Search } from 'lucide-react';
 import MaterialValueHelpModal from './MaterialValueHelpModal';
+import MaterialRestrictValueRangeModal from './MaterialRestrictValueRangeModal';
 import PlantValueHelpModal from './PlantValueHelpModal';
+import StorageLocationValueHelpModal from './StorageLocationValueHelpModal';
 
 /**
  * SAP-style Value Help Input wrapper supporting F4 hotkey and matchcode icon button.
@@ -9,7 +11,7 @@ import PlantValueHelpModal from './PlantValueHelpModal';
  */
 const ValueHelpInput = forwardRef(function ValueHelpInput(
   {
-    kind = 'material', // 'material' | 'plant'
+    kind = 'material', // 'material' | 'plant' | 'storageLocation' | 'sloc'
     value = '',
     onChange,
     onSelect,
@@ -29,6 +31,10 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
   ref
 ) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isRestrictOpen, setIsRestrictOpen] = useState(false);
+  const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const [filteredMaterials, setFilteredMaterials] = useState(null);
+  const [searchMetadata, setSearchMetadata] = useState(null);
   const inputRef = useRef(null);
 
   // Expose input element via forwarded ref
@@ -39,7 +45,12 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
       e.preventDefault();
       e.stopPropagation();
       if (!disabled && !readOnly) {
-        setIsOpen(true);
+        if (kind === 'material') {
+          setIsRestrictOpen(true);
+          setIsResultsOpen(false);
+        } else {
+          setIsOpen(true);
+        }
       }
       return;
     }
@@ -52,20 +63,47 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
     e.preventDefault();
     e.stopPropagation();
     if (!disabled && !readOnly) {
-      setIsOpen(true);
+      if (kind === 'material') {
+        setIsRestrictOpen(true);
+        setIsResultsOpen(false);
+      } else {
+        setIsOpen(true);
+      }
     }
   };
 
   const handleClose = () => {
     setIsOpen(false);
-    // Return focus to the input field after closing
+    setIsRestrictOpen(false);
+    setIsResultsOpen(false);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
   };
 
+  const handleContinueEmpty = () => {
+    setIsRestrictOpen(false);
+    setFilteredMaterials(null);
+    setSearchMetadata(null);
+    setIsResultsOpen(true);
+  };
+
+  const handleContinueWithResults = (results, meta) => {
+    setIsRestrictOpen(false);
+    setFilteredMaterials(results);
+    setSearchMetadata(meta);
+    setIsResultsOpen(true);
+  };
+
+  const handleBackToRestrict = () => {
+    setIsResultsOpen(false);
+    setIsRestrictOpen(true);
+  };
+
   const handleSelection = (selectedVal, fullRecord) => {
     setIsOpen(false);
+    setIsRestrictOpen(false);
+    setIsResultsOpen(false);
 
     if (inputRef.current) {
       // Use native-setter + dispatchEvent so React synthetic onChange updates properly
@@ -142,8 +180,15 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
       {/* SAP Matchcode / F4 Icon Button */}
       <button
         type="button"
-        tabIndex={-1}
+        tabIndex={disabled || readOnly ? -1 : 0}
         onClick={handleIconClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleIconClick(e);
+          }
+        }}
         disabled={disabled || readOnly}
         className="sap-value-help-btn sap-button"
         title="Value Help (F4)"
@@ -168,9 +213,29 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
 
       {/* Popups */}
       {kind === 'material' ? (
-        <MaterialValueHelpModal
+        <>
+          <MaterialRestrictValueRangeModal
+            isOpen={isRestrictOpen}
+            initialValue={String(value || '')}
+            onContinueEmpty={handleContinueEmpty}
+            onContinueWithResults={handleContinueWithResults}
+            onClose={handleClose}
+          />
+          <MaterialValueHelpModal
+            isOpen={isResultsOpen}
+            initialValue={String(value || '')}
+            initialMaterials={filteredMaterials}
+            searchMetadata={searchMetadata}
+            onBackToRestrict={handleBackToRestrict}
+            onSelect={handleSelection}
+            onClose={handleClose}
+          />
+        </>
+      ) : kind === 'storageLocation' || kind === 'sloc' ? (
+        <StorageLocationValueHelpModal
           isOpen={isOpen}
           initialValue={String(value || '')}
+          plant={plant}
           onSelect={handleSelection}
           onClose={handleClose}
         />

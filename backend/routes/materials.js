@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { searchMaterials, getMaterialDetail } from '../services/materialSearchService.js';
+import { searchMaterialsByOption } from '../services/searchByOptionService.js';
+import { SAP_SEARCH_OPTIONS } from '../config/searchHelpOptions.js';
 import materialCheckRouter from './materialCheck.js';
 
 const router = express.Router();
@@ -77,6 +79,83 @@ router.get('/search', materialSearchRateLimiter, requireAppPermission('bom.*'), 
     return res.status(statusCode).json({
       success: false,
       error: err.message || 'Failed to search materials in SAP.'
+    });
+  }
+});
+
+/**
+ * GET /api/materials/search-options
+ * Returns the full ordered list of 34 SAP search help options with field metadata.
+ */
+router.get('/search-options', materialSearchRateLimiter, requireAppPermission('bom.*'), (req, res) => {
+  return res.status(200).json({
+    success: true,
+    data: SAP_SEARCH_OPTIONS
+  });
+});
+
+/**
+ * POST /api/materials/search-by-option
+ * Searches materials by specific SAP search help tab option (M, A, B, L, T, P, N, I, J, W, etc.)
+ */
+router.post('/search-by-option', materialSearchRateLimiter, requireAppPermission('bom.*'), async (req, res) => {
+  const abortController = new AbortController();
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  });
+
+  try {
+    const { tab, fields, maxRows, noRestriction } = req.body || {};
+
+    if (!tab) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search tab identifier is required (e.g. M, A, B, etc.).'
+      });
+    }
+
+    const result = await searchMaterialsByOption({
+      tab,
+      fields: fields || {},
+      maxRows,
+      noRestriction: noRestriction === true || noRestriction === 'true',
+      server: req.selectedServer,
+      signal: abortController.signal
+    });
+
+    if (!result.available) {
+      return res.status(200).json({
+        success: false,
+        available: false,
+        tab: result.tab,
+        name: result.name,
+        data: [],
+        error: result.error || 'Not available on this system'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      available: true,
+      tab: result.tab,
+      name: result.name,
+      data: result.data,
+      count: result.count,
+      limit: result.limit,
+      limitReached: result.limitReached,
+      message: result.message
+    });
+  } catch (err) {
+    if (req.destroyed || res.writableEnded) {
+      return;
+    }
+    console.error('[materialsRoute] search-by-option error:', err.message);
+    const statusCode = err.status || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: err.message || 'Failed to execute search by option.'
     });
   }
 });
