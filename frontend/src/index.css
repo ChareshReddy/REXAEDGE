@@ -156,17 +156,13 @@ input, select {
 
 .sap-brand-logo-container {
   background: #ffffff;
-  padding: 2.5px 5px;
+  padding: 4px 9px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   flex-shrink: 0;
-  height: 34px;
-  max-height: 34px;
-  width: auto;
-  max-width: 170px;
   box-sizing: border-box;
   transition: transform 0.15s ease;
 }
@@ -176,10 +172,8 @@ input, select {
 }
 
 .sap-brand-logo-img {
-  height: 29px;
-  max-height: 29px;
+  height: 25px;
   width: auto;
-  max-width: 160px;
   object-fit: contain;
   display: block;
 }
@@ -1492,24 +1486,18 @@ input, select {
 
 .sap-login-brand-top .sap-brand-logo-container {
   background: #ffffff;
-  padding: 3.5px 7px;
+  padding: 4px 9px;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  width: 210px;
-  max-width: 210px;
-  height: 43px;
-  max-height: 43px;
   box-sizing: border-box;
 }
 
 .sap-login-brand-top .sap-brand-logo-img {
-  height: 36px;
-  max-height: 36px;
+  height: 31px;
   width: auto;
-  max-width: 196px;
   object-fit: contain;
   display: block;
 }
@@ -1846,25 +1834,19 @@ input, select {
 
   .sap-login-mobile-logo .sap-brand-logo-container {
     background: #ffffff;
-    padding: 3px 6px;
+    padding: 4px 9px;
     border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     border: 1px solid var(--sap-border-subtle, #e2e8f0);
-    width: 180px;
-    max-width: 180px;
-    height: 38px;
-    max-height: 38px;
     box-sizing: border-box;
   }
 
   .sap-login-mobile-logo .sap-brand-logo-img {
-    height: 32px;
-    max-height: 32px;
+    height: 28px;
     width: auto;
-    max-width: 168px;
     object-fit: contain;
     display: block;
   }
