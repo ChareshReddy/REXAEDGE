@@ -58,7 +58,9 @@ const testFiles = [
 const env = {
   ...process.env,
   NODE_ENV: 'test',
-  USE_MOCK_SAP: 'true'
+  USE_MOCK_SAP: 'true',
+  OPENROUTER_MODEL: process.env.OPENROUTER_MODEL || 'test-model',
+  SAP_DEV_URL: process.env.SAP_DEV_URL || 'https://sap-dev.corp.internal/sap/opu/odata/sap'
 };
 
 for (const file of testFiles) {
