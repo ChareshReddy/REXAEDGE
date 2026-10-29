@@ -622,6 +622,47 @@ export async function getPlants({ q, material, refresh } = {}, options = {}) {
   return response.data;
 }
 
+/**
+ * Fetches SAP storage location definitions from T001L with optional plant and text query filtering.
+ */
+export async function getStorageLocations({ plant, q, refresh } = {}, options = {}) {
+  const params = {};
+  if (plant) params.plant = plant;
+  if (q) params.q = q;
+  if (refresh) params.refresh = refresh;
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/storage-locations', config);
+  return response.data;
+}
+
+/**
+ * Searches SAP materials using a specific Restrict Value Range option (tab).
+ */
+export async function searchMaterialsByOption(
+  { tab, fields = {}, maxRows = 500, noRestriction = false },
+  options = {}
+) {
+  const config = {};
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.post(
+    '/materials/search-by-option',
+    { tab, fields, maxRows, noRestriction },
+    config
+  );
+  return response.data;
+}
+
+/**
+ * Fetches the ordered list of 34 SAP search help options with field metadata.
+ */
+export async function getSearchHelpOptions(options = {}) {
+  const config = {};
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/materials/search-options', config);
+  return response.data;
+}
+
 export default apiClient;
 
 

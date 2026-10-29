@@ -15,6 +15,7 @@ import bomRoutes from './routes/bom.js';
 import sapRoutes from './routes/sap.js';
 import materialsRoutes from './routes/materials.js';
 import plantRoutes from './routes/plants.js';
+import storageLocationRoutes from './routes/storageLocations.js';
 import adminRoutes from './routes/admin.js';
 import { requireAuth } from './middleware/auth.js';
 import { supabaseService, verifyDatabaseConfiguration } from './services/supabaseClient.js';
@@ -84,6 +85,7 @@ app.use('/api/bom', bomRoutes);
 app.use('/api/sap', sapRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/plants', plantRoutes);
+app.use('/api/storage-locations', storageLocationRoutes);
 
 // Server Permission & Discovery endpoint (returns permitted servers for logged-in user)
 app.get('/api/servers/available', requireAuth, async (req, res) => {
