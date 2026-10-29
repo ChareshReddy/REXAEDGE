@@ -692,46 +692,45 @@ export default function ChatBox({ isActive = true, onActionExecuted, systemKey =
       </div>
 
       {/* Quick Suggestion Actions (Create BOM & Delete BOM only) */}
-      <div className="sap-chat-suggestions">
-        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Sparkles size={12} color="var(--sap-primary)" />
+      <div className="sap-chat-suggestions sap-toolbar">
+        <span style={{ fontSize: '12px', fontWeight: 600, color: '#333333', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Sparkles size={13} />
           Quick Actions:
         </span>
         <button
           type="button"
-          className="sap-chat-suggestion-chip"
+          className="sap-chat-suggestion-chip sap-button"
           onClick={() => triggerStructuredAction('create_bom')}
           disabled={isLoading}
         >
-          <Copy size={13} color="var(--sap-primary)" />
+          <Copy size={13} />
           <span>Copy BOM</span>
           <ArrowUpRight size={12} />
         </button>
         <button
           type="button"
-          className="sap-chat-suggestion-chip"
+          className="sap-chat-suggestion-chip sap-button"
           onClick={() => triggerStructuredAction('bulk_bom_copy')}
           disabled={isLoading}
-          style={{ background: 'var(--sap-success-bg)', borderColor: 'var(--sap-success-border)', color: 'var(--sap-success-text)' }}
         >
-          <FileSpreadsheet size={13} color="var(--sap-success)" />
+          <FileSpreadsheet size={13} />
           <span>Bulk Copy (Excel)</span>
           <ArrowUpRight size={12} />
         </button>
         <button
           type="button"
-          className="sap-chat-suggestion-chip chip-danger"
+          className="sap-chat-suggestion-chip sap-button destructive sap-button-danger chip-danger"
           onClick={() => triggerStructuredAction('delete_bom')}
           disabled={isLoading}
         >
-          <Trash2 size={13} color="var(--sap-error)" />
+          <Trash2 size={13} />
           <span>Delete BOM</span>
           <ArrowUpRight size={12} />
         </button>
       </div>
 
       {/* Input Area */}
-      <div className="sap-chat-input-bar">
+      <div className="sap-chat-input-bar sap-toolbar">
         <textarea
           ref={inputRef}
           className="sap-input sap-chat-textarea"
@@ -744,7 +743,7 @@ export default function ChatBox({ isActive = true, onActionExecuted, systemKey =
         />
         <button
           type="button"
-          className="sap-btn sap-btn-primary sap-chat-send-btn"
+          className="sap-button sap-btn sap-btn-primary sap-chat-send-btn"
           onClick={() => handleSendMessage()}
           disabled={isLoading || !inputMessage.trim()}
           title="Send query (Enter)"

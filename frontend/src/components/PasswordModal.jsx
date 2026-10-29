@@ -136,11 +136,11 @@ export default function PasswordModal({
           {mode === 'user' && (
             <div className="sap-form-group" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label
-                className="sap-form-label"
+                className="sap-label"
                 htmlFor="sap-current-pwd"
-                style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--sap-text-dark, #1e293b)', margin: 0 }}
+                style={{ fontSize: 'var(--sap-size-label)', fontWeight: 500, margin: 0 }}
               >
-                Current Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
+                Current Password <span style={{ color: 'var(--sap-destructive-accent)' }}>*</span>
               </label>
               <PasswordInput
                 id="sap-current-pwd"
@@ -151,8 +151,8 @@ export default function PasswordModal({
                 autoComplete="current-password"
                 required
                 autoFocus
-                leftIcon={<Key size={17} />}
-                inputStyle={{ height: 40, fontSize: 13 }}
+                leftIcon={<Key size={15} />}
+                inputStyle={{ height: 30, fontSize: 'var(--sap-size-input)' }}
               />
             </div>
           )}
@@ -160,11 +160,11 @@ export default function PasswordModal({
           {/* New Password */}
           <div className="sap-form-group" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label
-              className="sap-form-label"
+              className="sap-label"
               htmlFor="sap-new-pwd"
-              style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--sap-text-dark, #1e293b)', margin: 0 }}
+              style={{ fontSize: 'var(--sap-size-label)', fontWeight: 500, margin: 0 }}
             >
-              New Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
+              New Password <span style={{ color: 'var(--sap-destructive-accent)' }}>*</span>
             </label>
             <PasswordInput
               id="sap-new-pwd"
@@ -175,19 +175,19 @@ export default function PasswordModal({
               autoComplete="new-password"
               required
               autoFocus={mode === 'admin'}
-              leftIcon={<Key size={17} />}
-              inputStyle={{ height: 40, fontSize: 13 }}
+              leftIcon={<Key size={15} />}
+              inputStyle={{ height: 30, fontSize: 'var(--sap-size-input)' }}
             />
           </div>
 
           {/* Confirm Password */}
           <div className="sap-form-group" style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label
-              className="sap-form-label"
+              className="sap-label"
               htmlFor="sap-confirm-pwd"
-              style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--sap-text-dark, #1e293b)', margin: 0 }}
+              style={{ fontSize: 'var(--sap-size-label)', fontWeight: 500, margin: 0 }}
             >
-              Confirm Password <span style={{ color: 'var(--sap-error, #b00)' }}>*</span>
+              Confirm Password <span style={{ color: 'var(--sap-destructive-accent)' }}>*</span>
             </label>
             <PasswordInput
               id="sap-confirm-pwd"
@@ -197,8 +197,8 @@ export default function PasswordModal({
               disabled={isLoading}
               autoComplete="new-password"
               required
-              leftIcon={<Key size={17} />}
-              inputStyle={{ height: 40, fontSize: 13 }}
+              leftIcon={<Key size={15} />}
+              inputStyle={{ height: 30, fontSize: 'var(--sap-size-input)' }}
             />
           </div>
 
@@ -315,33 +315,31 @@ export default function PasswordModal({
           </div>
         </div>
 
-        {/* Modal Action Buttons: fixed footer with divider, right-aligned, normal size */}
-        <div className="sap-modal-footer" style={{ justifyContent: 'flex-end' }}>
+        {/* Modal Action Buttons: fixed footer with divider, right-aligned */}
+        <div className="sap-modal-footer sap-toolbar" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
           <button
             type="button"
-            className="sap-btn sap-btn-secondary"
+            className="sap-button"
             onClick={handleClose}
             disabled={isLoading}
             style={{
-              height: 38,
+              height: 30,
               padding: '0 16px',
-              fontSize: 13.5,
-              fontWeight: 500,
-              minWidth: 'auto'
+              fontSize: 'var(--sap-size-button)',
+              fontWeight: 500
             }}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="sap-btn sap-btn-primary"
+            className="sap-button primary"
             disabled={!isFormValid || isLoading}
             style={{
-              height: 38,
+              height: 30,
               padding: '0 18px',
-              fontSize: 13.5,
+              fontSize: 'var(--sap-size-button)',
               fontWeight: 600,
-              minWidth: 'auto',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',

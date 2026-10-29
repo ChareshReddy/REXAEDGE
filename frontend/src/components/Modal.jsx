@@ -130,8 +130,8 @@ export default function Modal({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -166,11 +166,13 @@ export default function Modal({
               headerContent
             ) : title ? (
               <div
+                className="sap-section-header"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: subtitle ? 6 : 16
+                  marginBottom: subtitle ? 6 : 16,
+                  padding: '8px 12px'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -185,15 +187,15 @@ export default function Modal({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: 32,
-                          height: 32,
-                          borderRadius: 'var(--radius-md, 6px)'
+                          width: 28,
+                          height: 28,
+                          borderRadius: 2
                         }}
                       >
-                        <Icon size={18} />
+                        <Icon size={16} />
                       </div>
                     ) : (
-                      <Icon size={20} color={iconColor} style={{ flexShrink: 0 }} />
+                      <Icon size={18} color={iconColor} style={{ flexShrink: 0 }} />
                     )
                   )}
                   <div>
@@ -203,13 +205,13 @@ export default function Modal({
                         fontSize: 16,
                         fontWeight: 700,
                         margin: 0,
-                        color: 'var(--sap-text-dark)'
+                        color: '#111111'
                       }}
                     >
                       {title}
                     </h3>
                     {subtitle && (
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--sap-text-muted)' }}>
+                      <p className="sap-label" style={{ margin: '2px 0 0', fontSize: 12 }}>
                         {subtitle}
                       </p>
                     )}
@@ -220,23 +222,20 @@ export default function Modal({
                     type="button"
                     onClick={onClose}
                     disabled={isLoading}
-                    className="sap-modal-close-btn"
+                    className="sap-modal-close-btn sap-button"
                     style={{
-                      background: 'none',
-                      border: 'none',
                       cursor: isLoading ? 'not-allowed' : 'pointer',
-                      color: 'var(--sap-text-muted)',
-                      padding: 4,
+                      padding: '2px 6px',
                       display: 'flex',
                       alignItems: 'center',
-                      borderRadius: 'var(--radius-sm)',
+                      borderRadius: 2,
                       opacity: isLoading ? 0.35 : 1,
                       pointerEvents: isLoading ? 'none' : 'auto'
                     }}
                     title={isLoading ? 'Operation in progress' : 'Close'}
                     aria-label="Close dialog"
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 )}
               </div>
@@ -245,7 +244,7 @@ export default function Modal({
             {children}
 
             {footer && (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+              <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
                 {footer}
               </div>
             )}

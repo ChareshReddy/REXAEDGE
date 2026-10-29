@@ -38,11 +38,11 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
   const hasActiveFilter = Boolean(currentFilter?.from || currentFilter?.to);
 
   return (
-    <div className="sap-card">
-      <form onSubmit={handleApply} className="sap-filter-bar">
-        <div className="sap-filter-fields">
+    <div className="sap-card" style={{ marginBottom: 12 }}>
+      <form onSubmit={handleApply} className="sap-filter-bar sap-toolbar">
+        <div className="sap-filter-fields" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div className="sap-filter-field">
-            <label className="sap-form-label" htmlFor="filter-from">
+            <label className="sap-label sap-form-label" htmlFor="filter-from">
               From Business Partner ID
             </label>
             <input
@@ -64,7 +64,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
           </div>
 
           <div className="sap-filter-field">
-            <label className="sap-form-label" htmlFor="filter-to">
+            <label className="sap-label sap-form-label" htmlFor="filter-to">
               To Business Partner ID
             </label>
             <input
@@ -84,7 +84,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
           <div style={{ display: 'flex', gap: 8, paddingBottom: 2 }}>
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button sap-btn sap-btn-primary"
               disabled={isLoading}
               title="Apply OData $filter on Business Partner ID"
             >
@@ -95,7 +95,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
             {hasActiveFilter && (
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button sap-btn sap-btn-secondary"
                 onClick={handleReset}
                 disabled={isLoading}
                 title="Clear filter and show all records"

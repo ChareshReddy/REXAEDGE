@@ -582,10 +582,10 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
           >
             <ChevronLeft size={16} />
           </button>
-          <h1 className="fiori-ph-title">System &amp; User Management</h1>
+          <h1 className="fiori-ph-title sap-screen-title">System &amp; User Management</h1>
           <button
             type="button"
-            className="sap-btn sap-btn-ghost"
+            className="sap-button sap-btn sap-btn-ghost"
             onClick={loadData}
             title="Refresh Administration Data"
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}
@@ -594,24 +594,24 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             <span>Refresh</span>
           </button>
         </div>
-        <p className="fiori-ph-subtitle">
+        <p className="fiori-ph-subtitle sap-label">
           Manage Supabase user accounts, configure SAP server connections, and enforce granular per-server access permissions.
         </p>
 
         {/* Admin Navigation Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 14 }}>
           <button
             type="button"
             onClick={() => setActiveTab('users')}
-            className={`sap-btn ${activeTab === 'users' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12.5 }}
+            className={`sap-button ${activeTab === 'users' ? 'primary' : ''}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <Users size={14} />
             <span>Users</span>
             <span style={{
-              background: activeTab === 'users' ? 'rgba(255,255,255,0.25)' : 'var(--sap-surface-empty)',
-              color: activeTab === 'users' ? 'var(--sap-shell-text)' : 'var(--sap-text-body)',
-              borderRadius: 'var(--radius-full)',
+              background: 'rgba(0,0,0,0.06)',
+              color: 'var(--sap-text-primary)',
+              borderRadius: 'var(--sap-radius-sm)',
               padding: '1px 6px',
               fontSize: 11
             }}>
@@ -622,15 +622,15 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
           <button
             type="button"
             onClick={() => setActiveTab('servers')}
-            className={`sap-btn ${activeTab === 'servers' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12.5 }}
+            className={`sap-button ${activeTab === 'servers' ? 'primary' : ''}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <Server size={14} />
             <span>SAP Servers</span>
             <span style={{
-              background: activeTab === 'servers' ? 'rgba(255,255,255,0.25)' : 'var(--sap-surface-empty)',
-              color: activeTab === 'servers' ? 'var(--sap-shell-text)' : 'var(--sap-text-body)',
-              borderRadius: 'var(--radius-full)',
+              background: 'rgba(0,0,0,0.06)',
+              color: 'var(--sap-text-primary)',
+              borderRadius: 'var(--sap-radius-sm)',
               padding: '1px 6px',
               fontSize: 11
             }}>
@@ -641,15 +641,15 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
           <button
             type="button"
             onClick={() => setActiveTab('permissions')}
-            className={`sap-btn ${activeTab === 'permissions' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 12.5 }}
+            className={`sap-button ${activeTab === 'permissions' ? 'primary' : ''}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <KeyRound size={14} />
             <span>Access Permissions</span>
             <span style={{
-              background: activeTab === 'permissions' ? 'rgba(255,255,255,0.25)' : 'var(--sap-surface-empty)',
-              color: activeTab === 'permissions' ? 'var(--sap-shell-text)' : 'var(--sap-text-body)',
-              borderRadius: 'var(--radius-full)',
+              background: 'rgba(0,0,0,0.06)',
+              color: 'var(--sap-text-primary)',
+              borderRadius: 'var(--sap-radius-sm)',
               padding: '1px 6px',
               fontSize: 11
             }}>
@@ -681,8 +681,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
         {activeTab === 'users' && (
           <div>
             {/* Header row with search and Add User button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%' }}>
+            <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-subtle)' }}>
                   <Search size={13} />
                 </span>
@@ -698,7 +698,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
 
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button sap-btn sap-btn-primary"
                 onClick={() => setIsUserModalOpen(true)}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
               >
@@ -708,8 +708,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             </div>
 
             {/* Users Table - Compact & Scrollable */}
-            <div className="sap-admin-table-scroll" tabIndex={0} role="region" aria-label="Users Table">
-              <table className="sap-admin-compact-table">
+            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Users Table">
+              <table className="sap-table sap-admin-compact-table">
                 <thead>
                   <tr>
                     <th>Email Address</th>
@@ -839,7 +839,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
 
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button sap-btn sap-btn-primary"
                 onClick={handleOpenAddServer}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
               >
@@ -849,8 +849,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             </div>
 
             {/* Servers Table - Compact & Scrollable */}
-            <div className="sap-admin-table-scroll" tabIndex={0} role="region" aria-label="SAP Servers Table">
-              <table className="sap-admin-compact-table">
+            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
+              <table className="sap-table sap-admin-compact-table">
                 <thead>
                   <tr>
                     <th>Server Name</th>
@@ -1036,8 +1036,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             )}
 
             {/* Header row with search and Grant Permission button */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%' }}>
+            <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-subtle)' }}>
                   <Search size={13} />
                 </span>
@@ -1057,7 +1057,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                 </span>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-primary"
+                  className="sap-button sap-btn sap-btn-primary"
                   onClick={handleOpenGrantModal}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
                 >
@@ -1068,8 +1068,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             </div>
 
             {/* Permissions Table - Fixed Layout with Explicit Content-Based Widths */}
-            <div className="sap-admin-table-scroll" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%', overflowX: 'auto' }}>
-              <table className="sap-admin-compact-table" style={{ width: '100%', minWidth: 840, tableLayout: 'fixed' }}>
+            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%', overflowX: 'auto' }}>
+              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', minWidth: 840, tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: 240 }} />
                   <col style={{ width: 140 }} />
@@ -1292,20 +1292,21 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               onClick={() => setIsUserModalOpen(false)}
               disabled={userSubmitting}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               disabled={userSubmitting}
-              style={{ minWidth: 90 }}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 90 }}
             >
               {userSubmitting ? 'Creating...' : 'Create User'}
             </button>
@@ -1493,20 +1494,21 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
                 </label>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+              <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button"
                   onClick={() => setIsServerModalOpen(false)}
                   disabled={serverSubmitting}
+                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="sap-btn sap-btn-primary"
+                  className="sap-button primary"
                   disabled={serverSubmitting}
-                  style={{ minWidth: 100 }}
+                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
                 >
                   {serverSubmitting ? 'Saving...' : editingServerId ? 'Update Server' : 'Add Server'}
                 </button>
@@ -1810,20 +1812,21 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
+              className="sap-button"
               onClick={() => setIsGrantModalOpen(false)}
               disabled={grantSubmitting}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="sap-btn sap-btn-primary"
+              className="sap-button primary"
               disabled={grantSubmitting}
-              style={{ minWidth: 100 }}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
             >
               {grantSubmitting ? 'Saving...' : isEditingPermission ? 'Save Permissions' : 'Grant Access'}
             </button>
@@ -1839,35 +1842,30 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
         onClose={() => !confirmModal.isLoading && setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
         title={confirmModal.title}
         icon={confirmModal.isDanger ? AlertTriangle : ShieldCheck}
-        iconColor={confirmModal.isDanger ? 'var(--sap-error, #b00)' : 'var(--sap-primary)'}
+        iconColor={confirmModal.isDanger ? 'var(--sap-destructive-accent)' : 'var(--sap-primary)'}
         isLoading={confirmModal.isLoading}
         maxWidth={440}
       >
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--sap-text-body)', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--sap-text-primary)', lineHeight: 1.5 }}>
           {confirmModal.message}
         </p>
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
           <button
             type="button"
-            className="sap-btn sap-btn-secondary"
+            className="sap-button"
             onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
             disabled={confirmModal.isLoading}
+            style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
           >
             Cancel
           </button>
           <button
             type="button"
-            className={confirmModal.isDanger ? 'sap-btn sap-btn-danger' : 'sap-btn sap-btn-primary'}
+            className={confirmModal.isDanger ? 'sap-button destructive' : 'sap-button primary'}
             onClick={() => confirmModal.onConfirm?.()}
             disabled={confirmModal.isLoading}
-            style={confirmModal.isDanger ? {
-              background: 'var(--sap-error, #b00)',
-              color: '#fff',
-              border: 'none',
-              fontWeight: 600,
-              minWidth: 90
-            } : { minWidth: 90 }}
+            style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 90 }}
           >
             {confirmModal.isLoading ? (
               <>

@@ -138,9 +138,9 @@ export default function ValidateBomModal({ isOpen, onClose }) {
 
           <button
             type="submit"
-            className="sap-btn sap-btn-primary"
+            className="sap-button primary"
             disabled={isLoading}
-            style={{ marginTop: 2, height: 30, fontSize: '11.5px', justifyContent: 'center' }}
+            style={{ marginTop: 2, height: 30, fontSize: 'var(--sap-size-button)', justifyContent: 'center' }}
           >
             {isLoading ? (
               <>
@@ -197,13 +197,13 @@ export default function ValidateBomModal({ isOpen, onClose }) {
         )}
 
         {/* Modal Footer Controls */}
-        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--sap-border-subtle)', paddingTop: 10 }}>
+        <div className="sap-toolbar" style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--sap-border-color)', paddingTop: 10 }}>
           <button
             type="button"
-            className="sap-btn sap-btn-secondary"
+            className="sap-button"
             onClick={onClose}
             disabled={isLoading}
-            style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+            style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
           >
             Close
           </button>

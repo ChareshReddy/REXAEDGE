@@ -171,30 +171,30 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
               </div>
             </div>
 
-            <div className="sap-form-actions" style={{ padding: '8px 16px 12px', borderTop: '1px solid var(--sap-border-subtle)' }}>
+            <div className="sap-form-actions sap-toolbar" style={{ padding: '8px 16px', justifyContent: 'flex-end', marginTop: 12 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button"
                 onClick={handleReset}
-                style={{ height: 28, fontSize: '11px', padding: '0 12px' }}
+                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
               >
-                <X size={12} />
+                <X size={13} />
                 <span>Clear</span>
               </button>
               <button
                 type="submit"
-                className="sap-btn sap-btn-primary"
+                className="sap-button primary"
                 disabled={isLoading}
-                style={{ height: 28, fontSize: '11px', padding: '0 14px' }}
+                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
               >
                 {isLoading ? (
                   <>
-                    <span className="sap-spinner" style={{ width: 12, height: 12 }} />
+                    <span className="sap-spinner" style={{ width: 13, height: 13 }} />
                     <span>Validating in SAP...</span>
                   </>
                 ) : (
                   <>
-                    <Search size={13} />
+                    <Search size={14} />
                     <span>Validate in SAP</span>
                   </>
                 )}

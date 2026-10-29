@@ -662,13 +662,13 @@ export default function BulkCreateBomView({
 
             {/* Results Table */}
             <div className="sap-card" style={{ padding: 20, marginBottom: 24 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--sap-text-dark)' }}>
+              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 className="sap-section-header" style={{ margin: 0 }}>
                   Execution Details ({executionReport.results?.length || 0})
                 </h3>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button sap-btn sap-btn-secondary"
                   onClick={handleExportResults}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
                 >
@@ -735,17 +735,17 @@ export default function BulkCreateBomView({
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button primary"
                 onClick={onBack}
-                style={{ padding: '9px 20px' }}
+                style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
               >
                 Return to Launchpad
               </button>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button"
                 onClick={handleReset}
-                style={{ padding: '9px 20px' }}
+                style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
               >
                 Upload Another File
               </button>
@@ -820,9 +820,9 @@ export default function BulkCreateBomView({
                 {/* PRE-FLIGHT PREVIEW TABLE */}
                 <div className="sap-card" style={{ padding: 20 }}>
                   {/* Header & Controls */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                  <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                      <h3 className="sap-section-header" style={{ margin: 0 }}>
                         Data Preview
                       </h3>
                       <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
@@ -852,19 +852,19 @@ export default function BulkCreateBomView({
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           type="button"
-                          className="sap-btn sap-btn-secondary sap-btn-sm pagination-prev-btn"
+                          className="sap-button pagination-prev-btn"
                           disabled={currentPage <= 1 || isLocked}
                           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          style={{ padding: '3px 12px', fontSize: 12 }}
+                          style={{ height: 26, padding: '0 10px', fontSize: 12 }}
                         >
                           Previous
                         </button>
                         <button
                           type="button"
-                          className="sap-btn sap-btn-secondary sap-btn-sm pagination-next-btn"
+                          className="sap-button pagination-next-btn"
                           disabled={currentPage >= totalPages || isLocked}
                           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          style={{ padding: '3px 12px', fontSize: 12 }}
+                          style={{ height: 26, padding: '0 10px', fontSize: 12 }}
                         >
                           Next
                         </button>
@@ -1331,23 +1331,26 @@ export default function BulkCreateBomView({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button
                       type="button"
-                      className="sap-btn sap-btn-secondary"
+                      className="sap-button"
                       disabled={isLocked}
                       onClick={isLocked ? undefined : handleReset}
+                      style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
                     >
                       Clear & Upload Another
                     </button>
 
                     <button
                       type="button"
-                      className="sap-btn sap-btn-secondary validate-with-sap-btn"
+                      className="sap-button validate-with-sap-btn"
                       onClick={handleValidateWithSap}
                       disabled={isLocked || allBoms.length === 0}
                       style={{
+                        height: 30,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        padding: '9px 18px'
+                        padding: '0 18px',
+                        fontSize: 'var(--sap-size-button)'
                       }}
                     >
                       {isValidating ? (
@@ -1365,10 +1368,10 @@ export default function BulkCreateBomView({
 
                     <button
                       type="button"
-                      className="sap-btn sap-btn-primary create-ready-boms-btn"
+                      className="sap-button primary create-ready-boms-btn"
                       disabled={!hasValidated || readyCount === 0 || isLocked}
                       onClick={handleOpenConfirm}
-                      style={{ padding: '9px 24px' }}
+                      style={{ height: 30, padding: '0 24px', fontSize: 'var(--sap-size-button)' }}
                     >
                       {isExecuting ? (
                         <>
@@ -1462,22 +1465,24 @@ export default function BulkCreateBomView({
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button"
                 disabled={isExecuting}
                 onClick={() => {
                   if (!isExecuting) setIsConfirmModalOpen(false);
                 }}
+                style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button primary"
                 disabled={isExecuting}
                 onClick={handleExecuteBatch}
+                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
               >
                 {isExecuting ? (
                   <>

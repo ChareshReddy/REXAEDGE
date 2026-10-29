@@ -987,13 +987,13 @@ export default function ConfirmationCard({
 
       {/* Card Actions Footer */}
       {!isDone && !isExpired && !isFailed && (
-        <div className="sap-confirm-footer">
+        <div className="sap-confirm-footer sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
           <button
             type="button"
-            className="sap-btn sap-btn-secondary"
+            className="sap-button sap-btn sap-btn-secondary"
             onClick={handleCancelClick}
             disabled={isExecuting}
-            style={{ height: 34, fontSize: '13px', padding: '0 14px' }}
+            style={{ fontSize: '13px', padding: '6px 14px' }}
           >
             <X size={14} />
             <span>Cancel</span>
@@ -1001,7 +1001,7 @@ export default function ConfirmationCard({
 
           <button
             type="button"
-            className={`sap-btn ${type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? 'sap-btn-danger' : 'sap-btn-primary'}`}
+            className={`sap-button sap-btn ${type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? 'destructive sap-button-danger sap-btn-danger' : 'sap-btn-primary'}`}
             onClick={handleConfirmClick}
             disabled={
               isExecuting ||
@@ -1010,7 +1010,7 @@ export default function ConfirmationCard({
               (isProd && isLevel3 && prodConfirmation.trim() !== 'CONFIRM') ||
               Boolean(preview?.blocked || preview?.canCopy === false)
             }
-            style={{ height: 34, fontSize: '13px', padding: '0 18px', gap: 6 }}
+            style={{ fontSize: '13px', padding: '6px 18px', gap: 6 }}
           >
             {isExecuting ? (
               <>

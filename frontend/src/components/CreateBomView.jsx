@@ -563,13 +563,13 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
 
             {/* Header Data Card */}
             <div className="sap-card" style={{ padding: 20 }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 16px', color: 'var(--sap-text-dark)' }}>
+              <h3 className="sap-section-header">
                 BOM Header Data
               </h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                 <div>
-                  <label className="sap-form-label">Material*</label>
+                  <label className="sap-label sap-form-label">Material*</label>
                   <ValueHelpInput
                     kind="material"
                     plant={headerData.plant}
@@ -582,7 +582,7 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">Plant*</label>
+                  <label className="sap-label sap-form-label">Plant*</label>
                   <ValueHelpInput
                     kind="plant"
                     material={headerData.material}
@@ -596,10 +596,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">BOM Usage*</label>
+                  <label className="sap-label sap-form-label">BOM Usage*</label>
                   <input
                     type="text"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="1"
                     maxLength={1}
                     disabled={isLocked}
@@ -609,10 +609,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">Alternative BOM*</label>
+                  <label className="sap-label sap-form-label">Alternative BOM*</label>
                   <input
                     type="text"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="01"
                     maxLength={2}
                     disabled={isLocked}
@@ -622,10 +622,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">Valid From*</label>
+                  <label className="sap-label sap-form-label">Valid From*</label>
                   <input
                     type="text"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="DD.MM.YYYY"
                     disabled={isLocked}
                     value={headerData.validFrom}
@@ -634,11 +634,11 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">Base Quantity*</label>
+                  <label className="sap-label sap-form-label">Base Quantity*</label>
                   <input
                     type="number"
                     step="any"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="1"
                     disabled={isLocked}
                     value={headerData.baseQty}
@@ -647,10 +647,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">BOM Status*</label>
+                  <label className="sap-label sap-form-label">BOM Status*</label>
                   <input
                     type="text"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="01"
                     maxLength={2}
                     disabled={isLocked}
@@ -660,10 +660,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                 </div>
 
                 <div>
-                  <label className="sap-form-label">Alternative Text</label>
+                  <label className="sap-label sap-form-label">Alternative Text</label>
                   <input
                     type="text"
-                    className="sap-form-input"
+                    className="sap-input sap-form-input"
                     placeholder="Description / Text"
                     maxLength={40}
                     disabled={isLocked}
@@ -676,13 +676,13 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
 
             {/* Components Card */}
             <div className="sap-card" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--sap-text-dark)' }}>
+              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h3 className="sap-section-header" style={{ margin: 0 }}>
                   Component Items ({components.length})
                 </h3>
                 <button
                   type="button"
-                  className="sap-btn sap-btn-secondary"
+                  className="sap-button sap-btn sap-btn-secondary"
                   disabled={isLocked}
                   onClick={handleAddComponent}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 12px' }}
@@ -814,13 +814,13 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
             </div>
 
             {/* Bottom Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button"
                 disabled={isLocked}
                 onClick={handleValidate}
-                style={{ padding: '9px 18px' }}
+                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
               >
                 {isValidating ? (
                   <>
@@ -834,10 +834,10 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
 
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button primary"
                 disabled={!preflightPassed || isLocked}
                 onClick={handleOpenConfirm}
-                style={{ padding: '9px 24px' }}
+                style={{ height: 30, padding: '0 24px', fontSize: 'var(--sap-size-button)' }}
               >
                 {isExecuting ? (
                   <>
@@ -927,22 +927,24 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
               <button
                 type="button"
-                className="sap-btn sap-btn-secondary"
+                className="sap-button"
                 disabled={isExecuting}
                 onClick={() => {
                   if (!isExecuting) setIsConfirmModalOpen(false);
                 }}
+                style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="sap-btn sap-btn-primary"
+                className="sap-button primary"
                 disabled={isExecuting}
                 onClick={handleExecuteCreate}
+                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
               >
                 {isExecuting ? (
                   <>

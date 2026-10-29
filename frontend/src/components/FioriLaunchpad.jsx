@@ -65,7 +65,7 @@ export function FioriOpCard({
       onClick={disabled ? undefined : onClick}
     >
       <div className={`fiori-op-icon-badge ${isDanger ? 'danger' : ''}`}>
-        <Icon size={28} strokeWidth={1.8} />
+        <Icon size={24} strokeWidth={1.8} />
       </div>
       <div className="fiori-op-title">{title}</div>
       <div className="fiori-op-desc">{desc}</div>
@@ -313,7 +313,7 @@ export default function FioriLaunchpad({
                         <div className="fiori-tile-desc">{mod.desc}</div>
                         <div className="fiori-tile-bottom">
                           <div className="fiori-tile-icon">
-                            <Icon size={32} strokeWidth={1.7} />
+                            <Icon size={24} strokeWidth={1.8} />
                           </div>
                           {(mod.key === 'bom' ? bomAppCount > 0 : mod.kpiNum) && (
                             <div className="fiori-tile-kpi">
