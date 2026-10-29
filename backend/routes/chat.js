@@ -2175,7 +2175,7 @@ router.post('/', async (req, res) => {
   const headers = {
     'Authorization': `Bearer ${apiKey.trim()}`,
     'Content-Type': 'application/json',
-    'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:5173',
+    'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost',
     'X-Title': 'SAP Multi-Entity Assistant'
   };
 
