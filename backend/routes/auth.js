@@ -1,7 +1,7 @@
 import express from 'express';
 import { loginRateLimiter, changePasswordRateLimiter } from '../middleware/security.js';
 import { requireAuth } from '../middleware/auth.js';
-import { supabaseService } from '../services/supabaseClient.js';
+import { supabaseService, isNetworkOrRetryableError } from '../services/supabaseClient.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { auditLogger } from '../services/auditLog.js';
 
@@ -47,6 +47,11 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     });
 
     if (error || !data?.session) {
+      if (isNetworkOrRetryableError(error) || error?.message?.includes("Can't reach")) {
+        return res.status(503).json({
+          error: "Can't reach the sign-in service right now. Please try again."
+        });
+      }
       return res.status(401).json({
         error: error?.message || 'Invalid email or password.'
       });
@@ -72,6 +77,11 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error('[auth.js] Login failure:', err.message);
+    if (isNetworkOrRetryableError(err) || err.message?.includes("Can't reach")) {
+      return res.status(503).json({
+        error: "Can't reach the sign-in service right now. Please try again."
+      });
+    }
     return res.status(500).json({
       error: 'Authentication failed: ' + err.message
     });

@@ -56,7 +56,9 @@ const testFiles = [
   'test/restrictValueRange.test.js',
   'test/storageLocations.test.js',
   'test/navigationAndBreadcrumbs.test.js',
-  'test/routedViewsRender.test.js'
+  'test/routedViewsRender.test.js',
+  'test/authRetryResilience.test.js',
+  'test/themeAndLayoutRedesign.test.js'
 ];
 
 const env = {

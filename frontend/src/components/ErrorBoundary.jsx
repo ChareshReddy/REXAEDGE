@@ -67,8 +67,8 @@ export default class ErrorBoundary extends React.Component {
                 width: 56,
                 height: 56,
                 borderRadius: '50%',
-                backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                color: '#dc2626',
+                backgroundColor: '#fffbeb',
+                color: '#b45309',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -88,14 +88,14 @@ export default class ErrorBoundary extends React.Component {
 
             <div
               style={{
-                backgroundColor: '#fff5f5',
-                border: '1px solid #fed7d7',
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fcd34d',
                 borderRadius: '8px',
                 padding: '12px 16px',
                 textAlign: 'left',
                 marginBottom: '24px',
                 fontSize: '13px',
-                color: '#c53030',
+                color: '#b45309',
                 wordBreak: 'break-word',
                 fontFamily: 'monospace'
               }}

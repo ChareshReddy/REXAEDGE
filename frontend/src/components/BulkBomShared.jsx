@@ -76,7 +76,7 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
               fontWeight: col.required ? 600 : 500
             }}
           >
-            {col.required && <span style={{ color: 'var(--sap-error, #dc2626)', fontWeight: 700 }}>*</span>}
+            {col.required && <span style={{ color: 'var(--sap-error-text, #b45309)', fontWeight: 700 }}>*</span>}
             <span>{col.label}</span>
             {col.default && (
               <span style={{ fontSize: 10.5, color: 'var(--sap-text-subtle, #64748b)', opacity: 0.85 }}>
@@ -286,8 +286,8 @@ export function BulkJobProgressCard({
             disabled={isCancelling}
             className="sap-btn"
             style={{
-              borderColor: '#ef4444',
-              color: '#ef4444',
+              borderColor: 'var(--sap-border, rgba(0, 0, 0, 0.12))',
+              color: 'var(--sap-text, #1e293b)',
               background: '#fff',
               fontSize: 12,
               padding: '4px 12px'
@@ -345,7 +345,7 @@ export function BulkJobProgressCard({
             </span>
           )}
           {jobProgress.failedCount > 0 && (
-            <span style={{ color: '#dc2626', fontWeight: 600 }}>
+            <span style={{ color: 'var(--sap-error-text, #b45309)', fontWeight: 600 }}>
               Failed: {jobProgress.failedCount}
             </span>
           )}

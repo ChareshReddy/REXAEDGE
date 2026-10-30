@@ -135,9 +135,28 @@ export default function App() {
   const [isSwitchingSession, setIsSwitchingSession] = useState(false);
   const sessionDropdownRef = useRef(null);
   const userMenuRef = useRef(null);
+  const userMenuHoverTimeoutRef = useRef(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+
+  const handleUserMenuMouseEnter = () => {
+    if (userMenuHoverTimeoutRef.current) clearTimeout(userMenuHoverTimeoutRef.current);
+    userMenuHoverTimeoutRef.current = setTimeout(() => {
+      setIsUserMenuOpen(true);
+    }, 150);
+  };
+
+  const handleUserMenuMouseLeave = () => {
+    if (userMenuHoverTimeoutRef.current) clearTimeout(userMenuHoverTimeoutRef.current);
+    userMenuHoverTimeoutRef.current = setTimeout(() => {
+      setIsUserMenuOpen(false);
+    }, 200);
+  };
+
+  const handleUserMenuFocus = () => {
+    setIsUserMenuOpen(true);
+  };
 
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
@@ -523,7 +542,49 @@ export default function App() {
 
         {/* Desktop actions and user badge */}
         <div className="sap-shell-actions">
-          {/* Dynamic SAP Server Selector (populated from permitted servers) */}
+          {/* 1. Admin button (pill, only visible for admin users) */}
+          {user?.role === 'admin' && (
+            <button
+              type="button"
+              className="sap-admin-header-pill"
+              onClick={() => setActiveTab(activeTab === 'admin' ? 'home' : 'admin')}
+              title={activeTab === 'admin' ? 'Return to Portal' : 'Enterprise Administration'}
+              aria-label={activeTab === 'admin' ? 'Exit Admin Panel' : 'Enterprise Administration'}
+            >
+              <ShieldCheck size={13} />
+              <span>Admin</span>
+            </button>
+          )}
+
+          {/* 2. Connection indicator dot (clean compact dot, no text, accessible tooltips) */}
+          {(() => {
+            const isConnected = Boolean(sapSession.connected);
+            const isChecking = !isConnected && (sapSession.status === 'CHECKING' || !selectedServer);
+            const dotClass = isConnected
+              ? 'dot-connected'
+              : isChecking
+              ? 'dot-checking'
+              : 'dot-disconnected';
+            const tooltip = isConnected
+              ? `Connected to ${selectedServer?.name || 'SAP Server'}${sapSession.latencyMs ? ` (${sapSession.latencyMs}ms)` : ' (< 50ms)'}`
+              : isChecking
+              ? 'Checking connection...'
+              : 'Not connected';
+
+            return (
+              <div
+                className="sap-connection-dot-container"
+                role="status"
+                aria-label={tooltip}
+                title={tooltip}
+                tabIndex={0}
+              >
+                <span className={`sap-connection-dot ${dotClass}`} />
+              </div>
+            );
+          })()}
+
+          {/* 3. Server selector dropdown */}
           <div className="sap-system-select-wrapper">
             <span className="sap-system-label sap-label">Server:</span>
             {availableServers.length === 1 ? (
@@ -545,7 +606,8 @@ export default function App() {
                 <select
                   value={selectedServer?.id || ''}
                   onChange={(e) => handleServerChange(e.target.value)}
-                  className={`sap-system-select sap-input ${selectedServer?.environment === 'PROD' ? 'prod' : ''}`}
+                  className="sap-system-select sap-input"
+                  aria-label="Select SAP Server"
                 >
                   {availableServers.map((srv) => (
                     <option key={srv.id} value={srv.id}>
@@ -553,153 +615,26 @@ export default function App() {
                     </option>
                   ))}
                 </select>
-                {selectedServer?.environment === 'PROD' && (
-                  <span className="sap-badge sap-badge-danger" style={{ fontSize: '10px', padding: '2px 6px' }}>
-                    PROTECTED
-                  </span>
-                )}
               </div>
             ) : (
-              <span className="sap-badge sap-badge-danger" style={{ fontSize: '11px', padding: '3px 8px' }}>
+              <span className="sap-badge sap-badge-warning" style={{ fontSize: '11px', padding: '3px 8px' }}>
                 No Permitted Servers
               </span>
             )}
           </div>
 
-          {/* SAP GUI Session Selector & RFC Status Pill (only visible when user has permitted servers) */}
-          {availableServers.length > 0 && (
-            <>
-              {/* SAP GUI Session Selector */}
-              <div className="sap-session-select-wrapper sap-statusbar" ref={sessionDropdownRef}>
-                <span className="sap-session-label sap-label">Session:</span>
-                <button
-                  type="button"
-                  className={`sap-session-selector-btn sap-button ${sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'error' : ''}`}
-                  onClick={() => setIsSessionDropdownOpen(!isSessionDropdownOpen)}
-                  title={sapSession.message || 'Click to select active SAP GUI session'}
-                >
-                  <span className="sap-session-user-text">
-                    {sapSession.selectedUser || sapSession.user || 'No Session'}
-                  </span>
-                  {sapSession.system && sapSession.client && (
-                    <span className="sap-session-env-sub">
-                      ({sapSession.system}/{sapSession.client})
-                    </span>
-                  )}
-                  <ChevronDown size={14} className={`sap-chevron ${isSessionDropdownOpen ? 'open' : ''}`} />
-                </button>
-
-                {isSessionDropdownOpen && (
-                  <div className="sap-session-dropdown-menu">
-                    <div className="sap-session-dropdown-header">
-                      <span>SAP Session</span>
-                      <span className="sap-session-count-badge">
-                        {sapSession.sessions?.length || 0} active
-                      </span>
-                    </div>
-
-                    {sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' && (
-                      <div className="sap-session-alert-banner">
-                        <AlertTriangle size={14} />
-                        <span>Selected session disconnected. Please choose an active session:</span>
-                      </div>
-                    )}
-
-                    <div className="sap-session-list">
-                      {sapSession.sessions && sapSession.sessions.length > 0 ? (
-                        sapSession.sessions.map((sess) => {
-                          const isSelected = sess.id === sapSession.selectedSessionId || sess.selected;
-                          return (
-                            <button
-                              key={sess.id}
-                              type="button"
-                              className={`sap-session-item ${isSelected ? 'selected' : ''}`}
-                              onClick={() => handleSelectSession(sess.id)}
-                              disabled={isSwitchingSession}
-                            >
-                              <span className="sap-session-radio">
-                                {isSelected ? '●' : '○'}
-                              </span>
-                              <div className="sap-session-item-content">
-                                <div className="sap-session-item-top">
-                                  <strong className="sap-session-item-user">{sess.user}</strong>
-                                  <span className="sap-session-item-env">
-                                    {sess.system} / {sess.client}
-                                  </span>
-                                  {isSelected && (
-                                    <span className="sap-session-active-pill">Selected</span>
-                                  )}
-                                </div>
-                                <div className="sap-session-item-sub">
-                                  <span className="sap-session-item-title">
-                                    {sess.title || sess.transaction || 'SAP Easy Access'}
-                                  </span>
-                                  <span className={`sap-session-item-status ${sess.busy ? 'busy' : 'ready'}`}>
-                                    {sess.busy ? 'Busy' : 'Ready'}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="sap-session-empty">
-                          <p>No active SAP GUI sessions found.</p>
-                          <small>Please open SAP GUI and log into a client.</small>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Dynamic SAP Session Status Badge */}
-              <span
-                className={`sap-session-pill sap-statusbar status-${(sapSession.status || 'checking').toLowerCase()} ${
-                  sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'status-selected_session_unavailable' : ''
-                }`}
-                title={
-                  sapSession.latencyMs
-                    ? `SAP RFC Online (${sapSession.latencyMs}ms latency)`
-                    : sapSession.message || `SAP Status: ${sapSession.status}`
-                }
-                onClick={
-                  sapSession.code === 'SELECTED_SESSION_UNAVAILABLE'
-                    ? () => setIsSessionDropdownOpen(true)
-                    : undefined
-                }
-                style={sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? { cursor: 'pointer' } : {}}
-              >
-                <span className={`sap-status-dot dot-${sapSession.connected ? 'connected' : (sapSession.status || 'checking').toLowerCase()}`}></span>
-                <span className="sap-session-pill-text">
-                  {sapSession.mode === 'RFC' && sapSession.connected ? (
-                    <>SAP RFC ONLINE</>
-                  ) : sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? (
-                    <>SELECTED SESSION DISCONNECTED</>
-                  ) : sapSession.status === 'CONNECTED' || sapSession.status === 'AVAILABLE' ? (
-                    <>SAP CONNECTED</>
-                  ) : sapSession.status === 'CHECKING' ? (
-                    <>CHECKING SAP...</>
-                  ) : sapSession.status === 'BUSY' ? (
-                    <>SAP BUSY</>
-                  ) : sapSession.status === 'SERVER_UNAVAILABLE' ? (
-                    <>SAP SERVER UNAVAILABLE</>
-                  ) : sapSession.status === 'DISCONNECTED' || sapSession.status === 'SESSION_NOT_FOUND' ? (
-                    <>SAP DISCONNECTED</>
-                  ) : (
-                    <>SAP {sapSession.status}</>
-                  )}
-                </span>
-              </span>
-            </>
-          )}
-
-          {/* User Profile Avatar Chip */}
-          <div className="sap-user-menu-wrapper" ref={userMenuRef}>
+          {/* 4. User profile avatar (no chevron, 150ms hover delay dropdown, accessible) */}
+          <div
+            className="sap-user-menu-wrapper"
+            ref={userMenuRef}
+            onMouseEnter={handleUserMenuMouseEnter}
+            onMouseLeave={handleUserMenuMouseLeave}
+          >
             <button
               type="button"
               className={`sap-user-avatar-btn sap-button ${isUserMenuOpen ? 'active' : ''}`}
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              onFocus={handleUserMenuFocus}
               title={user.email}
               aria-label={`User profile menu for ${user.email}`}
               aria-expanded={isUserMenuOpen}
@@ -708,23 +643,67 @@ export default function App() {
               <div className={`sap-user-avatar-circle ${user.role === 'admin' ? 'admin' : ''}`}>
                 {user.email ? user.email.charAt(0).toUpperCase() : 'A'}
               </div>
-              <span className="sap-user-avatar-name">
-                {user.role === 'admin' ? 'Admin' : (user.email ? user.email.split('@')[0] : 'User')}
-              </span>
-              <ChevronDown size={13} className={`sap-user-chevron ${isUserMenuOpen ? 'open' : ''}`} />
             </button>
 
             {isUserMenuOpen && (
               <div className="sap-user-dropdown-menu" role="menu">
                 <div className="sap-user-dropdown-header">
+                  <div className="sap-user-dropdown-name">
+                    {user.email ? user.email.split('@')[0] : 'User'}
+                  </div>
                   <div className="sap-user-dropdown-email" title={user.email}>
                     {user.email}
                   </div>
-                  <span className={`sap-role-badge ${user.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`} style={{ fontSize: 10.5 }}>
-                    {user.role === 'admin' && <ShieldCheck size={11} />}
-                    {user.role ? user.role.toUpperCase() : 'USER'}
-                  </span>
+                  <div style={{ marginTop: 6 }}>
+                    <span className={`sap-role-badge ${user.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`} style={{ fontSize: 10.5 }}>
+                      {user.role === 'admin' && <ShieldCheck size={11} />}
+                      {user.role ? user.role.toUpperCase() : 'USER'}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Multi-Session Capability Preserved */}
+                {sapSession.sessions && sapSession.sessions.length > 0 && (
+                  <div style={{ padding: '8px 14px', background: '#f8fafc', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                      Active SAP Sessions ({sapSession.sessions.length})
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {sapSession.sessions.map((sess) => {
+                        const isSelected = sess.id === sapSession.selectedSessionId || sess.selected;
+                        return (
+                          <button
+                            key={sess.id}
+                            type="button"
+                            onClick={() => handleSelectSession(sess.id)}
+                            disabled={isSwitchingSession}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '5px 8px',
+                              fontSize: '12px',
+                              borderRadius: '4px',
+                              border: isSelected ? '1px solid var(--sap-brand-blue, #0a6ed1)' : '1px solid rgba(0,0,0,0.05)',
+                              background: isSelected ? '#f0f7ff' : '#ffffff',
+                              cursor: 'pointer',
+                              color: isSelected ? 'var(--sap-brand-blue, #0a6ed1)' : 'var(--sap-text-body, #334155)',
+                              fontWeight: isSelected ? 600 : 400,
+                              textAlign: 'left'
+                            }}
+                          >
+                            <span>{sess.user} ({sess.system}/{sess.client})</span>
+                            {isSelected ? (
+                              <span style={{ fontSize: '10px', color: '#107e3e', fontWeight: 700 }}>Active</span>
+                            ) : (
+                              <span style={{ fontSize: '10px', color: '#64748b' }}>Select</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className="sap-user-dropdown-items">
                   {user.role === 'admin' && (
@@ -759,7 +738,7 @@ export default function App() {
 
                   <button
                     type="button"
-                    className="sap-user-menu-item sap-user-menu-danger"
+                    className="sap-user-menu-item sap-user-menu-signout"
                     onClick={() => {
                       setIsUserMenuOpen(false);
                       handleOpenLogoutModal();
@@ -767,7 +746,7 @@ export default function App() {
                     role="menuitem"
                   >
                     <LogOut size={14} className="sap-user-menu-icon" />
-                    <span className="sap-user-menu-label">Log out</span>
+                    <span className="sap-user-menu-label">Sign out</span>
                   </button>
                 </div>
               </div>

@@ -18,7 +18,13 @@ import plantRoutes from './routes/plants.js';
 import storageLocationRoutes from './routes/storageLocations.js';
 import adminRoutes from './routes/admin.js';
 import { requireAuth } from './middleware/auth.js';
-import { supabaseService, verifyDatabaseConfiguration } from './services/supabaseClient.js';
+import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
+import dns from 'dns';
+
+// Ensure IPv4 resolution takes precedence to avoid dual-stack/IPv6 lookup delays
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 import { enforceHttps, safeLogger } from './middleware/security.js';
 import { verifyAllToolsSafety } from './config/riskLevels.js';
 import { listSystems, DEFAULT_SYSTEM, getSystemConfig } from './config/systemRegistry.js';
@@ -216,6 +222,9 @@ if (isMainModule) {
     console.log(`SAP Base URL (${DEFAULT_SYSTEM}): ${activeBaseUrl}`);
     console.log(`Frontend URL: ${FRONTEND_URL}`);
     console.log(`=============================================`);
+
+    // Non-blocking background warmup for Supabase connection pool
+    warmupDatabaseConnection();
   });
 }
 

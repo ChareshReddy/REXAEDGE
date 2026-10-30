@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import dns from 'dns';
+
+// Ensure IPv4 resolution takes precedence to avoid dual-stack/IPv6 lookup delays
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 import { MODULE_KEYS, isModuleAvailable, BOM_APP_KEYS, ALL_BOM_APPS, normalizePermissions } from '../config/modules.js';
 import { encryptPassword, maskSapUsername } from '../utils/crypto.js';
 import fs from 'fs';
@@ -88,6 +94,78 @@ export const liveSupabase = isLiveSupabaseConfigured
       }
     })
   : null;
+
+// Reusable Auth Client (Keeps persistent connection with Keep-Alive to avoid cold handshake overhead)
+export const liveAuthClient = isLiveSupabaseConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
+
+/**
+ * Determines whether an error from Supabase Auth / Fetch is a transient network or infrastructure error.
+ * Strictly returns false for 4xx errors (e.g. invalid credentials, 401 unauthorized).
+ */
+export function isNetworkOrRetryableError(err) {
+  if (!err) return false;
+
+  const status = Number(err.status || err.statusCode || 0);
+  // Never retry client auth failures (400, 401, 403, 422)
+  if (status >= 400 && status < 500) {
+    return false;
+  }
+  if (err.__isAuthError && (err.code === 'invalid_credentials' || err.code === 'invalid_grant' || status === 400 || status === 401)) {
+    return false;
+  }
+
+  const code = String(err.code || '');
+  const name = String(err.name || '');
+  const msg = String(err.message || '').toLowerCase();
+
+  return (
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    code === 'EAI_AGAIN' ||
+    code === 'UND_ERR_CONNECT_TIMEOUT' ||
+    code === 'UND_ERR_HEADERS_TIMEOUT' ||
+    code === 'UND_ERR_SOCKET' ||
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    name === 'AuthRetryableFetchError' ||
+    msg.includes('fetch failed') ||
+    msg.includes('timeout') ||
+    msg.includes('socket hang up') ||
+    msg.includes('network') ||
+    msg.includes('econnreset') ||
+    status >= 500
+  );
+}
+
+/**
+ * Asynchronously warms up the Supabase database connection and DNS/TLS pool on server startup.
+ * Non-blocking: catches and ignores errors so server startup is never blocked.
+ */
+export async function warmupDatabaseConnection() {
+  if (process.env.NODE_ENV === 'test' || !isLiveSupabaseConfigured || !liveSupabase) {
+    return;
+  }
+  try {
+    await Promise.allSettled([
+      liveSupabase.from('users').select('id').limit(1),
+      liveAuthClient ? liveAuthClient.auth.getSession() : Promise.resolve()
+    ]);
+    if (process.env.DEBUG_AUTH) {
+      console.log('[Supabase Warmup] Connection pool warmed successfully.');
+    }
+  } catch (_) {
+    // Non-blocking warmup
+  }
+}
 
 /**
  * Validates database configuration on startup.
@@ -770,21 +848,68 @@ export const supabaseService = {
     if (shouldUseInMemory()) {
       return inMemorySupabase.signInWithPassword({ email, password });
     }
-    if (!liveSupabase) {
+    if (!liveSupabase || !liveAuthClient) {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
-    if (error) return { data: null, error };
-    if (!data?.user) return { data: null, error: new Error('Authentication failed') };
+    const performSignIn = async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      try {
+        const { data, error } = await liveAuthClient.auth.signInWithPassword({
+          email,
+          password
+        });
+        return { data, error };
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    let result;
+    try {
+      result = await performSignIn();
+    } catch (err) {
+      if (isNetworkOrRetryableError(err)) {
+        if (process.env.DEBUG_AUTH) {
+          console.warn(`[Supabase Auth] Attempt 1 failed with network error (${err.message}). Retrying in 500ms...`);
+        }
+        await new Promise((r) => setTimeout(r, 500));
+        try {
+          result = await performSignIn();
+        } catch (retryErr) {
+          throw new Error("Can't reach the sign-in service right now. Please try again.");
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    // Check if result returned a transient network/retryable error without throwing
+    if (result?.error && isNetworkOrRetryableError(result.error)) {
+      if (process.env.DEBUG_AUTH) {
+        console.warn(`[Supabase Auth] Attempt 1 returned retryable error (${result.error.message}). Retrying in 500ms...`);
+      }
+      await new Promise((r) => setTimeout(r, 500));
+      try {
+        result = await performSignIn();
+      } catch (retryErr) {
+        throw new Error("Can't reach the sign-in service right now. Please try again.");
+      }
+    }
+
+    if (result?.error) {
+      if (isNetworkOrRetryableError(result.error)) {
+        throw new Error("Can't reach the sign-in service right now. Please try again.");
+      }
+      return { data: null, error: result.error };
+    }
+    if (!result?.data?.user) return { data: null, error: new Error('Authentication failed') };
 
     const { data: profile, error: profileErr } = await liveSupabase
       .from('users')
       .select('role')
-      .eq('id', data.user.id)
+      .eq('id', result.data.user.id)
       .single();
 
     if (profileErr && profileErr.code !== 'PGRST116') {
@@ -793,10 +918,10 @@ export const supabaseService = {
 
     return {
       data: {
-        session: data.session,
+        session: result.data.session,
         user: {
-          id: data.user.id,
-          email: data.user.email,
+          id: result.data.user.id,
+          email: result.data.user.email,
           role: profile?.role || 'user'
         }
       },
@@ -891,14 +1016,11 @@ export const supabaseService = {
     if (shouldUseInMemory()) {
       return inMemorySupabase.verifyPassword(email, currentPassword);
     }
-    if (!liveSupabase) {
+    if (!liveSupabase || !liveAuthClient) {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-    const { data, error } = await client.auth.signInWithPassword({
+    const { data, error } = await liveAuthClient.auth.signInWithPassword({
       email,
       password: currentPassword
     });

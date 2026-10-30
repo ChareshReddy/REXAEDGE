@@ -1096,7 +1096,7 @@ export default function MaterialRestrictValueRangeModal({
               Reset
             </button>
 
-            {/* Cancel (Red X) */}
+            {/* Cancel (Neutral icon) */}
             <button
               type="button"
               onClick={onClose}
@@ -1104,7 +1104,7 @@ export default function MaterialRestrictValueRangeModal({
               className="sap-button sap-button-secondary sap-restrict-btn-cancel"
               title="Cancel (Esc)"
             >
-              <X size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#dc2626' }} />
+              <X size={14} strokeWidth={2.5} style={{ marginRight: 6 }} />
               Cancel
             </button>
           </div>

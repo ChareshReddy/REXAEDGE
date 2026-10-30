@@ -420,7 +420,7 @@ export default function PlantValueHelpModal({
               style={{
                 padding: '36px 24px',
                 textAlign: 'center',
-                color: 'var(--sap-error, #ef4444)'
+                color: 'var(--sap-error-text, #b45309)'
               }}
             >
               <AlertCircle size={28} style={{ margin: '0 auto 8px', display: 'block' }} />

@@ -706,7 +706,7 @@ export default function BulkCreateBomView({
                                 ? 'sap-badge-warning'
                                 : row.status === 'SKIPPED'
                                 ? 'sap-badge-info'
-                                : 'sap-badge-danger'
+                                : 'sap-badge-warning'
                             }`}
                           >
                             {row.status}
@@ -803,9 +803,9 @@ export default function BulkCreateBomView({
                       gap: 10,
                       padding: '12px 16px',
                       borderRadius: 'var(--radius-md, 6px)',
-                      background: 'var(--sap-error-bg, #fef2f2)',
-                      border: '1px solid var(--sap-error-border, #fecaca)',
-                      color: 'var(--sap-error, #dc2626)',
+                      background: 'var(--sap-error-bg, #fffbeb)',
+                      border: '1px solid var(--sap-error-border, #fcd34d)',
+                      color: 'var(--sap-error-text, #b45309)',
                       fontSize: 13
                     }}
                   >
@@ -1142,7 +1142,7 @@ export default function BulkCreateBomView({
                                                 ? 'sap-badge-success'
                                                 : bom.status === 'Already exists - skipped' || bom.status === 'Already exists'
                                                 ? 'sap-badge-warning'
-                                                : 'sap-badge-danger'
+                                                : 'sap-badge-warning'
                                             }`}
                                             style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
                                           >
@@ -1232,7 +1232,7 @@ export default function BulkCreateBomView({
                                           key={mIdx}
                                           className={`bom-msg-item bom-msg-${item.type}`}
                                           style={{
-                                            color: item.type === 'error' ? 'var(--sap-error, #dc2626)' : 'var(--sap-warning, #d97706)',
+                                            color: item.type === 'error' ? 'var(--sap-error-text, #b45309)' : 'var(--sap-warning, #d97706)',
                                             display: 'flex',
                                             alignItems: 'flex-start',
                                             gap: 6
@@ -1240,7 +1240,7 @@ export default function BulkCreateBomView({
                                         >
                                           <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
                                             {item.type === 'error' ? (
-                                              <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)' }} />
+                                              <AlertCircle size={13} style={{ color: 'var(--sap-error-text, #b45309)' }} />
                                             ) : (
                                               <AlertTriangle size={13} style={{ color: 'var(--sap-warning, #d97706)' }} />
                                             )}
@@ -1317,7 +1317,7 @@ export default function BulkCreateBomView({
                         <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
                           Skipped (Existing): {skippedCount}
                         </span>
-                        <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
+                        <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
                           Invalid: {invalidCount}
                         </span>
                       </>
