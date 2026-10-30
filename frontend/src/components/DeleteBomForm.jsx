@@ -96,6 +96,15 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
                 placeholder="e.g. A1BH0214C"
                 value={formData.material}
                 onChange={(e) => handleChange('material', e.target.value)}
+                onSelect={(val, full) => {
+                  handleChange('material', val);
+                  if (full?.stlal) {
+                    handleChange('alternativeBom', full.stlal.replace(/^0+/, '') || full.stlal);
+                  }
+                  if (full?.werks && !formData.plant) {
+                    handleChange('plant', full.werks);
+                  }
+                }}
                 className={`sap-input sap-form-input ${fieldErrors.material ? 'input-error' : ''}`}
                 autoFocus
               />

@@ -602,6 +602,85 @@ async function runTests() {
       console.log('   ✓ Popup anchored at 12vh on open; switching tabs retains top coordinate without shifting vertically');
     }
 
+    // 26. Testing Automatic Uppercase Conversion on Code Fields Across Several Tabs
+    console.log('\n26. Testing automatic uppercase conversion for code fields across several tabs...');
+    {
+      // Tab B: Lowercase material 'a1bh0214c' and lowercase plant '1001'
+      const tabBLower = await searchMaterialsByOption({
+        tab: 'B',
+        fields: { matnr: 'a1bh0214c', werks: '1001', stlan: '1' }
+      });
+      if (!tabBLower.success || tabBLower.count !== 3) {
+        throw new Error(`Tab B lowercase 'a1bh0214c' expected 3 alternatives, got ${tabBLower.count}`);
+      }
+      console.log('   ✓ Tab B: lowercase material "a1bh0214c" converted to uppercase and returned 3 alternatives');
+
+      // Tab M: Lowercase material '1102*' and lowercase description 'solar' (case-insensitive description search)
+      const tabMLower = await searchMaterialsByOption({
+        tab: 'M',
+        fields: { matnr: '1102*', maktg: 'solar' }
+      });
+      if (!tabMLower.success || tabMLower.count === 0) {
+        throw new Error(`Tab M lowercase '1102*' and 'solar' expected results, got ${tabMLower.count}`);
+      }
+      console.log('   ✓ Tab M: lowercase code "1102*" and lowercase description "solar" matched successfully');
+
+      // Tab A: Lowercase old material number 'old-inv-01'
+      const tabALower = await searchMaterialsByOption({
+        tab: 'A',
+        fields: { bismt: 'old-inv-01' }
+      });
+      if (!tabALower.success || tabALower.count === 0) {
+        throw new Error(`Tab A lowercase bismt 'old-inv-01' expected result, got ${tabALower.count}`);
+      }
+      if (tabALower.data[0].matnr !== '13000340') {
+        throw new Error(`Tab A expected matnr 13000340, got ${tabALower.data[0].matnr}`);
+      }
+      console.log('   ✓ Tab A: lowercase code "old-inv-01" converted to uppercase and matched 13000340');
+
+      // Tab L: Lowercase material group 'elec-inv'
+      const tabLLower = await searchMaterialsByOption({
+        tab: 'L',
+        fields: { matkl: 'elec-inv' }
+      });
+      if (!tabLLower.success || tabLLower.count === 0) {
+        throw new Error(`Tab L lowercase matkl 'elec-inv' expected results, got ${tabLLower.count}`);
+      }
+      console.log('   ✓ Tab L: lowercase material group "elec-inv" converted to uppercase and returned matches');
+
+      // Tab T: Lowercase material type 'fert'
+      const tabTLower = await searchMaterialsByOption({
+        tab: 'T',
+        fields: { mtart: 'fert' }
+      });
+      if (!tabTLower.success || tabTLower.count === 0) {
+        throw new Error(`Tab T lowercase mtart 'fert' expected results, got ${tabTLower.count}`);
+      }
+      console.log('   ✓ Tab T: lowercase material type "fert" converted to uppercase and returned matches');
+    }
+
+    // 27. Testing Tab B Alternative Rows & Selection Payload (SAP Look & Feel)
+    console.log('\n27. Testing Tab B multi-alternative row structure and selection payload...');
+    {
+      const tabBRes = await searchMaterialsByOption({
+        tab: 'B',
+        fields: { matnr: 'A1BH0214C', werks: '1001', stlan: '1' }
+      });
+      if (tabBRes.count !== 3) {
+        throw new Error(`Expected exactly 3 rows for A1BH0214C alternatives, got ${tabBRes.count}`);
+      }
+      const stlals = tabBRes.data.map((r) => r.stlal).sort();
+      if (stlals[0] !== '01' || stlals[1] !== '02' || stlals[2] !== '03') {
+        throw new Error(`Expected alternatives 01, 02, 03, got ${JSON.stringify(stlals)}`);
+      }
+      tabBRes.data.forEach((row) => {
+        if (!row.matnr || !row.stlal || !row.werks || !row.spras) {
+          throw new Error(`Missing expected Tab B fields on row: ${JSON.stringify(row)}`);
+        }
+      });
+      console.log('   ✓ Tab B returns one row per BOM alternative (01, 02, 03) with matnr, stlal, werks, spras');
+    }
+
     console.log('\n============================================================');
     console.log('  ALL RESTRICT VALUE RANGE (F4 POPUP) TESTS PASSED (100%)');
     console.log('============================================================\n');

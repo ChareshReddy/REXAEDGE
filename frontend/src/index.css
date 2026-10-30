@@ -6486,3 +6486,26 @@ input::-webkit-credentials-auto-fill-button {
 .sap-restrict-btn-cancel {
   border: 1px solid #e2e8f0;
 }
+
+/* Accessible SAP Beginner Tooltips */
+@keyframes sapTooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sap-tooltip-popup {
+  box-sizing: border-box;
+}
+
+.sap-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+

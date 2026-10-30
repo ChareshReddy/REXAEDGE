@@ -216,6 +216,15 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   placeholder="e.g. A1BH0214C"
                   value={formData.sourceMaterial}
                   onChange={(e) => handleChange('sourceMaterial', e.target.value)}
+                  onSelect={(val, full) => {
+                    handleChange('sourceMaterial', val);
+                    if (full?.stlal) {
+                      handleChange('sourceAltBom', full.stlal);
+                    }
+                    if (full?.werks && !formData.sourcePlant) {
+                      handleChange('sourcePlant', full.werks);
+                    }
+                  }}
                   className={`sap-form-input ${fieldErrors.sourceMaterial ? 'input-error' : ''}`}
                   style={{ paddingLeft: 32 }}
                   aria-label="Source Material"
@@ -437,6 +446,15 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                   placeholder="e.g. A1BH0214C"
                   value={formData.targetMaterial}
                   onChange={(e) => handleChange('targetMaterial', e.target.value)}
+                  onSelect={(val, full) => {
+                    handleChange('targetMaterial', val);
+                    if (full?.stlal) {
+                      handleChange('targetAltBom', full.stlal);
+                    }
+                    if (full?.werks && !formData.targetPlant) {
+                      handleChange('targetPlant', full.werks);
+                    }
+                  }}
                   className={`sap-form-input ${fieldErrors.targetMaterial ? 'input-error' : ''}`}
                   style={{ paddingLeft: 32 }}
                   aria-label="Target Material"

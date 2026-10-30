@@ -16,8 +16,25 @@ const DEFAULT_LIMIT = 500;
 const MAX_SAFETY_LIMIT = 2000;
 const ABSOLUTE_MAX_LIMIT = 5000;
 
+export function isDescriptionField(fieldId) {
+  if (!fieldId) return false;
+  const upper = String(fieldId).toUpperCase();
+  return (
+    upper === 'MAKTG' ||
+    upper === 'MAKTX' ||
+    upper === 'TEXT_HTN' ||
+    upper === 'MAKTG_ORG_ART' ||
+    upper === 'MAKTG_FOLUP_ART' ||
+    upper === 'WGBEZ' ||
+    upper === 'VTEXT' ||
+    upper.includes('DESC') ||
+    upper.includes('TEXT')
+  );
+}
+
 /**
  * Sanitizes input values for RFC_READ_TABLE WHERE options:
+
  * - Allows alphanumeric, spaces, '-', '_', '.', '/', '*', '?'
  * - Max length capped per field
  * - Explicitly strips single quotes, semicolons, and SQL delimiters
@@ -54,6 +71,10 @@ export function formatFieldClause(fieldName, userVal, isNumericKey = false) {
   if (hasWildcard) {
     const sqlPattern = clean.replace(/\*/g, '%').replace(/\?/g, '_');
     return `${fieldName} LIKE '${sqlPattern}'`;
+  }
+
+  if (fieldName === 'MAKTG' || fieldName === 'MAKTX' || fieldName === 'TEXT_HTN') {
+    return `${fieldName} LIKE '%${clean}%'`;
   }
 
   if (isNumericKey && /^\d+$/.test(clean)) {
@@ -102,7 +123,10 @@ export async function searchMaterialsByOption({
   let filledFieldCount = 0;
   for (const f of option.fields || []) {
     const rawVal = fields[f.id] ?? fields[f.id.toLowerCase()];
-    const cleanVal = sanitizeOptionValue(rawVal, f.length || 40);
+    let cleanVal = sanitizeOptionValue(rawVal, f.length || 40);
+    if (!isDescriptionField(f.id) && cleanVal) {
+      cleanVal = cleanVal.toUpperCase();
+    }
     cleanFields[f.id] = cleanVal;
     if (cleanVal && !(f.id === 'SPRAS' && (cleanVal === 'EN' || cleanVal === 'E'))) {
       filledFieldCount++;
@@ -171,6 +195,7 @@ export async function searchMaterialsByOption({
   // Live SAP RFC execution with protection pool
   return await runSearchRfc({ server, signal, timeoutMs }, async (client) => {
     let candidateMatnrs = [];
+    let tabBRecords = null;
     const maktMap = new Map();
     const maraMap = new Map();
     const languageKey = normalizeSapLanguage(cleanFields.SPRAS || 'EN');
@@ -227,27 +252,34 @@ export async function searchMaterialsByOption({
       }
 
       case 'B': {
-        // MAST: MATNR, WERKS, STLAN
+        // MAST: MATNR, WERKS, STLAN, STLAL
         const clauses = [];
         if (cleanFields.MATNR) {
-          clauses.push(formatFieldClause('MATNR', cleanFields.MATNR, true));
+          clauses.push(formatFieldClause('MATNR', cleanFields.MATNR.toUpperCase(), true));
         }
         if (cleanFields.WERKS) {
           clauses.push(formatFieldClause('WERKS', cleanFields.WERKS.toUpperCase()));
         }
         if (cleanFields.STLAN) {
-          clauses.push(formatFieldClause('STLAN', cleanFields.STLAN));
+          clauses.push(formatFieldClause('STLAN', cleanFields.STLAN.toUpperCase()));
         }
         const mastWhere = clauses.length > 0 ? clauses.join(' AND ') : '';
         const mastRes = await client.call('RFC_READ_TABLE', {
           QUERY_TABLE: 'MAST',
           DELIMITER: '|',
           OPTIONS: formatRfcTableOptions(mastWhere),
-          FIELDS: [{ FIELDNAME: 'MATNR' }, { FIELDNAME: 'WERKS' }, { FIELDNAME: 'STLAN' }],
+          FIELDS: [
+            { FIELDNAME: 'MATNR' },
+            { FIELDNAME: 'WERKS' },
+            { FIELDNAME: 'STLAN' },
+            { FIELDNAME: 'STLAL' }
+          ],
           DATA: [],
           ROWCOUNT: effectiveLimit
         });
-        candidateMatnrs = [...new Set(parseRfcRows(mastRes).map((r) => r.MATNR).filter(Boolean))];
+        const mastRows = parseRfcRows(mastRes);
+        tabBRecords = mastRows;
+        candidateMatnrs = mastRows.map((r) => r.MATNR).filter(Boolean);
         break;
       }
 
@@ -1199,21 +1231,43 @@ export async function searchMaterialsByOption({
 
     // Assemble final output matching the exact results popup shape
     const finalData = [];
-    for (const rawMat of uniqueMatnrs) {
-      const makt = maktMap.get(rawMat);
-      // If user provided description filter, skip items that don't match MAKT
-      if (descClause && !makt) {
-        continue;
+    if (option.key === 'B' && tabBRecords && tabBRecords.length > 0) {
+      for (const rec of tabBRecords.slice(0, effectiveLimit)) {
+        const rawMat = rec.MATNR;
+        const makt = maktMap.get(rawMat);
+        if (descClause && !makt) {
+          continue;
+        }
+        const mara = maraMap.get(rawMat);
+        finalData.push({
+          matnr: fromSapMatnr(rawMat),
+          rawMatnr: rawMat,
+          stlal: rec.STLAL || '01',
+          werks: rec.WERKS || cleanFields.WERKS || '',
+          stlan: rec.STLAN || cleanFields.STLAN || '',
+          maktx: makt?.MAKTX || '',
+          mtart: mara?.MTART || '',
+          spras: makt?.SPRAS || languageKey,
+          hasBom: true
+        });
       }
-      const mara = maraMap.get(rawMat);
-      finalData.push({
-        matnr: fromSapMatnr(rawMat),
-        rawMatnr: rawMat,
-        maktx: makt?.MAKTX || '',
-        mtart: mara?.MTART || '',
-        spras: makt?.SPRAS || languageKey,
-        hasBom: option.key === 'B' ? true : false
-      });
+    } else {
+      for (const rawMat of uniqueMatnrs) {
+        const makt = maktMap.get(rawMat);
+        // If user provided description filter, skip items that don't match MAKT
+        if (descClause && !makt) {
+          continue;
+        }
+        const mara = maraMap.get(rawMat);
+        finalData.push({
+          matnr: fromSapMatnr(rawMat),
+          rawMatnr: rawMat,
+          maktx: makt?.MAKTX || '',
+          mtart: mara?.MTART || '',
+          spras: makt?.SPRAS || languageKey,
+          hasBom: option.key === 'B' ? true : false
+        });
+      }
     }
 
     const isLimitHit = finalData.length >= effectiveLimit;
@@ -1243,7 +1297,59 @@ function filterMockByOption(tabKey, fields, limit) {
   // Enhanced mock dataset with various fields
   const mockExtended = [
     {
+      matnr: 'A1BH0214C',
+      stlal: '01',
+      bismt: 'OLD-A1BH',
+      mtart: 'FERT',
+      matkl: 'F1SX',
+      prdha: 'PROD-FTW',
+      ean11: '8905495000010',
+      idnlf: 'VEND-A1BH',
+      lifnr: '0000451688',
+      attyp: '00',
+      werks: '1001',
+      stlan: '1',
+      hasBom: true,
+      maktx: 'Relaxo Sparx Footwear 0214C Alt 1',
+      spras: 'EN'
+    },
+    {
+      matnr: 'A1BH0214C',
+      stlal: '02',
+      bismt: 'OLD-A1BH',
+      mtart: 'FERT',
+      matkl: 'F1SX',
+      prdha: 'PROD-FTW',
+      ean11: '8905495000011',
+      idnlf: 'VEND-A1BH',
+      lifnr: '0000451688',
+      attyp: '00',
+      werks: '1001',
+      stlan: '1',
+      hasBom: true,
+      maktx: 'Relaxo Sparx Footwear 0214C Alt 2',
+      spras: 'EN'
+    },
+    {
+      matnr: 'A1BH0214C',
+      stlal: '03',
+      bismt: 'OLD-A1BH',
+      mtart: 'FERT',
+      matkl: 'F1SX',
+      prdha: 'PROD-FTW',
+      ean11: '8905495000012',
+      idnlf: 'VEND-A1BH',
+      lifnr: '0000451688',
+      attyp: '00',
+      werks: '1001',
+      stlan: '1',
+      hasBom: true,
+      maktx: 'Relaxo Sparx Footwear 0214C Alt 3',
+      spras: 'EN'
+    },
+    {
       matnr: '11021735',
+      stlal: '01',
       bismt: '1527279',
       mtart: 'ROH',
       matkl: 'F1SX',
@@ -1398,12 +1504,15 @@ function filterMockByOption(tabKey, fields, limit) {
     }
   ];
 
-  function matchesWildcard(val, pattern) {
+  function matchesWildcard(val, pattern, isDescription = false) {
     if (!pattern) return true;
     if (!val) return false;
     const v = String(val).toUpperCase();
     const p = String(pattern).toUpperCase();
     if (p === '*' || p === '%') return true;
+    if (isDescription && !p.includes('*') && !p.includes('?') && !p.includes('%')) {
+      return v.includes(p);
+    }
     const regexStr = '^' + p.replace(/\*/g, '.*').replace(/\?/g, '.') + '$';
     try {
       return new RegExp(regexStr).test(v);
@@ -1418,7 +1527,7 @@ function filterMockByOption(tabKey, fields, limit) {
       return false;
     }
     // Description filter
-    if (fields.MAKTG && !matchesWildcard(item.maktx, fields.MAKTG)) {
+    if (fields.MAKTG && !matchesWildcard(item.maktx, fields.MAKTG, true)) {
       return false;
     }
 
@@ -1533,6 +1642,9 @@ function filterMockByOption(tabKey, fields, limit) {
   return results.slice(0, limit).map((r) => ({
     matnr: r.matnr,
     rawMatnr: r.matnr.padStart(18, '0'),
+    stlal: r.stlal || '01',
+    werks: r.werks || '',
+    stlan: r.stlan || '',
     maktx: r.maktx,
     mtart: r.mtart,
     spras: r.spras,
