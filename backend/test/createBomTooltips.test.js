@@ -106,7 +106,13 @@ for (const [key, val] of Object.entries(BOM_FIELD_TOOLTIPS)) {
 }
 console.log('   ✓ All tooltips are clean, short plain names with zero technical codes\n');
 
-console.log('5. Testing Absence of Hard-coded Red Colors');
+console.log('5. Testing Absence of cursor: help and Preservation of Normal Cursors');
+assert(!html.includes('cursor:help'), 'Rendered HTML must NOT contain cursor:help');
+assert(!html.includes('cursor: help'), 'Rendered HTML must NOT contain cursor: help');
+assert(!html.includes("cursor: 'help'"), "Rendered HTML must NOT contain cursor: 'help'");
+console.log('   ✓ Zero cursor: help across headers, labels, and table inputs\n');
+
+console.log('6. Testing Absence of Hard-coded Red Colors');
 assert(!html.includes('var(--sap-error)'), 'Component table remove button must not use var(--sap-error)');
 assert(html.includes('var(--sap-border, #cbd5e1)') || html.includes('var(--sap-text-muted, #64748b)'), 'Component table remove button must use neutral border/text-muted');
 console.log('   ✓ No red colors in component table rows or actions\n');
@@ -128,11 +134,53 @@ const renderedTrigger = renderToStaticMarkup(
   React.createElement(Tooltip, {
     text: 'Storage location',
     delay: 300
-  }, React.createElement('button', { id: 'test-btn' }, 'Hover me'))
+  }, React.createElement('th', { id: 'test-th' }, 'Storage Loc*'))
 );
 
-assert(renderedTrigger.includes('id="test-btn"'), 'Tooltip must render trigger element');
+assert(renderedTrigger.includes('id="test-th"'), 'Tooltip must render trigger element');
+assert(!renderedTrigger.includes('aria-describedby'), 'Tooltip must NOT attach aria-describedby to inputs or headers when inactive');
 console.log('   ✓ Tooltip component integrates cleanly with trigger elements and supports single-line text\n');
+
+console.log('7. Testing Header-Only Tooltip Restriction & Removal from Inputs and Header Data');
+// In CreateBomView HTML, verify th tags have aria-label and tooltips
+assert(html.includes('<th style="width:50px;text-align:center" aria-label="Item number"'), 'Header # must have aria-label="Item number"');
+assert(html.includes('<th style="min-width:160px" aria-label="Component"'), 'Header Component* must have aria-label="Component"');
+assert(html.includes('<th style="width:100px" aria-label="Quantity"'), 'Header Quantity* must have aria-label="Quantity"');
+assert(html.includes('<th style="width:85px" aria-label="Item category"'), 'Header Item Cat must have aria-label="Item category"');
+assert(html.includes('<th style="width:120px" aria-label="Storage location"'), 'Header Storage Loc* must have aria-label="Storage location"');
+assert(html.includes('<th style="min-width:160px" aria-label="Reference number"'), 'Header Reference Number must have aria-label="Reference number"');
+assert(html.includes('<th style="width:110px;text-align:center;white-space:nowrap" aria-label="Costing relevant"'), 'Header Costing Rel must have aria-label="Costing relevant"');
+assert(html.includes('<th style="width:95px;text-align:center;white-space:nowrap" aria-label="Engineering relevant"'), 'Header Eng Rel must have aria-label="Engineering relevant"');
+assert(html.includes('<th style="width:75px;text-align:center;white-space:nowrap" aria-label="Action"'), 'Header Action must have aria-label="Action"');
+
+// Verify inputs, cells, and header data do NOT contain tooltips
+const createBomViewSource = fs.readFileSync(path.resolve(frontendDir, 'src/components/CreateBomView.jsx'), 'utf8');
+const headerDataSection = createBomViewSource.slice(
+  createBomViewSource.indexOf('BOM Header Data'),
+  createBomViewSource.indexOf('Components Card')
+);
+assert(!headerDataSection.includes('<Tooltip'), 'BOM Header Data must NOT contain any <Tooltip> tags');
+
+const tableBodySection = createBomViewSource.slice(
+  createBomViewSource.indexOf('<tbody>'),
+  createBomViewSource.indexOf('</tbody>')
+);
+assert(!tableBodySection.includes('<Tooltip'), 'Table body rows must NOT contain any <Tooltip> tags');
+
+// Verify Tooltip source code does NOT attach onFocus or onBlur
+const tooltipSource = fs.readFileSync(tooltipPath, 'utf8');
+assert(!tooltipSource.includes('onFocus:'), 'Tooltip must NOT attach onFocus listener');
+assert(!tooltipSource.includes('onBlur:'), 'Tooltip must NOT attach onBlur listener');
+assert(tooltipSource.includes('onMouseEnter:'), 'Tooltip triggers on mouse hover (onMouseEnter)');
+assert(tooltipSource.includes('onMouseLeave:'), 'Tooltip hides when mouse leaves (onMouseLeave)');
+assert(tooltipSource.includes("placement = 'top'"), "Tooltip default placement must be 'top' (above header)");
+assert(tooltipSource.includes("targetPlacement = 'bottom'"), "Tooltip flips to 'bottom' when near top of viewport");
+assert(tooltipSource.includes("'keydown'"), 'Tooltip listens for keydown to dismiss on Esc and typing');
+assert(tooltipSource.includes("'input'"), 'Tooltip listens for input to dismiss on typing');
+assert(tooltipSource.includes("'scroll'"), 'Tooltip listens for scroll to dismiss');
+assert(tooltipSource.includes("'click'"), 'Tooltip listens for click to dismiss');
+
+console.log('   ✓ Tooltips strictly restricted to column headers; completely removed from inputs, labels, and cells\n');
 
 console.log('============================================================');
 console.log('  ALL CREATE BOM UI & TOOLTIP TESTS PASSED SUCCESSFULLY!    ');

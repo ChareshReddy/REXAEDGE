@@ -14,6 +14,7 @@ import {
 import { lockScroll } from '../utils/scrollLock';
 import { searchMaterialsByOption } from '../services/api';
 import { useDraggableModal } from '../hooks/useDraggableModal';
+import ValueHelpInput from './ValueHelpInput';
 
 export const ALL_SEARCH_OPTIONS = [
   {
@@ -1011,19 +1012,36 @@ export default function MaterialRestrictValueRangeModal({
                       {field.label}:
                     </label>
                     <div className="sap-restrict-input-wrap">
-                      <input
-                        id={`field-${field.id}`}
-                        ref={idx === 0 ? firstInputRef : null}
-                        type="text"
-                        value={val}
-                        maxLength={field.maxLen || 40}
-                        placeholder={field.placeholder || ''}
-                        onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                        className="sap-input sap-restrict-input"
-                        autoComplete="off"
-                        spellCheck="false"
-                        style={{ width: inputWidth, maxWidth: '100%' }}
-                      />
+                      {field.id === 'STLAN' ? (
+                        <ValueHelpInput
+                          id={`field-${field.id}`}
+                          ref={idx === 0 ? firstInputRef : null}
+                          kind="bomUsage"
+                          value={val}
+                          maxLength={field.maxLen || 1}
+                          placeholder={field.placeholder || ''}
+                          onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                          className="sap-restrict-input"
+                          wrapperStyle={{ width: Math.max(inputWidth, 68), maxWidth: '100%' }}
+                          style={{ width: '100%' }}
+                          autoComplete="off"
+                          spellCheck="false"
+                        />
+                      ) : (
+                        <input
+                          id={`field-${field.id}`}
+                          ref={idx === 0 ? firstInputRef : null}
+                          type="text"
+                          value={val}
+                          maxLength={field.maxLen || 40}
+                          placeholder={field.placeholder || ''}
+                          onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                          className="sap-input sap-restrict-input"
+                          autoComplete="off"
+                          spellCheck="false"
+                          style={{ width: inputWidth, maxWidth: '100%' }}
+                        />
+                      )}
                     </div>
                   </div>
                 );

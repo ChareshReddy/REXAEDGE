@@ -19,7 +19,8 @@ import {
   Check,
   Eye,
   EyeOff,
-  Info
+  Info,
+  Activity
 } from 'lucide-react';
 import {
   getAdminUsers,
@@ -38,6 +39,7 @@ import activityTracker from '../services/activityTracker';
 import Modal from './Modal';
 import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
+import AdminActivityLogsView from './AdminActivityLogsView';
 
 /**
  * TriStateCheckbox: Accessible checkbox with HTML5 indeterminate state support
@@ -644,6 +646,16 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
               {permissionsError ? '!' : permissions.length}
             </span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('activity-logs')}
+            className={`sap-button ${activeTab === 'activity-logs' ? 'primary' : ''}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
+          >
+            <Activity size={14} />
+            <span>Activity Logs</span>
+          </button>
         </div>
       </div>
 
@@ -1136,7 +1148,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
-                                  cursor: 'help'
+                                  cursor: 'default'
                                 }}
                               >
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1222,6 +1234,13 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
               </table>
             </div>
           </div>
+        )}
+
+        {/* =========================================================================
+            TAB 4: ACTIVITY LOGS (AUDIT & ERRORS)
+           ========================================================================= */}
+        {activeTab === 'activity-logs' && (
+          <AdminActivityLogsView availableServers={servers} />
         )}
       </div>
 

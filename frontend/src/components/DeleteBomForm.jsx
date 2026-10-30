@@ -149,13 +149,15 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
               BOM Usage <span className="required-star">*</span>
             </label>
             <div className="sap-form-input-wrapper">
-              <input
+              <ValueHelpInput
                 id="delBomUsage"
-                type="text"
+                kind="bomUsage"
                 placeholder="1"
+                maxLength={1}
                 value={formData.bomUsage}
                 onChange={(e) => handleChange('bomUsage', e.target.value)}
                 className={`sap-input sap-form-input ${fieldErrors.bomUsage ? 'input-error' : ''}`}
+                aria-label="Delete BOM Usage"
               />
             </div>
           </div>

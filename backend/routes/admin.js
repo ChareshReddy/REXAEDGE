@@ -3,6 +3,7 @@ import { Client } from 'open-rfc';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { auditLogger } from '../services/auditLog.js';
+import { recordRouteAudit } from '../utils/auditHelper.js';
 import { getRfcConnectionParams } from '../services/sapRfcClient.js';
 import { decryptPassword } from '../utils/crypto.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
@@ -72,6 +73,15 @@ router.post('/users', async (req, res) => {
       reason: 'Administrator action'
     });
 
+    recordRouteAudit(req, {
+      action: 'admin.user_create',
+      feature: 'admin',
+      target: result.data.user.email,
+      status: 'success',
+      message: `User created: ${result.data.user.email} (${normalizedRole})`,
+      details: { userId: result.data.user.id, email: result.data.user.email, role: normalizedRole }
+    });
+
     return res.status(201).json({
       success: true,
       message: 'User created successfully.',
@@ -118,6 +128,15 @@ router.delete('/users/:id', async (req, res) => {
       recordId: id,
       task: `Admin deleted user ${id}`,
       reason: 'Administrator action'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.user_delete',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `User deleted: ${id}`,
+      details: { userId: id }
     });
 
     return res.status(200).json({
@@ -289,6 +308,20 @@ router.post('/servers', async (req, res) => {
       reason: 'Administrator action'
     });
 
+    recordRouteAudit(req, {
+      action: 'admin.server_create',
+      feature: 'admin',
+      target: server.name,
+      status: 'success',
+      message: `Server created: ${server.name} (${server.environment})`,
+      details: {
+        serverId: server.id,
+        name: server.name,
+        environment: server.environment,
+        modules: server.modules
+      }
+    });
+
     return res.status(201).json({
       success: true,
       message: 'SAP server created successfully.',
@@ -349,6 +382,20 @@ router.put('/servers/:id', async (req, res) => {
       reason: 'Administrator action'
     });
 
+    recordRouteAudit(req, {
+      action: 'admin.server_update',
+      feature: 'admin',
+      target: updated.name,
+      status: 'success',
+      message: `Server updated: ${updated.name}`,
+      details: {
+        serverId: id,
+        name: updated.name,
+        environment: updated.environment,
+        modules: updated.modules
+      }
+    });
+
     return res.status(200).json({
       success: true,
       message: 'SAP server updated successfully.',
@@ -385,6 +432,15 @@ router.delete('/servers/:id', async (req, res) => {
       recordId: id,
       task: `Admin deleted SAP server ${id}`,
       reason: 'Administrator action'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.server_delete',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `Server deleted: ${id}`,
+      details: { serverId: id }
     });
 
     return res.status(200).json({
@@ -461,6 +517,15 @@ router.post('/permissions', async (req, res) => {
       reason: 'Administrator action'
     });
 
+    recordRouteAudit(req, {
+      action: 'admin.permission_grant',
+      feature: 'admin',
+      target: `${userId}@${serverId}`,
+      status: 'success',
+      message: `Permission granted to user ${userId} on server ${serverId}`,
+      details: { userId, serverId, permissions: permission.permissions }
+    });
+
     return res.status(201).json({
       success: true,
       message: 'Permission granted successfully.',
@@ -498,6 +563,15 @@ router.delete('/permissions/:id', async (req, res) => {
       recordId: id,
       task: `Admin revoked permission ${id}`,
       reason: 'Administrator action'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.permission_revoke',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `Permission revoked: ${id}`,
+      details: { permissionId: id }
     });
 
     return res.status(200).json({
