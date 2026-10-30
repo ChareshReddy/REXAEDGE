@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
 import Modal from './Modal';
+import ValueHelpInput from './ValueHelpInput';
 
 export default function ValidateBomModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -109,12 +110,14 @@ export default function ValidateBomModal({ isOpen, onClose }) {
               </label>
               <div className="sap-form-input-wrapper">
                 <Hash size={13} className="input-icon" />
-                <input
-                  type="text"
-                  className="sap-form-input"
+                <ValueHelpInput
+                  kind="bomUsage"
                   placeholder="1 (Production)"
+                  maxLength={1}
                   value={formData.bomUsage}
                   onChange={(e) => setFormData((p) => ({ ...p, bomUsage: e.target.value }))}
+                  style={{ paddingLeft: 30 }}
+                  aria-label="Validate BOM Usage"
                 />
               </div>
             </div>

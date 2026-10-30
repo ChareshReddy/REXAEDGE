@@ -23,6 +23,7 @@ import {
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { auditLogger } from '../services/auditLog.js';
+import { recordRouteAudit } from '../utils/auditHelper.js';
 import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
 
 const router = express.Router();
@@ -95,9 +96,26 @@ router.post('/validate-source', requireAppPermission(['bom.validate', 'bom.copy'
       });
     }
 
+    recordRouteAudit(req, {
+      action: 'bom.validate',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? 'Source BOM validated' : 'Validation failed'),
+      details: { material, plant, bomUsage, alternativeBom, errorCode: result.errorCode }
+    });
+
     return res.status(200).json(result);
   } catch (err) {
     console.error('[bom.js] validate-source error:', err.message);
+    recordRouteAudit(req, {
+      action: 'bom.validate',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message,
+      details: { error: err.message }
+    });
     return res.status(200).json({
       success: false,
       errorCode: 'SAP_VALIDATION_ERROR',
@@ -121,11 +139,28 @@ router.post('/read', requireAppPermission('bom.display'), async (req, res) => {
       multiLevel: false,
       server: req.selectedServer
     });
+
+    recordRouteAudit(req, {
+      action: 'bom.display',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.success ? 'BOM read successfully' : (result.message || 'BOM read failed'),
+      details: { material, plant, bomUsage, alternativeBom, multiLevel: false }
+    });
+
     if (!result.success && result.errorCode === 'BOM_NOT_FOUND') {
       return res.status(404).json(result);
     }
     return res.status(200).json(result);
   } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.display',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `BOM Read failed: ${err.message}`
@@ -150,6 +185,15 @@ router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
       server: req.selectedServer
     });
 
+    recordRouteAudit(req, {
+      action: 'bom.create',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? 'BOM created successfully' : 'BOM creation failed'),
+      details: { material, plant, bomUsage, alternativeBom, componentCount: components?.length || 0 }
+    });
+
     if (result.success) {
       auditLogger.logAction({
         user: req.user.email,
@@ -165,6 +209,13 @@ router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
 
     return res.status(200).json(result);
   } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.create',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `BOM Creation failed: ${err.message}`
@@ -187,11 +238,28 @@ router.post('/hierarchy', requireAppPermission('bom.display'), async (req, res) 
       multiLevel: true,
       server: req.selectedServer
     });
+
+    recordRouteAudit(req, {
+      action: 'bom.display',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.success ? 'BOM hierarchy read successfully' : (result.message || 'BOM hierarchy read failed'),
+      details: { material, plant, bomUsage, alternativeBom, multiLevel: true }
+    });
+
     if (!result.success && result.errorCode === 'BOM_NOT_FOUND') {
       return res.status(404).json(result);
     }
     return res.status(200).json(result);
   } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.display',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `Failed to explode BOM hierarchy: ${err.message}`
@@ -230,6 +298,15 @@ router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
       server: req.selectedServer
     });
 
+    recordRouteAudit(req, {
+      action: 'bom.copy',
+      feature: 'bom',
+      target: `${targetMaterial}/${targetPlant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? `Copied from ${sourceMaterial}(${sourcePlant})` : 'BOM copy failed'),
+      details: { sourceMaterial, sourcePlant, targetMaterial, targetPlant, targetAlternative, copyHierarchy }
+    });
+
     if (result.success) {
       auditLogger.logAction({
         user: req.user.email,
@@ -245,6 +322,13 @@ router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
 
     return res.status(200).json(result);
   } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.copy',
+      feature: 'bom',
+      target: req.body?.targetMaterial ? `${req.body.targetMaterial}/${req.body.targetPlant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `BOM Copy failed: ${err.message}`
@@ -331,6 +415,15 @@ router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
       server: req.selectedServer
     });
 
+    recordRouteAudit(req, {
+      action: 'bom.delete',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? 'BOM deleted successfully' : 'BOM deletion failed'),
+      details: { material, plant, bomUsage, alternativeBom }
+    });
+
     if (result.success) {
       auditLogger.logAction({
         user: req.user.email,
@@ -346,6 +439,13 @@ router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
 
     return res.status(200).json(result);
   } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.delete',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `BOM Delete failed: ${err.message}`
@@ -393,6 +493,24 @@ router.post('/batch-copy', requireAppPermission('bom.copy'), async (req, res) =>
       });
     }
     const result = await rfcBatchCopyBoms(items, { skipErrors, copyHierarchy, server: req.selectedServer });
+
+    const failedKeys = (result.results || [])
+      .filter(r => !r.success)
+      .slice(0, 5)
+      .map(r => `${r.targetMaterial || r.sourceMaterial || 'unknown'}/${r.targetPlant || 'unknown'}`);
+    recordRouteAudit(req, {
+      action: 'bom.copy_bulk',
+      feature: 'bom',
+      target: `Batch-${items.length}`,
+      status: result.success ? 'success' : 'failed',
+      message: `Bulk BOM copy: ${result.successfulCount || 0} succeeded, ${result.failedCount || 0} failed`,
+      details: {
+        rows: items.length,
+        succeeded: result.successfulCount || 0,
+        failed: result.failedCount || 0,
+        firstFailedKeys: failedKeys
+      }
+    });
 
     auditLogger.logAction({
       user: req.user.email,
@@ -639,9 +757,27 @@ router.post('/create-single', requireAppPermission('bom.create'), async (req, re
       user: req.user,
       source: 'single'
     });
+
+    const target = bom ? `${bom.material}/${bom.plant}` : 'unknown';
+    recordRouteAudit(req, {
+      action: 'bom.create',
+      feature: 'bom',
+      target,
+      status: result.success ? 'success' : 'failed',
+      message: result.message || (result.success ? 'BOM created successfully' : 'Failed to create BOM'),
+      details: { material: bom?.material, plant: bom?.plant, componentCount: bom?.components?.length || 0 }
+    });
+
     return res.status(200).json(result);
   } catch (err) {
     console.error('[bom.js] create-single error:', err.message);
+    recordRouteAudit(req, {
+      action: 'bom.create',
+      feature: 'bom',
+      target: req.body?.bom?.material ? `${req.body.bom.material}/${req.body.bom.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `Failed to create BOM: ${err.message}`
@@ -673,9 +809,36 @@ router.post('/create-bulk', requireAppPermission('bom.create'), async (req, res)
       user: req.user,
       fileName
     });
+
+    const failedKeys = (result.results || [])
+      .filter(r => !r.success)
+      .slice(0, 5)
+      .map(r => `${r.material || 'unknown'}/${r.plant || 'unknown'}`);
+    recordRouteAudit(req, {
+      action: 'bom.create_bulk',
+      feature: 'bom',
+      target: `Batch-${boms.length}`,
+      status: result.success ? 'success' : 'failed',
+      message: `Bulk BOM create: ${result.bomsCreated || 0} created, ${result.failedCount || 0} failed, ${result.skippedCount || 0} skipped`,
+      details: {
+        rows: boms.length,
+        succeeded: result.bomsCreated || 0,
+        failed: result.failedCount || 0,
+        skipped: result.skippedCount || 0,
+        firstFailedKeys: failedKeys
+      }
+    });
+
     return res.status(200).json(result);
   } catch (err) {
     console.error('[bom.js] create-bulk error:', err.message);
+    recordRouteAudit(req, {
+      action: 'bom.create_bulk',
+      feature: 'bom',
+      target: `Batch-${req.body?.boms?.length || 0}`,
+      status: 'failed',
+      message: err.message
+    });
     return res.status(500).json({
       success: false,
       message: `Failed to execute bulk BOM creation: ${err.message}`

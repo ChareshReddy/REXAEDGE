@@ -6506,6 +6506,5 @@ input::-webkit-credentials-auto-fill-button {
 .sap-tooltip-trigger {
   display: inline-flex;
   align-items: center;
-  cursor: help;
 }
 

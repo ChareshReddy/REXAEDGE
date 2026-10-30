@@ -286,12 +286,14 @@ export default function BomExplorerView({
               </label>
               <div className="sap-form-input-wrapper">
                 <Hash size={13} className="input-icon" />
-                <input
-                  type="text"
-                  className="sap-form-input"
+                <ValueHelpInput
+                  kind="bomUsage"
                   placeholder="1 (Production)"
+                  maxLength={1}
                   value={searchParams.bomUsage}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, bomUsage: e.target.value }))}
+                  style={{ paddingLeft: 30 }}
+                  aria-label="Display BOM Usage"
                 />
               </div>
             </div>

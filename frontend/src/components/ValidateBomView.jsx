@@ -157,12 +157,14 @@ export default function ValidateBomView({
                 <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>BOM Usage</label>
                 <div className="sap-form-input-wrapper">
                   <Hash size={13} className="input-icon" />
-                  <input
-                    type="text"
-                    className="sap-form-input"
+                  <ValueHelpInput
+                    kind="bomUsage"
                     placeholder="1 (Production)"
+                    maxLength={1}
                     value={formData.bomUsage}
                     onChange={(e) => setFormData((p) => ({ ...p, bomUsage: e.target.value }))}
+                    style={{ paddingLeft: 30 }}
+                    aria-label="Validate BOM Usage"
                   />
                 </div>
               </div>

@@ -16,7 +16,12 @@ import sapRoutes from './routes/sap.js';
 import materialsRoutes from './routes/materials.js';
 import plantRoutes from './routes/plants.js';
 import storageLocationRoutes from './routes/storageLocations.js';
+import bomUsagesRoutes from './routes/bomUsages.js';
 import adminRoutes from './routes/admin.js';
+import adminLogsRoutes from './routes/adminLogs.js';
+import clientLogsRoutes from './routes/clientLogs.js';
+import { requestIdMiddleware } from './middleware/requestId.js';
+import { recordRouteError } from './utils/auditHelper.js';
 import { requireAuth } from './middleware/auth.js';
 import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
 import dns from 'dns';
@@ -57,6 +62,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost';
 app.set('trust proxy', 1);
 
 // Middleware
+app.use(requestIdMiddleware);
 app.use(enforceHttps);
 app.use(safeLogger);
 app.use(express.json());
@@ -76,12 +82,14 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-server-id', 'X-Server-Id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-server-id', 'X-Server-Id', 'x-request-id', 'X-Request-Id']
 }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin/logs', adminLogsRoutes);
+app.use('/api/logs', clientLogsRoutes);
 app.use('/api/business-partners', businessPartnerRoutes);
 app.use('/api/entities', entitiesRoutes);
 app.use('/api/chat', chatRoutes);
@@ -92,6 +100,7 @@ app.use('/api/sap', sapRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/plants', plantRoutes);
 app.use('/api/storage-locations', storageLocationRoutes);
+app.use('/api/bom-usages', bomUsagesRoutes);
 
 // Server Permission & Discovery endpoint (returns permitted servers for logged-in user)
 app.get('/api/servers/available', requireAuth, async (req, res) => {
@@ -201,9 +210,16 @@ app.use((req, res) => {
 
 // Global Error Handler (never leak stack trace or credentials in response)
 app.use((err, req, res, next) => {
-  console.error('Unhandled server error:', err.message);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal server error'
+  const httpStatus = err.status || 500;
+  const errorRef = recordRouteError(req, err, {
+    source: 'backend',
+    httpStatus,
+    errorCode: err.code || 'SERVER_ERROR'
+  });
+  console.error(`[Error Ref: ${errorRef}] Unhandled server error:`, err.message);
+  res.status(httpStatus).json({
+    error: err.message || 'Internal server error',
+    error_ref: errorRef
   });
 });
 

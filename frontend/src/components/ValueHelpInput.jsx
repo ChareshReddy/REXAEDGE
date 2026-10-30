@@ -4,7 +4,7 @@ import MaterialValueHelpModal from './MaterialValueHelpModal';
 import MaterialRestrictValueRangeModal from './MaterialRestrictValueRangeModal';
 import PlantValueHelpModal from './PlantValueHelpModal';
 import StorageLocationValueHelpModal from './StorageLocationValueHelpModal';
-import Tooltip from './Tooltip';
+import BomUsageValueHelpModal from './BomUsageValueHelpModal';
 
 /**
  * SAP-style Value Help Input wrapper supporting F4 hotkey and matchcode icon button.
@@ -12,7 +12,7 @@ import Tooltip from './Tooltip';
  */
 const ValueHelpInput = forwardRef(function ValueHelpInput(
   {
-    kind = 'material', // 'material' | 'plant' | 'storageLocation' | 'sloc'
+    kind = 'material', // 'material' | 'plant' | 'storageLocation' | 'sloc' | 'bomUsage' | 'usage'
     value = '',
     onChange,
     onSelect,
@@ -179,42 +179,36 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
       />
 
       {/* SAP Matchcode / F4 Icon Button */}
-      <Tooltip
-        text="Search help"
-        placement="top"
+      <button
+        type="button"
+        tabIndex={disabled || readOnly ? -1 : 0}
+        onClick={handleIconClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            handleIconClick(e);
+          }
+        }}
         disabled={disabled || readOnly}
+        className="sap-value-help-btn"
+        aria-label="Search help"
+        style={{
+          position: 'absolute',
+          right: 3,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 22,
+          height: 22,
+          padding: 0,
+          cursor: disabled || readOnly ? 'default' : 'pointer'
+        }}
       >
-        <button
-          type="button"
-          tabIndex={disabled || readOnly ? -1 : 0}
-          onClick={handleIconClick}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              e.stopPropagation();
-              handleIconClick(e);
-            }
-          }}
-          disabled={disabled || readOnly}
-          className="sap-value-help-btn"
-          aria-label="Search help"
-          style={{
-            position: 'absolute',
-            right: 3,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 22,
-            height: 22,
-            padding: 0,
-            cursor: disabled || readOnly ? 'default' : 'pointer'
-          }}
-        >
-          <Search size={13} strokeWidth={2.4} />
-        </button>
-      </Tooltip>
+        <Search size={13} strokeWidth={2.4} />
+      </button>
 
       {/* Popups */}
       {kind === 'material' ? (
@@ -236,6 +230,13 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
             onClose={handleClose}
           />
         </>
+      ) : kind === 'bomUsage' || kind === 'usage' ? (
+        <BomUsageValueHelpModal
+          isOpen={isOpen}
+          initialValue={String(value || '')}
+          onSelect={handleSelection}
+          onClose={handleClose}
+        />
       ) : kind === 'storageLocation' || kind === 'sloc' ? (
         <StorageLocationValueHelpModal
           isOpen={isOpen}

@@ -59,7 +59,9 @@ const testFiles = [
   'test/routedViewsRender.test.js',
   'test/authRetryResilience.test.js',
   'test/themeAndLayoutRedesign.test.js',
-  'test/createBomTooltips.test.js'
+  'test/createBomTooltips.test.js',
+  'test/bomUsages.test.js',
+  'test/activityLogs.test.js'
 ];
 
 const env = {

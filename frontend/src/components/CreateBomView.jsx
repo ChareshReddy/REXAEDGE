@@ -572,148 +572,115 @@ export default function CreateBomView({
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.material}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Material*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.material}>
-                    <ValueHelpInput
-                      kind="material"
-                      plant={headerData.plant}
-                      placeholder="e.g. A1BH0214C"
-                      disabled={isLocked}
-                      value={headerData.material}
-                      onChange={(e) => handleHeaderChange('material', e.target.value)}
-                      onSelect={(val, full) => {
-                        handleHeaderChange('material', val);
-                        if (full?.stlal) {
-                          handleHeaderChange('alternativeBom', full.stlal);
-                        }
-                        if (full?.werks && !headerData.plant) {
-                          handleHeaderChange('plant', full.werks);
-                        }
-                      }}
-                      aria-label="Header Material"
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Material*</label>
+                  <ValueHelpInput
+                    kind="material"
+                    plant={headerData.plant}
+                    placeholder="e.g. A1BH0214C"
+                    disabled={isLocked}
+                    value={headerData.material}
+                    onChange={(e) => handleHeaderChange('material', e.target.value)}
+                    onSelect={(val, full) => {
+                      handleHeaderChange('material', val);
+                      if (full?.stlal) {
+                        handleHeaderChange('alternativeBom', full.stlal);
+                      }
+                      if (full?.werks && !headerData.plant) {
+                        handleHeaderChange('plant', full.werks);
+                      }
+                    }}
+                    aria-label="Header Material"
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.plant}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Plant*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.plant}>
-                    <ValueHelpInput
-                      kind="plant"
-                      material={headerData.material}
-                      placeholder="e.g. 1010"
-                      maxLength={4}
-                      disabled={isLocked}
-                      value={headerData.plant}
-                      onChange={(e) => handleHeaderChange('plant', e.target.value)}
-                      aria-label="Header Plant"
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Plant*</label>
+                  <ValueHelpInput
+                    kind="plant"
+                    material={headerData.material}
+                    placeholder="e.g. 1010"
+                    maxLength={4}
+                    disabled={isLocked}
+                    value={headerData.plant}
+                    onChange={(e) => handleHeaderChange('plant', e.target.value)}
+                    aria-label="Header Plant"
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.bomUsage}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>BOM Usage*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.bomUsage}>
-                    <input
-                      type="text"
-                      className="sap-input sap-form-input"
-                      placeholder="1"
-                      maxLength={1}
-                      disabled={isLocked}
-                      value={headerData.bomUsage}
-                      onChange={(e) => handleHeaderChange('bomUsage', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">BOM Usage*</label>
+                  <ValueHelpInput
+                    kind="bomUsage"
+                    placeholder="1"
+                    maxLength={1}
+                    disabled={isLocked}
+                    value={headerData.bomUsage}
+                    onChange={(e) => handleHeaderChange('bomUsage', e.target.value)}
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.alternativeBom}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Alternative BOM*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.alternativeBom}>
-                    <input
-                      type="text"
-                      className="sap-input sap-form-input"
-                      placeholder="01"
-                      maxLength={2}
-                      disabled={isLocked}
-                      value={headerData.alternativeBom}
-                      onChange={(e) => handleHeaderChange('alternativeBom', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Alternative BOM*</label>
+                  <input
+                    type="text"
+                    className="sap-input sap-form-input"
+                    placeholder="01"
+                    maxLength={2}
+                    disabled={isLocked}
+                    value={headerData.alternativeBom}
+                    onChange={(e) => handleHeaderChange('alternativeBom', e.target.value)}
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.validFrom}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Valid From*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.validFrom}>
-                    <input
-                      type="text"
-                      className="sap-input sap-form-input"
-                      placeholder="DD.MM.YYYY"
-                      disabled={isLocked}
-                      value={headerData.validFrom}
-                      onChange={(e) => handleHeaderChange('validFrom', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Valid From*</label>
+                  <input
+                    type="text"
+                    className="sap-input sap-form-input"
+                    placeholder="DD.MM.YYYY"
+                    disabled={isLocked}
+                    value={headerData.validFrom}
+                    onChange={(e) => handleHeaderChange('validFrom', e.target.value)}
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.baseQty}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Base Quantity*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.baseQty}>
-                    <input
-                      type="number"
-                      step="any"
-                      className="sap-input sap-form-input"
-                      placeholder="1"
-                      disabled={isLocked}
-                      value={headerData.baseQty}
-                      onChange={(e) => handleHeaderChange('baseQty', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Base Quantity*</label>
+                  <input
+                    type="number"
+                    step="any"
+                    className="sap-input sap-form-input"
+                    placeholder="1"
+                    disabled={isLocked}
+                    value={headerData.baseQty}
+                    onChange={(e) => handleHeaderChange('baseQty', e.target.value)}
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.bomStatus}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>BOM Status*</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.bomStatus}>
-                    <input
-                      type="text"
-                      className="sap-input sap-form-input"
-                      placeholder="01"
-                      maxLength={2}
-                      disabled={isLocked}
-                      value={headerData.bomStatus}
-                      onChange={(e) => handleHeaderChange('bomStatus', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">BOM Status*</label>
+                  <input
+                    type="text"
+                    className="sap-input sap-form-input"
+                    placeholder="01"
+                    maxLength={2}
+                    disabled={isLocked}
+                    value={headerData.bomStatus}
+                    onChange={(e) => handleHeaderChange('bomStatus', e.target.value)}
+                  />
                 </div>
 
                 <div>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.altText}>
-                    <label className="sap-label sap-form-label" style={{ cursor: 'help' }}>Alternative Text</label>
-                  </Tooltip>
-                  <Tooltip text={BOM_FIELD_TOOLTIPS.altText}>
-                    <input
-                      type="text"
-                      className="sap-input sap-form-input"
-                      placeholder="Description / Text"
-                      maxLength={40}
-                      disabled={isLocked}
-                      value={headerData.altText}
-                      onChange={(e) => handleHeaderChange('altText', e.target.value)}
-                    />
-                  </Tooltip>
+                  <label className="sap-label sap-form-label">Alternative Text</label>
+                  <input
+                    type="text"
+                    className="sap-input sap-form-input"
+                    placeholder="Description / Text"
+                    maxLength={40}
+                    disabled={isLocked}
+                    value={headerData.altText}
+                    onChange={(e) => handleHeaderChange('altText', e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -754,49 +721,49 @@ export default function CreateBomView({
                 <table className="sap-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: 50, textAlign: 'center' }}>
+                      <th style={{ width: 50, textAlign: 'center' }} aria-label={BOM_FIELD_TOOLTIPS.itemNo}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo}>
-                          <span style={{ cursor: 'help' }}>#</span>
+                          <span>#</span>
                         </Tooltip>
                       </th>
-                      <th style={{ minWidth: 160 }}>
+                      <th style={{ minWidth: 160 }} aria-label={BOM_FIELD_TOOLTIPS.component}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.component}>
-                          <span style={{ cursor: 'help' }}>Component*</span>
+                          <span>Component*</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 100 }}>
+                      <th style={{ width: 100 }} aria-label={BOM_FIELD_TOOLTIPS.quantity}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.quantity}>
-                          <span style={{ cursor: 'help' }}>Quantity*</span>
+                          <span>Quantity*</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 85 }}>
+                      <th style={{ width: 85 }} aria-label={BOM_FIELD_TOOLTIPS.itemCategory}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemCategory}>
-                          <span style={{ cursor: 'help' }}>Item Cat</span>
+                          <span>Item Cat</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 120 }}>
+                      <th style={{ width: 120 }} aria-label={BOM_FIELD_TOOLTIPS.storageLocation}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.storageLocation}>
-                          <span style={{ cursor: 'help' }}>Storage Loc*</span>
+                          <span>Storage Loc*</span>
                         </Tooltip>
                       </th>
-                      <th style={{ minWidth: 160 }}>
+                      <th style={{ minWidth: 160 }} aria-label={BOM_FIELD_TOOLTIPS.referenceNumber}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.referenceNumber}>
-                          <span style={{ cursor: 'help' }}>Reference Number</span>
+                          <span>Reference Number</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 110, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <th style={{ width: 110, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.costingRelevancy}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.costingRelevancy}>
-                          <span style={{ cursor: 'help' }}>Costing Rel</span>
+                          <span>Costing Rel</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 95, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <th style={{ width: 95, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.engineering}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.engineering}>
-                          <span style={{ cursor: 'help' }}>Eng Rel</span>
+                          <span>Eng Rel</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 75, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <th style={{ width: 75, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.action}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.action}>
-                          <span style={{ cursor: 'help' }}>Action</span>
+                          <span>Action</span>
                         </Tooltip>
                       </th>
                     </tr>
@@ -806,133 +773,115 @@ export default function CreateBomView({
                       return (
                         <tr key={comp.id}>
                           <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }}>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo}>
-                              <span>{String((idx + 1) * 10).padStart(4, '0')}</span>
-                            </Tooltip>
+                            <span>{String((idx + 1) * 10).padStart(4, '0')}</span>
                           </td>
                           <td>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.component}>
-                              <ValueHelpInput
-                                kind="material"
-                                plant={headerData.plant}
-                                placeholder="Component"
-                                disabled={isLocked}
-                                value={comp.component}
-                                onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
-                                style={{ padding: '6px 8px', fontSize: 12 }}
-                                aria-label={`Component ${idx + 1}`}
-                              />
-                            </Tooltip>
+                            <ValueHelpInput
+                              kind="material"
+                              plant={headerData.plant}
+                              placeholder="Component"
+                              disabled={isLocked}
+                              value={comp.component}
+                              onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: 12 }}
+                              aria-label={`Component ${idx + 1}`}
+                            />
                           </td>
                           <td>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.quantity}>
-                              <input
-                                type="number"
-                                step="any"
-                                className="sap-form-input"
-                                placeholder="Qty"
-                                disabled={isLocked}
-                                value={comp.quantity}
-                                onChange={(e) => handleComponentChange(comp.id, 'quantity', e.target.value)}
-                                style={{ padding: '6px 8px', fontSize: 12 }}
-                                aria-label={`Quantity ${idx + 1}`}
-                              />
-                            </Tooltip>
+                            <input
+                              type="number"
+                              step="any"
+                              className="sap-form-input"
+                              placeholder="Qty"
+                              disabled={isLocked}
+                              value={comp.quantity}
+                              onChange={(e) => handleComponentChange(comp.id, 'quantity', e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: 12 }}
+                              aria-label={`Quantity ${idx + 1}`}
+                            />
                           </td>
                           <td>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.itemCategory}>
-                              <input
-                                type="text"
-                                className="sap-form-input"
-                                maxLength={1}
-                                placeholder="L"
-                                disabled={isLocked}
-                                value={comp.itemCategory}
-                                onChange={(e) => handleComponentChange(comp.id, 'itemCategory', e.target.value)}
-                                style={{ padding: '6px 8px', fontSize: 12, textAlign: 'center' }}
-                                aria-label={`Item Category ${idx + 1}`}
-                              />
-                            </Tooltip>
+                            <input
+                              type="text"
+                              className="sap-form-input"
+                              maxLength={1}
+                              placeholder="L"
+                              disabled={isLocked}
+                              value={comp.itemCategory}
+                              onChange={(e) => handleComponentChange(comp.id, 'itemCategory', e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: 12, textAlign: 'center' }}
+                              aria-label={`Item Category ${idx + 1}`}
+                            />
                           </td>
                           <td>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.storageLocation}>
-                              <ValueHelpInput
-                                kind="storageLocation"
-                                plant={headerData.plant}
-                                placeholder="SLoc"
-                                disabled={isLocked}
-                                value={comp.storageLocation}
-                                onChange={(e) => handleComponentChange(comp.id, 'storageLocation', e.target.value)}
-                                onSelect={(sloc, record) => {
-                                  handleComponentChange(comp.id, 'storageLocation', sloc);
-                                  if (!headerData.plant && record?.werks) {
-                                    setHeaderData((prev) => ({ ...prev, plant: record.werks }));
-                                  }
-                                }}
-                                maxLength={4}
-                                style={{ padding: '6px 8px', fontSize: 12 }}
-                                aria-label={`Storage Location ${idx + 1}`}
-                              />
-                            </Tooltip>
+                            <ValueHelpInput
+                              kind="storageLocation"
+                              plant={headerData.plant}
+                              placeholder="SLoc"
+                              disabled={isLocked}
+                              value={comp.storageLocation}
+                              onChange={(e) => handleComponentChange(comp.id, 'storageLocation', e.target.value)}
+                              onSelect={(sloc, record) => {
+                                handleComponentChange(comp.id, 'storageLocation', sloc);
+                                if (!headerData.plant && record?.werks) {
+                                  setHeaderData((prev) => ({ ...prev, plant: record.werks }));
+                                }
+                              }}
+                              maxLength={4}
+                              style={{ padding: '6px 8px', fontSize: 12 }}
+                              aria-label={`Storage Location ${idx + 1}`}
+                            />
                           </td>
                           <td>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.referenceNumber}>
-                              <input
-                                type="text"
-                                className="sap-form-input"
-                                maxLength={40}
-                                placeholder="Max 40 chars"
-                                disabled={isLocked}
-                                value={comp.referenceNumber}
-                                onChange={(e) => handleComponentChange(comp.id, 'referenceNumber', e.target.value)}
-                                style={{ padding: '6px 8px', fontSize: 12 }}
-                                aria-label={`Reference Number ${idx + 1}`}
-                              />
-                            </Tooltip>
+                            <input
+                              type="text"
+                              className="sap-form-input"
+                              maxLength={40}
+                              placeholder="Max 40 chars"
+                              disabled={isLocked}
+                              value={comp.referenceNumber}
+                              onChange={(e) => handleComponentChange(comp.id, 'referenceNumber', e.target.value)}
+                              style={{ padding: '6px 8px', fontSize: 12 }}
+                              aria-label={`Reference Number ${idx + 1}`}
+                            />
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.costingRelevancy}>
-                              <input
-                                type="checkbox"
-                                disabled={isLocked}
-                                checked={comp.costingRelevancy}
-                                onChange={(e) => handleComponentChange(comp.id, 'costingRelevancy', e.target.checked)}
-                                aria-label={`Costing Relevancy ${idx + 1}`}
-                                style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
-                              />
-                            </Tooltip>
+                            <input
+                              type="checkbox"
+                              disabled={isLocked}
+                              checked={comp.costingRelevancy}
+                              onChange={(e) => handleComponentChange(comp.id, 'costingRelevancy', e.target.checked)}
+                              aria-label={`Costing Relevancy ${idx + 1}`}
+                              style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
+                            />
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.engineering}>
-                              <input
-                                type="checkbox"
-                                disabled={isLocked}
-                                checked={comp.engineering}
-                                onChange={(e) => handleComponentChange(comp.id, 'engineering', e.target.checked)}
-                                aria-label={`Engineering Relevancy ${idx + 1}`}
-                                style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
-                              />
-                            </Tooltip>
+                            <input
+                              type="checkbox"
+                              disabled={isLocked}
+                              checked={comp.engineering}
+                              onChange={(e) => handleComponentChange(comp.id, 'engineering', e.target.checked)}
+                              aria-label={`Engineering Relevancy ${idx + 1}`}
+                              style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
+                            />
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <Tooltip text={BOM_FIELD_TOOLTIPS.removeComponent} disabled={isLocked || components.length <= 1}>
-                              <button
-                                type="button"
-                                disabled={isLocked || components.length <= 1}
-                                onClick={() => handleRemoveComponent(comp.id)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  cursor: (isLocked || components.length <= 1) ? 'not-allowed' : 'pointer',
-                                  color: (isLocked || components.length <= 1) ? 'var(--sap-border, #cbd5e1)' : 'var(--sap-text-muted, #64748b)',
-                                  padding: 4,
-                                  transition: 'color 0.15s ease'
-                                }}
-                                aria-label={`Remove component ${idx + 1}`}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </Tooltip>
+                            <button
+                              type="button"
+                              disabled={isLocked || components.length <= 1}
+                              onClick={() => handleRemoveComponent(comp.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: (isLocked || components.length <= 1) ? 'not-allowed' : 'pointer',
+                                color: (isLocked || components.length <= 1) ? 'var(--sap-border, #cbd5e1)' : 'var(--sap-text-muted, #64748b)',
+                                padding: 4,
+                                transition: 'color 0.15s ease'
+                              }}
+                              aria-label={`Remove component ${idx + 1}`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </td>
                         </tr>
                       );

@@ -637,6 +637,19 @@ export async function getStorageLocations({ plant, q, refresh } = {}, options = 
 }
 
 /**
+ * Fetches SAP BOM Usage definitions from T416/T416T with relevancy indicators and texts.
+ */
+export async function getBomUsages({ lang, refresh } = {}, options = {}) {
+  const params = {};
+  if (lang) params.lang = lang;
+  if (refresh) params.refresh = refresh;
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/bom-usages', config);
+  return response.data;
+}
+
+/**
  * Searches SAP materials using a specific Restrict Value Range option (tab).
  */
 export async function searchMaterialsByOption(
@@ -661,6 +674,64 @@ export async function getSearchHelpOptions(options = {}) {
   if (options?.signal) config.signal = options.signal;
   const response = await apiClient.get('/materials/search-options', config);
   return response.data;
+}
+
+/**
+ * ============================================================================
+ * ADMIN ACTIVITY LOGS & ERROR REPORTING
+ * ============================================================================
+ */
+
+/**
+ * Fetches paginated audit logs for administrators.
+ */
+export async function getAuditLogs(params = {}, options = {}) {
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/admin/logs/audit', config);
+  return response.data;
+}
+
+/**
+ * Fetches paginated error logs for administrators.
+ */
+export async function getErrorLogs(params = {}, options = {}) {
+  const config = { params };
+  if (options?.signal) config.signal = options.signal;
+  const response = await apiClient.get('/admin/logs/errors', config);
+  return response.data;
+}
+
+/**
+ * Fetches single audit or error log entry details by ID.
+ */
+export async function getLogDetail(type, id) {
+  const response = await apiClient.get(`/admin/logs/${type}/${id}`);
+  return response.data;
+}
+
+/**
+ * Exports audit or error logs as a CSV Blob.
+ */
+export async function exportLogsCsv(type, params = {}) {
+  const response = await apiClient.get(`/admin/logs/${type}/export`, {
+    params,
+    responseType: 'blob'
+  });
+  return response.data;
+}
+
+/**
+ * Reports uncaught client-side or React errors to the server.
+ */
+export async function reportClientError(errorData = {}) {
+  try {
+    const response = await apiClient.post('/logs/client-error', errorData);
+    return response.data;
+  } catch (err) {
+    console.warn('[reportClientError] Failed to report error to server:', err.message);
+    return null;
+  }
 }
 
 export default apiClient;

@@ -1,17 +1,16 @@
-import React, { useState, useRef, useEffect, useId, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 /**
- * Accessible, small, single-line portal-based tooltip.
- * - Displays a single plain name (no technical codes, no description sentence)
- * - Small dark rounded box with white text and an arrow
- * - Positioned so it does not cover the hovered/focused element (with gap)
- * - Delay (~300ms) to avoid flashing on rapid mouse movements
- * - Closes on mouse leave, blur, or Escape key
- * - Uses createPortal to document.body so it is never clipped by table containers
- * - Attaches aria-describedby for screen reader accessibility
+ * Small, dark single-line tooltip displayed strictly on mouse hover over column headers.
+ * - Appears ONLY on mouse hover (no focus or typing trigger)
+ * - Positioned above the header cell by default, centered with a small gap (~6px) and arrow pointing down
+ * - Flips below ONLY when tight near the top edge of the viewport
+ * - Never covers the header text or input fields
+ * - Hides immediately on mouse leave, click, scroll, typing (keydown/input), or Esc
+ * - Preserves natural cursors and standard accessibility via header aria-labels
  */
 export default function Tooltip({
   text,
@@ -19,7 +18,7 @@ export default function Tooltip({
   content,
   children,
   placement = 'top',
-  delay = 300,
+  delay = 150,
   disabled = false,
   className = '',
   style = {}
@@ -30,7 +29,6 @@ export default function Tooltip({
   const timeoutRef = useRef(null);
   const triggerRef = useRef(null);
   const tooltipRef = useRef(null);
-  const tooltipId = useId();
 
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
@@ -41,14 +39,22 @@ export default function Tooltip({
     // Measure or fallback dimensions
     const tooltipWidth = tooltipRef.current?.offsetWidth || 80;
     const tooltipHeight = tooltipRef.current?.offsetHeight || 24;
-    const gap = 8; // Clear gap so it does not cover the field
+    const gap = 6; // Small gap so it does not cover header text
 
     let targetPlacement = placement;
-    // Auto-flip if tight on top of screen
-    if (placement === 'top' && triggerRect.top < tooltipHeight + gap + 10) {
-      targetPlacement = 'bottom';
-    } else if (placement === 'bottom' && window.innerHeight - triggerRect.bottom < tooltipHeight + gap + 10) {
-      targetPlacement = 'top';
+
+    // Default 'top': if tight near the top edge of the viewport, flip to 'bottom'
+    if (targetPlacement === 'top') {
+      if (triggerRect.top < tooltipHeight + gap + 6) {
+        targetPlacement = 'bottom';
+      }
+    } else if (targetPlacement === 'bottom') {
+      if (
+        window.innerHeight - triggerRect.bottom < tooltipHeight + gap + 6 &&
+        triggerRect.top > tooltipHeight + gap + 6
+      ) {
+        targetPlacement = 'top';
+      }
     }
 
     let top = 0;
@@ -56,11 +62,11 @@ export default function Tooltip({
 
     if (targetPlacement === 'bottom') {
       top = triggerRect.bottom + scrollY + gap;
-      left = triggerRect.left + scrollX + (triggerRect.width / 2) - (tooltipWidth / 2);
+      left = triggerRect.left + scrollX + triggerRect.width / 2 - tooltipWidth / 2;
     } else {
       // Default top
       top = triggerRect.top + scrollY - tooltipHeight - gap;
-      left = triggerRect.left + scrollX + (triggerRect.width / 2) - (tooltipWidth / 2);
+      left = triggerRect.left + scrollX + triggerRect.width / 2 - tooltipWidth / 2;
     }
 
     // Keep within window horizontal bounds
@@ -79,10 +85,10 @@ export default function Tooltip({
     }, delay);
   };
 
-  const hideTooltip = () => {
+  const hideTooltip = useCallback(() => {
     clearTimeout(timeoutRef.current);
     setIsVisible(false);
-  };
+  }, []);
 
   // Measure exact position after layout
   useIsomorphicLayoutEffect(() => {
@@ -91,38 +97,36 @@ export default function Tooltip({
     }
   }, [isVisible, updatePosition]);
 
-  // Handle Escape key and scroll/resize repositioning
+  // Immediately hide on scroll, click, mousedown, typing (keydown/input), or Esc
   useEffect(() => {
     if (!isVisible) return;
     updatePosition();
 
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        hideTooltip();
-      }
+    const handleDismiss = () => {
+      hideTooltip();
     };
 
-    const handleScrollOrResize = () => {
-      updatePosition();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('click', handleDismiss, true);
+    window.addEventListener('mousedown', handleDismiss, true);
+    window.addEventListener('keydown', handleDismiss, true);
+    window.addEventListener('input', handleDismiss, true);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('click', handleDismiss, true);
+      window.removeEventListener('mousedown', handleDismiss, true);
+      window.removeEventListener('keydown', handleDismiss, true);
+      window.removeEventListener('input', handleDismiss, true);
     };
-  }, [isVisible, updatePosition]);
+  }, [isVisible, updatePosition, hideTooltip]);
 
   // Clean up timer on unmount
   useEffect(() => {
     return () => clearTimeout(timeoutRef.current);
   }, []);
 
-  // Clone trigger element or wrap in inline span to attach event listeners & ref
+  // Attach strictly mouse enter & leave (NO focus or typing triggers)
   let triggerElement = null;
   if (React.isValidElement(children)) {
     const childProps = children.props || {};
@@ -133,7 +137,7 @@ export default function Tooltip({
         if (typeof childRef === 'function') childRef(node);
         else if (childRef && typeof childRef === 'object') childRef.current = node;
       },
-      'aria-describedby': isVisible && label ? tooltipId : childProps['aria-describedby'],
+      title: undefined,
       onMouseEnter: (e) => {
         showTooltip();
         childProps.onMouseEnter?.(e);
@@ -141,26 +145,14 @@ export default function Tooltip({
       onMouseLeave: (e) => {
         hideTooltip();
         childProps.onMouseLeave?.(e);
-      },
-      onFocus: (e) => {
-        showTooltip();
-        childProps.onFocus?.(e);
-      },
-      onBlur: (e) => {
-        hideTooltip();
-        childProps.onBlur?.(e);
       }
     });
   } else {
     triggerElement = (
       <span
         ref={triggerRef}
-        aria-describedby={isVisible && label ? tooltipId : undefined}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
-        onFocus={showTooltip}
-        onBlur={hideTooltip}
-        tabIndex={0}
         style={{ display: 'inline-flex', alignItems: 'center' }}
       >
         {children}
@@ -168,64 +160,64 @@ export default function Tooltip({
     );
   }
 
-  const tooltipPortal = isVisible && typeof document !== 'undefined' && label ? (
-    createPortal(
-      <div
-        id={tooltipId}
-        ref={tooltipRef}
-        role="tooltip"
-        className={`sap-tooltip-popup ${className}`}
-        style={{
-          position: 'absolute',
-          top: `${coords.top}px`,
-          left: `${coords.left}px`,
-          zIndex: 10050,
-          pointerEvents: 'none',
-          backgroundColor: '#1e293b',
-          color: '#ffffff',
-          borderRadius: 4,
-          padding: '4px 8px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.28)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          fontSize: '12px',
-          fontWeight: 500,
-          fontFamily: 'inherit',
-          lineHeight: '1.2',
-          whiteSpace: 'nowrap',
-          opacity: 1,
-          animation: 'sapTooltipFadeIn 0.12s ease-out',
-          ...style
-        }}
-      >
-        <span>{label}</span>
-        {/* Small arrow indicator */}
+  const tooltipPortal =
+    isVisible && typeof document !== 'undefined' && label ? (
+      createPortal(
         <div
-          className="sap-tooltip-arrow"
+          ref={tooltipRef}
+          role="tooltip"
+          className={`sap-tooltip-popup ${className}`}
           style={{
             position: 'absolute',
-            width: 0,
-            height: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            ...(coords.actualPlacement === 'bottom'
-              ? {
-                  top: '-4px',
-                  borderLeft: '4px solid transparent',
-                  borderRight: '4px solid transparent',
-                  borderBottom: '4px solid #1e293b'
-                }
-              : {
-                  bottom: '-4px',
-                  borderLeft: '4px solid transparent',
-                  borderRight: '4px solid transparent',
-                  borderTop: '4px solid #1e293b'
-                })
+            top: `${coords.top}px`,
+            left: `${coords.left}px`,
+            zIndex: 10050,
+            pointerEvents: 'none',
+            backgroundColor: '#1e293b',
+            color: '#ffffff',
+            borderRadius: 4,
+            padding: '4px 8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.28)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            fontSize: '12px',
+            fontWeight: 500,
+            fontFamily: 'inherit',
+            lineHeight: '1.2',
+            whiteSpace: 'nowrap',
+            opacity: 1,
+            animation: 'sapTooltipFadeIn 0.12s ease-out',
+            ...style
           }}
-        />
-      </div>,
-      document.body
-    )
-  ) : null;
+        >
+          <span>{label}</span>
+          {/* Small arrow indicator */}
+          <div
+            className="sap-tooltip-arrow"
+            style={{
+              position: 'absolute',
+              width: 0,
+              height: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              ...(coords.actualPlacement === 'bottom'
+                ? {
+                    top: '-4px',
+                    borderLeft: '4px solid transparent',
+                    borderRight: '4px solid transparent',
+                    borderBottom: '4px solid #1e293b'
+                  }
+                : {
+                    bottom: '-4px',
+                    borderLeft: '4px solid transparent',
+                    borderRight: '4px solid transparent',
+                    borderTop: '4px solid #1e293b'
+                  })
+            }}
+          />
+        </div>,
+        document.body
+      )
+    ) : null;
 
   return (
     <>

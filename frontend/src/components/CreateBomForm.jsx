@@ -260,13 +260,16 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                 </label>
                 <div className="sap-form-input-wrapper">
                   <Hash size={14} className="input-icon" />
-                  <input
+                  <ValueHelpInput
                     id="sourceUsage"
-                    type="text"
+                    kind="bomUsage"
                     placeholder="1"
+                    maxLength={1}
                     value={formData.sourceUsage}
                     onChange={(e) => handleChange('sourceUsage', e.target.value)}
                     className={`sap-form-input ${fieldErrors.sourceUsage ? 'input-error' : ''}`}
+                    style={{ paddingLeft: 32 }}
+                    aria-label="Source BOM Usage"
                   />
                 </div>
               </div>
@@ -490,13 +493,16 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                 </label>
                 <div className="sap-form-input-wrapper">
                   <Hash size={14} className="input-icon" />
-                  <input
+                  <ValueHelpInput
                     id="targetUsage"
-                    type="text"
+                    kind="bomUsage"
                     placeholder="1"
+                    maxLength={1}
                     value={formData.targetUsage}
                     onChange={(e) => handleChange('targetUsage', e.target.value)}
                     className={`sap-form-input ${fieldErrors.targetUsage ? 'input-error' : ''}`}
+                    style={{ paddingLeft: 32 }}
+                    aria-label="Target BOM Usage"
                   />
                 </div>
               </div>

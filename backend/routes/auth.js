@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { supabaseService, isNetworkOrRetryableError } from '../services/supabaseClient.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { auditLogger } from '../services/auditLog.js';
+import { recordRouteAudit } from '../utils/auditHelper.js';
 
 const router = express.Router();
 
@@ -31,10 +32,19 @@ function getCookieOptions() {
  * sets HttpOnly session cookies, and returns session token and profile.
  */
 router.post('/login', loginRateLimiter, async (req, res) => {
+  const startTime = Date.now();
   const { email, username, password } = req.body || {};
   const userIdentifier = String(email || username || '').trim();
 
   if (!userIdentifier || !password) {
+    recordRouteAudit(req, {
+      action: 'auth.login_failed',
+      feature: 'auth',
+      status: 'failed',
+      message: 'Email and password are required',
+      durationMs: Date.now() - startTime,
+      details: { email: userIdentifier }
+    });
     return res.status(400).json({
       error: 'Email and password are required.'
     });
@@ -47,6 +57,14 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     });
 
     if (error || !data?.session) {
+      recordRouteAudit(req, {
+        action: 'auth.login_failed',
+        feature: 'auth',
+        status: 'failed',
+        message: error?.message || 'Invalid email or password',
+        durationMs: Date.now() - startTime,
+        details: { email: userIdentifier }
+      });
       if (isNetworkOrRetryableError(error) || error?.message?.includes("Can't reach")) {
         return res.status(503).json({
           error: "Can't reach the sign-in service right now. Please try again."
@@ -65,6 +83,15 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     res.cookie(LEGACY_COOKIE_NAME, token, cookieOpts);
     res.cookie(COOKIE_NAME, token, cookieOpts);
 
+    recordRouteAudit(req, {
+      action: 'auth.login',
+      feature: 'auth',
+      status: 'success',
+      message: 'User logged in successfully',
+      durationMs: Date.now() - startTime,
+      details: { role: user.role }
+    });
+
     return res.status(200).json({
       success: true,
       token,
@@ -77,6 +104,14 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error('[auth.js] Login failure:', err.message);
+    recordRouteAudit(req, {
+      action: 'auth.login_failed',
+      feature: 'auth',
+      status: 'failed',
+      message: err.message,
+      durationMs: Date.now() - startTime,
+      details: { email: userIdentifier }
+    });
     if (isNetworkOrRetryableError(err) || err.message?.includes("Can't reach")) {
       return res.status(503).json({
         error: "Can't reach the sign-in service right now. Please try again."
@@ -94,11 +129,22 @@ router.post('/login', loginRateLimiter, async (req, res) => {
  */
 router.post('/logout', async (req, res) => {
   const token = req.cookies?.[COOKIE_NAME] || req.cookies?.[LEGACY_COOKIE_NAME] || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
+  let userEmail = null;
   if (token) {
     try {
+      const { data } = await supabaseService.getUser(token);
+      userEmail = data?.user?.email || null;
       await supabaseService.signOut(token);
     } catch (_) {}
   }
+
+  recordRouteAudit(req, {
+    action: 'auth.logout',
+    feature: 'auth',
+    status: 'success',
+    message: 'User logged out',
+    details: { email: userEmail }
+  });
 
   const isSecure = process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
   const clearOpts = {
