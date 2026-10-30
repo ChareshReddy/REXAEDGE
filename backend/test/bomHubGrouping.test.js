@@ -205,7 +205,7 @@ console.log('✓ PASS: 4-level navigation flows forward and backward level-by-le
 // 4. Breadcrumb Path Generation Validation
 console.log('Test 4: Breadcrumb path representation...');
 function getBreadcrumbsForView(view) {
-  const bc = [{ label: 'Home', target: 'home' }];
+  const bc = [{ label: 'Home', target: 'home' }, { label: 'Products', target: 'products' }];
   const parentGroup = MODULE_REGISTRY.flatMap((m) =>
     (m.subApps || []).map((sa) => ({ ...sa, moduleLabel: m.label, moduleSubView: m.subView }))
   ).find((sa) => sa.subView === view || (sa.children || []).some((c) => c.action === view));
@@ -230,33 +230,33 @@ function getBreadcrumbsForView(view) {
 const bcCreateSingle = getBreadcrumbsForView('create_bom');
 assert.deepStrictEqual(
   bcCreateSingle.map((b) => b.label),
-  ['Home', 'Bill of Materials', 'Create BOM', 'Create Single BOM']
+  ['Home', 'Products', 'Bill of Materials', 'Create BOM', 'Create Single BOM']
 );
 
 const bcBulkCreate = getBreadcrumbsForView('bulk_create_bom');
 assert.deepStrictEqual(
   bcBulkCreate.map((b) => b.label),
-  ['Home', 'Bill of Materials', 'Create BOM', 'Create Bulk BOM']
+  ['Home', 'Products', 'Bill of Materials', 'Create BOM', 'Create Bulk BOM']
 );
 
 const bcCopySingle = getBreadcrumbsForView('copy_bom');
 assert.deepStrictEqual(
   bcCopySingle.map((b) => b.label),
-  ['Home', 'Bill of Materials', 'Copy BOM', 'Copy Single BOM']
+  ['Home', 'Products', 'Bill of Materials', 'Copy BOM', 'Copy Single BOM']
 );
 
 const bcBulkCopy = getBreadcrumbsForView('bulk_bom');
 assert.deepStrictEqual(
   bcBulkCopy.map((b) => b.label),
-  ['Home', 'Bill of Materials', 'Copy BOM', 'Copy Bulk BOM']
+  ['Home', 'Products', 'Bill of Materials', 'Copy BOM', 'Copy Bulk BOM']
 );
 
 const bcCreateGroup = getBreadcrumbsForView('bom_create_operations');
 assert.deepStrictEqual(
   bcCreateGroup.map((b) => b.label),
-  ['Home', 'Bill of Materials', 'Create BOM']
+  ['Home', 'Products', 'Bill of Materials', 'Create BOM']
 );
-console.log('✓ PASS: Breadcrumbs accurately reflect Home > Bill of Materials > [Group] > [Single/Bulk]\n');
+console.log('✓ PASS: Breadcrumbs accurately reflect Home > Products > Bill of Materials > [Group] > [Single/Bulk]\n');
 
 
 // 5. Permission Filtering Tests

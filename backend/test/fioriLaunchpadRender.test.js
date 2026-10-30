@@ -64,7 +64,7 @@ assert(ErrorBoundary, 'ErrorBoundary default export must be defined');
 
 try {
   // Test 1: Rendering as Admin on Level 1 (Home)
-  console.log('Test 1: Render FioriLaunchpad as Admin on My Home...');
+  console.log('Test 1: Render FioriLaunchpad as Admin on Products...');
   const adminHomeHtml = renderToStaticMarkup(
     React.createElement(FioriLaunchpad, {
       userRole: 'admin',
@@ -74,7 +74,8 @@ try {
     })
   );
 
-  assert(adminHomeHtml.includes('My Home'), 'Admin home should include My Home title');
+  assert(adminHomeHtml.includes('Products'), 'Admin home should include Products title');
+  assert(adminHomeHtml.includes('Home'), 'Admin home should include Home in breadcrumbs');
   assert(adminHomeHtml.includes('Bill of Materials'), 'Admin home should include Bill of Materials tile');
   console.log('✓ PASS: Admin Home renders cleanly with zero reference errors\n');
 

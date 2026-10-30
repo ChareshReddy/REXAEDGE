@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Trash2,
@@ -154,11 +155,7 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: onNavigateHome || onBack },
-          { label: 'Bill of Materials', onClick: onBack },
-          { label: 'Delete BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('delete_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
       />
 
       <div className="fiori-view-body">

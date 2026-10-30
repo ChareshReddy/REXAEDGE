@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
@@ -14,7 +15,12 @@ import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction, verifyCopiedBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
-export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom, initialMaterial, initialPlant }) {
+export default function CopyBomView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateHome,
+  onNavigateProducts,
+  onNavigateBom, initialMaterial, initialPlant }) {
   const [proposedAction, setProposedAction] = useState(null);
   const [actionStatus, setActionStatus] = useState('pending'); // 'pending' | 'executing' | 'confirmed' | 'cancelled' | 'failed'
   const [executionResult, setExecutionResult] = useState(null);
@@ -245,12 +251,7 @@ export default function CopyBomView({ systemKey = 'DEV', onBack, onNavigateHome,
         onBack={onBack}
         backTitle="Back to Copy BOM"
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: onNavigateHome || onBack },
-          { label: 'Bill of Materials', onClick: onNavigateBom || onBack },
-          { label: 'Copy BOM', onClick: onBack },
-          { label: 'Copy Single BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('copy_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack })}
       />
 
       <div className="fiori-view-body" style={{ padding: '16px 24px 28px' }}>

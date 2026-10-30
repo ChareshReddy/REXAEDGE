@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -79,6 +80,8 @@ export default function FioriLaunchpad({
   systemKey = 'DEV',
   subView = 'home',
   onSubViewChange,
+  onNavigateHome,
+  onNavigateProducts,
   enabledModules = [],
   userRole = 'user',
   userPermissions = [],
@@ -211,9 +214,18 @@ export default function FioriLaunchpad({
   return (
     <div className="fiori-launchpad-root">
       {currentView === 'home' ? (
-        /* ================= LEVEL 1: HOME ================= */
+        /* ================= LEVEL 1: PRODUCTS ================= */
         <>
-          <div className="fiori-ph">
+          <FioriPageHeader
+            title="Products"
+            subtitle="Enterprise Applications"
+            onBack={onNavigateHome}
+            backTitle="Back to Home"
+            systemKey={systemKey}
+            breadcrumbs={getBreadcrumbTrail('products', { onNavigateHome, onNavigateProducts })}
+          />
+
+          <div className="fiori-ph" style={{ borderTop: 'none' }}>
             {/* Dynamic Horizontal Tab Bar */}
             {homeGroups.length > 0 && (
               <div
@@ -374,12 +386,12 @@ export default function FioriLaunchpad({
             title={activeModule.label}
             subtitle="Choose an operation"
             onBack={() => handleSetView('home')}
-            backTitle="Back to Home"
+            backTitle="Back to Products"
             systemKey={systemKey}
-            breadcrumbs={[
-              { label: 'Home', onClick: () => handleSetView('home') },
-              { label: activeModule.label }
-            ]}
+            breadcrumbs={getBreadcrumbTrail(activeModule.subView, {
+              onNavigateHome,
+              onNavigateProducts: () => handleSetView('home')
+            })}
           />
 
           <div className="fiori-body">
@@ -416,11 +428,11 @@ export default function FioriLaunchpad({
             onBack={() => handleSetView(parentGroup.moduleSubView)}
             backTitle={`Back to ${parentGroup.moduleLabel}`}
             systemKey={systemKey}
-            breadcrumbs={[
-              { label: 'Home', onClick: () => handleSetView('home') },
-              { label: parentGroup.moduleLabel, onClick: () => handleSetView(parentGroup.moduleSubView) },
-              { label: parentGroup.title }
-            ]}
+            breadcrumbs={getBreadcrumbTrail(parentGroup.subView, {
+              onNavigateHome,
+              onNavigateProducts: () => handleSetView('home'),
+              onNavigateBom: () => handleSetView(parentGroup.moduleSubView)
+            })}
           />
 
           <div className="fiori-body">
@@ -454,7 +466,7 @@ export default function FioriLaunchpad({
             className="sap-btn sap-btn-secondary"
             onClick={() => handleSetView('home')}
           >
-            Return to Home
+            Return to Products
           </button>
         </div>
       )}

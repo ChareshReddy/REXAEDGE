@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
@@ -84,11 +85,7 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: onNavigateHome || onBack },
-          { label: 'Bill of Materials', onClick: onBack },
-          { label: 'Validate BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('validate_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
       />
 
       <div className="fiori-view-body">

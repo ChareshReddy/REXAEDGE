@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
@@ -46,6 +47,7 @@ export default function BulkCreateBomView({
   systemKey = 'DEV',
   onBack,
   onNavigateHome,
+  onNavigateProducts,
   onNavigateBom,
   initialPreflightReport = null,
   initialExecutionReport = null,
@@ -556,12 +558,7 @@ export default function BulkCreateBomView({
         backTitle={isLocked ? 'Operation in progress' : 'Back to Create BOM'}
         isLocked={isLocked}
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
-          { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },
-          { label: 'Create BOM', onClick: isLocked ? undefined : onBack },
-          { label: 'Create Bulk BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('bulk_create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
