@@ -1137,8 +1137,8 @@ export async function searchMaterialsByOption({
     // Deduplicate candidate pool
     const uniqueMatnrs = [...new Set(candidateMatnrs)].slice(0, effectiveLimit);
 
-    // Sequential enrichment to respect single-socket RFC client
-    const chunkSize = 8;
+    // Batch enrichment in chunks of 40 (drastically reduces sequential RFC roundtrips)
+    const chunkSize = 40;
     const chunks = [];
     for (let i = 0; i < uniqueMatnrs.length; i += chunkSize) {
       chunks.push(uniqueMatnrs.slice(i, i + chunkSize));

@@ -38,7 +38,7 @@ export const SAP_SEARCH_OPTIONS = [
     fields: [
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'e.g. 100-*' },
       { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'STLAN', label: 'BOM Usage', length: 1, defaultValue: '1' },
+      { id: 'STLAN', label: 'BOM Usage', length: 1, placeholder: 'e.g. 1, 2, 3' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]

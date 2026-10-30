@@ -50,7 +50,7 @@ export const ALL_SEARCH_OPTIONS = [
     fields: [
       { id: 'MATNR', label: 'Material', placeholder: 'e.g. 100-*', maxLen: 18 },
       { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'STLAN', label: 'BOM Usage', defaultValue: '1', maxLen: 1 },
+      { id: 'STLAN', label: 'BOM Usage', placeholder: 'e.g. 1, 2, 3', maxLen: 1 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
@@ -484,6 +484,18 @@ export function getFieldInputWidth(field) {
   return 320;
 }
 
+export function formatFilterSummary(option, values = {}) {
+  const parts = [];
+  if (!option?.fields) return '';
+  option.fields.forEach((f) => {
+    const val = String(values[f.id] || '').trim();
+    if (val && !(f.id === 'SPRAS' && (val.toUpperCase() === 'EN' || val.toUpperCase() === 'E'))) {
+      parts.push(`${f.label || f.id} ${val}`);
+    }
+  });
+  return parts.join(', ');
+}
+
 export default function MaterialRestrictValueRangeModal({
   isOpen,
   initialValue = '',
@@ -679,10 +691,6 @@ export default function MaterialRestrictValueRangeModal({
       if (k === 'SPRAS' && (trimmed.toUpperCase() === 'EN' || trimmed.toUpperCase() === 'E')) {
         continue;
       }
-      // Ignore default STLAN '1'
-      if (k === 'STLAN' && trimmed === '1') {
-        continue;
-      }
       isFilled = true;
       break;
     }
@@ -729,7 +737,8 @@ export default function MaterialRestrictValueRangeModal({
           tabName: activeOption.name,
           count: res?.count || 0,
           limitReached: Boolean(res?.limitReached),
-          message: res?.message
+          message: res?.message,
+          filterSummary: formatFilterSummary(activeOption, currentValues)
         });
       }
     } catch (err) {
