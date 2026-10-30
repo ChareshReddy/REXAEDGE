@@ -15,7 +15,13 @@ import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
 
-export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHome }) {
+export default function DeleteBomView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateBom,
+  onNavigateProducts,
+  onNavigateHome
+}) {
   const [proposedAction, setProposedAction] = useState(null);
   const [actionStatus, setActionStatus] = useState('pending');
   const [executionResult, setExecutionResult] = useState(null);
@@ -155,7 +161,7 @@ export default function DeleteBomView({ systemKey = 'DEV', onBack, onNavigateHom
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
-        breadcrumbs={getBreadcrumbTrail('delete_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
+        breadcrumbs={getBreadcrumbTrail('delete_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack }, { isLocked: isSubmitting || actionStatus === 'executing' })}
       />
 
       <div className="fiori-view-body">
