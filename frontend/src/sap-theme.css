@@ -190,11 +190,20 @@ textarea.sap-form-input:disabled,
   cursor: not-allowed !important;
 }
 
-/* Dedicated space for PasswordInput icons so placeholders never overlap */
-.sap-password-field-wrapper input.sap-input,
+/* Dedicated space for inputs with left/right icons so placeholders never overlap */
+.sap-input-with-icon,
+.sap-input-icon-left ~ input,
+.sap-password-left-icon ~ input,
+.sap-password-field-wrapper input,
+.sap-password-input-wrapper input,
+.sap-input-group input.sap-input-with-icon,
+.sap-form-group input.sap-input-with-icon {
+  padding-left: 40px !important;
+}
+
+.sap-password-field-wrapper input,
 .sap-password-input-wrapper input {
-  padding-left: 34px !important;
-  padding-right: 34px !important;
+  padding-right: 40px !important;
 }
 
 /* ==========================================================================

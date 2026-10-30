@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Lock, Mail, AlertCircle, Check } from 'lucide-react';
+import { Lock, Mail, AlertCircle } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser } from '../services/api';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
+import sapSignInHero from '../assets/sap_signin_hero.jpg';
 
 export default function Login({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -56,178 +57,115 @@ export default function Login({ onLoginSuccess }) {
   return (
     <div className="sap-login-viewport">
       {/* =====================================================================
-          LEFT PANEL (~50% width): Flat Solid Dark Navy, Wireframe Window Illustration
+          LEFT PANEL (~50% width): SAP Image Background with Overlay & Text
          ===================================================================== */}
-      <div className="sap-login-left-panel">
-        <div className="sap-login-left-pattern" aria-hidden="true" />
+      <div
+        className="sap-login-left-panel"
+        style={{ backgroundImage: `url(${sapSignInHero})` }}
+      >
+        <div className="sap-login-bg-overlay" aria-hidden="true" />
 
-        {/* Top-left: RexaEdge Brand Logo in white rounded container */}
-        <div className="sap-login-brand-top">
-          <div className="sap-brand-logo-container" title="RexaEdge">
-            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
-          </div>
-        </div>
-
-        {/* Center: Wireframe Window Illustration & Headline */}
+        {/* Text overlay on top of the background */}
         <div className="sap-login-hero-content">
-          <div className="sap-login-window-wrapper" aria-hidden="true">
-            <div className="sap-login-window-backdrop" />
-            <div className="sap-login-window-illustration">
-              <div className="sap-login-window-header">
-                <div className="sap-login-window-dots">
-                  <span className="sap-login-window-dot" />
-                  <span className="sap-login-window-dot" />
-                  <span className="sap-login-window-dot" />
-                </div>
-                <div className="sap-login-window-bar" />
-              </div>
-
-              <div className="sap-login-window-grid">
-                {/* Active solid white card with checkmark badge */}
-                <div className="sap-login-card-active">
-                  <div className="sap-login-card-check-circle">
-                    <Check size={13} strokeWidth={3} />
-                  </div>
-                  <div className="sap-login-card-bars">
-                    <div className="sap-login-card-bar-dark" />
-                    <div className="sap-login-card-bar-subtle" />
-                  </div>
-                </div>
-
-                {/* 3 dashed wireframe cards */}
-                <div className="sap-login-card-dashed">
-                  <div className="sap-login-card-bar-wire-top" />
-                  <div className="sap-login-card-bar-wire-sub" />
-                </div>
-                <div className="sap-login-card-dashed">
-                  <div className="sap-login-card-bar-wire-top" />
-                  <div className="sap-login-card-bar-wire-sub" />
-                </div>
-                <div className="sap-login-card-dashed">
-                  <div className="sap-login-card-bar-wire-top" />
-                  <div className="sap-login-card-bar-wire-sub" />
-                </div>
-              </div>
-            </div>
-          </div>
-
           <h1 className="sap-login-hero-heading">SAP modules, one portal.</h1>
           <p className="sap-login-hero-subline">
             Work in the SAP modules your administrator has enabled for you, with access set per module and per feature.
           </p>
         </div>
-
-        {/* Bottom balance spacer */}
-        <div style={{ height: 44 }} aria-hidden="true" />
       </div>
 
       {/* =====================================================================
-          RIGHT PANEL (~50% width): White Background, Direct Form, Centered Column
+          RIGHT PANEL (~50% width): Form Card with Centered Logo & Border
          ===================================================================== */}
       <div className="sap-login-right-panel">
-        {/* Mobile-only logo (< 900px viewport) */}
-        <div className="sap-login-mobile-logo">
-          <div className="sap-brand-logo-container" title="RexaEdge">
-            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
-          </div>
-        </div>
-
-        <div className="sap-login-canvas">
-          <div className="sap-login-lock-circle">
-            <Lock size={18} color="#ffffff" strokeWidth={2.2} />
+        <div className="sap-login-form-area">
+          {/* Top-center: RexaEdge Brand Logo outside the form border */}
+          <div className="sap-login-brand-center">
+            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-login-brand-logo-img" />
           </div>
 
-          <div className="sap-login-header-direct">
-            <h2>Welcome to RexaEdge</h2>
-            <p>Sign in to continue</p>
-          </div>
+          <div className="sap-login-canvas">
+            <div className="sap-login-header-direct">
+              <h2>Welcome to RexaEdge</h2>
+              <p>Sign in to continue</p>
+            </div>
 
-          <form onSubmit={handleSubmit} className="sap-login-body-direct">
-            {errorMessage && (
-              <div className="sap-alert sap-alert-error" role="alert">
-                <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} />
-                <div>{errorMessage}</div>
+            <form onSubmit={handleSubmit} className="sap-login-body-direct">
+              {errorMessage && (
+                <div className="sap-alert sap-alert-error" role="alert">
+                  <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>{errorMessage}</div>
+                </div>
+              )}
+
+              <div className="sap-form-group">
+                <label className="sap-form-label" htmlFor="sap-email">
+                  Email address
+                </label>
+                <div className="sap-input-group sap-input-icon-wrapper">
+                  <span className="sap-input-icon-left" aria-hidden="true">
+                    <Mail size={16} />
+                  </span>
+                  <input
+                    id="sap-email"
+                    type="email"
+                    className="sap-input sap-input-with-icon"
+                    placeholder="e.g. user@nextitpoint.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                    autoComplete="email"
+                    autoFocus
+                    required
+                  />
+                </div>
               </div>
-            )}
 
-            <div className="sap-form-group">
-              <label className="sap-form-label" htmlFor="sap-email">
-                Email address
-              </label>
-              <div className="sap-input-group">
-                <span
-                  className="sap-input-icon-left"
-                  style={{
-                    position: 'absolute',
-                    left: 12,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--sap-text-muted)',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  <Mail size={15} />
-                </span>
-                <input
-                  id="sap-email"
-                  type="email"
-                  className="sap-input"
-                  style={{ paddingLeft: 36 }}
-                  placeholder="e.g. user@nextitpoint.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+              <div className="sap-form-group">
+                <label className="sap-form-label" htmlFor="sap-password">
+                  Password
+                </label>
+                <PasswordInput
+                  id="sap-password"
+                  name="password"
+                  placeholder="Enter password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  autoComplete="email"
-                  autoFocus
+                  autoComplete="current-password"
                   required
+                  leftIcon={<Lock size={16} />}
                 />
               </div>
-            </div>
 
-            <div className="sap-form-group">
-              <label className="sap-form-label" htmlFor="sap-password">
-                Password
-              </label>
-              <PasswordInput
-                id="sap-password"
-                name="password"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+              <button
+                type="submit"
+                className="sap-btn-navy-login"
                 disabled={isLoading}
-                autoComplete="current-password"
-                required
-                leftIcon={<Lock size={15} />}
-              />
-            </div>
+              >
+                {isLoading ? (
+                  <>
+                    <span className="sap-spinner" style={{ width: 14, height: 14 }} />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock size={15} />
+                    <span>Sign In</span>
+                  </>
+                )}
+              </button>
 
-            <button
-              type="submit"
-              className="sap-btn-navy-login"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span className="sap-spinner" style={{ width: 14, height: 14 }} />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <>
-                  <Lock size={15} />
-                  <span>Sign In</span>
-                </>
-              )}
-            </button>
-
-            <p className="sap-login-admin-note">
-              Accounts are created and managed by your administrators.
-            </p>
-          </form>
+              <p className="sap-login-admin-note">
+                Accounts are created and managed by your administrators.
+              </p>
+            </form>
+          </div>
         </div>
 
         {/* Footer centered at bottom of right panel */}
         <footer className="sap-login-footer">
-          © {new Date().getFullYear()} RexaEdge · a product of Next IT Point
+          <strong>© {new Date().getFullYear()} RexaEdge · a Product of Next IT Point</strong>
         </footer>
       </div>
     </div>
