@@ -50,13 +50,13 @@ export default function FioriPageHeader({
           {onBack && (
             <button
               type="button"
-              className="fiori-ph-back sap-button"
+              className="fiori-ph-back"
               onClick={isLocked ? undefined : onBack}
               title={backTitle || (isLocked ? 'Operation in progress' : 'Back')}
               aria-label={backTitle || 'Back'}
-              style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1, padding: '4px 8px' }}
+              style={{ cursor: isLocked ? 'not-allowed' : 'pointer', opacity: isLocked ? 0.6 : 1 }}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={16} strokeWidth={2.5} />
             </button>
           )}
 

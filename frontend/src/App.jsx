@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  Home,
   LogOut,
   User,
   Menu,
@@ -17,7 +18,12 @@ import {
   PlusSquare,
   FilePlus,
   KeyRound,
-  CheckCircle2
+  CheckCircle2,
+  Mail,
+  Send,
+  Phone,
+  MapPin,
+  Check
 } from 'lucide-react';
 import Login from './components/Login';
 import ChatBox from './components/ChatBox';
@@ -46,6 +52,8 @@ import {
 } from './services/api';
 import { MODULE_REGISTRY, getModuleKeyForAction, getAppKeyForAction, normalizePermissions, ALL_BOM_APPS, hasCardPermission } from '@shared/modules.js';
 import rexaEdgeLogo from './assets/rexaedge_logo.png';
+import rexaEdgeFullColourLogo from './assets/rexaedge_full_colour.png';
+import HomePage from './components/HomePage';
 import activityTracker from './services/activityTracker';
 
 export default function App() {
@@ -61,12 +69,13 @@ export default function App() {
   const [enabledModules, setEnabledModules] = useState([]);
   const [isLoadingServers, setIsLoadingServers] = useState(true);
 
-  // Application view state
-  const [activeTab, setActiveTab] = useState('launchpad'); // 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'material_search'
+  // Application view state - defaults to modern Home page matching RexaEdge ERP portal
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'material_search'
   const [launchpadSubView, setLaunchpadSubView] = useState('home'); // 'home' | 'bom_operations'
   const [selectedHomeGroup, setSelectedHomeGroup] = useState('');
   const [prefilledMaterial, setPrefilledMaterial] = useState('');
   const [prefilledPlant, setPrefilledPlant] = useState('');
+  const [isHeaderContactOpen, setIsHeaderContactOpen] = useState(false);
 
   const handleMaterialActionNavigate = (action, params = {}) => {
     setPrefilledMaterial(params.material || '');
@@ -404,30 +413,73 @@ export default function App() {
     <div className="sap-app-root">
       {/* SAP Shell Top Header */}
       <header className="sap-shell-header sap-toolbar">
-        <div
-          className="sap-brand"
-          onClick={() => {
-            setActiveTab('launchpad');
-            setLaunchpadSubView('home');
-            setSelectedHomeGroup('');
-          }}
-          style={{ cursor: 'pointer' }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-              setSelectedHomeGroup('');
-            }
-          }}
-          title="RexaEdge - Return to Launchpad"
-          aria-label="RexaEdge - Return to Launchpad"
-        >
-          <div className="sap-brand-logo-container" title="RexaEdge">
-            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-brand-logo-img" />
+        <div className="sap-shell-header-left">
+          <div
+            className="sap-brand"
+            onClick={() => {
+              setActiveTab('home');
+            }}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setActiveTab('home');
+              }
+            }}
+            title="RexaEdge - Return to Home"
+            aria-label="RexaEdge - Return to Home"
+          >
+            <div className="sap-brand-logo-container" title="RexaEdge">
+              <img src={rexaEdgeFullColourLogo} alt="RexaEdge" className="sap-brand-logo-img" />
+            </div>
           </div>
+
+          {/* Header Navigation Links: Home, About Us, Contact */}
+          <nav className="sap-top-nav-links" aria-label="Main Navigation">
+            <div className={`sap-top-nav-item ${activeTab === 'home' ? 'active' : ''}`}>
+              <button
+                type="button"
+                className={`sap-top-nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+                onClick={() => setActiveTab('home')}
+              >
+                Home
+              </button>
+              {activeTab === 'home' && <div className="sap-nav-bottom-indicator" />}
+            </div>
+
+            <div className="sap-top-nav-item">
+              <button
+                type="button"
+                className="sap-top-nav-btn"
+                onClick={() => {
+                  if (activeTab !== 'home') {
+                    setActiveTab('home');
+                    setTimeout(() => {
+                      const el = document.getElementById('about-section');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 120);
+                  } else {
+                    const el = document.getElementById('about-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              >
+                About Us
+              </button>
+            </div>
+
+            <div className="sap-top-nav-item">
+              <button
+                type="button"
+                className="sap-top-nav-btn"
+                onClick={() => setIsHeaderContactOpen(true)}
+              >
+                Contact
+              </button>
+            </div>
+          </nav>
         </div>
 
         {/* Desktop actions and user badge */}
@@ -567,7 +619,11 @@ export default function App() {
                 className={`sap-session-pill sap-statusbar status-${(sapSession.status || 'checking').toLowerCase()} ${
                   sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? 'status-selected_session_unavailable' : ''
                 }`}
-                title={sapSession.message || `SAP Status: ${sapSession.status}`}
+                title={
+                  sapSession.latencyMs
+                    ? `SAP RFC Online (${sapSession.latencyMs}ms latency)`
+                    : sapSession.message || `SAP Status: ${sapSession.status}`
+                }
                 onClick={
                   sapSession.code === 'SELECTED_SESSION_UNAVAILABLE'
                     ? () => setIsSessionDropdownOpen(true)
@@ -578,7 +634,7 @@ export default function App() {
                 <span className={`sap-status-dot dot-${sapSession.connected ? 'connected' : (sapSession.status || 'checking').toLowerCase()}`}></span>
                 <span className="sap-session-pill-text">
                   {sapSession.mode === 'RFC' && sapSession.connected ? (
-                    <>SAP RFC ONLINE {sapSession.latencyMs ? `(${sapSession.latencyMs}ms)` : ''}</>
+                    <>SAP RFC ONLINE</>
                   ) : sapSession.code === 'SELECTED_SESSION_UNAVAILABLE' ? (
                     <>SELECTED SESSION DISCONNECTED</>
                   ) : sapSession.status === 'CONNECTED' || sapSession.status === 'AVAILABLE' ? (
@@ -599,29 +655,6 @@ export default function App() {
             </>
           )}
 
-          {/* Admin Navigation Button (Only visible for admin role) */}
-          {user.role === 'admin' && (
-            <button
-              type="button"
-              className={`sap-button sap-btn ${activeTab === 'admin' ? 'sap-btn-primary' : 'sap-btn-ghost'} sap-admin-nav-btn`}
-              onClick={() => setActiveTab(activeTab === 'admin' ? 'launchpad' : 'admin')}
-              title="Enterprise Administration & Permissions"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                height: 32,
-                padding: '0 12px',
-                borderRadius: 2,
-                fontWeight: 600
-              }}
-            >
-              <ShieldCheck size={15} />
-              <span className="sap-header-btn-text">Admin</span>
-            </button>
-          )}
-
           {/* User Profile Avatar Chip */}
           <div className="sap-user-menu-wrapper" ref={userMenuRef}>
             <button
@@ -632,11 +665,13 @@ export default function App() {
               aria-label={`User profile menu for ${user.email}`}
               aria-expanded={isUserMenuOpen}
               aria-haspopup="true"
-              style={{ borderRadius: 2 }}
             >
               <div className={`sap-user-avatar-circle ${user.role === 'admin' ? 'admin' : ''}`}>
-                {user.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                {user.email ? user.email.charAt(0).toUpperCase() : 'A'}
               </div>
+              <span className="sap-user-avatar-name">
+                {user.role === 'admin' ? 'Admin' : (user.email ? user.email.split('@')[0] : 'User')}
+              </span>
               <ChevronDown size={13} className={`sap-user-chevron ${isUserMenuOpen ? 'open' : ''}`} />
             </button>
 
@@ -653,6 +688,21 @@ export default function App() {
                 </div>
 
                 <div className="sap-user-dropdown-items">
+                  {user.role === 'admin' && (
+                    <button
+                      type="button"
+                      className="sap-user-menu-item"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setActiveTab(activeTab === 'admin' ? 'home' : 'admin');
+                      }}
+                      role="menuitem"
+                    >
+                      <ShieldCheck size={14} color="var(--sap-primary, #0a6ed1)" className="sap-user-menu-icon" />
+                      <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Admin Panel' : 'Admin Panel'}</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     className="sap-user-menu-item"
@@ -751,6 +801,19 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 <button
                   type="button"
+                  className={`sap-btn sap-btn-secondary ${activeTab === 'home' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab('home');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  style={{ fontSize: '12px', padding: '6px' }}
+                >
+                  <Home size={14} />
+                  <span>Home</span>
+                </button>
+
+                <button
+                  type="button"
                   className={`sap-btn sap-btn-secondary ${activeTab === 'launchpad' ? 'active' : ''}`}
                   onClick={() => {
                     setActiveTab('launchpad');
@@ -839,6 +902,20 @@ export default function App() {
 
       {/* Main SAP Fiori Workspace Layout */}
       <main className="sap-assistant-layout">
+        {activeTab === 'home' && (
+          <HomePage
+            onExploreProducts={() => {
+              setActiveTab('launchpad');
+              setLaunchpadSubView('home');
+            }}
+            onNavigateHome={() => setActiveTab('home')}
+            onOpenContact={() => setIsHeaderContactOpen(true)}
+            user={user}
+            sapSession={sapSession}
+            selectedServer={selectedServer}
+          />
+        )}
+
         {activeTab === 'launchpad' && (
           <FioriLaunchpad
             sapSession={sapSession}
@@ -856,7 +933,7 @@ export default function App() {
         )}
 
         {/* Admin Serverless Gate: When an admin opens an operational card requiring an SAP server, but 0 servers exist */}
-        {activeTab !== 'launchpad' && activeTab !== 'admin' && !selectedServer && user?.role === 'admin' && (
+        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && !selectedServer && user?.role === 'admin' && (
           <div
             style={{
               display: 'flex',
@@ -920,7 +997,7 @@ export default function App() {
         )}
 
         {/* Module Guard: Render "Not available for this server" for non-admins if navigating to an unenabled module */}
-        {activeTab !== 'launchpad' && activeTab !== 'admin' && user?.role !== 'admin' && getModuleKeyForAction(activeTab) && !enabledModules.includes(getModuleKeyForAction(activeTab)) && (
+        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && user?.role !== 'admin' && getModuleKeyForAction(activeTab) && !enabledModules.includes(getModuleKeyForAction(activeTab)) && (
           <div
             style={{
               display: 'flex',
@@ -975,7 +1052,7 @@ export default function App() {
         )}
 
         {/* App Permission Guard: Direct URL or deep link to non-permitted app */}
-        {activeTab !== 'launchpad' && activeTab !== 'admin' && !hasAppAccess && (
+        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && !hasAppAccess && (
           <div
             style={{
               display: 'flex',
@@ -1233,6 +1310,95 @@ export default function App() {
         >
           <CheckCircle2 size={16} />
           <span>{toastMessage.message}</span>
+        </div>
+      )}
+
+      {/* Contact Modal (Global Header Trigger) */}
+      {isHeaderContactOpen && (
+        <div className="rexa-modal-backdrop" onClick={() => setIsHeaderContactOpen(false)}>
+          <div
+            className="rexa-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="rexa-modal-header">
+              <div className="rexa-modal-title-wrap">
+                <Mail size={22} className="rexa-modal-icon-blue" />
+                <h3>Contact Next IT Point / RexaEdge</h3>
+              </div>
+              <button
+                type="button"
+                className="rexa-modal-close-btn"
+                onClick={() => setIsHeaderContactOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="rexa-modal-body">
+              <div className="rexa-contact-layout">
+                <div className="rexa-contact-info-panel">
+                  <h4>Direct Channels</h4>
+                  <p>Have questions about RexaEdge automation, SAP modules, or IT consulting?</p>
+
+                  <div className="rexa-contact-item">
+                    <Mail size={16} className="rexa-contact-item-icon" />
+                    <div>
+                      <strong>Email Us</strong>
+                      <span>support@nextitpoint.com</span>
+                    </div>
+                  </div>
+
+                  <div className="rexa-contact-item">
+                    <Phone size={16} className="rexa-contact-item-icon" />
+                    <div>
+                      <strong>Enterprise Support</strong>
+                      <span>+91 98765 43210 / Available 24x7</span>
+                    </div>
+                  </div>
+
+                  <div className="rexa-contact-item">
+                    <MapPin size={16} className="rexa-contact-item-icon" />
+                    <div>
+                      <strong>Headquarters</strong>
+                      <span>Next IT Point Intellectual Services Pvt. Ltd.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <form
+                  className="rexa-contact-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    showToast('Inquiry sent successfully! Our team will contact you promptly.');
+                    setIsHeaderContactOpen(false);
+                  }}
+                >
+                  <div className="rexa-form-field">
+                    <label htmlFor="hdr-contact-name">Full Name</label>
+                    <input id="hdr-contact-name" type="text" required placeholder="e.g. John Doe" />
+                  </div>
+
+                  <div className="rexa-form-field">
+                    <label htmlFor="hdr-contact-email">Corporate Email</label>
+                    <input id="hdr-contact-email" type="email" required placeholder="e.g. j.doe@company.com" />
+                  </div>
+
+                  <div className="rexa-form-field">
+                    <label htmlFor="hdr-contact-msg">Message / Inquiry</label>
+                    <textarea id="hdr-contact-msg" required rows={3} placeholder="How can RexaEdge help your ERP operations?" />
+                  </div>
+
+                  <button type="submit" className="rexa-contact-submit-btn">
+                    <Send size={15} />
+                    <span>Send Inquiry</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

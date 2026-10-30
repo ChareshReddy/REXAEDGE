@@ -399,18 +399,9 @@ export default function MaterialValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn sap-button"
+            className="sap-modal-close-btn"
             title="Cancel (Esc)"
             aria-label="Close dialog"
-            style={{
-              height: 28,
-              minHeight: 28,
-              padding: '0 8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
           >
             <X size={16} />
           </button>
@@ -430,20 +421,21 @@ export default function MaterialValueHelpModal({
             >
               <Search
                 size={14}
-                color="var(--sap-text-secondary)"
-                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
+                color="#005A9E"
+                style={{ position: 'absolute', left: 9, pointerEvents: 'none', zIndex: 2 }}
               />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={handleInputChange}
-                className="sap-input"
+                className="sap-input sap-input-with-icon"
                 placeholder="Search material number or description… (Enter to search)"
                 style={{
                   width: '100%',
                   height: 30,
-                  padding: '0 28px 0 28px',
+                  paddingLeft: 32,
+                  paddingRight: 28,
                   fontSize: 'var(--sap-size-input)',
                   boxSizing: 'border-box'
                 }}
