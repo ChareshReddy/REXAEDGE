@@ -626,11 +626,13 @@ export default function MaterialValueHelpModal({
                 color: 'var(--sap-text-muted)'
               }}
             >
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500 }}>
-                No matching materials found in SAP.
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--sap-text-primary, #1e293b)' }}>
+                {searchMetadata?.filterSummary
+                  ? `No materials found for ${searchMetadata.filterSummary}`
+                  : 'No matching materials found in SAP.'}
               </p>
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: '#94a3b8' }}>
-                Try modifying your search term or clearing the active filters.
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--sap-text-secondary, #64748b)' }}>
+                Try modifying your search criteria or clearing active filters.
               </p>
             </div>
           ) : (
