@@ -697,14 +697,21 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
 
             {/* Users Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Users Table">
-              <table className="sap-table sap-admin-compact-table">
+              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 110 }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Email Address</th>
                     <th>Role</th>
                     <th>Created Date</th>
                     <th>Password</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -733,7 +740,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                               }}>
                                 {u.email.charAt(0).toUpperCase()}
                               </div>
-                              <span style={{ fontWeight: 500, color: 'var(--sap-text-dark)' }}>{u.email}</span>
+                              <span style={{ fontWeight: 500, color: 'var(--sap-text-dark)', whiteSpace: 'nowrap' }} title={u.email}>{u.email}</span>
                             </div>
                           </td>
                           <td>
@@ -838,16 +845,25 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
 
             {/* Servers Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
-              <table className="sap-table sap-admin-compact-table">
+              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 200 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 110 }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Server Name</th>
                     <th>Environment</th>
                     <th>Host / Gateway</th>
                     <th>Sys / Client</th>
-                    <th>SAP Credentials</th>
+                    <th>Username</th>
                     <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -878,44 +894,20 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                           {s.ashost || 'N/A'}
                         </td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
-                          Sys: {s.sysnr || '00'} | Clt: {s.client || '100'}
+                          Sys: {s.sysnr || s.sys_number || '00'} | Clt: {s.client || '100'}
                         </td>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--sap-text-dark)' }}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--sap-text-dark)' }}>
                               {s.sap_username || <span style={{ color: 'var(--sap-text-subtle)', fontStyle: 'italic' }}>No User</span>}
                             </span>
-                            {s.has_password || s.credentials_status === 'saved' ? (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 3,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--sap-success)',
-                                background: 'var(--sap-success-light, #ecfdf5)',
-                                border: '1px solid var(--sap-success-border, #a7f3d0)',
-                                padding: '1px 6px',
-                                borderRadius: 'var(--radius-xs)',
-                                width: 'fit-content'
-                              }}>
-                                <Check size={10} /> Password saved
-                              </span>
-                            ) : (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 3,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--sap-warning-text, #b45309)',
-                                background: 'var(--sap-warning-bg, #fffbeb)',
-                                border: '1px solid var(--sap-warning-border, #fde68a)',
-                                padding: '1px 6px',
-                                borderRadius: 'var(--radius-xs)',
-                                width: 'fit-content'
-                              }}>
-                                <AlertTriangle size={10} /> Credentials not set
+                            {!(s.has_password || s.credentials_status === 'saved') && (
+                              <span
+                                title="No password saved"
+                                aria-label="No password saved"
+                                style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--sap-warning-text, #b45309)', cursor: 'help' }}
+                              >
+                                <AlertTriangle size={13} strokeWidth={2} />
                               </span>
                             )}
                           </div>
@@ -927,14 +919,14 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                             {s.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'inline-flex', gap: 2 }}>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                             <button
                               type="button"
                               className="sap-btn sap-btn-ghost"
                               onClick={() => handleOpenEditServer(s)}
                               title="Edit Server"
-                              style={{ color: 'var(--sap-primary)', padding: '2px 5px' }}
+                              style={{ color: 'var(--sap-primary)', padding: '4px' }}
                             >
                               <Edit2 size={13} />
                             </button>
@@ -943,7 +935,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                               className="sap-btn sap-btn-ghost"
                               onClick={() => handleDeleteServer(s)}
                               title="Delete Server"
-                              style={{ color: 'var(--sap-error)', padding: '2px 5px' }}
+                              style={{ color: 'var(--sap-error)', padding: '4px' }}
                             >
                               <Trash2 size={13} />
                             </button>
@@ -1056,24 +1048,24 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             </div>
 
             {/* Permissions Table - Fixed Layout with Explicit Content-Based Widths */}
-            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%', overflowX: 'auto' }}>
-              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', minWidth: 840, tableLayout: 'fixed' }}>
+            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%' }}>
+              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 240 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 95 }} />
-                  <col style={{ width: 195 }} />
-                  <col style={{ width: 95 }} />
-                  <col style={{ width: 75 }} />
+                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 190 }} />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 110 }} />
                 </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ width: 240 }}>User Email</th>
-                    <th style={{ width: 140 }}>Target SAP Server</th>
-                    <th style={{ width: 95 }}>Environment</th>
-                    <th style={{ width: 195 }}>Permitted Features</th>
-                    <th style={{ width: 95 }}>Granted At</th>
-                    <th style={{ width: 75, textAlign: 'right' }}>Actions</th>
+                    <th>User Email</th>
+                    <th>Target SAP Server</th>
+                    <th>Environment</th>
+                    <th>Permitted Features</th>
+                    <th>Granted At</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1186,25 +1178,25 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                           <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.granted_at ? new Date(p.granted_at).toLocaleDateString() : 'N/A'}
                           </td>
-                          <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', gap: 4 }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', overflow: 'visible' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                               <button
                                 type="button"
                                 className="sap-btn sap-btn-ghost"
                                 onClick={() => handleEditPermission(p)}
                                 title="Edit Permitted Features"
-                                style={{ color: 'var(--sap-primary)', padding: '2px 6px' }}
+                                style={{ color: 'var(--sap-primary)', padding: '4px' }}
                               >
-                                <Edit2 size={13} />
+                                <Edit2 size={14} />
                               </button>
                               <button
                                 type="button"
                                 className="sap-btn sap-btn-ghost"
                                 onClick={() => handleRevokePermission(p)}
                                 title="Revoke Permission"
-                                style={{ color: 'var(--sap-error)', padding: '2px 6px' }}
+                                style={{ color: 'var(--sap-error)', padding: '4px' }}
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>

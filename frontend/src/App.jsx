@@ -546,7 +546,8 @@ export default function App() {
           {user?.role === 'admin' && (
             <button
               type="button"
-              className="sap-admin-header-pill"
+              className={`sap-admin-header-pill ${activeTab === 'admin' ? 'active' : ''}`}
+              aria-current={activeTab === 'admin' ? 'page' : undefined}
               onClick={() => setActiveTab(activeTab === 'admin' ? 'home' : 'admin')}
               title={activeTab === 'admin' ? 'Return to Portal' : 'Enterprise Administration'}
               aria-label={activeTab === 'admin' ? 'Exit Admin Panel' : 'Enterprise Administration'}
@@ -586,7 +587,7 @@ export default function App() {
 
           {/* 3. Server selector dropdown */}
           <div className="sap-system-select-wrapper">
-            <span className="sap-system-label sap-label">Server:</span>
+            <span className="sap-system-label sap-label">SERVER:</span>
             {availableServers.length === 1 ? (
               // Single server: read-only label in header style with neutral env tag
               <span

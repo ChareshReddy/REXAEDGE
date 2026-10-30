@@ -995,3 +995,138 @@ button.fiori-home-tab.active {
   }
 }
 
+
+/* Admin Table Scroll - Height follows content (minimum 3 rows), scrolls internally */
+.sap-admin-table-scroll {
+  height: auto !important;
+  min-height: calc(var(--sap-table-header-height, 38px) + (3 * var(--sap-table-row-height, 36px))) !important;
+  max-height: calc(100vh - 280px) !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+  border: 1px solid var(--sap-border-color) !important;
+  background-color: #ffffff !important;
+  border-radius: var(--sap-radius-md, 8px) !important;
+}
+
+/* Header Action Items Vertical Alignment & Sizing Standard (32px) */
+.sap-shell-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+}
+
+.sap-admin-header-pill {
+  height: 32px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  border-radius: var(--sap-radius-sm, 6px) !important;
+  background: #ffffff !important;
+  color: var(--sap-text-primary, #0f172a) !important;
+  border: 1px solid var(--sap-border-color, #e2d8d8) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.sap-admin-header-pill:hover {
+  background: #faf5f5 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.sap-admin-header-pill.active {
+  background: var(--sap-primary, #0070f2) !important;
+  color: #ffffff !important;
+  border-color: var(--sap-primary, #0070f2) !important;
+  box-shadow: 0 1px 3px rgba(0, 112, 242, 0.25) !important;
+}
+
+.sap-admin-header-pill.active:hover {
+  background: #005ecb !important;
+  border-color: #005ecb !important;
+}
+
+.sap-system-select-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 32px !important;
+  margin: 0 !important;
+}
+
+.sap-system-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--sap-text-secondary, #64748b) !important;
+  line-height: 32px !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+
+.sap-system-select {
+  height: 32px !important;
+  line-height: 30px !important;
+  box-sizing: border-box !important;
+  padding: 0 10px !important;
+  font-size: 12.5px !important;
+  border-radius: var(--sap-radius-sm, 6px) !important;
+  border: 1px solid var(--sap-border-color, #e2d8d8) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  max-width: 220px !important;
+}
+
+.sap-user-avatar-btn {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+
+.sap-user-avatar-circle {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.sap-connection-dot-container {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+}
+
+
+/* Ensure table search inputs with leading icons have sufficient padding */
+.sap-table-search-input,
+input.sap-table-search-input {
+  padding-left: 34px !important;
+}
+
+
+/* Compact icon buttons in admin and standard tables */
+.sap-table .sap-btn-ghost,
+.sap-admin-compact-table .sap-btn-ghost {
+  padding: 4px 6px !important;
+  min-width: 26px !important;
+  height: 26px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.sap-admin-compact-table td:last-child,
+.sap-table td:last-child {
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
