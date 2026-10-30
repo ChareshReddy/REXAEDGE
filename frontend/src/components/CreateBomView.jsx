@@ -700,7 +700,7 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                       <th style={{ minWidth: 160 }}>Component Material*</th>
                       <th style={{ width: 100 }}>Quantity*</th>
                       <th style={{ width: 80 }}>Item Cat</th>
-                      <th style={{ width: 110 }}>Storage Loc*</th>
+                      <th style={{ width: 120 }}>Storage Loc*</th>
                       <th style={{ minWidth: 160 }}>Reference Number</th>
                       <th style={{ width: 90, textAlign: 'center' }}>Costing Rel</th>
                       <th style={{ width: 90, textAlign: 'center' }}>Eng Rel</th>
@@ -750,15 +750,22 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
                           />
                         </td>
                         <td>
-                          <input
-                            type="text"
-                            className="sap-form-input"
-                            maxLength={4}
+                          <ValueHelpInput
+                            kind="storageLocation"
+                            plant={headerData.plant}
                             placeholder="SLoc"
                             disabled={isLocked}
                             value={comp.storageLocation}
                             onChange={(e) => handleComponentChange(comp.id, 'storageLocation', e.target.value)}
+                            onSelect={(sloc, record) => {
+                              handleComponentChange(comp.id, 'storageLocation', sloc);
+                              if (!headerData.plant && record?.werks) {
+                                setHeaderData((prev) => ({ ...prev, plant: record.werks }));
+                              }
+                            }}
+                            maxLength={4}
                             style={{ padding: '6px 8px', fontSize: 12 }}
+                            aria-label={`Storage Location ${idx + 1}`}
                           />
                         </td>
                         <td>

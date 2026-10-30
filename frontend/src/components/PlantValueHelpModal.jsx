@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { getPlants } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
+import { useDraggableModal } from '../hooks/useDraggableModal';
 
 export default function PlantValueHelpModal({
   isOpen,
@@ -25,6 +26,12 @@ export default function PlantValueHelpModal({
 
   const selectedIndexRef = useRef(0);
   const filteredPlantsRef = useRef([]);
+
+  const { dialogStyle, headerProps } = useDraggableModal({
+    isOpen,
+    dialogRef: modalDialogRef,
+    defaultTopRatio: 0.12
+  });
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -255,11 +262,24 @@ export default function PlantValueHelpModal({
         ref={modalDialogRef}
         tabIndex={-1}
         className="sap-f4-modal-dialog plant"
-        style={{ outline: 'none' }}
+        style={{
+          ...dialogStyle,
+          outline: 'none',
+          maxHeight: '82vh'
+        }}
       >
-        {/* Header */}
-        <div className="sap-f4-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Header (Draggable) */}
+        <div
+          className="sap-f4-header"
+          {...headerProps}
+          style={{
+            ...headerProps.style,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
             <span
               style={{
                 background: 'rgba(255,255,255,0.14)',
@@ -282,6 +302,7 @@ export default function PlantValueHelpModal({
             className="sap-modal-close-btn sap-button"
             title="Cancel (Esc)"
             aria-label="Close dialog"
+            data-no-drag="true"
             style={{
               height: 28,
               minHeight: 28,
