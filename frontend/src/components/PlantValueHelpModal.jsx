@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { getPlants } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
-import { useDraggableModal } from '../hooks/useDraggableModal';
 
 export default function PlantValueHelpModal({
   isOpen,
@@ -26,12 +25,6 @@ export default function PlantValueHelpModal({
 
   const selectedIndexRef = useRef(0);
   const filteredPlantsRef = useRef([]);
-
-  const { dialogStyle, headerProps } = useDraggableModal({
-    isOpen,
-    dialogRef: modalDialogRef,
-    defaultTopRatio: 0.12
-  });
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -262,24 +255,11 @@ export default function PlantValueHelpModal({
         ref={modalDialogRef}
         tabIndex={-1}
         className="sap-f4-modal-dialog plant"
-        style={{
-          ...dialogStyle,
-          outline: 'none',
-          maxHeight: '82vh'
-        }}
+        style={{ outline: 'none' }}
       >
-        {/* Header (Draggable) */}
-        <div
-          className="sap-f4-header"
-          {...headerProps}
-          style={{
-            ...headerProps.style,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
+        {/* Header */}
+        <div className="sap-f4-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
                 background: 'rgba(255,255,255,0.14)',
@@ -299,19 +279,9 @@ export default function PlantValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn sap-button"
+            className="sap-modal-close-btn"
             title="Cancel (Esc)"
             aria-label="Close dialog"
-            data-no-drag="true"
-            style={{
-              height: 28,
-              minHeight: 28,
-              padding: '0 8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
           >
             <X size={16} />
           </button>
@@ -330,8 +300,8 @@ export default function PlantValueHelpModal({
             <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
               <Search
                 size={14}
-                color="var(--sap-text-secondary)"
-                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
+                color="#005A9E"
+                style={{ position: 'absolute', left: 9, pointerEvents: 'none', zIndex: 2 }}
               />
               <input
                 ref={searchInputRef}
@@ -341,12 +311,13 @@ export default function PlantValueHelpModal({
                   setSearchTerm(e.target.value);
                   setSelectedIndex(0);
                 }}
-                className="sap-input"
+                className="sap-input sap-input-with-icon"
                 placeholder="Search plant code, name, or city… (e.g. 1001 or Delhi)"
                 style={{
                   width: '100%',
                   height: 30,
-                  padding: '0 28px 0 28px',
+                  paddingLeft: 32,
+                  paddingRight: 28,
                   fontSize: 'var(--sap-size-input)',
                   boxSizing: 'border-box'
                 }}

@@ -146,7 +146,7 @@ label.sap-form-label,
   margin-bottom: 4px !important;
 }
 
-/* Input Fields (#DFEAF3, 14px, Monospace stack, 1px border #B4C6D5) */
+/* Input Fields (Clean White #FFFFFF for crisp contrast & high legibility) */
 .sap-input,
 input.sap-form-input,
 select.sap-form-input,
@@ -156,54 +156,118 @@ textarea.sap-form-input,
 .sap-form-group textarea,
 .sap-system-select,
 .sap-input-group input,
-.sap-input-group select {
-  background-color: var(--sap-panel-bg) !important;
+.sap-input-group select,
+.sap-form-input-wrapper input {
+  background-color: #ffffff !important;
   font-size: var(--sap-size-input) !important;
   font-family: var(--sap-font-mono) !important;
   color: var(--sap-text-primary) !important;
-  border: var(--sap-border-width) solid var(--sap-border-color) !important;
+  border: 1px solid #8FA8C2 !important;
   border-radius: var(--sap-radius-sm) !important;
-  padding: 4px 8px !important;
+  padding: 5px 8px !important;
   box-shadow: none !important;
   outline: none;
   box-sizing: border-box;
+}
+
+/* High-contrast placeholder styling */
+.sap-input::placeholder,
+input.sap-form-input::placeholder,
+textarea.sap-form-input::placeholder,
+.sap-form-group input::placeholder,
+.sap-form-group textarea::placeholder,
+.sap-input-group input::placeholder,
+.sap-form-input-wrapper input::placeholder {
+  color: #64748B !important;
+  opacity: 1 !important;
+  font-style: normal;
 }
 
 .sap-input:focus,
 input.sap-form-input:focus,
 select.sap-form-input:focus,
 textarea.sap-form-input:focus,
-.sap-system-select:focus {
+.sap-system-select:focus,
+.sap-form-input-wrapper input:focus {
   border-color: #005A9E !important;
-  outline: 1px dotted var(--sap-text-primary) !important;
-  outline-offset: 1px !important;
+  box-shadow: 0 0 0 1px #005A9E !important;
+  outline: none !important;
 }
 
 .sap-input:disabled,
 input.sap-form-input:disabled,
 select.sap-form-input:disabled,
 textarea.sap-form-input:disabled,
-.sap-system-select:disabled {
+.sap-system-select:disabled,
+.sap-form-input-wrapper input:disabled {
   background-color: var(--sap-disabled-bg) !important;
   color: var(--sap-text-secondary) !important;
   border-color: var(--sap-border-color) !important;
   cursor: not-allowed !important;
 }
 
+/* Form input wrappers with left icons (Layers, Factory, Hash, Search, Mail, etc.) */
+.sap-form-input-wrapper {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.sap-form-input-wrapper .input-icon,
+.sap-form-input-wrapper > svg {
+  position: absolute !important;
+  left: 9px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  color: #005A9E !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.sap-form-input-wrapper input,
+.sap-form-input-wrapper .sap-form-input {
+  padding-left: 32px !important;
+  background-color: #ffffff !important;
+}
+
+/* Search bar styling in F4 value help modals & toolbars */
+.sap-f4-search-area input,
+.sap-f4-search-row input {
+  padding-left: 32px !important;
+  padding-right: 28px !important;
+  background-color: #ffffff !important;
+}
+
+.sap-f4-search-row svg,
+.sap-f4-search-area svg {
+  color: #005A9E !important;
+  z-index: 2;
+}
+
 /* Dedicated space for inputs with left/right icons so placeholders never overlap */
 .sap-input-with-icon,
+.sap-input-with-left-icon,
 .sap-input-icon-left ~ input,
 .sap-password-left-icon ~ input,
 .sap-password-field-wrapper input,
 .sap-password-input-wrapper input,
 .sap-input-group input.sap-input-with-icon,
-.sap-form-group input.sap-input-with-icon {
+.sap-form-group input.sap-input-with-icon,
+.sap-input-group:has(.sap-input-icon-left) input,
+.sap-input-group:has(svg) input {
   padding-left: 40px !important;
+  background-color: #ffffff !important;
 }
 
 .sap-password-field-wrapper input,
 .sap-password-input-wrapper input {
   padding-right: 40px !important;
+}
+
+.sap-input-icon-left,
+.sap-password-left-icon {
+  color: #005A9E !important;
 }
 
 /* ==========================================================================
@@ -345,10 +409,7 @@ table.sap-data-table td {
 
 /* Base Neutral Button Style */
 .sap-button,
-button.sap-btn,
-button.fiori-ph-back,
-button.sap-modal-close-btn,
-button.sap-value-help-btn {
+button.sap-btn {
   background-color: var(--sap-neutral-btn-bg) !important;
   border: var(--sap-border-width) solid var(--sap-border-color) !important;
   font-size: var(--sap-size-button) !important;
@@ -366,6 +427,108 @@ button.sap-value-help-btn {
   line-height: normal;
   box-sizing: border-box;
   text-decoration: none;
+}
+
+/* Back Button (fiori-ph-back) - High visibility white tile with prominent SAP blue arrow */
+button.fiori-ph-back,
+.fiori-ph-back {
+  background-color: #ffffff !important;
+  border: 1.5px solid #005A9E !important;
+  color: #005A9E !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 3px rgba(0, 90, 158, 0.18) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+  margin-right: 4px !important;
+}
+
+button.fiori-ph-back:hover:not(:disabled),
+.fiori-ph-back:hover:not(:disabled) {
+  background-color: #005A9E !important;
+  color: #ffffff !important;
+  border-color: #004075 !important;
+  box-shadow: 0 2px 6px rgba(0, 90, 158, 0.35) !important;
+}
+
+button.fiori-ph-back svg,
+.fiori-ph-back svg {
+  stroke: currentColor !important;
+  color: inherit !important;
+}
+
+/* F4 Value Help Search Button (Inside Input) - Distinct, high-contrast, never clipped */
+button.sap-value-help-btn,
+.sap-value-help-btn {
+  background-color: #f0f6fb !important;
+  border: 1px solid #758da3 !important;
+  color: #005A9E !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 !important;
+  border-radius: 3px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.12s ease !important;
+  z-index: 3 !important;
+}
+
+button.sap-value-help-btn:hover:not(:disabled),
+.sap-value-help-btn:hover:not(:disabled) {
+  background-color: #005A9E !important;
+  color: #ffffff !important;
+  border-color: #004075 !important;
+}
+
+button.sap-value-help-btn svg,
+.sap-value-help-btn svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* Modal Close Button (Top right X) */
+button.sap-modal-close-btn,
+.sap-modal-close-btn {
+  background-color: #ffffff !important;
+  border: 1px solid #b4c6d5 !important;
+  color: #17212b !important;
+  width: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.12s ease !important;
+}
+
+button.sap-modal-close-btn:hover,
+.sap-modal-close-btn:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #005A9E !important;
+  color: #005A9E !important;
 }
 
 .sap-button:hover:not(:disabled),

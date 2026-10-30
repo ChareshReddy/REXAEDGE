@@ -420,12 +420,15 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
                 <h4 style={{ fontSize: '14px', fontWeight: 600 }}>Components List</h4>
                 <span className="sap-badge sap-badge-neutral">{filteredComponents.length} items</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', display: 'flex', alignItems: 'center', zIndex: 2 }}>
+                  <Search size={13} />
+                </span>
                 <input
                   type="text"
                   placeholder="Filter components..."
-                  className="sap-form-input"
-                  style={{ width: 220, height: 32, fontSize: '12px' }}
+                  className="sap-form-input sap-input-with-icon"
+                  style={{ width: 220, height: 32, fontSize: '12px', paddingLeft: 28 }}
                   value={filterText}
                   onChange={(e) => setFilterText(e.target.value)}
                 />

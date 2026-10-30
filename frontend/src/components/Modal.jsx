@@ -222,13 +222,9 @@ export default function Modal({
                     type="button"
                     onClick={onClose}
                     disabled={isLoading}
-                    className="sap-modal-close-btn sap-button"
+                    className="sap-modal-close-btn"
                     style={{
                       cursor: isLoading ? 'not-allowed' : 'pointer',
-                      padding: '2px 6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      borderRadius: 2,
                       opacity: isLoading ? 0.35 : 1,
                       pointerEvents: isLoading ? 'none' : 'auto'
                     }}

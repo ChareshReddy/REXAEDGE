@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, X, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { searchMaterials } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
-import { useDraggableModal } from '../hooks/useDraggableModal';
 
 export default function MaterialValueHelpModal({
   isOpen,
   initialValue = '',
-  initialMaterials = null,
-  searchMetadata = null,
-  onBackToRestrict = null,
   onSelect,
   onClose
 }) {
@@ -34,12 +30,6 @@ export default function MaterialValueHelpModal({
 
   const selectedIndexRef = useRef(0);
   const materialsRef = useRef([]);
-
-  const { dialogStyle, headerProps } = useDraggableModal({
-    isOpen,
-    dialogRef: modalDialogRef,
-    defaultTopRatio: 0.12
-  });
   const lastSearchedTermRef = useRef(initialValue || '');
 
   // Keep refs in sync with state
@@ -192,22 +182,11 @@ export default function MaterialValueHelpModal({
   // Initial load when modal opens
   useEffect(() => {
     if (isOpen) {
-      if (initialMaterials && Array.isArray(initialMaterials)) {
-        setMaterials(initialMaterials);
-        materialsRef.current = initialMaterials;
-        setIsCapped(Boolean(searchMetadata?.limitReached || initialMaterials.length >= 500));
-        setIsEmptySearch(false);
-        const newIdx = initialMaterials.length > 0 ? 0 : -1;
-        setSelectedIndex(newIdx);
-        selectedIndexRef.current = newIdx;
-        setIsLoading(false);
-      } else {
-        const q = initialValue || '';
-        const isCleanPrefix = /^[A-Za-z0-9_-]+$/.test(q.trim());
-        fetchMaterials(q, isCleanPrefix ? 'prefix' : 'auto');
-      }
+      const q = initialValue || '';
+      const isCleanPrefix = /^[A-Za-z0-9_-]+$/.test(q.trim());
+      fetchMaterials(q, isCleanPrefix ? 'prefix' : 'auto');
     }
-  }, [isOpen, initialValue, initialMaterials, searchMetadata, fetchMaterials]);
+  }, [isOpen, initialValue, fetchMaterials]);
 
   // Handle live typeahead search with ~300ms debounce
   const handleInputChange = (e) => {
@@ -395,24 +374,11 @@ export default function MaterialValueHelpModal({
         ref={modalDialogRef}
         tabIndex={-1}
         className="sap-f4-modal-dialog material"
-        style={{
-          ...dialogStyle,
-          outline: 'none',
-          maxHeight: '82vh'
-        }}
+        style={{ outline: 'none' }}
       >
-        {/* Header: Title & Close Button (Draggable) */}
-        <div
-          className="sap-f4-header"
-          {...headerProps}
-          style={{
-            ...headerProps.style,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
+        {/* Header: Title & Close Button */}
+        <div className="sap-f4-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
                 background: 'rgba(255,255,255,0.4)',
@@ -433,19 +399,9 @@ export default function MaterialValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn sap-button"
+            className="sap-modal-close-btn"
             title="Cancel (Esc)"
             aria-label="Close dialog"
-            data-no-drag="true"
-            style={{
-              height: 28,
-              minHeight: 28,
-              padding: '0 8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
           >
             <X size={16} />
           </button>
@@ -454,16 +410,6 @@ export default function MaterialValueHelpModal({
         {/* Top Search Bar & Filters */}
         <div className="sap-f4-search-area">
           {/* Main search bar */}
-          {searchMetadata && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sap-highlight-bg, #f0f7ff)', border: '1px solid var(--sap-border-subtle, #d0e2ff)', borderRadius: 4, padding: '4px 10px', marginBottom: 6, fontSize: 12, color: 'var(--sap-text-primary, #1e293b)' }}>
-              <span>Filtered by <strong>{searchMetadata.tabName || searchMetadata.tab}</strong>: {searchMetadata.count} matches found{searchMetadata.limitReached ? ' (limit reached)' : ''}</span>
-              {onBackToRestrict && (
-                <button type="button" onClick={onBackToRestrict} className="sap-button" style={{ padding: '2px 8px', fontSize: 11, background: '#ffffff', border: '1px solid var(--sap-border-subtle, #cbd5e1)' }}>
-                  <ArrowLeft size={11} style={{ marginRight: 4 }} /> Change Filter
-                </button>
-              )}
-            </div>
-          )}
           <form onSubmit={handleSearchSubmit} className="sap-f4-search-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div
               style={{
@@ -475,20 +421,21 @@ export default function MaterialValueHelpModal({
             >
               <Search
                 size={14}
-                color="var(--sap-text-secondary)"
-                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
+                color="#005A9E"
+                style={{ position: 'absolute', left: 9, pointerEvents: 'none', zIndex: 2 }}
               />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={handleInputChange}
-                className="sap-input"
+                className="sap-input sap-input-with-icon"
                 placeholder="Search material number or description… (Enter to search)"
                 style={{
                   width: '100%',
                   height: 30,
-                  padding: '0 28px 0 28px',
+                  paddingLeft: 32,
+                  paddingRight: 28,
                   fontSize: 'var(--sap-size-input)',
                   boxSizing: 'border-box'
                 }}

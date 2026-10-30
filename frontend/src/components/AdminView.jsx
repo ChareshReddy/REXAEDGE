@@ -580,7 +580,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             title="Back to Launchpad"
             aria-label="Back to Launchpad"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} strokeWidth={2.5} />
           </button>
           <h1 className="fiori-ph-title sap-screen-title">System &amp; User Management</h1>
           <button
@@ -683,13 +683,13 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-subtle)' }}>
-                  <Search size={13} />
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
+                  <Search size={14} />
                 </span>
                 <input
                   type="text"
-                  className="sap-input"
-                  style={{ paddingLeft: 28, height: 32, fontSize: 12 }}
+                  className="sap-input sap-input-with-icon"
+                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
                   placeholder="Search users..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
@@ -823,14 +823,14 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
         {activeTab === 'servers' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-subtle)' }}>
-                  <Search size={13} />
+              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
+                  <Search size={14} />
                 </span>
                 <input
                   type="text"
-                  className="sap-input"
-                  style={{ paddingLeft: 28, height: 32, fontSize: 12 }}
+                  className="sap-input sap-input-with-icon"
+                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
                   placeholder="Search servers..."
                   value={serverSearch}
                   onChange={(e) => setServerSearch(e.target.value)}
@@ -1038,13 +1038,13 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             {/* Header row with search and Grant Permission button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-subtle)' }}>
-                  <Search size={13} />
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
+                  <Search size={14} />
                 </span>
                 <input
                   type="text"
-                  className="sap-input"
-                  style={{ paddingLeft: 28, height: 32, fontSize: 12 }}
+                  className="sap-input sap-input-with-icon"
+                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
                   placeholder="Search permissions..."
                   value={permSearch}
                   onChange={(e) => setPermSearch(e.target.value)}
