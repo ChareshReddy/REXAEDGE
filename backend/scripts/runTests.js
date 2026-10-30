@@ -55,7 +55,8 @@ const testFiles = [
   'test/loginPageUi.test.js',
   'test/restrictValueRange.test.js',
   'test/storageLocations.test.js',
-  'test/navigationAndBreadcrumbs.test.js'
+  'test/navigationAndBreadcrumbs.test.js',
+  'test/routedViewsRender.test.js'
 ];
 
 const env = {

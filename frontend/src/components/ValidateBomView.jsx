@@ -16,7 +16,13 @@ import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
 
-export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateHome }) {
+export default function ValidateBomView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateBom,
+  onNavigateProducts,
+  onNavigateHome
+}) {
   const [formData, setFormData] = useState({
     material: '',
     plant: '',
@@ -85,7 +91,7 @@ export default function ValidateBomView({ systemKey = 'DEV', onBack, onNavigateH
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
-        breadcrumbs={getBreadcrumbTrail('validate_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
+        breadcrumbs={getBreadcrumbTrail('validate_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack }, { isLocked: isLoading })}
       />
 
       <div className="fiori-view-body">
