@@ -57,6 +57,7 @@ export default function BomExplorerView({
   const [filterText, setFilterText] = useState('');
   const [viewMode, setViewMode] = useState('items'); // 'items' | 'hierarchy'
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'asc' });
+  const lastRequestIdRef = React.useRef(0);
 
   useEffect(() => {
     activityTracker.setOperation('bom_explorer', isLoading);
@@ -65,7 +66,7 @@ export default function BomExplorerView({
     };
   }, [isLoading]);
 
-  const handleSearch = async (e, overrideAlt = null) => {
+  const handleSearch = async (e, overrideAlt = null, overrideMode = null) => {
     if (e && e.preventDefault) e.preventDefault();
 
     if (!searchParams.material.trim() || !searchParams.plant.trim()) {
@@ -73,9 +74,10 @@ export default function BomExplorerView({
       return;
     }
 
+    const activeMode = overrideMode !== null ? overrideMode : viewMode;
+
     setIsLoading(true);
     setErrorMessage('');
-    setBomData(null);
 
     const targetAlt = overrideAlt !== null ? String(overrideAlt).trim() : searchParams.alternativeBom.trim();
 
@@ -86,12 +88,19 @@ export default function BomExplorerView({
       alternativeBom: targetAlt || undefined
     };
 
+    const currentReqId = ++lastRequestIdRef.current;
+
     try {
       let res;
-      if (viewMode === 'hierarchy') {
+      if (activeMode === 'hierarchy') {
         res = await explodeBomHierarchy(payload);
       } else {
         res = await readBom(payload);
+      }
+
+      // Ignore stale responses if a newer request was dispatched
+      if (currentReqId !== lastRequestIdRef.current) {
+        return;
       }
 
       if (!res.success) {
@@ -102,11 +111,24 @@ export default function BomExplorerView({
         setBomData(res);
       }
     } catch (err) {
+      if (currentReqId !== lastRequestIdRef.current) {
+        return;
+      }
       console.error('Error querying BOM in SAP:', err);
       const text = err.response?.data?.message || err.message || 'Error communicating with SAP service.';
       setErrorMessage(text);
     } finally {
-      setIsLoading(false);
+      if (currentReqId === lastRequestIdRef.current) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleModeClick = (newMode) => {
+    if (viewMode === newMode) return;
+    setViewMode(newMode);
+    if (bomData) {
+      handleSearch(null, null, newMode);
     }
   };
 
@@ -316,20 +338,45 @@ export default function BomExplorerView({
           </div>
 
           <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-workspace-bg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 type="button"
-                className={`sap-button ${viewMode === 'items' ? 'active' : ''}`}
-                onClick={() => setViewMode('items')}
-                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 10px' }}
+                className={`sap-btn ${viewMode === 'items' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
+                onClick={() => handleModeClick('items')}
+                disabled={isLoading}
+                style={{
+                  height: 32,
+                  fontSize: 12,
+                  padding: '0 14px',
+                  fontWeight: 600,
+                  background: viewMode === 'items' ? 'var(--sap-primary, #0070f2)' : '#ffffff',
+                  color: viewMode === 'items' ? '#ffffff' : 'var(--sap-text-primary, #0f172a)',
+                  border: `1px solid ${viewMode === 'items' ? 'var(--sap-primary, #0070f2)' : 'var(--sap-border-color, #e2d8d8)'}`,
+                  borderRadius: 'var(--sap-radius-sm, 6px)',
+                  boxShadow: viewMode === 'items' ? '0 1px 2px rgba(0, 112, 242, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.03)'
+                }}
               >
                 <span>Single Level Items</span>
               </button>
               <button
                 type="button"
-                className={`sap-button ${viewMode === 'hierarchy' ? 'active' : ''}`}
-                onClick={() => setViewMode('hierarchy')}
-                style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 10px' }}
+                className={`sap-btn ${viewMode === 'hierarchy' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
+                onClick={() => handleModeClick('hierarchy')}
+                disabled={isLoading}
+                style={{
+                  height: 32,
+                  fontSize: 12,
+                  padding: '0 14px',
+                  fontWeight: 600,
+                  background: viewMode === 'hierarchy' ? 'var(--sap-primary, #0070f2)' : '#ffffff',
+                  color: viewMode === 'hierarchy' ? '#ffffff' : 'var(--sap-text-primary, #0f172a)',
+                  border: `1px solid ${viewMode === 'hierarchy' ? 'var(--sap-primary, #0070f2)' : 'var(--sap-border-color, #e2d8d8)'}`,
+                  borderRadius: 'var(--sap-radius-sm, 6px)',
+                  boxShadow: viewMode === 'hierarchy' ? '0 1px 2px rgba(0, 112, 242, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.03)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
               >
                 <FolderTree size={13} />
                 <span>Multi-Level Hierarchy</span>
@@ -374,39 +421,43 @@ export default function BomExplorerView({
               <div className="sap-result-meta-item">
                 <span className="sap-result-meta-label">Alternative (STLAL)</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <span className="sap-badge sap-badge-primary" style={{ fontSize: '12px', padding: '3px 8px', alignSelf: 'flex-start', fontWeight: 600 }}>
-                    Alternative {String(currentAlternative).padStart(2, '0')}
-                  </span>
-                  {availableAlternatives.length > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginTop: 2 }}>
-                      <span style={{ fontSize: '11px', color: 'var(--sap-text-muted)', fontWeight: 500 }}>Switch:</span>
-                      {availableAlternatives.map((alt) => {
-                        const isCurrent = String(alt).padStart(2, '0') === String(currentAlternative).padStart(2, '0') || parseInt(alt, 10) === parseInt(currentAlternative, 10);
-                        return (
-                          <button
-                            key={alt}
-                            type="button"
-                            className={`sap-badge ${isCurrent ? 'sap-badge-primary' : 'sap-badge-neutral'}`}
-                            style={{
-                              cursor: isCurrent ? 'default' : 'pointer',
-                              border: isCurrent ? '1px solid var(--sap-primary)' : '1px solid var(--sap-border-subtle)',
-                              background: isCurrent ? 'var(--sap-primary)' : 'var(--sap-card-bg)',
-                              color: isCurrent ? '#ffffff' : 'var(--sap-text)',
-                              fontSize: '11px',
-                              padding: '2px 7px',
-                              borderRadius: '4px',
-                              fontWeight: isCurrent ? 600 : 500,
-                              lineHeight: 1.2
-                            }}
-                            disabled={isCurrent || isLoading}
-                            onClick={() => handleSwitchAlternative(alt)}
-                            title={isCurrent ? `Currently viewing Alternative ${alt}` : `Switch to Alternative ${alt}`}
-                          >
-                            {String(alt).padStart(2, '0')}
-                          </button>
-                        );
-                      })}
+                  {availableAlternatives.length > 1 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <select
+                        id="alt-bom-select"
+                        value={String(currentAlternative).padStart(2, '0')}
+                        onChange={(e) => handleSwitchAlternative(e.target.value)}
+                        disabled={isLoading}
+                        className="sap-form-input sap-input"
+                        style={{
+                          height: 30,
+                          fontSize: '12px',
+                          padding: '2px 8px',
+                          minWidth: 145,
+                          maxHeight: 200,
+                          borderRadius: 'var(--sap-radius-sm, 6px)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          color: 'var(--sap-primary, #0070f2)',
+                          border: '1px solid var(--sap-border-color, #e2d8d8)',
+                          background: '#ffffff'
+                        }}
+                        aria-label="Select Alternative BOM"
+                      >
+                        {availableAlternatives.map((alt) => {
+                          const altStr = String(alt).padStart(2, '0');
+                          return (
+                            <option key={alt} value={altStr}>
+                              Alternative {altStr}
+                            </option>
+                          );
+                        })}
+                      </select>
                     </div>
+                  ) : (
+                    <span className="sap-badge sap-badge-primary" style={{ fontSize: '12px', padding: '3px 8px', alignSelf: 'flex-start', fontWeight: 600 }}>
+                      Alternative {String(currentAlternative).padStart(2, '0')}
+                    </span>
                   )}
                 </div>
               </div>
@@ -433,14 +484,14 @@ export default function BomExplorerView({
                 <span className="sap-badge sap-badge-neutral">{filteredComponents.length} items</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', display: 'flex', alignItems: 'center', zIndex: 2 }}>
-                  <Search size={13} />
+                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', display: 'flex', alignItems: 'center', zIndex: 2 }}>
+                  <Search size={14} />
                 </span>
                 <input
                   type="text"
                   placeholder="Filter components..."
-                  className="sap-form-input sap-input-with-icon"
-                  style={{ width: 220, height: 32, fontSize: '12px', paddingLeft: 28 }}
+                  className="sap-form-input sap-table-search-input"
+                  style={{ width: 220, height: 32, fontSize: '12px', paddingLeft: 34, paddingRight: 10 }}
                   value={filterText}
                   onChange={(e) => setFilterText(e.target.value)}
                 />
@@ -464,7 +515,14 @@ export default function BomExplorerView({
                           Item {renderSortIcon('itemNo')}
                         </span>
                       </th>
-                      <th onClick={() => handleSort('component')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      <th
+                        onClick={() => handleSort('component')}
+                        style={{
+                          cursor: 'pointer',
+                          userSelect: 'none',
+                          ...(isMultiLevel ? { minWidth: 260 } : { width: 190 })
+                        }}
+                      >
                         <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                           Component Material {renderSortIcon('component')}
                         </span>
@@ -527,7 +585,12 @@ export default function BomExplorerView({
                               <strong>{displayMat}</strong>
                             </div>
                           </td>
-                          <td>{item.description || '-'}</td>
+                          <td
+                            style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}
+                            title={item.description || ''}
+                          >
+                            {item.description || '-'}
+                          </td>
                           <td>{item.quantity !== undefined && item.quantity !== null && item.quantity !== '' ? item.quantity : '-'}</td>
                           <td>{item.unit || item.MEINS || '-'}</td>
                           <td>{item.itemCategory || item.POSTP || 'L'}</td>
