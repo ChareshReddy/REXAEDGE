@@ -170,7 +170,7 @@ export default function BlockedReasonsList({
     const cleanMsg = cleanDiagnosticMessage(message);
     return (
       <div className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: '12px', lineHeight: 1.4 }}>
-        <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)', flexShrink: 0, marginTop: 2 }} />
+        <AlertCircle size={13} style={{ color: 'var(--sap-error-text, #b45309)', flexShrink: 0, marginTop: 2 }} />
         <span style={{ color: 'var(--sap-text-dark, #0f172a)', wordBreak: 'break-word' }}>{cleanMsg}</span>
       </div>
     );
@@ -182,7 +182,7 @@ export default function BlockedReasonsList({
     <div className="sap-diagnostic-errors" style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '12px', lineHeight: 1.4 }}>
       {visibleItems.map((item, idx) => (
         <div key={idx} className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-          <AlertCircle size={13} style={{ color: 'var(--sap-error, #dc2626)', flexShrink: 0, marginTop: 2 }} />
+          <AlertCircle size={13} style={{ color: 'var(--sap-error-text, #b45309)', flexShrink: 0, marginTop: 2 }} />
           <span style={{ color: 'var(--sap-text-dark, #0f172a)', wordBreak: 'break-word' }}>{item.text}</span>
         </div>
       ))}

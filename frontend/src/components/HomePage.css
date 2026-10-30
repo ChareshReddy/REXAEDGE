@@ -5,8 +5,8 @@
 .rexa-home-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 70px);
-  background: #f6f9fc;
+  min-height: calc(100vh - 60px);
+  background: var(--sap-bg, #FFFBFB);
   color: #1e293b;
   font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   overflow-x: hidden;
@@ -269,7 +269,7 @@
    ========================================================================== */
 
 .rexa-about-section {
-  background: #f6f9fc;
+  background: var(--sap-bg, #FFFBFB);
   padding: 36px 2.5% 44px;
   width: 100%;
   box-sizing: border-box;

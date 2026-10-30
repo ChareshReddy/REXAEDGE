@@ -55,18 +55,18 @@ export function FioriOpCard({
   onClick
 }) {
   const Icon = (id === 'display' || iconName === 'Eye') ? Eye : (ICON_MAP[iconName] || Search);
-  const isDanger = Boolean(danger || id === 'delete');
+  const isDestructive = Boolean(danger || id === 'delete');
 
   return (
     <button
       key={id}
       type="button"
-      className={`fiori-op-card ${isDanger ? 'danger' : ''} ${disabled ? 'disabled' : ''}`}
+      className={`fiori-op-card ${isDestructive ? 'destructive danger' : ''} ${disabled ? 'disabled' : ''}`}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
     >
-      <div className={`fiori-op-icon-badge ${isDanger ? 'danger' : ''}`}>
-        <Icon size={24} strokeWidth={1.8} />
+      <div className={`fiori-op-icon-badge ${isDestructive ? 'destructive danger' : ''}`}>
+        <Icon size={22} strokeWidth={1.8} />
       </div>
       <div className="fiori-op-title">{title}</div>
       <div className="fiori-op-desc">{desc}</div>
@@ -223,15 +223,14 @@ export default function FioriLaunchpad({
             backTitle="Back to Home"
             systemKey={systemKey}
             breadcrumbs={getBreadcrumbTrail('products', { onNavigateHome, onNavigateProducts })}
-          />
-
-          <div className="fiori-ph" style={{ borderTop: 'none' }}>
-            {/* Dynamic Horizontal Tab Bar */}
+          >
+            {/* Dynamic Horizontal Tab Bar (Title > Breadcrumbs > Tabs) */}
             {homeGroups.length > 0 && (
               <div
                 className="fiori-home-tabs"
                 role="tablist"
                 aria-label="Application categories"
+                style={{ marginTop: 4 }}
               >
                 {homeGroups.map((group, index) => {
                   const isActive = group.name === activeGroupName;
@@ -261,7 +260,7 @@ export default function FioriLaunchpad({
                 })}
               </div>
             )}
-          </div>
+          </FioriPageHeader>
 
           <div className="fiori-body">
             {isLoading ? (
@@ -316,15 +315,17 @@ export default function FioriLaunchpad({
                           }
                         }}
                       >
-                        {isSoon && (
-                          <span className="fiori-tile-top-pill">Coming soon</span>
-                        )}
+                        <div className="fiori-tile-header">
+                          <div className="fiori-tile-icon">
+                            <Icon size={22} strokeWidth={1.8} />
+                          </div>
+                          {isSoon && (
+                            <span className="fiori-tile-top-pill">Coming soon</span>
+                          )}
+                        </div>
                         <div className="fiori-tile-title">{mod.label}</div>
                         <div className="fiori-tile-desc">{mod.desc}</div>
-                        <div className="fiori-tile-bottom">
-                          <div className="fiori-tile-icon">
-                            <Icon size={24} strokeWidth={1.8} />
-                          </div>
+                        <div className="fiori-tile-footer">
                           {(mod.key === 'bom' ? bomAppCount > 0 : mod.kpiNum) && (
                             <div className="fiori-tile-kpi">
                               {mod.key === 'bom' ? bomAppCount : mod.kpiNum}

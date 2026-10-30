@@ -263,7 +263,7 @@ export default function DeleteBomView({
                 </div>
                 <div className="sap-result-meta-item">
                   <span className="sap-result-meta-label">Alternative Deleted</span>
-                  <span className="sap-badge sap-badge-danger" style={{ fontSize: '13px', padding: '3px 8px' }}>
+                  <span className="sap-badge sap-badge-neutral" style={{ fontSize: '13px', padding: '3px 8px' }}>
                     {lastSubmittedForm?.alternativeBom || '01'}
                   </span>
                 </div>

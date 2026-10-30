@@ -46,7 +46,7 @@ export default function Login({ onLoginSuccess }) {
       } else {
         setErrorMessage(
           err.response?.data?.error ||
-          'Connection to authentication service failed. Please check network connectivity.'
+          "Can't reach the sign-in service right now. Please try again."
         );
       }
     } finally {

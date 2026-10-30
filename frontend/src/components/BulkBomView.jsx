@@ -972,9 +972,9 @@ export default function BulkBomView({
                       gap: 10,
                       padding: '12px 16px',
                       borderRadius: 'var(--radius-md, 6px)',
-                      background: 'var(--sap-error-bg, #fef2f2)',
-                      border: '1px solid var(--sap-error-border, #fecaca)',
-                      color: 'var(--sap-error, #dc2626)',
+                      background: 'var(--sap-error-bg, #fffbeb)',
+                      border: '1px solid var(--sap-error-border, #fcd34d)',
+                      color: 'var(--sap-error-text, #b45309)',
                       fontSize: 13
                     }}
                   >
@@ -1140,7 +1140,7 @@ export default function BulkBomView({
                               Warnings: {warningCount}
                             </span>
                           )}
-                          <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
                             Errors: {errorCount}
                           </span>
                         </>
