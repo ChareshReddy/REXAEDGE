@@ -52,7 +52,9 @@ const testFiles = [
   'test/appPermissions.test.js',
   'test/compactDiagnosticMessage.test.js',
   'test/dualStatePermissions.test.js',
-  'test/loginPageUi.test.js'
+  'test/loginPageUi.test.js',
+  'test/restrictValueRange.test.js',
+  'test/storageLocations.test.js'
 ];
 
 const env = {

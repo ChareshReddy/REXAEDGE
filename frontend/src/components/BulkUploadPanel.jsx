@@ -150,7 +150,7 @@ export default function BulkUploadPanel({
           {resolvedTemplateAction && (
             <button
               type="button"
-              className="sap-button"
+              className="sap-button sap-btn sap-btn-secondary"
               disabled={isTemplateDisabled}
               onClick={isTemplateDisabled ? undefined : handleTemplateClick}
               title={templateLabel}
@@ -247,7 +247,7 @@ export default function BulkUploadPanel({
           <div style={{ marginTop: 16 }}>
             <button
               type="button"
-              className="sap-button"
+              className="sap-button sap-btn sap-btn-secondary"
               disabled={disabled || loading}
               onClick={handleClearClick}
               style={{

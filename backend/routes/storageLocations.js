@@ -1,0 +1,63 @@
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import { requireAuth, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
+import { MODULE_KEYS } from '../config/modules.js';
+import { getStorageLocations } from '../services/storageLocationService.js';
+
+const router = express.Router();
+
+// Rate limiter: 120 requests per minute
+export const storageLocationRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many storage location requests. Please slow down.'
+  }
+});
+
+// Enforce authentication, BOM module access, and BOM permission (allowed for any bom.* permission)
+router.use(requireAuth);
+router.use(requireModuleAccess(MODULE_KEYS.BOM));
+router.use(requireAppPermission('bom.*'));
+
+/**
+ * GET /api/storage-locations?plant=&q=&refresh=true|false
+ * Fetches SAP storage location definitions from T001L with caching and plant filtering.
+ */
+router.get('/', storageLocationRateLimiter, async (req, res) => {
+  const abortController = new AbortController();
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      abortController.abort();
+    }
+  });
+
+  try {
+    const { plant, q, refresh } = req.query || {};
+
+    const result = await getStorageLocations({
+      server: req.selectedServer,
+      plant,
+      q,
+      refresh,
+      signal: abortController.signal
+    });
+
+    return res.status(200).json(result);
+  } catch (err) {
+    if (req.destroyed || res.writableEnded) {
+      return;
+    }
+    console.error('[storageLocationsRoute] Error:', err.message);
+    const statusCode = err.status || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: err.message || 'Failed to retrieve storage locations from SAP.'
+    });
+  }
+});
+
+export default router;
