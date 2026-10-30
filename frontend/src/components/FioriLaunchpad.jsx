@@ -211,11 +211,9 @@ export default function FioriLaunchpad({
   return (
     <div className="fiori-launchpad-root">
       {currentView === 'home' ? (
-        /* ================= LEVEL 1: MY HOME ================= */
+        /* ================= LEVEL 1: HOME ================= */
         <>
           <div className="fiori-ph">
-            <h1 className="fiori-ph-title">My Home</h1>
-
             {/* Dynamic Horizontal Tab Bar */}
             {homeGroups.length > 0 && (
               <div

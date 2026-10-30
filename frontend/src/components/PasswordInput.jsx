@@ -85,7 +85,7 @@ const PasswordInput = forwardRef(function PasswordInput(
           className="sap-password-left-icon"
           style={{
             position: 'absolute',
-            left: 8,
+            left: 12,
             top: '50%',
             transform: 'translateY(-50%)',
             color: 'var(--sap-text-secondary)',
@@ -93,7 +93,7 @@ const PasswordInput = forwardRef(function PasswordInput(
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1
+            zIndex: 2
           }}
         >
           {leftIcon}
@@ -119,12 +119,12 @@ const PasswordInput = forwardRef(function PasswordInput(
         onKeyDown={onKeyDown}
         aria-label={ariaLabel}
         aria-describedby={ariaDescribedBy}
-        className={className}
+        className={`${className || 'sap-input'} ${leftIcon ? 'sap-input-with-icon' : ''}`.trim()}
         style={{
           width: '100%',
-          height: 30,
-          paddingLeft: leftIcon ? 34 : 10,
-          paddingRight: 34,
+          height: style.height || inputStyle.height || 38,
+          paddingLeft: leftIcon ? 40 : 10,
+          paddingRight: 40,
           boxSizing: 'border-box',
           ...style,
           ...inputStyle
