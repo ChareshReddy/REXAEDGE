@@ -70,8 +70,38 @@ export default function App() {
   const [isLoadingServers, setIsLoadingServers] = useState(true);
 
   // Application view state - defaults to modern Home page matching RexaEdge ERP portal
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'material_search'
-  const [launchpadSubView, setLaunchpadSubView] = useState('home'); // 'home' | 'bom_operations'
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin'
+  const [launchpadSubView, setLaunchpadSubView] = useState('home'); // 'home' | 'bom_operations' | 'bom_create_operations' | 'bom_copy_operations'
+
+  const getPathForView = (tab, subView) => {
+    if (tab === 'home') return '/home';
+    if (tab === 'launchpad') {
+      if (subView === 'bom_operations') return '/products/bom';
+      if (subView === 'bom_create_operations') return '/products/bom/create';
+      if (subView === 'bom_copy_operations') return '/products/bom/copy';
+      return '/products';
+    }
+    if (tab === 'admin') return '/admin';
+    return `/${tab}`;
+  };
+
+  const navigateToView = (tab, subView = null, replace = false) => {
+    setActiveTab(tab);
+    if (subView !== null) {
+      setLaunchpadSubView(subView);
+    }
+    if (typeof window !== 'undefined' && window.history) {
+      const targetSub = subView !== null ? subView : (tab === 'launchpad' ? launchpadSubView : null);
+      const targetPath = getPathForView(tab, targetSub);
+      if (window.location.pathname !== targetPath) {
+        if (replace) {
+          window.history.replaceState({ tab, subView: targetSub }, '', targetPath);
+        } else {
+          window.history.pushState({ tab, subView: targetSub }, '', targetPath);
+        }
+      }
+    }
+  };
   const [selectedHomeGroup, setSelectedHomeGroup] = useState('');
   const [prefilledMaterial, setPrefilledMaterial] = useState('');
   const [prefilledPlant, setPrefilledPlant] = useState('');
@@ -152,14 +182,69 @@ export default function App() {
     };
   }, []);
 
-  // Check URL hash for admin routing on initial load
+  // URL Synchronization & Deep Link Routing (supports /home, /products, /admin, deep links & popstate)
   useEffect(() => {
-    if (window.location.hash === '#admin' || window.location.pathname === '/admin') {
-      if (user?.role === 'admin') {
-        setActiveTab('admin');
+    function handleLocationChange() {
+      if (typeof window === 'undefined') return;
+      const path = (window.location.pathname || '').toLowerCase();
+      const hash = (window.location.hash || '').toLowerCase();
+
+      if (path === '/admin' || hash === '#admin') {
+        if (user?.role === 'admin') {
+          setActiveTab('admin');
+        }
+        return;
+      }
+      if (path === '/products/bom' || path === '/bom' || hash === '#bom') {
+        setActiveTab('launchpad');
+        setLaunchpadSubView('bom_operations');
+        return;
+      }
+      if (path === '/products/bom/create') {
+        setActiveTab('launchpad');
+        setLaunchpadSubView('bom_create_operations');
+        return;
+      }
+      if (path === '/products/bom/copy') {
+        setActiveTab('launchpad');
+        setLaunchpadSubView('bom_copy_operations');
+        return;
+      }
+      if (path === '/products' || path === '/launchpad' || hash === '#products' || hash === '#launchpad') {
+        setActiveTab('launchpad');
+        setLaunchpadSubView('home');
+        return;
+      }
+      if (path === '/home' || hash === '#home') {
+        setActiveTab('home');
+        return;
+      }
+
+      // Feature direct action routes
+      const featureTabs = ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'bom_explorer', 'validate_bom', 'delete_bom'];
+      for (const ft of featureTabs) {
+        if (path === `/${ft}` || hash === `#${ft}`) {
+          setActiveTab(ft);
+          return;
+        }
+      }
+
+      // Default root path: map to /home
+      if (path === '/' || path === '') {
+        setActiveTab('home');
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({ tab: 'home' }, '', '/home');
+        }
       }
     }
-  }, [user]);
+
+    window.addEventListener('popstate', handleLocationChange);
+    handleLocationChange();
+
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, [user?.role]);
 
   // Verify active session on initial mount
   useEffect(() => {
@@ -416,9 +501,7 @@ export default function App() {
         <div className="sap-shell-header-left">
           <div
             className="sap-brand"
-            onClick={() => {
-              setActiveTab('home');
-            }}
+            onClick={() => { navigateToView('home'); }}
             style={{ cursor: 'pointer' }}
             role="button"
             tabIndex={0}
@@ -436,51 +519,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Header Navigation Links: Home, About Us, Contact */}
-          <nav className="sap-top-nav-links" aria-label="Main Navigation">
-            <div className={`sap-top-nav-item ${activeTab === 'home' ? 'active' : ''}`}>
-              <button
-                type="button"
-                className={`sap-top-nav-btn ${activeTab === 'home' ? 'active' : ''}`}
-                onClick={() => setActiveTab('home')}
-              >
-                Home
-              </button>
-              {activeTab === 'home' && <div className="sap-nav-bottom-indicator" />}
-            </div>
-
-            <div className="sap-top-nav-item">
-              <button
-                type="button"
-                className="sap-top-nav-btn"
-                onClick={() => {
-                  if (activeTab !== 'home') {
-                    setActiveTab('home');
-                    setTimeout(() => {
-                      const el = document.getElementById('about-section');
-                      if (el) el.scrollIntoView({ behavior: 'smooth' });
-                    }, 120);
-                  } else {
-                    const el = document.getElementById('about-section');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-              >
-                About Us
-              </button>
-            </div>
-
-            <div className="sap-top-nav-item">
-              <button
-                type="button"
-                className="sap-top-nav-btn"
-                onClick={() => setIsHeaderContactOpen(true)}
-              >
-                Contact
-              </button>
-            </div>
-          </nav>
-        </div>
+                  </div>
 
         {/* Desktop actions and user badge */}
         <div className="sap-shell-actions">
@@ -801,29 +840,15 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 <button
                   type="button"
-                  className={`sap-btn sap-btn-secondary ${activeTab === 'home' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveTab('home');
-                    setIsMobileMenuOpen(false);
-                  }}
-                  style={{ fontSize: '12px', padding: '6px' }}
-                >
-                  <Home size={14} />
-                  <span>Home</span>
-                </button>
-
-                <button
-                  type="button"
                   className={`sap-btn sap-btn-secondary ${activeTab === 'launchpad' ? 'active' : ''}`}
                   onClick={() => {
-                    setActiveTab('launchpad');
-                    setLaunchpadSubView('home');
+                    navigateToView('launchpad', 'home');
                     setIsMobileMenuOpen(false);
                   }}
                   style={{ fontSize: '12px', padding: '6px' }}
                 >
                   <LayoutGrid size={14} />
-                  <span>Launchpad</span>
+                  <span>Products</span>
                 </button>
 
                 {/* Dynamic Mobile Shortcuts from Enabled Modules */}
@@ -904,11 +929,8 @@ export default function App() {
       <main className="sap-assistant-layout">
         {activeTab === 'home' && (
           <HomePage
-            onExploreProducts={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
-            onNavigateHome={() => setActiveTab('home')}
+            onExploreProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
             onOpenContact={() => setIsHeaderContactOpen(true)}
             user={user}
             sapSession={sapSession}
@@ -921,8 +943,10 @@ export default function App() {
             sapSession={sapSession}
             systemKey={currentSystem}
             subView={launchpadSubView}
-            onSubViewChange={setLaunchpadSubView}
-            onOpenAction={(action) => setActiveTab(action)}
+            onSubViewChange={(sub) => navigateToView('launchpad', sub)}
+            onOpenAction={(action) => navigateToView(action)}
+            onNavigateHome={() => navigateToView('home')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
             enabledModules={enabledModules}
             userRole={user.role}
             userPermissions={currentPermittedApps}
@@ -1046,7 +1070,7 @@ export default function App() {
               }}
               style={{ padding: '8px 18px', fontSize: 13 }}
             >
-              Return to Launchpad
+              Return to Products
             </button>
           </div>
         )}
@@ -1101,7 +1125,7 @@ export default function App() {
               }}
               style={{ padding: '8px 18px', fontSize: 13 }}
             >
-              Back to Launchpad
+              Back to Products
             </button>
           </div>
         )}
@@ -1111,36 +1135,20 @@ export default function App() {
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
             initialPlant={prefilledPlant}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_create_operations');
-            }}
-            onNavigateBom={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_create_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
         {activeTab === 'bulk_create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_create_bom') || enabledModules.includes(getModuleKeyForAction('bulk_create_bom'))) && (
           <BulkCreateBomView
             systemKey={currentSystem}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_create_operations');
-            }}
-            onNavigateBom={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_create_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
@@ -1149,50 +1157,30 @@ export default function App() {
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
             initialPlant={prefilledPlant}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_copy_operations');
-            }}
-            onNavigateBom={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
         {activeTab === 'bulk_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_bom') || enabledModules.includes(getModuleKeyForAction('bulk_bom'))) && (
           <BulkBomView
             systemKey={currentSystem}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_copy_operations');
-            }}
-            onNavigateBom={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
         {activeTab === 'delete_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('delete_bom') || enabledModules.includes(getModuleKeyForAction('delete_bom'))) && (
           <DeleteBomView
             systemKey={currentSystem}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
@@ -1201,36 +1189,29 @@ export default function App() {
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
             initialPlant={prefilledPlant}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
         {activeTab === 'validate_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('validate_bom') || enabledModules.includes(getModuleKeyForAction('validate_bom'))) && (
           <ValidateBomView
             systemKey={currentSystem}
-            onBack={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('bom_operations');
-            }}
-            onNavigateHome={() => {
-              setActiveTab('launchpad');
-              setLaunchpadSubView('home');
-            }}
+            onBack={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
 
         {activeTab === 'admin' && (
           <AdminView
             currentUser={user}
-            onBack={() => setActiveTab('launchpad')}
-            onNavigateHome={() => setActiveTab('launchpad')}
+            onBack={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateHome={() => navigateToView('home')}
           />
         )}
       </main>

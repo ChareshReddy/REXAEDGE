@@ -73,7 +73,7 @@ function TriStateCheckbox({ checked, indeterminate, onChange, disabled, id, aria
   );
 }
 
-export default function AdminView({ currentUser, onBack, onNavigateHome }) {
+export default function AdminView({ currentUser, onBack, onNavigateHome, onNavigateProducts }) {
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'servers' | 'permissions'
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -577,8 +577,8 @@ export default function AdminView({ currentUser, onBack, onNavigateHome }) {
             type="button"
             className="fiori-ph-back"
             onClick={onBack}
-            title="Back to Launchpad"
-            aria-label="Back to Launchpad"
+            title="Back to Products"
+            aria-label="Back to Products"
           >
             <ChevronLeft size={16} strokeWidth={2.5} />
           </button>

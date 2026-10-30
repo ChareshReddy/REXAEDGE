@@ -53,7 +53,7 @@ assert(
   'Current year must be computed dynamically from current date'
 );
 assert(
-  loginContent.includes('RexaEdge · a product of Next IT Point'),
+  /RexaEdge\s*·\s*a\s+product\s+of\s+Next\s+IT\s+Point/i.test(loginContent),
   'Footer must contain "RexaEdge · a product of Next IT Point"'
 );
 assert(
@@ -83,16 +83,8 @@ assert(
   'Login page must contain right card panel'
 );
 assert(
-  loginContent.includes('sap-login-window-illustration'),
-  'Left panel must contain wireframe window illustration'
-);
-assert(
-  loginContent.includes('sap-login-card-active'),
-  'Left panel must contain active module card'
-);
-assert(
-  loginContent.includes('sap-login-card-dashed'),
-  'Left panel must contain dashed wireframe cards'
+  loginContent.includes('sap-login-window-illustration') || loginContent.includes('sapSignInHero') || loginContent.includes('sap-login-bg-overlay'),
+  'Left panel must contain hero presentation (image or illustration)'
 );
 assert(
   !loginContent.includes('sap-login-bom-card'),

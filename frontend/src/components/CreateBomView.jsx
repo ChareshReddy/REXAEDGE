@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect } from 'react';
 import {
   PlusSquare,
@@ -29,7 +30,12 @@ function getTodayFormatted() {
   return `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`;
 }
 
-export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHome, onNavigateBom, initialMaterial, initialPlant }) {
+export default function CreateBomView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateHome,
+  onNavigateProducts,
+  onNavigateBom, initialMaterial, initialPlant }) {
   const [headerData, setHeaderData] = useState({
     material: initialMaterial || '',
     plant: initialPlant || '',
@@ -299,12 +305,7 @@ export default function CreateBomView({ systemKey = 'DEV', onBack, onNavigateHom
         onBack={onBack}
         isLocked={isLocked}
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: isLocked ? undefined : (onNavigateHome || onBack) },
-          { label: 'Bill of Materials', onClick: isLocked ? undefined : (onNavigateBom || onBack) },
-          { label: 'Create BOM', onClick: isLocked ? undefined : onBack },
-          { label: 'Create Single BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
       <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>

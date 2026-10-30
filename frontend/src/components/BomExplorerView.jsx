@@ -1,3 +1,4 @@
+import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
@@ -37,7 +38,12 @@ export function formatMaterialNumber(mat) {
   return s;
 }
 
-export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateHome, initialMaterial, initialPlant }) {
+export default function BomExplorerView({
+  systemKey = 'DEV',
+  onBack,
+  onNavigateHome,
+  onNavigateProducts,
+  onNavigateBom, initialMaterial, initialPlant }) {
   const [searchParams, setSearchParams] = useState({
     material: initialMaterial || '',
     plant: initialPlant || '',
@@ -213,11 +219,7 @@ export default function BomExplorerView({ systemKey = 'DEV', onBack, onNavigateH
         onBack={onBack}
         backTitle="Back to Bill of Materials"
         systemKey={systemKey}
-        breadcrumbs={[
-          { label: 'Home', onClick: onNavigateHome || onBack },
-          { label: 'Bill of Materials', onClick: onBack },
-          { label: 'Display BOM' }
-        ]}
+        breadcrumbs={getBreadcrumbTrail('bom_explorer', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
       />
 
       <div className="fiori-view-body wide">
