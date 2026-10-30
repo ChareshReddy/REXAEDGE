@@ -484,12 +484,29 @@ export function getFieldInputWidth(field) {
   return 320;
 }
 
+export function isDescriptionField(fieldId) {
+  if (!fieldId) return false;
+  const upper = String(fieldId).toUpperCase();
+  return (
+    upper === 'MAKTG' ||
+    upper === 'MAKTX' ||
+    upper === 'TEXT_HTN' ||
+    upper === 'MAKTG_ORG_ART' ||
+    upper === 'MAKTG_FOLUP_ART' ||
+    upper === 'WGBEZ' ||
+    upper === 'VTEXT' ||
+    upper.includes('DESC') ||
+    upper.includes('TEXT')
+  );
+}
+
 export function formatFilterSummary(option, values = {}) {
   const parts = [];
   if (!option?.fields) return '';
   option.fields.forEach((f) => {
-    const val = String(values[f.id] || '').trim();
-    if (val && !(f.id === 'SPRAS' && (val.toUpperCase() === 'EN' || val.toUpperCase() === 'E'))) {
+    const raw = String(values[f.id] || '').trim();
+    if (raw && !(f.id === 'SPRAS' && (raw.toUpperCase() === 'EN' || raw.toUpperCase() === 'E'))) {
+      const val = isDescriptionField(f.id) ? raw : raw.toUpperCase();
       parts.push(`${f.label || f.id} ${val}`);
     }
   });
@@ -540,7 +557,7 @@ export default function MaterialRestrictValueRangeModal({
       setFormValues((prev) => {
         const initM = { ...(prev.M || {}) };
         if (initialValue && !initM.MATNR) {
-          initM.MATNR = initialValue;
+          initM.MATNR = String(initialValue).toUpperCase();
         }
         if (!initM.SPRAS) {
           initM.SPRAS = 'EN';
@@ -648,11 +665,12 @@ export default function MaterialRestrictValueRangeModal({
 
   const handleFieldChange = (fieldId, val) => {
     setErrorMsg(null);
+    const transformedVal = isDescriptionField(fieldId) ? val : (val || '').toUpperCase();
     setFormValues((prev) => ({
       ...prev,
       [activeTabKey]: {
         ...(prev[activeTabKey] || {}),
-        [fieldId]: val
+        [fieldId]: transformedVal
       }
     }));
   };
@@ -734,11 +752,14 @@ export default function MaterialRestrictValueRangeModal({
       if (onContinueWithResults) {
         onContinueWithResults(res?.data || [], {
           tab: activeTabKey,
+          tabCode: activeTabKey,
           tabName: activeOption.name,
           count: res?.count || 0,
           limitReached: Boolean(res?.limitReached),
           message: res?.message,
-          filterSummary: formatFilterSummary(activeOption, currentValues)
+          filterSummary: formatFilterSummary(activeOption, currentValues),
+          fields: currentValues,
+          activeOption
         });
       }
     } catch (err) {

@@ -247,6 +247,14 @@ export default function BomExplorerView({
                   placeholder="e.g. 100001"
                   value={searchParams.material}
                   onChange={(e) => setSearchParams((prev) => ({ ...prev, material: e.target.value }))}
+                  onSelect={(val, full) => {
+                    setSearchParams((prev) => ({
+                      ...prev,
+                      material: val,
+                      ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
+                      ...(full?.werks && !prev.plant ? { plant: full.werks } : {})
+                    }));
+                  }}
                   style={{ paddingLeft: 30 }}
                   aria-label="Display BOM Material"
                 />

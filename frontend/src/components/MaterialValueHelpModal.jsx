@@ -54,10 +54,10 @@ export default function MaterialValueHelpModal({
   // Sync initial search query, lock body scroll, and clean up timers/aborts on open/close
   useEffect(() => {
     if (isOpen) {
-      setSearchTerm(initialValue || '');
+      setSearchTerm((initialValue || '').toUpperCase());
       setSelectedIndex(0);
       selectedIndexRef.current = 0;
-      lastSearchedTermRef.current = (initialValue || '').trim();
+      lastSearchedTermRef.current = (initialValue || '').trim().toUpperCase();
       setIsRetrying(false);
 
       const unlock = lockScroll();
@@ -211,7 +211,7 @@ export default function MaterialValueHelpModal({
 
   // Handle live typeahead search with ~300ms debounce
   const handleInputChange = (e) => {
-    const val = e.target.value;
+    const val = (e.target.value || '').toUpperCase();
     setSearchTerm(val);
 
     if (debounceTimerRef.current) {
@@ -378,8 +378,18 @@ export default function MaterialValueHelpModal({
 
   if (!isOpen) return null;
 
+  const isTabB = searchMetadata?.tab === 'B' || searchMetadata?.tabCode === 'B';
   const countDisplay = materials.length;
-  const modalTitle = countDisplay > 0 ? `Material Number (${countDisplay} entries)` : 'Material Number';
+  const modalTitle = isTabB
+    ? (countDisplay > 0 ? `Material Number ${countDisplay} Entries` : 'Material Number')
+    : (countDisplay > 0 ? `Material Number (${countDisplay} entries)` : 'Material Number');
+
+  const tabBCriteria = isTabB && searchMetadata?.fields ? [
+    { label: 'Material description', value: searchMetadata.fields.MAKTG },
+    { label: 'Plant', value: searchMetadata.fields.WERKS },
+    { label: 'BOM Usage', value: searchMetadata.fields.STLAN },
+    { label: 'Material', value: searchMetadata.fields.MATNR }
+  ].filter(c => c.value && String(c.value).trim()) : [];
 
   return createPortal(
     <div
@@ -462,6 +472,35 @@ export default function MaterialValueHelpModal({
                   <ArrowLeft size={11} style={{ marginRight: 4 }} /> Change Filter
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Tab B SAP Criteria Header Block */}
+          {isTabB && tabBCriteria.length > 0 && (
+            <div
+              className="sap-f4-criteria-block"
+              style={{
+                background: 'var(--sap-surface-elevated, #f8fafc)',
+                border: '1px solid var(--sap-border-color, #e2e8f0)',
+                borderRadius: 4,
+                padding: '6px 12px',
+                marginBottom: 6,
+                fontSize: 12,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px 24px'
+              }}
+            >
+              {tabBCriteria.map((c) => (
+                <div key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--sap-text-secondary, #64748b)', fontWeight: 500 }}>
+                    {c.label}:
+                  </span>
+                  <strong style={{ color: 'var(--sap-text-primary, #0f172a)' }}>
+                    {c.value}
+                  </strong>
+                </div>
+              ))}
             </div>
           )}
           <form onSubmit={handleSearchSubmit} className="sap-f4-search-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -638,22 +677,69 @@ export default function MaterialValueHelpModal({
           ) : (
             <table className="sap-table sap-f4-table">
               <colgroup>
-                <col style={{ width: '25%' }} />
-                <col style={{ width: '49%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '11%' }} />
+                {isTabB ? (
+                  <>
+                    <col style={{ width: '40%' }} />
+                    <col style={{ width: '30%' }} />
+                    <col style={{ width: '30%' }} />
+                  </>
+                ) : (
+                  <>
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '49%' }} />
+                    <col style={{ width: '15%' }} />
+                    <col style={{ width: '11%' }} />
+                  </>
+                )}
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: '25%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
-                  <th style={{ width: '49%', textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
-                  <th style={{ width: '15%', textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
-                  <th style={{ width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                  {isTabB ? (
+                    <>
+                      <th style={{ width: '40%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                      <th style={{ width: '30%', textAlign: 'center', whiteSpace: 'nowrap' }}>AltBOM</th>
+                      <th style={{ width: '30%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                    </>
+                  ) : (
+                    <>
+                      <th style={{ width: '25%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                      <th style={{ width: '49%', textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
+                      <th style={{ width: '15%', textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
+                      <th style={{ width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {materials.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
+
+                  if (isTabB) {
+                    return (
+                      <tr
+                        key={`${item.matnr}-${item.stlal || idx}-${idx}`}
+                        ref={(el) => (rowRefs.current[idx] = el)}
+                        className={isSelected ? 'selected' : ''}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedIndex(idx);
+                          selectedIndexRef.current = idx;
+                          modalDialogRef.current?.focus();
+                        }}
+                        onDoubleClick={() => onSelect(item.matnr, item)}
+                      >
+                        <td style={{ width: '40%', fontFamily: 'var(--sap-font-mono)', fontWeight: 600 }}>
+                          <span style={{ verticalAlign: 'middle' }}>{item.matnr}</span>
+                        </td>
+                        <td style={{ width: '30%', textAlign: 'center', fontFamily: 'var(--sap-font-mono)', fontWeight: 600 }}>
+                          {item.stlal || '01'}
+                        </td>
+                        <td style={{ width: '30%', textAlign: 'center', color: 'var(--sap-text-secondary)' }}>
+                          {item.spras || 'E'}
+                        </td>
+                      </tr>
+                    );
+                  }
 
                   return (
                     <tr
@@ -716,8 +802,9 @@ export default function MaterialValueHelpModal({
         <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-panel-bg)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && materials[selectedIndex] ? (
-              <span title={`${materials[selectedIndex].matnr} - ${materials[selectedIndex].maktx || ''}`}>
+              <span title={`${materials[selectedIndex].matnr}${isTabB && materials[selectedIndex].stlal ? ` Alt ${materials[selectedIndex].stlal}` : ''}${materials[selectedIndex].maktx ? ` - ${materials[selectedIndex].maktx}` : ''}`}>
                 Selected: <strong style={{ color: 'var(--sap-text-primary)' }}>{materials[selectedIndex].matnr}</strong>
+                {isTabB && materials[selectedIndex].stlal ? ` (Alt ${materials[selectedIndex].stlal})` : ''}
                 {materials[selectedIndex].maktx ? ` - ${materials[selectedIndex].maktx}` : ''}
               </span>
             ) : (

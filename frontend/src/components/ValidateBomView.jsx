@@ -119,6 +119,14 @@ export default function ValidateBomView({
                     placeholder="e.g. 100001"
                     value={formData.material}
                     onChange={(e) => setFormData((p) => ({ ...p, material: e.target.value }))}
+                    onSelect={(val, full) => {
+                      setFormData((p) => ({
+                        ...p,
+                        material: val,
+                        ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
+                        ...(full?.werks && !p.plant ? { plant: full.werks } : {})
+                      }));
+                    }}
                     style={{ paddingLeft: 30 }}
                     aria-label="Validate Material"
                     autoFocus

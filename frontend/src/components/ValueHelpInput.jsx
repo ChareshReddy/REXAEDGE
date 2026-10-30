@@ -4,6 +4,7 @@ import MaterialValueHelpModal from './MaterialValueHelpModal';
 import MaterialRestrictValueRangeModal from './MaterialRestrictValueRangeModal';
 import PlantValueHelpModal from './PlantValueHelpModal';
 import StorageLocationValueHelpModal from './StorageLocationValueHelpModal';
+import Tooltip from './Tooltip';
 
 /**
  * SAP-style Value Help Input wrapper supporting F4 hotkey and matchcode icon button.
@@ -178,37 +179,42 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
       />
 
       {/* SAP Matchcode / F4 Icon Button */}
-      <button
-        type="button"
-        tabIndex={disabled || readOnly ? -1 : 0}
-        onClick={handleIconClick}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            handleIconClick(e);
-          }
-        }}
+      <Tooltip
+        text="Search help"
+        placement="top"
         disabled={disabled || readOnly}
-        className="sap-value-help-btn"
-        title="Value Help (F4)"
-        aria-label="Value Help (F4)"
-        style={{
-          position: 'absolute',
-          right: 3,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 22,
-          height: 22,
-          padding: 0,
-          cursor: disabled || readOnly ? 'default' : 'pointer'
-        }}
       >
-        <Search size={13} strokeWidth={2.4} />
-      </button>
+        <button
+          type="button"
+          tabIndex={disabled || readOnly ? -1 : 0}
+          onClick={handleIconClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              handleIconClick(e);
+            }
+          }}
+          disabled={disabled || readOnly}
+          className="sap-value-help-btn"
+          aria-label="Search help"
+          style={{
+            position: 'absolute',
+            right: 3,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 22,
+            height: 22,
+            padding: 0,
+            cursor: disabled || readOnly ? 'default' : 'pointer'
+          }}
+        >
+          <Search size={13} strokeWidth={2.4} />
+        </button>
+      </Tooltip>
 
       {/* Popups */}
       {kind === 'material' ? (
