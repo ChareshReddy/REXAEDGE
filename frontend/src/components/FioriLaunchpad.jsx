@@ -385,7 +385,7 @@ export default function FioriLaunchpad({
         <>
           <FioriPageHeader
             title={activeModule.label}
-            subtitle="Choose an operation"
+            subtitle={activeModule.key === 'bom' ? "Create, copy, display, validate and delete Bills of Materials." : (activeModule.desc || "Manage your enterprise operations.")}
             onBack={() => handleSetView('home')}
             backTitle="Back to Products"
             systemKey={systemKey}
@@ -396,7 +396,10 @@ export default function FioriLaunchpad({
           />
 
           <div className="fiori-body">
-            <div className="fiori-group-title">Operations</div>
+            <div className="fiori-operations-header-block">
+              <h2 className="fiori-group-title">Operations</h2>
+              <p className="fiori-group-subtitle">Choose an operation</p>
+            </div>
             <div className="fiori-op-grid">
               {(userRole === 'admin' || enabledModules.includes(activeModule.key)) && (activeModule.subApps || [])
                 .filter((op) => hasCardPermission(op, userPermissions, userRole))
@@ -437,7 +440,10 @@ export default function FioriLaunchpad({
           />
 
           <div className="fiori-body">
-            <div className="fiori-group-title">Operations</div>
+            <div className="fiori-operations-header-block">
+              <h2 className="fiori-group-title">Operations</h2>
+              <p className="fiori-group-subtitle">Choose an operation</p>
+            </div>
             <div className="fiori-op-grid">
               {(userRole === 'admin' || enabledModules.includes(parentGroup.moduleKey)) && (parentGroup.children || [])
                 .filter((child) => hasCardPermission(child, userPermissions, userRole))

@@ -3,9 +3,10 @@ import React from 'react';
 /**
  * Shared Fiori Page Header Component
  * Layout (top to bottom):
- * 1. Top: Page title with a short subtitle above it
- * 2. Bottom: Breadcrumbs trail (Home > Products > ...)
- * Back button and environment pill are removed per design system.
+ * 1. Title first (big, bold, navy)
+ * 2. One-line subtitle below it (gray, normal sentence case)
+ * 3. Breadcrumbs trail (Home > Products > ...)
+ * 4. Children (tabs, filters, etc.)
  */
 export default function FioriPageHeader({
   title,
@@ -20,18 +21,22 @@ export default function FioriPageHeader({
   className = '',
   style = {}
 }) {
+  const isProductsPage = title === 'Products';
+
   return (
     <div className={`fiori-ph ${className}`} style={style}>
-      {/* 1. Top Section: Subtitle above Title */}
+      {/* 1. Top Section: Title first, then Subtitle directly below it */}
       <div className="fiori-ph-header-top">
-        {subtitle && <p className="fiori-ph-subtitle">{subtitle}</p>}
         <div className="fiori-ph-title-row">
-          <h1 className="fiori-ph-title">{title}</h1>
+          <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
+            {title}
+          </h1>
           {extraTitleContent}
         </div>
+        {subtitle && <p className="fiori-ph-subtitle">{subtitle}</p>}
       </div>
 
-      {/* 2. Middle Section: Breadcrumbs Trail */}
+      {/* 2. Middle Section: Breadcrumbs Trail (plain text links with chevron separators, no pills) */}
       {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
         <div className="fiori-bc">
           {breadcrumbs.map((b, idx) => (
@@ -40,7 +45,7 @@ export default function FioriPageHeader({
               {b.onClick ? (
                 <button
                   type="button"
-                  className="fiori-bc-link sap-button"
+                  className="fiori-bc-link"
                   onClick={b.onClick}
                 >
                   {b.label}

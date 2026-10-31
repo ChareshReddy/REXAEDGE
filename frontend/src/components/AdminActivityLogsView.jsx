@@ -292,8 +292,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               border: 'none',
               fontSize: '13px',
               fontWeight: activeSubTab === 'audit' ? 600 : 500,
-              backgroundColor: activeSubTab === 'audit' ? '#ffffff' : 'transparent',
-              color: activeSubTab === 'audit' ? 'var(--color-primary, #0a6ed1)' : 'var(--color-text-muted, #64748b)',
+              backgroundColor: activeSubTab === 'audit' ? '#EA580C' : 'transparent',
+              color: activeSubTab === 'audit' ? '#ffffff' : '#475569',
               boxShadow: activeSubTab === 'audit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               cursor: 'pointer'
             }}
@@ -314,8 +314,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               border: 'none',
               fontSize: '13px',
               fontWeight: activeSubTab === 'errors' ? 600 : 500,
-              backgroundColor: activeSubTab === 'errors' ? '#ffffff' : 'transparent',
-              color: activeSubTab === 'errors' ? 'var(--color-amber-800, #b45309)' : 'var(--color-text-muted, #64748b)',
+              backgroundColor: activeSubTab === 'errors' ? '#EA580C' : 'transparent',
+              color: activeSubTab === 'errors' ? '#ffffff' : '#475569',
               boxShadow: activeSubTab === 'errors' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               cursor: 'pointer'
             }}
@@ -366,7 +366,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               fontWeight: 600,
               borderRadius: 6,
               border: 'none',
-              backgroundColor: 'var(--color-primary, #0a6ed1)',
+              backgroundColor: 'var(--sap-btn-primary-bg, #EA580C)',
               color: '#ffffff',
               cursor: (isExporting || isNotConfigured || totalCount === 0) ? 'not-allowed' : 'pointer',
               opacity: (isExporting || isNotConfigured || totalCount === 0) ? 0.6 : 1
@@ -741,7 +741,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--color-primary, #0a6ed1)',
+                        color: '#C2410C',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -847,7 +847,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                           backgroundColor: '#ffffff',
                           cursor: 'pointer',
                           fontSize: 11,
-                          color: 'var(--color-primary, #0a6ed1)'
+                          color: '#C2410C'
                         }}
                         title="View log details"
                       >
@@ -929,7 +929,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--color-primary, #0a6ed1)',
+                        color: '#C2410C',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -1347,7 +1347,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                         background: 'none',
                         border: 'none',
                         fontSize: 11,
-                        color: 'var(--color-primary, #0a6ed1)',
+                        color: '#C2410C',
                         cursor: 'pointer'
                       }}
                     >
@@ -1389,7 +1389,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                         background: 'none',
                         border: 'none',
                         fontSize: 11,
-                        color: 'var(--color-primary, #0a6ed1)',
+                        color: '#C2410C',
                         cursor: 'pointer'
                       }}
                     >

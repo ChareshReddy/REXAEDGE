@@ -543,19 +543,7 @@ export default function App() {
         {/* Desktop actions and user badge */}
         <div className="sap-shell-actions">
           {/* 1. Admin button (pill, only visible for admin users) */}
-          {user?.role === 'admin' && (
-            <button
-              type="button"
-              className={`sap-admin-header-pill ${activeTab === 'admin' ? 'active' : ''}`}
-              aria-current={activeTab === 'admin' ? 'page' : undefined}
-              onClick={() => setActiveTab(activeTab === 'admin' ? 'home' : 'admin')}
-              title={activeTab === 'admin' ? 'Return to Portal' : 'Enterprise Administration'}
-              aria-label={activeTab === 'admin' ? 'Exit Admin Panel' : 'Enterprise Administration'}
-            >
-              <ShieldCheck size={13} />
-              <span>Admin</span>
-            </button>
-          )}
+          
 
           {/* 2. Connection indicator dot (clean compact dot, no text, accessible tooltips) */}
           {(() => {
@@ -717,8 +705,8 @@ export default function App() {
                       }}
                       role="menuitem"
                     >
-                      <ShieldCheck size={14} color="var(--sap-primary, #0a6ed1)" className="sap-user-menu-icon" />
-                      <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Admin Panel' : 'Admin Panel'}</span>
+                      <ShieldCheck size={14} color="#EA580C" className="sap-user-menu-icon" />
+                      <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Administration' : 'Enterprise Administration'}</span>
                     </button>
                   )}
 
@@ -731,7 +719,7 @@ export default function App() {
                     }}
                     role="menuitem"
                   >
-                    <KeyRound size={14} color="var(--sap-primary, #0a6ed1)" className="sap-user-menu-icon" />
+                    <KeyRound size={14} color="#EA580C" className="sap-user-menu-icon" />
                     <span className="sap-user-menu-label">Change password</span>
                   </button>
 

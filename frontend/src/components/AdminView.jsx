@@ -564,24 +564,24 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
       {/* Fiori Standard Redesigned Header (Subtitle > Title > Breadcrumbs) */}
       <div className="fiori-ph">
         <div className="fiori-ph-header-top">
-          <p className="fiori-ph-subtitle">Enterprise Administration</p>
           <div className="fiori-ph-title-row">
             <h1 className="fiori-ph-title">System &amp; User Management</h1>
             <button
               type="button"
-              className="sap-button sap-btn sap-btn-ghost"
+              className="sap-btn sap-btn-secondary"
               onClick={loadData}
               title="Refresh Administration Data"
-              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
             >
               <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
               <span>Refresh</span>
             </button>
           </div>
+          <p className="fiori-ph-subtitle">Enterprise Administration</p>
         </div>
 
         <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link sap-button" onClick={onNavigateHome || onBack}>
+          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
             Home
           </button>
           <span className="fiori-bc-sep">›</span>
@@ -593,64 +593,40 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
           <button
             type="button"
             onClick={() => setActiveTab('users')}
-            className={`sap-button ${activeTab === 'users' ? 'primary' : ''}`}
+            className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <Users size={14} />
             <span>Users</span>
-            <span style={{
-              background: 'rgba(0,0,0,0.06)',
-              color: 'var(--sap-text-primary)',
-              borderRadius: 'var(--sap-radius-sm)',
-              padding: '1px 6px',
-              fontSize: 11
-            }}>
-              {users.length}
-            </span>
+            <span className="sap-admin-tab-badge">{users.length}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('servers')}
-            className={`sap-button ${activeTab === 'servers' ? 'primary' : ''}`}
+            className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <Server size={14} />
             <span>SAP Servers</span>
-            <span style={{
-              background: 'rgba(0,0,0,0.06)',
-              color: 'var(--sap-text-primary)',
-              borderRadius: 'var(--sap-radius-sm)',
-              padding: '1px 6px',
-              fontSize: 11
-            }}>
-              {servers.length}
-            </span>
+            <span className="sap-admin-tab-badge">{servers.length}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('permissions')}
-            className={`sap-button ${activeTab === 'permissions' ? 'primary' : ''}`}
+            className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <KeyRound size={14} />
             <span>Access Permissions</span>
-            <span style={{
-              background: 'rgba(0,0,0,0.06)',
-              color: 'var(--sap-text-primary)',
-              borderRadius: 'var(--sap-radius-sm)',
-              padding: '1px 6px',
-              fontSize: 11
-            }}>
-              {permissionsError ? '!' : permissions.length}
-            </span>
+            <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('activity-logs')}
-            className={`sap-button ${activeTab === 'activity-logs' ? 'primary' : ''}`}
+            className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
           >
             <Activity size={14} />
