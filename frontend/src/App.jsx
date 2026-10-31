@@ -637,17 +637,14 @@ export default function App() {
             {isUserMenuOpen && (
               <div className="sap-user-dropdown-menu" role="menu">
                 <div className="sap-user-dropdown-header">
-                  <div className="sap-user-dropdown-name">
-                    {user.email ? user.email.split('@')[0] : 'User'}
-                  </div>
-                  <div className="sap-user-dropdown-email" title={user.email}>
-                    {user.email}
-                  </div>
-                  <div style={{ marginTop: 6 }}>
-                    <span className={`sap-role-badge ${user.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`} style={{ fontSize: 10.5 }}>
-                      {user.role === 'admin' && <ShieldCheck size={11} />}
-                      {user.role ? user.role.toUpperCase() : 'USER'}
+                  <div>
+                    <span className={`sap-role-badge ${user.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`} style={{ fontSize: 11 }}>
+                      {user.role === 'admin' && <ShieldCheck size={12} />}
+                      {user.role === 'admin' ? 'Admin' : 'User'}
                     </span>
+                  </div>
+                  <div className="sap-user-dropdown-email" title={user.email} style={{ marginTop: 6 }}>
+                    {user.email}
                   </div>
                 </div>
 

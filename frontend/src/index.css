@@ -5156,6 +5156,10 @@ input[type="checkbox"]:disabled {
   text-align: left;
 }
 
+.fiori-ph-title-products {
+  font-size: 26px;
+}
+
 /* Breadcrumbs: Plain text links with chevron separators (no pill or border), last item bold */
 .fiori-bc {
   font-size: 13px;
