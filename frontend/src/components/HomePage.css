@@ -141,8 +141,8 @@
   width: 54px;
   height: 54px;
   border-radius: 10px;
-  background: #ebf3fc;
-  color: #1565d8;
+  background: #ffd099 !important;
+  color: #0f2744;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -150,7 +150,7 @@
 }
 
 .rexa-explore-grid-icon {
-  color: #1565d8;
+  color: #0f2744;
 }
 
 .rexa-explore-info {
@@ -187,9 +187,9 @@
 }
 
 .rexa-explore-card:hover .rexa-explore-arrow-btn {
-  border-color: #1565d8;
-  color: #1565d8;
-  background: #f0f7ff;
+  border-color: #EA580C;
+  color: #EA580C;
+  background: #FFF7ED;
 }
 
 /* Three Glass Chips stacked at right of text, slightly staggered */
@@ -630,7 +630,7 @@
 .rexa-btn-secondary {
   background: #ffffff;
   border: 1px solid #cbd5e1;
-  color: #475569;
+  color: #334155;
   font-size: 13px;
   font-weight: 600;
   padding: 7px 15px;
@@ -639,8 +639,8 @@
 }
 
 .rexa-btn-primary {
-  background: #1565d8;
-  border: 1px solid #1565d8;
+  background: #EA580C;
+  border: 1px solid #EA580C;
   color: #ffffff;
   font-size: 13px;
   font-weight: 600;
@@ -653,7 +653,8 @@
 }
 
 .rexa-btn-primary:hover {
-  background: #0d47a1;
+  background: #C2410C;
+  border-color: #C2410C;
 }
 
 .rexa-about-split-row {
@@ -779,8 +780,8 @@
 }
 
 .rexa-contact-submit-btn {
-  background: #1565d8;
-  border: none;
+  background: #EA580C;
+  border: 1px solid #EA580C;
   color: #ffffff;
   font-size: 12.5px;
   font-weight: 600;
@@ -795,7 +796,8 @@
 }
 
 .rexa-contact-submit-btn:hover {
-  background: #0d47a1;
+  background: #C2410C;
+  border-color: #C2410C;
 }
 
 .rexa-contact-success {

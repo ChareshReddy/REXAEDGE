@@ -37,18 +37,18 @@ const appJsx = fs.readFileSync(appJsxPath, 'utf8');
 assert.doesNotMatch(appJsx, /<span[^>]*>Session:<\/span>/, 'Top bar must not contain "Session:" text');
 assert.doesNotMatch(appJsx, /SAP RFC ONLINE/, 'Top bar must not contain "SAP RFC ONLINE" text');
 
-// Check order on right side: Admin button, connection dot, server selector, user profile
-const adminIdx = appJsx.indexOf('sap-admin-header-pill');
+// Check order on right side: connection dot, server selector, user profile (Admin button moved to profile menu)
+assert.doesNotMatch(appJsx, /sap-admin-header-pill/, 'Admin pill button must be removed from shell header');
+assert.ok(appJsx.includes('Enterprise Administration'), 'Enterprise Administration must be present in user profile menu');
+
 const dotIdx = appJsx.indexOf('sap-connection-dot-container');
 const serverIdx = appJsx.indexOf('sap-system-select-wrapper');
 const userAvatarIdx = appJsx.indexOf('sap-user-avatar-btn');
 
-assert.ok(adminIdx !== -1, 'Admin pill button must exist in header');
 assert.ok(dotIdx !== -1, 'Connection dot container must exist in header');
 assert.ok(serverIdx !== -1, 'Server selector must exist in header');
 assert.ok(userAvatarIdx !== -1, 'User avatar button must exist in header');
 
-assert.ok(adminIdx < dotIdx, 'Admin button must appear before connection dot');
 assert.ok(dotIdx < serverIdx, 'Connection dot must appear before server selector');
 assert.ok(serverIdx < userAvatarIdx, 'Server selector must appear before user profile avatar');
 
@@ -70,17 +70,17 @@ console.log('Test 3: Verify FioriPageHeader and AdminView layout & breadcrumbs..
 const fioriPhPath = path.join(rootDir, 'frontend/src/components/FioriPageHeader.jsx');
 const fioriPh = fs.readFileSync(fioriPhPath, 'utf8');
 
-// Subtitle above title, breadcrumbs below
-const subtitlePos = fioriPh.indexOf('fiori-ph-subtitle');
+// Title first, subtitle below title, breadcrumbs below subtitle
 const titlePos = fioriPh.indexOf('fiori-ph-title');
+const subtitlePos = fioriPh.indexOf('fiori-ph-subtitle');
 const bcPos = fioriPh.indexOf('fiori-bc');
 
-assert.ok(subtitlePos !== -1, 'Subtitle must exist in FioriPageHeader');
 assert.ok(titlePos !== -1, 'Title must exist in FioriPageHeader');
+assert.ok(subtitlePos !== -1, 'Subtitle must exist in FioriPageHeader');
 assert.ok(bcPos !== -1, 'Breadcrumb trail must exist in FioriPageHeader');
 
-assert.ok(subtitlePos < titlePos, 'Subtitle must be placed above title');
-assert.ok(titlePos < bcPos, 'Breadcrumbs must be placed below title');
+assert.ok(titlePos < subtitlePos, 'Title must be placed above subtitle');
+assert.ok(subtitlePos < bcPos, 'Breadcrumbs must be placed below subtitle');
 
 // Ensure back button (<) and SANDBOX tag are removed
 assert.doesNotMatch(fioriPh, /fiori-ph-back/, 'Back button (<) must be removed from FioriPageHeader');
@@ -131,8 +131,8 @@ console.log('   ✓ Card icon tile at top and Delete BOM slate styling verified\
 // 5. Scan frontend for disallowed red color codes
 console.log('Test 5: Scanning frontend source files for disallowed red colors...');
 const redHexPatterns = [
-  /#(?:ef4444|dc2626|b91c1c|f87171|fca5a5|fecaca|fef2f2|e11d48|be123c|991b1b|c53030|fed7d7|fff5f5|ff4d4f|f5222d|d32f2f|f44336|e53935|e57373)\b/i,
-  /rgba?\(\s*(?:239|220|248|252|254|225|190|153|197|255)\s*,\s*(?:68|38|113|165|202|242|29|18|27|48|77|0)\s*,\s*(?:68|38|113|165|202|242|72|60|27|48|79|0)\b/i
+  /#(?:f04444|ef4444|dc2626|b91c1c|f87171|fca5a5|fecaca|fef2f2|e11d48|be123c|991b1b|c53030|fed7d7|fff5f5|ff4d4f|f5222d|d32f2f|f44336|e53935|e57373)\b/i,
+  /rgba?\(\s*(?:240|239|220|248|252|254|225|190|153|197|255)\s*,\s*(?:68|38|113|165|202|242|29|18|27|48|77|0)\s*,\s*(?:68|38|113|165|202|242|72|60|27|48|79|0)\b/i
 ];
 
 const disallowedFiles = [];
@@ -240,10 +240,10 @@ function getContrastRatio(hex1, hex2) {
 
 const buttonsToCheck = [
   { name: 'Login Primary Button (.sap-btn-navy-login)', bg: '#0f2744', text: '#ffffff' },
-  { name: 'Header Admin Pill (.sap-admin-header-pill)', bg: '#0f2744', text: '#ffffff' },
   { name: 'App Primary Button (.sap-btn-primary)', bg: '#0f2744', text: '#ffffff' },
   { name: 'Destructive Action Button (.sap-btn-danger)', bg: '#1e293b', text: '#ffffff' },
-  { name: 'Amber Error Alert Text on Background', bg: '#fffbeb', text: '#b45309' }
+  { name: 'Amber Error Alert Text on Background', bg: '#fffbeb', text: '#b45309' },
+  { name: 'Orange-700 Text on Orange-50 Bg', bg: '#FFF7ED', text: '#C2410C' }
 ];
 
 buttonsToCheck.forEach(btn => {
