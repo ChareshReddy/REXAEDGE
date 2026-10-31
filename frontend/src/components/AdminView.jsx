@@ -95,6 +95,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
   const [userSearch, setUserSearch] = useState('');
   const [serverSearch, setServerSearch] = useState('');
   const [permSearch, setPermSearch] = useState('');
+  const [logsRefreshTrigger, setLogsRefreshTrigger] = useState(0);
 
   // Modal / Form states
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
@@ -218,6 +219,13 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
       setErrorMessage(err.response?.data?.error || err.message || 'Failed to load administration data.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleRefresh = () => {
+    loadData();
+    if (activeTab === 'activity-logs') {
+      setLogsRefreshTrigger((prev) => prev + 1);
     }
   };
 
@@ -562,81 +570,79 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
       {/* Fiori Standard Redesigned Header (Subtitle > Title > Breadcrumbs) */}
-      <div className="fiori-ph">
-        <div className="fiori-ph-header-top">
-          <div className="fiori-ph-title-row">
-            <h1 className="fiori-ph-title">System &amp; User Management</h1>
+      <div className="fiori-ph" style={{ padding: '16px 0 14px' }}>
+        <div style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '0 32px', boxSizing: 'border-box' }}>
+          <div className="fiori-ph-header-top">
+            <div className="fiori-ph-title-row">
+              <h1 className="fiori-ph-title">System &amp; User Management</h1>
+              <button
+                type="button"
+                className="sap-btn sap-btn-secondary"
+                onClick={handleRefresh}
+                title="Refresh Administration Data"
+                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
+              >
+                <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
+                <span>Refresh</span>
+              </button>
+            </div>
+            <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
+          </div>
+
+          <div className="fiori-bc">
+            <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
+              Home
+            </button>
+            <span className="fiori-bc-sep">›</span>
+            <span className="fiori-bc-current">Enterprise Administration</span>
+          </div>
+
+          {/* Admin Navigation Tabs */}
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={loadData}
-              title="Refresh Administration Data"
-              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
+              onClick={() => setActiveTab('users')}
+              className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
             >
-              <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
-              <span>Refresh</span>
+              <Users size={14} />
+              <span>Users</span>
+              <span className="sap-admin-tab-badge">{users.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('servers')}
+              className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
+            >
+              <Server size={14} />
+              <span>SAP Servers</span>
+              <span className="sap-admin-tab-badge">{servers.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('permissions')}
+              className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
+            >
+              <KeyRound size={14} />
+              <span>Access Permissions</span>
+              <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('activity-logs')}
+              className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
+            >
+              <Activity size={14} />
+              <span>Activity Logs</span>
             </button>
           </div>
-          <p className="fiori-ph-subtitle">Enterprise Administration</p>
-        </div>
-
-        <div className="fiori-bc">
-          <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-            Home
-          </button>
-          <span className="fiori-bc-sep">›</span>
-          <span className="fiori-bc-current">Enterprise Administration</span>
-        </div>
-
-        {/* Admin Navigation Tabs */}
-        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('users')}
-            className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
-          >
-            <Users size={14} />
-            <span>Users</span>
-            <span className="sap-admin-tab-badge">{users.length}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('servers')}
-            className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
-          >
-            <Server size={14} />
-            <span>SAP Servers</span>
-            <span className="sap-admin-tab-badge">{servers.length}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('permissions')}
-            className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
-          >
-            <KeyRound size={14} />
-            <span>Access Permissions</span>
-            <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('activity-logs')}
-            className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 14px', fontSize: 'var(--sap-size-button)' }}
-          >
-            <Activity size={14} />
-            <span>Activity Logs</span>
-          </button>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="fiori-view-body" style={{ maxWidth: 1080, margin: '0 auto', padding: '14px 24px 32px' }}>
+      <div className="fiori-view-body" style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '16px 32px 32px', boxSizing: 'border-box' }}>
         {/* Alerts */}
         {errorMessage && (
           <div className="sap-alert sap-alert-error" style={{ marginBottom: 14 }}>
@@ -655,7 +661,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             TAB 1: USERS MANAGEMENT
            ========================================================================= */}
         {activeTab === 'users' && (
-          <div>
+          <div style={{ maxWidth: 740, width: '100%' }}>
             {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
@@ -687,7 +693,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Users Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 250 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
@@ -734,7 +740,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                           <td>
                             <span className={`sap-role-badge ${u.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`}>
                               {u.role === 'admin' && <ShieldCheck size={11} />}
-                              {u.role.toUpperCase()}
+                              {u.role === 'admin' ? 'Admin' : 'User'}
                             </span>
                           </td>
                           <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
@@ -755,34 +761,36 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                               <span>Set password</span>
                             </button>
                           </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {isSelf ? (
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: 500,
-                                  color: 'var(--sap-text-subtle)',
-                                  background: 'var(--sap-surface-elevated)',
-                                  border: '1px solid var(--sap-border-subtle)',
-                                  padding: '2px 8px',
-                                  borderRadius: 'var(--sap-radius-pill)',
-                                  display: 'inline-block'
-                                }}
-                                title="You cannot delete your own logged-in account"
-                              >
-                                Current User
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="sap-btn sap-btn-ghost"
-                                onClick={() => handleDeleteUser(u)}
-                                title="Deactivate / Remove User"
-                                style={{ color: 'var(--sap-error)', padding: '2px 6px' }}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {isSelf ? (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    color: 'var(--sap-text-subtle)',
+                                    background: 'var(--sap-surface-elevated)',
+                                    border: '1px solid var(--sap-border-subtle)',
+                                    padding: '2px 8px',
+                                    borderRadius: 'var(--sap-radius-pill)',
+                                    display: 'inline-block'
+                                  }}
+                                  title="You cannot delete your own logged-in account"
+                                >
+                                  Current User
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="sap-btn sap-btn-ghost"
+                                  onClick={() => handleDeleteUser(u)}
+                                  title="Deactivate / Remove User"
+                                  style={{ color: 'var(--sap-error)', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -804,7 +812,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             TAB 2: SAP SERVERS MANAGEMENT
            ========================================================================= */}
         {activeTab === 'servers' && (
-          <div>
+          <div style={{ maxWidth: 910, width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
@@ -835,12 +843,12 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 150 }} />
                   <col style={{ width: 120 }} />
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 150 }} />
                   <col style={{ width: 140 }} />
-                  <col style={{ width: 200 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 100 }} />
+                  <col style={{ width: 80 }} />
                   <col style={{ width: 110 }} />
                 </colgroup>
                 <thead>
@@ -882,7 +890,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                           {s.ashost || 'N/A'}
                         </td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
-                          Sys: {s.sysnr || s.sys_number || '00'} | Clt: {s.client || '100'}
+                          Sys {s.sysnr || s.sys_number || '00'} | Client {s.client || '100'}
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -949,7 +957,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             TAB 3: PERMISSIONS MATRIX & MANAGEMENT
            ========================================================================= */}
         {activeTab === 'permissions' && (
-          <div style={{ maxWidth: 840, width: '100%' }}>
+          <div style={{ maxWidth: 850, width: '100%' }}>
             {/* Database Migration Pending Notice */}
             {migrationPending && (
               <div
@@ -1039,10 +1047,10 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%' }}>
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 'auto' }} />
+                  <col style={{ width: 210 }} />
                   <col style={{ width: 150 }} />
                   <col style={{ width: 110 }} />
-                  <col style={{ width: 190 }} />
+                  <col style={{ width: 160 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 110 }} />
                 </colgroup>
@@ -1208,7 +1216,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             TAB 4: ACTIVITY LOGS (AUDIT & ERRORS)
            ========================================================================= */}
         {activeTab === 'activity-logs' && (
-          <AdminActivityLogsView availableServers={servers} />
+          <AdminActivityLogsView availableServers={servers} refreshTrigger={logsRefreshTrigger} />
         )}
       </div>
 

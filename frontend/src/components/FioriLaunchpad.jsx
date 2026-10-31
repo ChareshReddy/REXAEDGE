@@ -428,7 +428,13 @@ export default function FioriLaunchpad({
         <>
           <FioriPageHeader
             title={parentGroup.title}
-            subtitle="Choose an operation"
+            subtitle={
+              parentGroup.subView === 'bom_create_operations' || parentGroup.id === 'create_group'
+                ? 'Create a single BOM, or many at once from a file.'
+                : parentGroup.subView === 'bom_copy_operations' || parentGroup.id === 'copy_group'
+                ? 'Copy a single BOM, or many at once.'
+                : parentGroup.desc || 'Choose an operation'
+            }
             onBack={() => handleSetView(parentGroup.moduleSubView)}
             backTitle={`Back to ${parentGroup.moduleLabel}`}
             systemKey={systemKey}

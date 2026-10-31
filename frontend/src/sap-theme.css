@@ -105,6 +105,12 @@ html, body {
   box-sizing: border-box;
 }
 
+/* Products Page Title (+2px from standard type scale) */
+.fiori-ph-title.fiori-ph-title-products,
+.sap-screen-title.fiori-ph-title-products {
+  font-size: calc(var(--sap-size-screen-title, 24px) + 2px) !important;
+}
+
 /* Section Header Bar: Plain headings with thin divider line, NO box/background */
 .sap-section-header,
 .fiori-group-title,
@@ -671,7 +677,15 @@ button.sap-btn-navy-login:active:not(:disabled) {
   gap: 2px !important;
 }
 
+/* Subtitles / Taglines: Uniform uppercase and brand blue across all pages */
 .fiori-ph-subtitle {
+  margin: 0 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--sap-brand-blue, #0a6ed1) !important;
+  line-height: 1.3 !important;
   text-align: left !important;
   align-self: flex-start !important;
 }
@@ -910,8 +924,14 @@ button.sap-admin-nav-tab {
   color: #475569 !important;
   border-radius: 9999px !important;
   font-size: 13px !important;
-  padding: 6px 16px !important;
-  transition: all 0.15s ease !important;
+  font-weight: 600 !important;
+  height: 32px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-sizing: border-box !important;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
 }
 
 button.fiori-home-tab:hover,
@@ -925,7 +945,7 @@ button.sap-admin-nav-tab.active {
   background-color: #EA580C !important;
   border-color: #EA580C !important;
   color: #ffffff !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   box-shadow: 0 1px 3px rgba(234, 88, 12, 0.25) !important;
 }
 
@@ -1068,9 +1088,78 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
   max-height: calc(100vh - 280px) !important;
   overflow-y: auto !important;
   overflow-x: auto !important;
+  scrollbar-gutter: stable;
   border: 1px solid var(--sap-border-color) !important;
   background-color: #ffffff !important;
   border-radius: var(--sap-radius-md, 8px) !important;
+}
+
+/* Activity Logs Filter Bar standard */
+.sap-logs-filter-bar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-items: flex-end !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--sap-border-color, #e2e8f0) !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  box-sizing: border-box !important;
+}
+
+.sap-logs-filter-item {
+  flex: 1 1 130px;
+  min-width: 120px;
+}
+
+.sap-logs-filter-search {
+  flex: 2 1 180px;
+  min-width: 160px;
+}
+
+.sap-logs-filter-reset {
+  flex: 0 0 auto;
+}
+
+@media (min-width: 1366px) {
+  .sap-logs-filter-bar {
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+  }
+  .sap-logs-filter-item {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+  .sap-logs-filter-search {
+    flex: 1.5 1 0 !important;
+    min-width: 0 !important;
+  }
+}
+
+/* Admin compact table font, row height, and padding standards */
+.sap-admin-compact-table th {
+  height: 36px !important;
+  padding: 0 6px !important;
+  font-size: 12px !important;
+}
+
+.sap-admin-compact-table td {
+  height: 36px !important;
+  padding: 0 6px !important;
+  font-family: var(--sap-font-family, sans-serif) !important;
+  font-size: 12px !important;
+}
+
+.sap-admin-compact-table tr:has(button) td,
+.sap-admin-compact-table td:has(button) {
+  height: 40px !important;
+}
+
+/* Allowed red exception: Failed status badge */
+.sap-badge-failed {
+  background-color: #fef2f2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
 }
 
 /* Header Action Items Vertical Alignment & Sizing Standard (32px) */

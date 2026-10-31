@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   Search,
   RotateCcw,
@@ -86,7 +87,7 @@ function getDateRangeValues(preset) {
   return { startDate: '', endDate: '' };
 }
 
-export default function AdminActivityLogsView({ availableServers = [] }) {
+export default function AdminActivityLogsView({ availableServers = [], refreshTrigger = 0 }) {
   const [activeSubTab, setActiveSubTab] = useState('audit'); // 'audit' | 'errors'
 
   // Filter States
@@ -205,6 +206,12 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
     loadLogs();
   }, [loadLogs]);
 
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      loadLogs();
+    }
+  }, [refreshTrigger, loadLogs]);
+
   // Reset page to 1 when filters or sub-tab change
   const handleSubTabChange = (newSubTab) => {
     if (newSubTab !== activeSubTab) {
@@ -279,22 +286,22 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
           borderBottom: '1px solid var(--color-border, #e2e8f0)'
         }}
       >
-        <div style={{ display: 'inline-flex', gap: 6, backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <button
             type="button"
             onClick={() => handleSubTabChange('audit')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '6px 14px',
-              borderRadius: '6px',
+              gap: 6,
+              padding: '6px 2px 8px',
               border: 'none',
+              borderBottom: activeSubTab === 'audit' ? '2px solid #EA580C' : '2px solid transparent',
+              borderRadius: 0,
               fontSize: '13px',
-              fontWeight: activeSubTab === 'audit' ? 600 : 500,
-              backgroundColor: activeSubTab === 'audit' ? '#EA580C' : 'transparent',
-              color: activeSubTab === 'audit' ? '#ffffff' : '#475569',
-              boxShadow: activeSubTab === 'audit' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: 600,
+              backgroundColor: 'transparent',
+              color: activeSubTab === 'audit' ? '#EA580C' : '#64748b',
               cursor: 'pointer'
             }}
           >
@@ -308,15 +315,15 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '6px 14px',
-              borderRadius: '6px',
+              gap: 6,
+              padding: '6px 2px 8px',
               border: 'none',
+              borderBottom: activeSubTab === 'errors' ? '2px solid #EA580C' : '2px solid transparent',
+              borderRadius: 0,
               fontSize: '13px',
-              fontWeight: activeSubTab === 'errors' ? 600 : 500,
-              backgroundColor: activeSubTab === 'errors' ? '#EA580C' : 'transparent',
-              color: activeSubTab === 'errors' ? '#ffffff' : '#475569',
-              boxShadow: activeSubTab === 'errors' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              fontWeight: 600,
+              backgroundColor: 'transparent',
+              color: activeSubTab === 'errors' ? '#EA580C' : '#64748b',
               cursor: 'pointer'
             }}
           >
@@ -325,32 +332,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
           </button>
         </div>
 
-        {/* Top-Right Refresh and Export */}
+        {/* Top-Right Export CSV Only (Single Page-Level Refresh Button is Preserved) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            type="button"
-            onClick={loadLogs}
-            disabled={isLoading}
-            className="sap-btn sap-btn-ghost"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              height: 32,
-              padding: '0 12px',
-              fontSize: 12,
-              borderRadius: 6,
-              border: '1px solid var(--color-border, #d1d5db)',
-              backgroundColor: '#ffffff',
-              cursor: 'pointer',
-              color: 'var(--color-text, #374151)'
-            }}
-            title="Refresh logs"
-          >
-            <RefreshCw size={13} className={isLoading ? 'sap-spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
           <button
             type="button"
             onClick={handleExportCsv}
@@ -430,21 +413,10 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
       )}
 
       {/* Filter Bar */}
-      <div
-        className="sap-logs-filter-bar"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 10,
-          backgroundColor: '#ffffff',
-          border: '1px solid var(--color-border, #e2e8f0)',
-          borderRadius: 8,
-          padding: 12
-        }}
-      >
+      <div className="sap-logs-filter-bar">
         {/* Date Range Preset */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+        <div className="sap-logs-filter-item">
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             Date Range
           </label>
           <select
@@ -453,7 +425,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               setDatePreset(e.target.value);
               setPage(1);
             }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
           >
             <option value="today">Today</option>
             <option value="7d">Last 7 Days</option>
@@ -466,34 +438,34 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
         {/* Custom Start & End Date if datePreset === 'custom' */}
         {datePreset === 'custom' && (
           <>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+            <div className="sap-logs-filter-item">
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 Start Date
               </label>
               <input
                 type="datetime-local"
                 value={customStartDate}
                 onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px' }}
+                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
               />
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+            <div className="sap-logs-filter-item">
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 End Date
               </label>
               <input
                 type="datetime-local"
                 value={customEndDate}
                 onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px' }}
+                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
               />
             </div>
           </>
         )}
 
         {/* User Email Filter */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+        <div className="sap-logs-filter-item">
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             User Email
           </label>
           <input
@@ -501,20 +473,20 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
             placeholder="Filter by user..."
             value={userEmailFilter}
             onChange={(e) => { setUserEmailFilter(e.target.value); setPage(1); }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px' }}
+            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
           />
         </div>
 
         {/* Action (Audit) or Source (Errors) */}
         {activeSubTab === 'audit' ? (
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+          <div className="sap-logs-filter-item">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
               Action Type
             </label>
             <select
               value={actionFilter}
               onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
             >
               <option value="">All Actions</option>
               <option value="auth.login">auth.login</option>
@@ -537,14 +509,14 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
             </select>
           </div>
         ) : (
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+          <div className="sap-logs-filter-item">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
               Source
             </label>
             <select
               value={sourceFilter}
               onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
             >
               <option value="">All Sources</option>
               <option value="backend">backend</option>
@@ -555,14 +527,14 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
         )}
 
         {/* Server Filter */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+        <div className="sap-logs-filter-item">
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             SAP Server
           </label>
           <select
             value={serverFilter}
             onChange={(e) => { setServerFilter(e.target.value); setPage(1); }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
           >
             <option value="">All Servers</option>
             {availableServers.map((s) => (
@@ -575,29 +547,29 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
 
         {/* Status (Audit) or HTTP Status (Errors) */}
         {activeSubTab === 'audit' ? (
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+          <div className="sap-logs-filter-item">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
               Status
             </label>
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
             >
-              <option value="">All Statuses</option>
+              <option value="">All Status</option>
               <option value="success">Success</option>
               <option value="failed">Failed</option>
             </select>
           </div>
         ) : (
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+          <div className="sap-logs-filter-item">
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
               HTTP Status
             </label>
             <select
               value={httpStatusFilter}
               onChange={(e) => { setHttpStatusFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
             >
               <option value="">All Status Codes</option>
               <option value="400">400 (Bad Request)</option>
@@ -612,8 +584,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
         )}
 
         {/* Text Search */}
-        <div style={{ minWidth: 200 }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4 }}>
+        <div className="sap-logs-filter-search">
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             Search Text
           </label>
           <div style={{ position: 'relative' }}>
@@ -625,13 +597,13 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               placeholder={activeSubTab === 'audit' ? 'Search target, message...' : 'Search ref, message, route...'}
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', paddingLeft: 28, paddingRight: 8 }}
+              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', paddingLeft: 28, paddingRight: 8, boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
         {/* Reset Button */}
-        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+        <div className="sap-logs-filter-reset" style={{ display: 'flex', alignItems: 'flex-end' }}>
           <button
             type="button"
             onClick={handleResetFilters}
@@ -647,7 +619,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 5
+              gap: 5,
+              boxSizing: 'border-box'
             }}
           >
             <RotateCcw size={13} />
@@ -665,7 +638,10 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
         style={{
           width: '100%',
           overflowX: 'auto',
-          maxHeight: '560px',
+          overflowY: 'auto',
+          height: 'calc(100vh - 350px)',
+          minHeight: 400,
+          scrollbarGutter: 'stable',
           backgroundColor: '#ffffff',
           borderRadius: 8,
           border: '1px solid var(--color-border, #e2e8f0)',
@@ -676,45 +652,55 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
           /* ============================================================
              AUDIT LOGS TABLE
              ============================================================ */
-          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse' }}>
+          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', maxWidth: 1120, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+            <colgroup>
+              <col style={{ width: 160 }} />
+              <col style={{ width: 190 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 160 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 85 }} />
+              <col style={{ width: 95 }} />
+            </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
-                <th style={{ width: 160, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Timestamp when action occurred">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Timestamp</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 180, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="User email who performed action">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>User</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 140, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Action type in feature.action format">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Action</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 160, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Target entity or identifier">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Target</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 130, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Target SAP Server">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Server</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 100, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Execution outcome">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Status</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 85, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Duration of request in milliseconds">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Duration</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 75, textAlign: 'right', padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36, textAlign: 'center' }}>
                   <Tooltip text="Inspect full details">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Actions</span>
                   </Tooltip>
@@ -761,15 +747,15 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                       fontSize: 12
                     }}
                   >
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#334155' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#334155' }}>
                       {formatDateTime(item.created_at)}
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.user_email || '—'}>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.user_email || '—'}>
                       <span style={{ fontWeight: 500, color: '#1e293b' }}>
                         {item.user_email || item.user_id || 'SYSTEM'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
                       <span
                         style={{
                           display: 'inline-block',
@@ -779,19 +765,20 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                           fontWeight: 600,
                           backgroundColor: '#f1f5f9',
                           color: '#0f172a',
-                          border: '1px solid #e2e8f0'
+                          border: '1px solid #e2e8f0',
+                          fontFamily: 'var(--sap-font-mono, monospace)'
                         }}
                       >
                         {item.action || '—'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.target || ''}>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.target || ''}>
                       {item.target || '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.server_name || item.server_id || '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
                       {item.status === 'success' ? (
                         <span
                           style={{
@@ -812,6 +799,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                         </span>
                       ) : (
                         <span
+                          className="sap-badge-failed"
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -819,21 +807,18 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                             padding: '2px 8px',
                             borderRadius: 4,
                             fontSize: 11,
-                            fontWeight: 600,
-                            backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                            color: 'var(--color-amber-800, #b45309)',
-                            border: '1px solid var(--color-amber-300, #fcd34d)'
+                            fontWeight: 600
                           }}
                         >
-                          <AlertTriangle size={12} color="#b45309" />
+                          <AlertCircle size={12} />
                           <span>Failed</span>
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#64748b' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#64748b' }}>
                       {item.duration_ms !== null && item.duration_ms !== undefined ? `${item.duration_ms} ms` : '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    <td style={{ padding: '0 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <button
                         type="button"
                         onClick={() => handleOpenDetail(item)}
@@ -847,7 +832,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                           backgroundColor: '#ffffff',
                           cursor: 'pointer',
                           fontSize: 11,
-                          color: '#C2410C'
+                          color: '#C2410C',
+                          margin: '0 auto'
                         }}
                         title="View log details"
                       >
@@ -864,45 +850,55 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
           /* ============================================================
              ERROR LOGS TABLE
              ============================================================ */
-          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', minWidth: 960, borderCollapse: 'collapse' }}>
+          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', maxWidth: 1140, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+            <colgroup>
+              <col style={{ width: 160 }} />
+              <col style={{ width: 120 }} />
+              <col style={{ width: 90 }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 85 }} />
+              <col style={{ width: 240 }} />
+              <col style={{ width: 160 }} />
+              <col style={{ width: 95 }} />
+            </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
-                <th style={{ width: 160, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Timestamp when error occurred">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Timestamp</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 130, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="8-character unique Error Reference">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Error Ref</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 95, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Source of error: backend, sap, or frontend">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Source</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 170, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Route or API endpoint">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Route / Endpoint</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 85, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="HTTP status code">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Status</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 220, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Error message">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Message</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 150, padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="User associated with error">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>User</span>
                   </Tooltip>
                 </th>
-                <th style={{ width: 75, textAlign: 'right', padding: '8px 12px' }}>
+                <th style={{ padding: '0 8px', height: 36, textAlign: 'center' }}>
                   <Tooltip text="Inspect full error details and stack trace">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Actions</span>
                   </Tooltip>
@@ -949,12 +945,12 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                       fontSize: 12
                     }}
                   >
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#334155' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#334155' }}>
                       {formatDateTime(item.created_at)}
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <code style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                        <code style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
                           {item.error_ref || '—'}
                         </code>
                         {item.error_ref && (
@@ -969,7 +965,7 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
                       <span
                         style={{
                           display: 'inline-block',
@@ -985,32 +981,30 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                         {item.source || 'backend'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.route || ''}>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{item.route || '—'}</span>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.route || ''}>
+                      <span style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontSize: 11 }}>{item.route || '—'}</span>
                     </td>
-                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
                       <span
+                        className="sap-badge-failed"
                         style={{
                           display: 'inline-block',
                           padding: '1px 6px',
                           borderRadius: 4,
                           fontSize: 11,
-                          fontWeight: 600,
-                          backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                          color: 'var(--color-amber-900, #78350f)',
-                          border: '1px solid var(--color-amber-200, #fde68a)'
+                          fontWeight: 600
                         }}
                       >
                         {item.http_status || '500'}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.message || ''}>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.message || ''}>
                       <span style={{ color: '#1e293b' }}>{item.message || '—'}</span>
                     </td>
-                    <td style={{ padding: '8px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.user_email || '—'}
                     </td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    <td style={{ padding: '0 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <button
                         type="button"
                         onClick={() => handleOpenDetail(item)}
@@ -1024,7 +1018,8 @@ export default function AdminActivityLogsView({ availableServers = [] }) {
                           backgroundColor: '#ffffff',
                           cursor: 'pointer',
                           fontSize: 11,
-                          color: 'var(--color-amber-800, #b45309)'
+                          color: 'var(--color-amber-800, #b45309)',
+                          margin: '0 auto'
                         }}
                         title="View full error details"
                       >
