@@ -9,10 +9,13 @@ import {
   Hash
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import Modal from './Modal';
 import ValueHelpInput from './ValueHelpInput';
 
-export default function ValidateBomModal({ isOpen, onClose }) {
+export default function ValidateBomModal({
+  isOpen, onClose }) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     material: '',
     plant: '',
@@ -21,7 +24,11 @@ export default function ValidateBomModal({ isOpen, onClose }) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, _setErrorMsg] = useState('');
+  const setErrorMsg = (msg) => {
+    _setErrorMsg(msg);
+    if (msg) toast.error(msg);
+  };
 
   const handleValidate = async (e) => {
     e.preventDefault();
@@ -159,13 +166,7 @@ export default function ValidateBomModal({ isOpen, onClose }) {
           </button>
         </form>
 
-        {/* Error Message */}
-        {errorMsg && (
-          <div className="sap-form-alert sap-form-alert-error" style={{ marginTop: 10, marginBottom: 0 }}>
-            <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: '11.5px' }}>{errorMsg}</span>
-          </div>
-        )}
+        {/* Error Message handled via Toast */}
 
         {/* Validation Result Box */}
         {result && result.success && (

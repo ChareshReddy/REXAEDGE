@@ -75,7 +75,7 @@ export default function HomePage({
           {/* Hero Left Content */}
           <div className="rexa-hero-content-col">
             <div className="rexa-hero-eyebrow">
-              SMART &nbsp;•&nbsp; SECURE &nbsp;•&nbsp; SCALABLE
+              Smart &nbsp;•&nbsp; Secure &nbsp;•&nbsp; Scalable
             </div>
 
             <h1 className="rexa-hero-heading">

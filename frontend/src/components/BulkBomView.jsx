@@ -30,6 +30,7 @@ import {
 } from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   BulkWorkflowSteps,
@@ -105,6 +106,7 @@ export default function BulkBomView({
   initialJobProgress = null,
   initialActiveJobId = null
 }) {
+  const toast = useToast();
   const [file, setFile] = useState(
     initialParsedRows.length > 0 || initialExecutionReport || initialIsValidating
       ? { name: 'Batch_BOM_Copy.xlsx' }
@@ -113,7 +115,11 @@ export default function BulkBomView({
   const [parsedRows, setParsedRows] = useState(
     initialExecutionReport?.results || initialParsedRows
   );
-  const [parseError, setParseError] = useState('');
+  const [parseError, _setParseError] = useState('');
+  const setParseError = (msg) => {
+    _setParseError(msg);
+    if (msg) toast.error(msg);
+  };
 
   // Validation phase state
   const [isValidating, setIsValidating] = useState(initialIsValidating);
@@ -338,7 +344,7 @@ export default function BulkBomView({
     try {
       await cancelBomJob(activeJobId);
     } catch (err) {
-      alert(err.response?.data?.message || err.message || 'Failed to cancel job');
+      toast.error(err.response?.data?.message || err.message || 'Failed to cancel job');
       setIsCancelling(false);
     }
   };
@@ -577,7 +583,10 @@ export default function BulkBomView({
   };
 
   const handleValidateWithSap = async () => {
-    if (parsedRows.length === 0) return;
+    if (parsedRows.length === 0) {
+      toast.warning('Please upload a spreadsheet first.', { title: 'Validation notice' });
+      return;
+    }
     if (validationAbortControllerRef.current) {
       validationAbortControllerRef.current.abort();
     }
@@ -629,7 +638,7 @@ export default function BulkBomView({
   const handleExecuteBatchCopy = async () => {
     const executableRows = parsedRows.filter((r) => r.status === 'VALID' || r.status === 'WARNING');
     if (executableRows.length === 0) {
-      alert('No valid rows available to execute.');
+      toast.warning('No valid rows available to execute.', { title: 'Validation notice' });
       return;
     }
 
@@ -964,24 +973,7 @@ export default function BulkBomView({
                 />
 
                 {/* Error Alert */}
-                {parseError && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '12px 16px',
-                      borderRadius: 'var(--radius-md, 6px)',
-                      background: 'var(--sap-error-bg, #fffbeb)',
-                      border: '1px solid var(--sap-error-border, #fcd34d)',
-                      color: 'var(--sap-error-text, #b45309)',
-                      fontSize: 13
-                    }}
-                  >
-                    <XCircle size={18} style={{ flexShrink: 0 }} />
-                    <span>{parseError}</span>
-                  </div>
-                )}
+                
 
                 {/* PRE-FLIGHT PREVIEW TABLE CARD */}
                 <div className="sap-card" style={{ padding: 20 }}>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { batchValidateBoms, batchCopyBoms, downloadBomTemplate } from '../services/api';
 import Modal from './Modal';
+import { useToast } from '../context/ToastContext';
 
 /**
  * Normalizes headers from Excel spreadsheet into recognized internal keys.
@@ -74,10 +75,16 @@ function normalizeRowKeys(rawRow) {
   return normalized;
 }
 
-export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete }) {
+export default function BulkBomCopyModal({
+  isOpen, onClose, onExecutionComplete }) {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [parsedRows, setParsedRows] = useState([]);
-  const [parseError, setParseError] = useState('');
+  const [parseError, _setParseError] = useState('');
+  const setParseError = (msg) => {
+    _setParseError(msg);
+    if (msg) toast.error(msg);
+  };
   const [isDragging, setIsDragging] = useState(false);
 
   // Validation phase state
@@ -273,7 +280,7 @@ export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete 
   const handleExecuteBatchCopy = async () => {
     const executableRows = parsedRows.filter((r) => r.status === 'VALID' || r.status === 'WARNING');
     if (executableRows.length === 0) {
-      alert('No valid rows available to execute.');
+      toast.warning('No valid rows available to execute.', { title: 'Validation notice' });
       return;
     }
 
@@ -435,13 +442,7 @@ export default function BulkBomCopyModal({ isOpen, onClose, onExecutionComplete 
           </div>
         </div>
 
-        {/* Error Notification */}
-        {parseError && (
-          <div className="sap-form-alert sap-form-alert-error" style={{ margin: '8px 16px 0' }}>
-            <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-            <span>{parseError}</span>
-          </div>
-        )}
+        {/* Error Notification handled via Toast */}
 
         {/* Modal Body */}
         <div className="sap-bulk-modal-body">

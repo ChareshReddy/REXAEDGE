@@ -14,6 +14,7 @@ import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 
 export default function DeleteBomView({
   systemKey = 'DEV',
@@ -22,10 +23,15 @@ export default function DeleteBomView({
   onNavigateProducts,
   onNavigateHome
 }) {
+  const toast = useToast();
   const [proposedAction, setProposedAction] = useState(null);
   const [actionStatus, setActionStatus] = useState('pending');
   const [executionResult, setExecutionResult] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, _setErrorMessage] = useState('');
+  const setErrorMessage = (msg) => {
+    _setErrorMessage(msg);
+    if (msg) toast.error(msg);
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
 
@@ -124,6 +130,7 @@ export default function DeleteBomView({
       } else {
         setActionStatus('confirmed');
         setExecutionResult(response);
+        toast.success('BOM deleted successfully in SAP.');
       }
     } catch (err) {
       console.error('Error confirming Delete BOM:', err);
@@ -165,13 +172,7 @@ export default function DeleteBomView({
       />
 
       <div className="fiori-view-body">
-        {/* Error Notice */}
-        {errorMessage && (
-          <div className="sap-alert sap-alert-error" style={{ maxWidth: 680, width: '100%', margin: '0 auto 14px' }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div>{errorMessage}</div>
-          </div>
-        )}
+        {/* Error Notice handled via Toast */}
 
         {/* Step 1: Form View */}
         {!proposedAction && !executionResult && (

@@ -306,7 +306,6 @@ input, select {
 
 .sap-mode-pill {
   font-size: 11px;
-  text-transform: uppercase;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
@@ -711,8 +710,8 @@ input, select {
   padding: 1px 6px;
   border-radius: 4px;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .sap-session-item-sub {
@@ -1130,8 +1129,8 @@ input, select {
   font-weight: 700;
   padding: 1px 7px;
   border-radius: var(--radius-full);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
   line-height: 1.4;
 }
 
@@ -2566,10 +2565,7 @@ input, select {
     font-weight: 600;
     color: var(--sap-text-muted);
     font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    text-align: left;
-    margin-right: 12px;
+    text-transform: none; text-align: left; margin-right: 12px;
     flex-shrink: 0;
   }
 
@@ -2986,8 +2982,8 @@ input, select {
   font-size: 12px;
   color: #64748b;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  text-transform: none;
+  letter-spacing: normal;
   font-family: inherit;
 }
 
@@ -3217,10 +3213,7 @@ input, select {
 .badge-pill {
   font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border-radius: 3px;
-  text-transform: uppercase;
+  padding: 1px 5px; border-radius: 3px; text-transform: none;
 }
 
 .source-badge .badge-pill {
@@ -4232,9 +4225,9 @@ input[type="checkbox"]:disabled {
 .sap-fiori-category-tag {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: normal;
   color: var(--sap-primary);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .sap-fiori-system-badge {
@@ -4320,8 +4313,8 @@ input[type="checkbox"]:disabled {
   font-size: 11px;
   font-weight: 700;
   color: var(--sap-text-muted);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .sap-kpi-card-badge {
@@ -4841,9 +4834,7 @@ input[type="checkbox"]:disabled {
 .sap-result-meta-label {
   font-size: 9.5px;
   font-weight: 600;
-  text-transform: uppercase;
-  color: var(--sap-text-muted);
-  letter-spacing: 0.3px;
+  color: var(--sap-text-muted); text-transform: none;
 }
 
 .sap-result-meta-val {
@@ -5127,13 +5118,13 @@ input[type="checkbox"]:disabled {
 }
 
 .fiori-ph-subtitle {
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--sap-brand-blue, #0a6ed1);
-  line-height: 1.3;
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--sap-text-secondary, #64748b);
+  line-height: 1.4;
   text-align: left;
   align-self: flex-start;
 }
@@ -6441,9 +6432,9 @@ input::-webkit-credentials-auto-fill-button {
   border-bottom: 1px solid #e2e8f0;
   font-size: 11.5px;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
   color: #64748b;
-  letter-spacing: 0.5px;
+  letter-spacing: normal;
 }
 
 .sap-restrict-dropdown-list {
@@ -6747,4 +6738,161 @@ input::-webkit-credentials-auto-fill-button {
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+}
+
+
+/* ============================================================================
+   SHARED TOAST NOTIFICATION COMPONENT (Windows-style bottom-right notifications)
+   ============================================================================ */
+.sap-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  max-width: 360px;
+  width: 100%;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .sap-toast-container {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    max-width: calc(100% - 32px);
+    width: auto;
+  }
+}
+
+.sap-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  width: 100%;
+  animation: sap-toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes sap-toast-slide-in {
+  from {
+    transform: translateX(110%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Colors (Sentence case, no red anywhere) */
+/* Warning / Validation / Error in Amber */
+.sap-toast-error,
+.sap-toast-warning {
+  background-color: #FFFBEB; /* Amber-50 */
+  border: 1px solid #FCD34D; /* Amber-300 */
+  color: #78350F;            /* Amber-900 */
+}
+
+.sap-toast-error .sap-toast-icon,
+.sap-toast-warning .sap-toast-icon {
+  color: #B45309;            /* Amber-700 */
+}
+
+/* Success in Orange-50 with Orange-700 text */
+.sap-toast-success {
+  background-color: #FFF7ED; /* Orange-50 */
+  border: 1px solid #FDBA74; /* Orange-300 */
+  color: #C2410C;            /* Orange-700 */
+}
+
+.sap-toast-success .sap-toast-icon {
+  color: #EA580C;            /* Orange-600 */
+}
+
+/* Info in Slate/Navy on White */
+.sap-toast-info {
+  background-color: #FFFFFF;
+  border: 1px solid #CBD5E1; /* Slate-300 */
+  color: #0F172A;            /* Slate-900 */
+}
+
+.sap-toast-info .sap-toast-icon {
+  color: #1E3A8A;            /* Navy / Slate-800 */
+}
+
+.sap-toast-icon-wrap {
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sap-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sap-toast-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.sap-toast-message {
+  font-size: 12.5px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.sap-toast-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.45;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.sap-toast-list li {
+  margin-bottom: 3px;
+}
+
+.sap-toast-error-ref {
+  margin-top: 5px;
+  font-size: 11px;
+  font-family: monospace;
+  opacity: 0.85;
+}
+
+.sap-toast-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 4px;
+  margin-top: -2px;
+  margin-right: -4px;
+  border-radius: 4px;
+  color: currentColor;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.sap-toast-close-btn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
 }

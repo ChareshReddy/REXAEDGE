@@ -223,25 +223,47 @@ app.use((err, req, res, next) => {
   });
 });
 
+// HTTP keep-alive resilience configuration
+// Node.js default keepAliveTimeout is 5000ms (5 seconds), which causes reverse proxies
+// (Vite dev proxy, IIS ARR, Nginx) to encounter ECONNRESET / socket hang up when reusing idle sockets.
+// Setting keepAliveTimeout to 65000ms ensures backend keeps idle sockets open longer than proxies,
+// and headersTimeout is set strictly higher (66000ms) per Node.js recommendations.
+export const SERVER_KEEP_ALIVE_TIMEOUT = 65000;
+export const SERVER_HEADERS_TIMEOUT = 66000;
+
+export function configureServerTimeouts(server) {
+  if (server) {
+    server.keepAliveTimeout = SERVER_KEEP_ALIVE_TIMEOUT;
+    server.headersTimeout = SERVER_HEADERS_TIMEOUT;
+  }
+  return server;
+}
+
 // Start server only when executed directly (not when imported in tests)
 const isMainModule = process.argv[1] && (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) ||
   path.basename(process.argv[1]) === 'server.js'
 );
 if (isMainModule) {
-  app.listen(PORT, () => {
+  const HOST = process.env.HOST || '127.0.0.1';
+  const server = app.listen(PORT, HOST, () => {
     console.log(`=============================================`);
     console.log(`SAP Application Backend Service Running`);
     console.log(`Port: ${PORT}`);
+    console.log(`Host: ${HOST}`);
     console.log(`Mode: ${process.env.USE_MOCK_SAP !== 'false' ? 'Mock Data Layer' : 'Real SAP Gateway'}`);
     const activeBaseUrl = getSystemConfig(DEFAULT_SYSTEM)?.baseUrl || '(not configured)';
     console.log(`SAP Base URL (${DEFAULT_SYSTEM}): ${activeBaseUrl}`);
     console.log(`Frontend URL: ${FRONTEND_URL}`);
+    console.log(`Keep-Alive Timeout: ${server.keepAliveTimeout}ms`);
+    console.log(`Headers Timeout: ${server.headersTimeout}ms`);
     console.log(`=============================================`);
 
     // Non-blocking background warmup for Supabase connection pool
     warmupDatabaseConnection();
   });
+
+  configureServerTimeouts(server);
 }
 
 export default app;

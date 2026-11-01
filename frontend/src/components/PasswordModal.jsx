@@ -4,6 +4,7 @@ import Modal from './Modal';
 import PasswordInput from './PasswordInput';
 import { checkPasswordRules } from '../utils/passwordPolicy';
 import { adminSetUserPassword, changeUserPassword } from '../services/api';
+import { useToast } from '../context/ToastContext';
 
 /**
  * Shared Password Management Modal for both Admin (Set Password) and User (Change Password) flows.
@@ -26,12 +27,17 @@ export default function PasswordModal({
   targetUser = null, // { id, email } required when mode === 'admin'
   onSuccess = () => {}
 }) {
+  const toast = useToast();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, _setErrorMessage] = useState('');
+  const setErrorMessage = (msg) => {
+    _setErrorMessage(msg);
+    if (msg) toast.error(msg);
+  };
 
   // Clear fields whenever modal opens or closes
   useEffect(() => {
@@ -125,12 +131,7 @@ export default function PasswordModal({
     >
       <form onSubmit={handleSubmit} className="sap-modal-form">
         <div className="sap-modal-body" style={{ gap: 12 }}>
-          {errorMessage && (
-            <div className="sap-alert sap-alert-error" role="alert" style={{ marginBottom: 2 }}>
-              <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-              <div style={{ wordBreak: 'break-word', fontSize: 12.5 }}>{errorMessage}</div>
-            </div>
-          )}
+          
 
           {/* User mode only: Current Password */}
           {mode === 'user' && (

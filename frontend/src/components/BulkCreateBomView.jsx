@@ -42,6 +42,7 @@ import {
   getPlants
 } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 
 export default function BulkCreateBomView({
   systemKey = 'DEV',
@@ -55,6 +56,7 @@ export default function BulkCreateBomView({
   initialJobProgress = null,
   initialActiveJobId = null
 }) {
+  const toast = useToast();
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState(
     initialExecutionReport ? 'Sample_BOM_File.xlsx' : initialPreflightReport ? 'Sample_BOM_File.xlsx' : ''
@@ -70,7 +72,11 @@ export default function BulkCreateBomView({
   // Pre-flight states
   const [isValidating, setIsValidating] = useState(initialIsValidating);
   const [preflightReport, setPreflightReport] = useState(initialPreflightReport);
-  const [parseError, setParseError] = useState('');
+  const [parseError, _setParseError] = useState('');
+  const setParseError = (msg) => {
+    _setParseError(msg);
+    if (msg) toast.error(msg);
+  };
   const [expandedMessageBoms, setExpandedMessageBoms] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -394,7 +400,11 @@ export default function BulkCreateBomView({
   };
 
   const handleValidateWithSap = async () => {
-    if (parsedBoms.length === 0 || isLocked) return;
+    if (parsedBoms.length === 0) {
+      toast.warning('Please upload a spreadsheet first.', { title: 'Validation notice' });
+      return;
+    }
+    if (isLocked) return;
     setIsValidating(true);
     setParseError('');
 
@@ -432,7 +442,7 @@ export default function BulkCreateBomView({
     try {
       await downloadCreateBomTemplate();
     } catch (err) {
-      alert('Failed to download BOM template: ' + (err.message || 'network error'));
+      toast.error('Failed to download BOM template: ' + (err.message || 'network error'));
     }
   };
 
@@ -447,11 +457,11 @@ export default function BulkCreateBomView({
     if (isLocked) return;
     if (isProd) {
       if (confirmText !== 'CONFIRM') {
-        alert('Please type CONFIRM in uppercase to proceed in Production.');
+        toast.warning('Please type CONFIRM in uppercase to proceed in Production.', { title: 'Validation notice' });
         return;
       }
       if (!businessReason.trim()) {
-        alert('Please provide a valid business reason for Production execution.');
+        toast.warning('Please provide a valid business reason for Production execution.', { title: 'Validation notice' });
         return;
       }
     }
@@ -460,7 +470,7 @@ export default function BulkCreateBomView({
   const hasValidated = Boolean(preflightReport);
     const readyBoms = allBoms.filter((b) => b.status === 'Ready');
     if (readyBoms.length === 0) {
-      alert('No ready BOMs to create.');
+      toast.warning('No ready BOMs to create.', { title: 'Validation notice' });
       return;
     }
 
@@ -709,7 +719,7 @@ export default function BulkCreateBomView({
                                 : 'sap-badge-warning'
                             }`}
                           >
-                            {row.status}
+                            {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1).toLowerCase() : ''}
                           </span>
                         </td>
                         <td style={{ fontSize: 12 }}>
@@ -795,24 +805,7 @@ export default function BulkCreateBomView({
                   onChangeFile={handleReset}
                 />
 
-                {parseError && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '12px 16px',
-                      borderRadius: 'var(--radius-md, 6px)',
-                      background: 'var(--sap-error-bg, #fffbeb)',
-                      border: '1px solid var(--sap-error-border, #fcd34d)',
-                      color: 'var(--sap-error-text, #b45309)',
-                      fontSize: 13
-                    }}
-                  >
-                    <XCircle size={18} style={{ flexShrink: 0 }} />
-                    <span>{parseError}</span>
-                  </div>
-                )}
+                
 
                 {/* PRE-FLIGHT PREVIEW TABLE */}
                 <div className="sap-card" style={{ padding: 20 }}>

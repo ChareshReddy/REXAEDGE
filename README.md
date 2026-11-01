@@ -279,3 +279,16 @@ Operational changes follow a rigorous promotion path:
    - Level 3 actions require dual gates: valid business justification reason + explicit `CONFIRM` keyword.
    - Real-time logging to `backend/services/auditLog.js` and enterprise SIEM via syslog/webhook.
    - Regular review of knowledge base resolution metrics by Basis and SAP Operations Leads.
+
+---
+
+## 11. Reverse Proxy Keep-Alive & Production Deployment Settings
+
+When deploying the SAP Application behind reverse proxies (such as **Nginx** or **IIS with Application Request Routing (ARR)**), keep-alive connection pooling must be coordinated with the backend Node.js server to prevent idle connection reset errors (`ECONNRESET` / `socket hang up`):
+
+- **Node Server Timeout Settings**: The Node.js HTTP server sets `server.keepAliveTimeout = 65000` (65 seconds) and `server.headersTimeout = 66000` (66 seconds), exceeding standard reverse proxy idle timeouts (typically 60s).
+- **Nginx**: In `nginx.conf`, configure upstream keepalive with `proxy_http_version 1.1;` and an empty Connection header `proxy_set_header Connection "";` along with `keepalive_timeout 60s;` so Nginx gracefully closes upstream sockets before Node does.
+- **IIS / ARR**: In IIS Manager under Application Request Routing / Server Farm Proxy settings, either disable keep-alive connection pooling (`enableKeepAlive: False`) or lower the keep-alive timeout (`keepAliveTimeout="00:00:30"`) to a value strictly below Node's 65 seconds.
+- **Local Vite Dev Proxy**: Configured in `frontend/vite.config.js` to target `http://127.0.0.1:5000` (IPv4) with a dedicated non-keepalive agent (`agent: new http.Agent({ keepAlive: false })`) and structured JSON error responses.
+
+For complete production configurations, see [docs/DEPLOYMENT_NOTES.md](docs/DEPLOYMENT_NOTES.md).

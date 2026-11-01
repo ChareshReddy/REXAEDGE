@@ -1,4 +1,21 @@
 import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDir = path.resolve(__dirname, '../../frontend');
+
+console.log('============================================================');
+console.log('  RUNNING FRONTEND ESLINT (NO-UNDEF & INTEGRITY CHECK)      ');
+console.log('============================================================\n');
+try {
+  execSync(`npm run lint --prefix "${frontendDir}"`, { stdio: 'inherit' });
+  console.log('\n✓ Frontend ESLint passed with 0 undefined identifiers\n');
+} catch (err) {
+  console.error('\n❌ Frontend ESLint detected undefined identifiers or errors!');
+  process.exit(err.status || 1);
+}
 
 const testFiles = [
   'test/api.test.js',
@@ -58,7 +75,9 @@ const testFiles = [
   'test/navigationAndBreadcrumbs.test.js',
   'test/routedViewsRender.test.js',
   'test/authRetryResilience.test.js',
+  'test/loginKeepAliveResilience.test.js',
   'test/themeAndLayoutRedesign.test.js',
+  'test/toastNotificationLayout.test.js',
   'test/createBomTooltips.test.js',
   'test/bomUsages.test.js',
   'test/activityLogs.test.js'

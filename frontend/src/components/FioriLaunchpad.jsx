@@ -218,7 +218,7 @@ export default function FioriLaunchpad({
         <>
           <FioriPageHeader
             title="Products"
-            subtitle="Enterprise Applications"
+            subtitle="Enterprise applications"
             onBack={onNavigateHome}
             backTitle="Back to Home"
             systemKey={systemKey}
