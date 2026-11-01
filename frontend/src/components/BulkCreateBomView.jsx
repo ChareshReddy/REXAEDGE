@@ -571,7 +571,7 @@ export default function BulkCreateBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
-      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
@@ -863,7 +863,7 @@ export default function BulkCreateBomView({
                   )}
 
                   {/* Table: natural height, fits card width without horizontal scroll */}
-                  <div className="sap-table-container fiori-table-wrapper" style={{ overflowX: 'hidden', width: '100%', marginBottom: 24 }}>
+                  <div className="sap-table-container fiori-table-wrapper sap-card-table-scroll" style={{ width: '100%', marginBottom: 24, maxHeight: 480 }}>
                     <table
                       className="sap-table preflight-preview-table"
                       style={{

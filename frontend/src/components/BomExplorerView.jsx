@@ -24,6 +24,7 @@ import { useToast } from '../context/ToastContext';
 import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
+import { PageContainer } from './layout';
 
 /**
  * Trims leading zeros only on purely numeric material numbers.
@@ -239,7 +240,7 @@ export default function BomExplorerView({
   }, [components, filterText, sortConfig]);
 
   return (
-    <div className="fiori-app-view-root">
+    <div className="fiori-app-view-root sap-page-viewport">
       {/* Full-width Fiori Horizon Header (Identical to Homepage / Operations Header) */}
       <FioriPageHeader
         title="Display BOM"
@@ -250,13 +251,12 @@ export default function BomExplorerView({
         breadcrumbs={getBreadcrumbTrail('bom_explorer', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack })}
       />
 
-      <div className="fiori-view-body wide">
-        {/* Error Notice handled via Toast */}
-
-        {/* Small Compact Search Card (2 rows x 2 columns) */}
-        <div className="sap-structured-form-card" style={{ maxWidth: 680, width: '100%', margin: '0 auto 16px' }}>
-          <form onSubmit={handleSearch}>
-            <div className="sap-form-grid" style={{ gridTemplateColumns: '1fr 1fr', padding: '14px 16px', gap: '10px 14px' }}>
+      <PageContainer>
+        <div style={{ marginTop: 20 }}>
+          {/* Small Compact Search Card */}
+          <div className="sap-structured-form-card sap-full-width" style={{ width: '100%', margin: '0 auto 16px' }}>
+            <form onSubmit={handleSearch}>
+              <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', padding: '16px 20px', gap: '14px 18px' }}>
             <div className="sap-form-group">
               <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
                 Material Number <span className="sap-required-star" style={{ color: 'var(--sap-error)' }}>*</span>
@@ -411,7 +411,7 @@ export default function BomExplorerView({
         const availableAlternatives = bomData.availableAlternatives || bomData.allAlternatives || bomData.header?.availableAlternatives || [];
 
         return (
-          <div className="sap-bom-explorer-results" style={{ width: '100%', maxWidth: 1100, margin: '0 auto 20px', paddingBottom: 0 }}>
+          <div className="sap-bom-explorer-results" style={{ width: '100%', margin: '0 auto 20px', paddingBottom: 0 }}>
             {/* Header Metadata Card */}
             <div className="sap-result-meta-grid" style={{ marginBottom: 16 }}>
               <div className="sap-result-meta-item">
@@ -498,7 +498,7 @@ export default function BomExplorerView({
               </div>
             </div>
 
-            <div className="sap-table-container" tabIndex={0} role="region" aria-label="BOM Components Table">
+            <div className="sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="BOM Components Table">
               {filteredComponents.length > 0 ? (
                 <table className="sap-table">
                   <thead>
@@ -644,7 +644,8 @@ export default function BomExplorerView({
         </div>
       );
       })()}
-      </div>
+        </div>
+      </PageContainer>
     </div>
   );
 }

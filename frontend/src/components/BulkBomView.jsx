@@ -748,7 +748,7 @@ export default function BulkBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked: isExecuting })}
       />
 
-      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="copy" />
 
@@ -825,7 +825,7 @@ export default function BulkBomView({
               </div>
 
               {/* Grid Table */}
-              <div className="sap-bulk-grid-container sap-table-container" tabIndex={0} role="region" aria-label="Execution Results Table">
+              <div className="sap-bulk-grid-container sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Execution Results Table">
                 <table className="sap-table sap-bulk-table">
                   <thead>
                     <tr>
@@ -1012,7 +1012,7 @@ export default function BulkBomView({
                   </div>
 
                   {/* Grid Table */}
-                  <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
+                  <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
                     <table className="sap-bulk-table">
                       <thead>
                         <tr>

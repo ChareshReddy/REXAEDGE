@@ -1,0 +1,462 @@
+/* ============================================================================
+   SHARED FLUID LAYOUT SYSTEM (PageContainer, PageHeader, FormGrid, SummaryPanel, StickyActionBar)
+   ============================================================================ */
+
+:root {
+  --sap-layout-max-width: 1680px;
+  --sap-layout-side-pad-sm: 24px; /* < 1366px */
+  --sap-layout-side-pad-md: 32px; /* 1366px - 1600px */
+  --sap-layout-side-pad-lg: 40px; /* 1600px+ */
+  --sap-sticky-bar-height: 58px;
+}
+
+/* PageContainer */
+.sap-page-container {
+  width: 100%;
+  max-width: var(--sap-layout-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding-left: var(--sap-layout-side-pad-sm);
+  padding-right: var(--sap-layout-side-pad-sm);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+@media (min-width: 1366px) {
+  .sap-page-container {
+    padding-left: var(--sap-layout-side-pad-md);
+    padding-right: var(--sap-layout-side-pad-md);
+  }
+}
+
+@media (min-width: 1600px) {
+  .sap-page-container {
+    padding-left: var(--sap-layout-side-pad-lg);
+    padding-right: var(--sap-layout-side-pad-lg);
+  }
+}
+
+/* Viewport wrapper */
+.sap-page-viewport {
+  min-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--sap-bg, #f4f6f8);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* When a page has StickyActionBar, add bottom clearance so content is never covered */
+.sap-page-container.has-sticky-bar,
+.fiori-view-body.has-sticky-bar,
+.has-sticky-bar {
+  padding-bottom: 84px !important;
+}
+
+/* PageHeader wrapper */
+.sap-layout-header,
+.fiori-ph {
+  background: #ffffff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  position: relative;
+  z-index: 50;
+  flex-shrink: 0;
+  padding: 0 !important;
+}
+
+.sap-layout-header-inner {
+  width: 100%;
+  max-width: var(--sap-layout-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding: 16px var(--sap-layout-side-pad-sm) 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 1366px) {
+  .sap-layout-header-inner {
+    padding-left: var(--sap-layout-side-pad-md);
+    padding-right: var(--sap-layout-side-pad-md);
+  }
+}
+
+@media (min-width: 1600px) {
+  .sap-layout-header-inner {
+    padding-left: var(--sap-layout-side-pad-lg);
+    padding-right: var(--sap-layout-side-pad-lg);
+  }
+}
+
+/* Subtitles: gray sentence case, strictly normal text-transform */
+.sap-layout-subtitle,
+.fiori-ph-subtitle {
+  margin: 4px 0 0 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #64748b !important;
+  line-height: 1.4 !important;
+  text-align: left !important;
+}
+
+/* Responsive FormGrid */
+.sap-form-grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sap-form-grid-responsive .sap-form-group,
+.sap-form-grid-responsive .sap-form-input-wrapper {
+  max-width: 420px;
+  width: 100%;
+}
+
+/* Two-column wide screen layout (Main content + right SummaryPanel) */
+.sap-layout-content-with-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  width: 100%;
+  align-items: start;
+  box-sizing: border-box;
+}
+
+@media (min-width: 1500px) {
+  .sap-layout-content-with-summary {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* SummaryPanel */
+.sap-summary-panel {
+  display: none;
+}
+
+@media (min-width: 1500px) {
+  .sap-summary-panel {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 24px;
+    background: #ffffff;
+    border: 1px solid var(--sap-border, #e2e8f0);
+    border-radius: var(--radius-xl, 12px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
+    padding: 20px;
+    box-sizing: border-box;
+    width: 340px;
+    gap: 16px;
+  }
+}
+
+.sap-summary-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 12px;
+}
+
+.sap-summary-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sap-brand-navy, #0f2744);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.sap-summary-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sap-summary-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sap-summary-panel-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: none;
+}
+
+.sap-summary-panel-val {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.sap-summary-panel-val.empty {
+  color: #94a3b8;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.sap-summary-panel-footer {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* StickyActionBar */
+.sap-sticky-action-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  z-index: 990;
+  height: var(--sap-sticky-bar-height);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.sap-sticky-action-bar-inner {
+  width: 100%;
+  max-width: var(--sap-layout-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--sap-layout-side-pad-sm);
+  padding-right: var(--sap-layout-side-pad-sm);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (min-width: 1366px) {
+  .sap-sticky-action-bar-inner {
+    padding-left: var(--sap-layout-side-pad-md);
+    padding-right: var(--sap-layout-side-pad-md);
+  }
+}
+
+@media (min-width: 1600px) {
+  .sap-sticky-action-bar-inner {
+    padding-left: var(--sap-layout-side-pad-lg);
+    padding-right: var(--sap-layout-side-pad-lg);
+  }
+}
+
+.sap-sticky-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sap-sticky-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* Full container width card tables with inner scroll & sticky headers */
+.sap-card-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 480px;
+  scrollbar-width: thin;
+}
+
+.sap-card-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 10;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+
+/* Empty state row for tables */
+.sap-table-empty-row {
+  text-align: center;
+  padding: 36px 16px;
+  color: #64748b;
+  font-size: 13.5px;
+}
+
+/* ============================================================================
+   LAYOUT SYSTEM EXPANSIONS (Products, Operations Hub, Wide Tables, Copy Dual)
+   ============================================================================ */
+
+/* Fiori Page Body Alignment */
+.fiori-body {
+  width: 100%;
+  max-width: var(--sap-layout-max-width) !important;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding: 24px var(--sap-layout-side-pad-sm) 48px !important;
+}
+
+@media (min-width: 1366px) {
+  .fiori-body {
+    padding-left: var(--sap-layout-side-pad-md) !important;
+    padding-right: var(--sap-layout-side-pad-md) !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .fiori-body {
+    padding-left: var(--sap-layout-side-pad-lg) !important;
+    padding-right: var(--sap-layout-side-pad-lg) !important;
+  }
+}
+
+/* Products Grid (min 320px, equal height) */
+.fiori-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  gap: 20px !important;
+  width: 100%;
+}
+
+.fiori-tile {
+  min-height: 180px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.fiori-tile.off {
+  opacity: 0.65;
+  filter: grayscale(0.2);
+}
+
+/* BOM Operations Hub Grid (5 cards 1 row on wide screens) */
+.fiori-op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  gap: 20px !important;
+  width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .fiori-op-grid:has(> :nth-child(5)) {
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+}
+
+.fiori-op-card {
+  height: 100%;
+  min-height: 175px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Unconstrained form containers inside PageContainer */
+.sap-structured-form-card.sap-full-width,
+.sap-page-container .sap-structured-form-card,
+.sap-layout-content-with-summary .sap-structured-form-card,
+.sap-page-container .sap-form-view-section,
+.sap-page-container .sap-proposal-view-section,
+.sap-page-container .sap-result-view-section {
+  max-width: 100% !important;
+}
+
+/* Dual Column Copy BOM */
+.sap-form-dual-columns-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  width: 100%;
+}
+
+@media (max-width: 960px) {
+  .sap-form-dual-columns-grid {
+    grid-template-columns: 1fr;
+  }
+  .sap-form-dual-connector {
+    display: none;
+  }
+}
+
+.sap-form-dual-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.sap-form-dual-connector-line {
+  flex: 1;
+  width: 1px;
+  background: #cbd5e1;
+}
+
+.sap-form-dual-connector-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sap-primary, #0070f2);
+  flex-shrink: 0;
+}
+
+/* Full container width tables */
+.sap-table-container-full {
+  width: 100%;
+  max-width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--sap-border, #e2e8f0);
+  border-radius: var(--radius-xl, 12px);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.sap-admin-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 520px;
+}
+
+.sap-table-container-full table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sap-table-container-full thead th,
+.sap-admin-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 10;
+  box-shadow: 0 1px 0 #e2e8f0;
+}

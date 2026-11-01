@@ -7,8 +7,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
-  Loader2
+  Loader2,
+  ArrowRight,
+  X
 } from 'lucide-react';
+import { PageContainer, SummaryPanel, StickyActionBar } from './layout';
 import CreateBomForm from './CreateBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
@@ -33,6 +36,17 @@ export default function CopyBomView({
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
+  const [currentFormValues, setCurrentFormValues] = useState({
+    sourceMaterial: initialMaterial || '',
+    sourcePlant: initialPlant || '',
+    sourceUsage: '1',
+    sourceAltBom: '',
+    targetMaterial: initialMaterial || '',
+    targetPlant: '',
+    targetUsage: '1',
+    targetAltBom: '',
+    validFrom: ''
+  });
 
   // Background Verification State
   const [isReadingBack, setIsReadingBack] = useState(false);
@@ -249,7 +263,7 @@ export default function CopyBomView({
     : `Created Alternative ${rootAlt} for ${targetMat}: ${bomsCount} BOMs and ${compsCount} components across ${levelsCount} levels.`;
 
   return (
-    <div className="fiori-app-view-root">
+    <div className="fiori-app-view-root sap-page-viewport">
       {/* Full-width Fiori Horizon Header */}
       <FioriPageHeader
         title="Copy Single BOM"
@@ -260,208 +274,257 @@ export default function CopyBomView({
         breadcrumbs={getBreadcrumbTrail('copy_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack })}
       />
 
-      <div className="fiori-view-body" style={{ padding: '16px 24px 28px' }}>
-        {/* Error Notice handled via Toast */}
-
-        {/* Step 1: Form View (when no proposal is pending and not yet confirmed) */}
-        {!proposedAction && !executionResult && (
-          <div className="sap-form-view-section" style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}>
-            {isSubmitting ? (
-              <div
-                className="sap-loading-card"
-                style={{
-                  maxWidth: 760,
-                  width: '100%',
-                  margin: '0 auto',
-                  textAlign: 'center',
-                  padding: '24px 20px',
-                  borderRadius: 'var(--sap-radius)',
-                  border: '1px solid var(--sap-border)'
-                }}
-              >
-                <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
-                <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                  Validating BOMs in SAP...
-                </h4>
-                <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                  Simulating multi-level BOM creation in the target plant to verify all components and plants before execution.
-                </p>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={handleCancelChecking}
-                  style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <CreateBomForm
-                onSubmit={handleFormSubmit}
-                onCancel={onBack}
-                initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
-                hideHeader={true}
-                style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Confirmation Proposal Gate */}
-        {proposedAction && !executionResult && (
-          <div className="sap-proposal-view-section" style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}>
-            <div className="sap-proposal-header-card">
-              <ShieldCheck size={20} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-              <div>
-                <h4>Human Confirmation Gate: Verify BOM Copy Proposal</h4>
-                <p>Review the source and target parameters below. Confirming will execute the copy in SAP.</p>
-              </div>
-            </div>
-
-            <ConfirmationCard
-              action={proposedAction}
-              status={actionStatus}
-              onConfirm={handleConfirmAction}
-              onCancel={handleCancelAction}
-            />
-          </div>
-        )}
-
-        {/* Step 3: Success / Warning Execution Result Card */}
-        {executionResult && (
-          <div className="sap-result-view-section" style={{ maxWidth: 760, width: '100%', margin: '0 auto' }}>
-            <div
-              className="sap-result-success-card"
-              style={
-                hasDifferences
-                  ? { borderColor: 'var(--sap-warning-border, #fed7aa)', backgroundColor: '#ffffff' }
-                  : {}
-              }
-            >
-              {/* Result Banner: Icon, Title, and One Line of Plain Text */}
-              <div className="sap-result-success-header" style={{ alignItems: 'flex-start' }}>
-                <div className="sap-result-success-icon" style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                  {hasDifferences ? (
-                    <AlertTriangle size={24} color="var(--sap-warning, #d97706)" />
-                  ) : (
-                    <CheckCircle2 size={24} color="var(--sap-success, #16a34a)" />
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                    <h3
-                      className="sap-result-success-title"
-                      style={{
-                        margin: 0,
-                        color: hasDifferences ? 'var(--sap-warning-text, #9a3412)' : 'var(--sap-success-text, #166534)'
-                      }}
+      <PageContainer hasStickyBar={!proposedAction && !executionResult}>
+        <div style={{ marginTop: 20 }}>
+          {/* Step 1: Form View (when no proposal is pending and not yet confirmed) */}
+          {!proposedAction && !executionResult && (
+            <div className="sap-layout-content-with-summary">
+              <div className="sap-form-view-section" style={{ width: '100%' }}>
+                {isSubmitting ? (
+                  <div
+                    className="sap-loading-card"
+                    style={{
+                      width: '100%',
+                      textAlign: 'center',
+                      padding: '36px 20px',
+                      borderRadius: 'var(--sap-radius)',
+                      border: '1px solid var(--sap-border)'
+                    }}
+                  >
+                    <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                      Validating BOMs in SAP...
+                    </h4>
+                    <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                      Simulating multi-level BOM creation in the target plant to verify all components and plants before execution.
+                    </p>
+                    <button
+                      type="button"
+                      className="sap-button"
+                      onClick={handleCancelChecking}
+                      style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
                     >
-                      {hasDifferences
-                        ? `BOM copied with ${diffCount} difference${diffCount === 1 ? '' : 's'} from the source`
-                        : 'BOM Copied Successfully'}
-                    </h3>
-                    {hasDifferences && (
-                      <button
-                        type="button"
-                        onClick={() => setShowDiscrepancies((prev) => !prev)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--sap-primary, #0070f2)',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          padding: 0,
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        {showDiscrepancies ? 'Hide details' : 'View details'}
-                      </button>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <CreateBomForm
+                    formId="copy-bom-form"
+                    onSubmit={handleFormSubmit}
+                    onCancel={onBack}
+                    onValuesChange={setCurrentFormValues}
+                    initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
+                    hideHeader={true}
+                    hideFormActions={true}
+                    style={{ width: '100%' }}
+                  />
+                )}
+              </div>
+
+              {/* SummaryPanel for wide screens (>= 1500px) */}
+              <SummaryPanel
+                title="Copy Overview"
+                status={
+                  currentFormValues.sourceMaterial && currentFormValues.targetPlant
+                    ? `Copy ${currentFormValues.sourceMaterial} to plant ${currentFormValues.targetPlant}`
+                    : 'Fill required source & target fields'
+                }
+                items={[
+                  { label: 'Source Material', value: currentFormValues.sourceMaterial },
+                  { label: 'Source Plant', value: currentFormValues.sourcePlant },
+                  { label: 'Source Usage', value: currentFormValues.sourceUsage ? `${currentFormValues.sourceUsage}${currentFormValues.sourceAltBom ? ` (Alt ${currentFormValues.sourceAltBom})` : ''}` : null },
+                  { label: 'Target Material', value: currentFormValues.targetMaterial },
+                  { label: 'Target Plant', value: currentFormValues.targetPlant },
+                  { label: 'Target Usage', value: currentFormValues.targetUsage ? `${currentFormValues.targetUsage}${currentFormValues.targetAltBom ? ` (Alt ${currentFormValues.targetAltBom})` : ''}` : null },
+                  { label: 'Valid From', value: currentFormValues.validFrom }
+                ]}
+              />
+            </div>
+          )}
+
+          {/* Step 2: Confirmation Proposal Gate */}
+          {proposedAction && !executionResult && (
+            <div className="sap-proposal-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
+              <div className="sap-proposal-header-card">
+                <ShieldCheck size={20} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
+                <div>
+                  <h4>Human Confirmation Gate: Verify BOM Copy Proposal</h4>
+                  <p>Review the source and target parameters below. Confirming will execute the copy in SAP.</p>
+                </div>
+              </div>
+
+              <ConfirmationCard
+                action={proposedAction}
+                status={actionStatus}
+                onConfirm={handleConfirmAction}
+                onCancel={handleCancelAction}
+              />
+            </div>
+          )}
+
+          {/* Step 3: Success / Warning Execution Result Card */}
+          {executionResult && (
+            <div className="sap-result-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
+              <div
+                className="sap-result-success-card"
+                style={
+                  hasDifferences
+                    ? { borderColor: 'var(--sap-warning-border, #fed7aa)', backgroundColor: '#ffffff' }
+                    : {}
+                }
+              >
+                {/* Result Banner: Icon, Title, and One Line of Plain Text */}
+                <div className="sap-result-success-header" style={{ alignItems: 'flex-start' }}>
+                  <div className="sap-result-success-icon" style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
+                    {hasDifferences ? (
+                      <AlertTriangle size={24} color="var(--sap-warning, #d97706)" />
+                    ) : (
+                      <CheckCircle2 size={24} color="var(--sap-success, #16a34a)" />
                     )}
                   </div>
-                  <p className="sap-result-success-message" style={{ marginTop: 4, marginBottom: 0 }}>
-                    {bannerSubtitle}
-                  </p>
-                </div>
-              </div>
-
-              {/* Collapsed by default discrepancy list (ONLY shown if verification found differences and user clicks View details) */}
-              {hasDifferences && showDiscrepancies && differences.length > 0 && (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: '12px 16px',
-                    borderRadius: 6,
-                    backgroundColor: '#fffbeb',
-                    border: '1px solid #fed7aa'
-                  }}
-                >
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#9a3412', marginBottom: 6 }}>
-                    Discrepancies from source BOM ({differences.length}):
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <h3
+                        className="sap-result-success-title"
+                        style={{
+                          margin: 0,
+                          color: hasDifferences ? 'var(--sap-warning-text, #9a3412)' : 'var(--sap-success-text, #166534)'
+                        }}
+                      >
+                        {hasDifferences
+                          ? `BOM copied with ${diffCount} difference${diffCount === 1 ? '' : 's'} from the source`
+                          : 'BOM Copied Successfully'}
+                      </h3>
+                      {hasDifferences && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDiscrepancies((prev) => !prev)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--sap-primary, #0070f2)',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: 0,
+                            textDecoration: 'underline'
+                          }}
+                        >
+                          {showDiscrepancies ? 'Hide details' : 'View details'}
+                        </button>
+                      )}
+                    </div>
+                    <p className="sap-result-success-message" style={{ marginTop: 4, marginBottom: 0 }}>
+                      {bannerSubtitle}
+                    </p>
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark, #1e293b)', lineHeight: 1.5 }}>
-                    {differences.map((diff, idx) => (
-                      <li key={idx} style={{ marginBottom: 3 }}>
-                        {diff}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-              )}
 
-              {/* 4 Summary Cards */}
-              <div className="sap-result-meta-grid" style={{ marginTop: 16, marginBottom: 20 }}>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">BOMs Created</span>
-                  <strong className="sap-result-meta-val" style={{ color: 'var(--sap-primary)' }}>
-                    {bomsCount}
-                  </strong>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Total Components Copied</span>
-                  <strong className="sap-result-meta-val" style={{ color: 'var(--sap-text-dark)' }}>
-                    {compsCount}
-                  </strong>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Levels</span>
-                  <strong className="sap-result-meta-val">
-                    {levelsCount}
-                  </strong>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Root Alternative</span>
-                  <span className="sap-badge sap-badge-primary" style={{ fontSize: '12px', padding: '2px 8px', width: 'fit-content', fontWeight: 700 }}>
-                    {rootAlt}
-                  </span>
-                </div>
-              </div>
+                {/* Collapsed by default discrepancy list */}
+                {hasDifferences && showDiscrepancies && differences.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '12px 16px',
+                      borderRadius: 6,
+                      backgroundColor: '#fffbeb',
+                      border: '1px solid #fed7aa'
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9a3412', marginBottom: 6 }}>
+                      Discrepancies from source BOM ({differences.length}):
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark, #1e293b)', lineHeight: 1.5 }}>
+                      {differences.map((diff, idx) => (
+                        <li key={idx} style={{ marginBottom: 3 }}>
+                          {diff}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {/* Bottom Actions */}
-              <div className="sap-result-actions sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={onBack}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
-                >
-                  <ArrowLeft size={13} />
-                  <span>Return to Launchpad</span>
-                </button>
-                <button
-                  type="button"
-                  className="sap-button primary"
-                  onClick={handleReset}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
-                >
-                  <Copy size={13} />
-                  <span>Copy Another BOM</span>
-                </button>
+                {/* 4 Summary Cards */}
+                <div className="sap-result-meta-grid" style={{ marginTop: 16, marginBottom: 20 }}>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">BOMs Created</span>
+                    <strong className="sap-result-meta-val" style={{ color: 'var(--sap-primary)' }}>
+                      {bomsCount}
+                    </strong>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Total Components Copied</span>
+                    <strong className="sap-result-meta-val" style={{ color: 'var(--sap-text-dark)' }}>
+                      {compsCount}
+                    </strong>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Levels</span>
+                    <strong className="sap-result-meta-val">
+                      {levelsCount}
+                    </strong>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Root Alternative</span>
+                    <span className="sap-badge sap-badge-primary" style={{ fontSize: '12px', padding: '2px 8px', width: 'fit-content', fontWeight: 700 }}>
+                      {rootAlt}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="sap-result-actions sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+                  <button
+                    type="button"
+                    className="sap-button"
+                    onClick={onBack}
+                    style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
+                  >
+                    <ArrowLeft size={13} />
+                    <span>Return to Launchpad</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="sap-button primary"
+                    onClick={handleReset}
+                    style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
+                  >
+                    <Copy size={13} />
+                    <span>Copy Another BOM</span>
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+        </div>
+      </PageContainer>
+
+      {/* Sticky Action Bar for Step 1 */}
+      {!proposedAction && !executionResult && !isSubmitting && (
+        <StickyActionBar>
+          <div className="sap-sticky-actions-left">
+            <button
+              type="button"
+              className="sap-btn sap-btn-secondary"
+              onClick={onBack}
+            >
+              <X size={14} />
+              <span>Cancel</span>
+            </button>
           </div>
-        )}
-      </div>
+          <div className="sap-sticky-actions-right">
+            <button
+              type="submit"
+              form="copy-bom-form"
+              className="sap-btn sap-btn-primary"
+              disabled={isSubmitting}
+            >
+              <span>Proceed</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </StickyActionBar>
+      )}
     </div>
   );
 }

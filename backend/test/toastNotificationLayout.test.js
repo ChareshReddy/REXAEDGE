@@ -459,6 +459,90 @@ const routedViewsTestPath = path.resolve(__dirname, 'routedViewsRender.test.js')
 assert(fs.existsSync(routedViewsTestPath), 'routedViewsRender.test.js must exist');
 console.log('   ✓ Routed views test suite exists and is integrated into test runner\n');
 
+// ============================================================================
+// 10. MASTER LAYOUT PASS VERIFICATION
+// ============================================================================
+console.log('Test 10: Verify shared layout system and app-wide layout pass...');
+
+const layoutDir = path.resolve(frontendDir, 'src/components/layout');
+assert(fs.existsSync(path.resolve(layoutDir, 'PageContainer.jsx')), 'PageContainer.jsx must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'PageHeader.jsx')), 'PageHeader.jsx must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'FormGrid.jsx')), 'FormGrid.jsx must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'SummaryPanel.jsx')), 'SummaryPanel.jsx must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'StickyActionBar.jsx')), 'StickyActionBar.jsx must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'layout.css')), 'layout.css must exist');
+assert(fs.existsSync(path.resolve(layoutDir, 'index.js')), 'layout index.js must exist');
+
+const layoutCssCode = fs.readFileSync(path.resolve(layoutDir, 'layout.css'), 'utf8');
+assert(layoutCssCode.includes('--sap-layout-max-width: 1680px'), 'layout.css must set 1680px max content width');
+assert(layoutCssCode.includes('.sap-page-container'), 'layout.css must define .sap-page-container');
+assert(layoutCssCode.includes('.sap-summary-panel'), 'layout.css must define .sap-summary-panel');
+assert(layoutCssCode.includes('.sap-sticky-action-bar'), 'layout.css must define .sap-sticky-action-bar');
+assert(layoutCssCode.includes('.sap-form-dual-connector'), 'layout.css must define .sap-form-dual-connector');
+assert(layoutCssCode.includes('.sap-card-table-scroll'), 'layout.css must define .sap-card-table-scroll');
+
+// Check CreateBomView uses PageContainer, SummaryPanel, and StickyActionBar
+const layoutCreateBomViewPath = path.resolve(frontendDir, 'src/components/CreateBomView.jsx');
+const layoutCreateBomViewCode = fs.readFileSync(layoutCreateBomViewPath, 'utf8');
+assert(layoutCreateBomViewCode.includes('PageContainer'), 'CreateBomView must use PageContainer');
+assert(layoutCreateBomViewCode.includes('SummaryPanel'), 'CreateBomView must use SummaryPanel');
+assert(layoutCreateBomViewCode.includes('StickyActionBar'), 'CreateBomView must use StickyActionBar');
+
+// Check CopyBomView uses PageContainer, SummaryPanel, and StickyActionBar
+const updatedCopyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8');
+assert(updatedCopyBomViewCode.includes('PageContainer'), 'CopyBomView must use PageContainer');
+assert(updatedCopyBomViewCode.includes('SummaryPanel'), 'CopyBomView must use SummaryPanel');
+assert(updatedCopyBomViewCode.includes('StickyActionBar'), 'CopyBomView must use StickyActionBar');
+
+// Check ValidateBomView uses PageContainer, SummaryPanel, and StickyActionBar
+const layoutValidateBomViewPath = path.resolve(frontendDir, 'src/components/ValidateBomView.jsx');
+const layoutValidateBomViewCode = fs.readFileSync(layoutValidateBomViewPath, 'utf8');
+assert(layoutValidateBomViewCode.includes('PageContainer'), 'ValidateBomView must use PageContainer');
+assert(layoutValidateBomViewCode.includes('SummaryPanel'), 'ValidateBomView must use SummaryPanel');
+assert(layoutValidateBomViewCode.includes('StickyActionBar'), 'ValidateBomView must use StickyActionBar');
+
+// Check DeleteBomView uses PageContainer, SummaryPanel, and StickyActionBar
+const updatedDeleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8');
+assert(updatedDeleteBomViewCode.includes('PageContainer'), 'DeleteBomView must use PageContainer');
+assert(updatedDeleteBomViewCode.includes('SummaryPanel'), 'DeleteBomView must use SummaryPanel');
+assert(updatedDeleteBomViewCode.includes('StickyActionBar'), 'DeleteBomView must use StickyActionBar');
+
+// Check CreateBomForm has connector and responsive dual columns
+const updatedCreateBomFormCode = fs.readFileSync(createBomFormPath, 'utf8');
+assert(updatedCreateBomFormCode.includes('sap-form-dual-columns-grid'), 'CreateBomForm must use sap-form-dual-columns-grid');
+assert(updatedCreateBomFormCode.includes('sap-form-dual-connector'), 'CreateBomForm must include visual connector arrow');
+
+// Check FioriPageHeader uses sap-layout-header-inner
+const fioriPageHeaderPath = path.resolve(frontendDir, 'src/components/FioriPageHeader.jsx');
+const fioriPageHeaderCode = fs.readFileSync(fioriPageHeaderPath, 'utf8');
+assert(fioriPageHeaderCode.includes('sap-layout-header-inner'), 'FioriPageHeader must use sap-layout-header-inner');
+
+// Check Display BOM uses PageContainer and sap-card-table-scroll
+const bomExplorerPath = path.resolve(frontendDir, 'src/components/BomExplorerView.jsx');
+const bomExplorerCode = fs.readFileSync(bomExplorerPath, 'utf8');
+assert(bomExplorerCode.includes('PageContainer'), 'BomExplorerView must use PageContainer');
+assert(bomExplorerCode.includes('sap-card-table-scroll'), 'BomExplorerView must use sap-card-table-scroll');
+
+// Check Bulk views do not have maxWidth 1100 restriction
+const bulkCreatePath = path.resolve(frontendDir, 'src/components/BulkCreateBomView.jsx');
+const bulkCreateCode = fs.readFileSync(bulkCreatePath, 'utf8');
+assert(!bulkCreateCode.includes('maxWidth: 1100'), 'BulkCreateBomView must not constrain width to 1100px');
+assert(bulkCreateCode.includes('sap-card-table-scroll'), 'BulkCreateBomView must use sap-card-table-scroll');
+
+const bulkCopyPath = path.resolve(frontendDir, 'src/components/BulkBomView.jsx');
+const bulkCopyCode = fs.readFileSync(bulkCopyPath, 'utf8');
+assert(!bulkCopyCode.includes('maxWidth: 1100'), 'BulkBomView must not constrain width to 1100px');
+assert(bulkCopyCode.includes('sap-card-table-scroll'), 'BulkBomView must use sap-card-table-scroll');
+
+// Check AdminView removed narrow maxWidth constraints
+const adminViewPath = path.resolve(frontendDir, 'src/components/AdminView.jsx');
+const adminViewCode = fs.readFileSync(adminViewPath, 'utf8');
+assert(!adminViewCode.includes('maxWidth: 740'), 'AdminView must not constrain user table to 740px');
+assert(!adminViewCode.includes('maxWidth: 910'), 'AdminView must not constrain servers table to 910px');
+assert(!adminViewCode.includes('maxWidth: 850'), 'AdminView must not constrain permissions table to 850px');
+
+console.log('   ✓ Shared layout components, responsive widths, summary panels, and sticky action bars verified\n');
+
 console.log('============================================================');
 console.log('  ALL TOAST NOTIFICATION & VALIDATION TESTS PASSED (100%)    ');
 console.log('============================================================\n');

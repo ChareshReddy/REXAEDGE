@@ -25,41 +25,43 @@ export default function FioriPageHeader({
 
   return (
     <div className={`fiori-ph ${className}`} style={style}>
-      {/* 1. Top Section: Title first, then Subtitle directly below it */}
-      <div className="fiori-ph-header-top">
-        <div className="fiori-ph-title-row">
-          <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
-            {title}
-          </h1>
-          {extraTitleContent}
+      <div className="sap-layout-header-inner">
+        {/* 1. Top Section: Title first, then Subtitle directly below it */}
+        <div className="fiori-ph-header-top">
+          <div className="fiori-ph-title-row">
+            <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
+              {title}
+            </h1>
+            {extraTitleContent}
+          </div>
+          {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle">{subtitle}</p>}
         </div>
-        {subtitle && <p className="fiori-ph-subtitle">{subtitle}</p>}
+
+        {/* 2. Middle Section: Breadcrumbs Trail (plain text links with chevron separators, no pills) */}
+        {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
+          <div className="fiori-bc">
+            {breadcrumbs.map((b, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <span className="fiori-bc-sep">›</span>}
+                {b.onClick ? (
+                  <button
+                    type="button"
+                    className="fiori-bc-link"
+                    onClick={b.onClick}
+                  >
+                    {b.label}
+                  </button>
+                ) : (
+                  <span className="fiori-bc-current">{b.label}</span>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+
+        {/* 3. Bottom Section: Tabs / Toolbar (if provided) */}
+        {children}
       </div>
-
-      {/* 2. Middle Section: Breadcrumbs Trail (plain text links with chevron separators, no pills) */}
-      {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
-        <div className="fiori-bc">
-          {breadcrumbs.map((b, idx) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && <span className="fiori-bc-sep">›</span>}
-              {b.onClick ? (
-                <button
-                  type="button"
-                  className="fiori-bc-link"
-                  onClick={b.onClick}
-                >
-                  {b.label}
-                </button>
-              ) : (
-                <span className="fiori-bc-current">{b.label}</span>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
-
-      {/* 3. Bottom Section: Tabs / Toolbar (if provided) */}
-      {children}
     </div>
   );
 }
