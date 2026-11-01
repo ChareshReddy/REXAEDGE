@@ -33,6 +33,7 @@ import DeleteBomView from './components/DeleteBomView';
 import BomExplorerView from './components/BomExplorerView';
 import BulkBomView from './components/BulkBomView';
 import ValidateBomView from './components/ValidateBomView';
+import { ToastProvider, toast } from './context/ToastContext';
 import CreateBomView from './components/CreateBomView';
 import BulkCreateBomView from './components/BulkCreateBomView';
 
@@ -55,23 +56,32 @@ import rexaEdgeLogo from './assets/rexaedge_logo.png';
 import rexaEdgeFullColourLogo from './assets/rexaedge_full_colour.png';
 import HomePage from './components/HomePage';
 import activityTracker from './services/activityTracker';
+import { formatEnvironment } from './utils/textFormatters';
 
-export default function App() {
-  const [user, setUser] = useState(null);
+export default function App({
+  initialUser = null,
+  initialCheckingAuth = true,
+  initialServers = [],
+  initialSelectedServer = null,
+  initialActiveTab = 'home',
+  initialLaunchpadSubView = 'home',
+  initialEnabledModules = ['bom']
+} = {}) {
+  const [user, setUser] = useState(initialUser);
   const [authConfig, setAuthConfig] = useState(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(initialCheckingAuth);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // SAP Server selection state (dynamically loaded per user permissions)
-  const [availableServers, setAvailableServers] = useState([]);
-  const [selectedServer, setSelectedServer] = useState(null);
+  const [availableServers, setAvailableServers] = useState(initialServers);
+  const [selectedServer, setSelectedServer] = useState(initialSelectedServer);
   const [currentSystem, setCurrentSystem] = useState('DEV'); // 'DEV' | 'QA' | 'PROD'
-  const [enabledModules, setEnabledModules] = useState([]);
-  const [isLoadingServers, setIsLoadingServers] = useState(true);
+  const [enabledModules, setEnabledModules] = useState(initialEnabledModules);
+  const [isLoadingServers, setIsLoadingServers] = useState(initialServers.length === 0);
 
   // Application view state - defaults to modern Home page matching RexaEdge ERP portal
-  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin'
-  const [launchpadSubView, setLaunchpadSubView] = useState('home'); // 'home' | 'bom_operations' | 'bom_create_operations' | 'bom_copy_operations'
+  const [activeTab, setActiveTab] = useState(initialActiveTab); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin'
+  const [launchpadSubView, setLaunchpadSubView] = useState(initialLaunchpadSubView); // 'home' | 'bom_operations' | 'bom_create_operations' | 'bom_copy_operations'
 
   const getPathForView = (tab, subView) => {
     if (tab === 'home') return '/home';
@@ -138,7 +148,6 @@ export default function App() {
   const userMenuHoverTimeoutRef = useRef(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
 
   const handleUserMenuMouseEnter = () => {
     if (userMenuHoverTimeoutRef.current) clearTimeout(userMenuHoverTimeoutRef.current);
@@ -159,8 +168,10 @@ export default function App() {
   };
 
   const showToast = (message, type = 'success') => {
-    setToastMessage({ message, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    if (type === 'error') toast.error(message);
+    else if (type === 'warning') toast.warning(message);
+    else if (type === 'info') toast.info(message);
+    else toast.success(message);
   };
 
   const [sapSession, setSapSession] = useState({
@@ -510,11 +521,16 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login authConfig={authConfig} onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <ToastProvider>
+        <Login authConfig={authConfig} onLoginSuccess={handleLoginSuccess} />
+      </ToastProvider>
+    );
   }
 
   return (
-    <div className="sap-app-root">
+    <ToastProvider>
+      <div className="sap-app-root">
       {/* SAP Shell Top Header */}
       <header className="sap-shell-header sap-toolbar">
         <div className="sap-shell-header-left">
@@ -575,7 +591,7 @@ export default function App() {
 
           {/* 3. Server selector dropdown */}
           <div className="sap-system-select-wrapper">
-            <span className="sap-system-label sap-label">SERVER:</span>
+            <span className="sap-system-label sap-label">Server</span>
             {availableServers.length === 1 ? (
               // Single server: read-only label in header style with neutral env tag
               <span
@@ -585,7 +601,7 @@ export default function App() {
                 <span className="sap-system-static-name">{selectedServer?.name}</span>
                 {selectedServer?.environment && (
                   <span className="sap-system-env-tag">
-                    ({selectedServer.environment})
+                    ({formatEnvironment(selectedServer.environment)})
                   </span>
                 )}
               </span>
@@ -600,7 +616,7 @@ export default function App() {
                 >
                   {availableServers.map((srv) => (
                     <option key={srv.id} value={srv.id}>
-                      {srv.name} ({srv.environment})
+                      {srv.name} ({formatEnvironment(srv.environment)})
                     </option>
                   ))}
                 </select>
@@ -651,7 +667,7 @@ export default function App() {
                 {/* Multi-Session Capability Preserved */}
                 {sapSession.sessions && sapSession.sessions.length > 0 && (
                   <div style={{ padding: '8px 14px', background: '#f8fafc', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', marginBottom: 6 }}>
                       Active SAP Sessions ({sapSession.sessions.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -781,7 +797,7 @@ export default function App() {
                   style={{ flex: 1 }}
                 >
                   {availableServers.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.environment})</option>
+                    <option key={s.id} value={s.id}>{s.name} ({formatEnvironment(s.environment)})</option>
                   ))}
                 </select>
               ) : (
@@ -792,7 +808,7 @@ export default function App() {
                   {selectedServer?.name || 'No Servers'}
                   {selectedServer?.environment && (
                     <span className="sap-system-env-tag">
-                      ({selectedServer.environment})
+                      ({formatEnvironment(selectedServer.environment)})
                     </span>
                   )}
                 </span>
@@ -1235,29 +1251,6 @@ export default function App() {
         </div>
       </Modal>
 
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          className={`sap-alert sap-alert-${toastMessage.type === 'error' ? 'error' : 'success'}`}
-          style={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            zIndex: 9999,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 16px',
-            borderRadius: 'var(--radius-md, 8px)',
-            fontSize: 13,
-            fontWeight: 500
-          }}
-        >
-          <CheckCircle2 size={16} />
-          <span>{toastMessage.message}</span>
-        </div>
-      )}
 
       {/* Contact Modal (Global Header Trigger) */}
       {isHeaderContactOpen && (
@@ -1356,5 +1349,6 @@ export default function App() {
         onSuccess={(msg) => showToast(msg, 'success')}
       />
     </div>
+    </ToastProvider>
   );
 }

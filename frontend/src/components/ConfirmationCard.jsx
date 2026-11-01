@@ -612,13 +612,13 @@ export default function ConfirmationCard({
                   <tr>
                     <td className="sap-diff-field-name">Status</td>
                     <td className="sap-diff-old-val">
-                      <span className="sap-badge sap-badge-danger">{preview.currentStatus || 'CANCELLED'}</span>
+                      <span className="sap-badge sap-badge-danger">{preview.currentStatus ? (preview.currentStatus.charAt(0).toUpperCase() + preview.currentStatus.slice(1).toLowerCase()) : 'Cancelled'}</span>
                     </td>
                     <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }}>
                       <ArrowRight size={14} />
                     </td>
                     <td className="sap-diff-new-val">
-                      <span className="sap-badge sap-badge-success">FINISHED</span>
+                      <span className="sap-badge sap-badge-success">Finished</span>
                     </td>
                   </tr>
                   <tr>

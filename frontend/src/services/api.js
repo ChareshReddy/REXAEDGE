@@ -127,11 +127,76 @@ try {
 } catch (_) {}
 
 /**
- * Validates credentials via Supabase authentication endpoint.
- * Stores token in client state.
+ * Evaluates whether a login failure is safely retryable (infrastructure/network failure).
+ * Strictly excludes 4xx client errors, invalid credentials (401), forbidden (403), and rate limit (429).
  */
-export async function loginUser(email, password) {
-  const response = await apiClient.post('/auth/login', { email, username: email, password });
+export function isLoginRetryableError(error) {
+  if (!error) return false;
+
+  // Network errors: connection dropped, DNS failure, ECONNRESET, timeout
+  if (!error.response) return true;
+
+  const status = error.response.status;
+
+  // 4xx client errors (400 Bad Request, 401 Unauthorized / bad credentials, 403 Forbidden, 429 Rate Limit) must NEVER retry
+  if (status >= 400 && status < 500) {
+    return false;
+  }
+
+  // 502 Bad Gateway, 503 Service Unavailable, 504 Gateway Timeout must retry
+  if ([502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  // 500 Internal Server Error with text/plain (proxy crash / socket hangup from stale connection)
+  if (status === 500) {
+    const contentType = error.response.headers?.['content-type'] || '';
+    if (typeof error.response.data === 'string' || contentType.includes('text/plain')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Validates credentials via authentication endpoint.
+ * Implements a safe, single retry for infrastructure failures (502/503/504, network errors, 500 text/plain).
+ * Never retries on credential or client errors (400/401/403/429).
+ */
+export async function loginUser(email, password, { retryDelay = 300 } = {}) {
+  const performLogin = () =>
+    apiClient.post('/auth/login', { email, username: email, password });
+
+  let response;
+  try {
+    response = await performLogin();
+  } catch (err) {
+    if (isLoginRetryableError(err)) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      try {
+        response = await performLogin();
+      } catch (retryErr) {
+        // Only after the retry also failed: normalize 500 text/plain error
+        if (
+          retryErr.response?.status === 500 &&
+          (typeof retryErr.response?.data === 'string' ||
+           retryErr.response?.headers?.['content-type']?.includes('text/plain'))
+        ) {
+          retryErr.isProxyPlainTextError = true;
+          if (typeof retryErr.response.data !== 'object' || retryErr.response.data === null) {
+            retryErr.response.data = {
+              error: "Can't reach the sign-in service. Please try again."
+            };
+          }
+        }
+        throw retryErr;
+      }
+    } else {
+      throw err;
+    }
+  }
+
   if (response.data?.token) {
     setAuthToken(response.data.token);
   }

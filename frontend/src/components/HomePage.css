@@ -84,10 +84,10 @@
 /* Eyebrow: SMART · SECURE · SCALABLE (12px, wide spacing, light gray-white) */
 .rexa-hero-eyebrow {
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 3px;
+  font-weight: 600;
+  letter-spacing: normal;
   color: #e2e8f0;
-  text-transform: uppercase;
+  text-transform: none;
   margin-bottom: 16px;
   user-select: none;
 }

@@ -20,6 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { readBom, explodeBomHierarchy } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
@@ -44,6 +45,7 @@ export default function BomExplorerView({
   onNavigateHome,
   onNavigateProducts,
   onNavigateBom, initialMaterial, initialPlant }) {
+  const toast = useToast();
   const [searchParams, setSearchParams] = useState({
     material: initialMaterial || '',
     plant: initialPlant || '',
@@ -53,7 +55,11 @@ export default function BomExplorerView({
 
   const [isLoading, setIsLoading] = useState(false);
   const [bomData, setBomData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, _setErrorMessage] = useState('');
+  const setErrorMessage = (msg) => {
+    _setErrorMessage(msg);
+    if (msg) toast.error(msg);
+  };
   const [filterText, setFilterText] = useState('');
   const [viewMode, setViewMode] = useState('items'); // 'items' | 'hierarchy'
   const [sortConfig, setSortConfig] = useState({ key: '', direction: 'asc' });
@@ -245,13 +251,7 @@ export default function BomExplorerView({
       />
 
       <div className="fiori-view-body wide">
-        {/* Error Notice */}
-        {errorMessage && (
-          <div className="sap-alert sap-alert-error" style={{ maxWidth: 680, width: '100%', margin: '0 auto 14px' }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div>{errorMessage}</div>
-          </div>
-        )}
+        {/* Error Notice handled via Toast */}
 
         {/* Small Compact Search Card (2 rows x 2 columns) */}
         <div className="sap-structured-form-card" style={{ maxWidth: 680, width: '100%', margin: '0 auto 16px' }}>

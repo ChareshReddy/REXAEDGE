@@ -37,9 +37,11 @@ import {
 import { MODULE_REGISTRY, MODULE_STATUS, MODULE_KEYS, BOM_APP_LIST, ALL_BOM_APPS, normalizePermissions, formatPermissionsSummary, getPermissionsSummaryParts } from '@shared/modules.js';
 import activityTracker from '../services/activityTracker';
 import Modal from './Modal';
+import { useToast } from '../context/ToastContext';
 import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
 import AdminActivityLogsView from './AdminActivityLogsView';
+import { formatEnvironment } from '../utils/textFormatters';
 
 /**
  * TriStateCheckbox: Accessible checkbox with HTML5 indeterminate state support
@@ -75,8 +77,18 @@ function TriStateCheckbox({ checked, indeterminate, onChange, disabled, id, aria
   );
 }
 
-export default function AdminView({ currentUser, onBack, onNavigateHome, onNavigateProducts }) {
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'servers' | 'permissions'
+export default function AdminView({
+  currentUser,
+  onBack,
+  onNavigateHome,
+  onNavigateProducts,
+  initialTab = 'users',
+  initialUsers = [],
+  initialServers = [],
+  initialPermissions = []
+}) {
+  const toast = useToast();
+  const [activeTab, setActiveTab] = useState(initialTab); // 'users' | 'servers' | 'permissions'
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -85,9 +97,9 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
   const activeUserId = currentUser?.id || (typeof localStorage !== 'undefined' ? (localStorage.getItem('sb_user_id') || JSON.parse(localStorage.getItem('sb_user') || '{}')?.id) : null);
 
   // Data states
-  const [users, setUsers] = useState([]);
-  const [servers, setServers] = useState([]);
-  const [permissions, setPermissions] = useState([]);
+  const [users, setUsers] = useState(initialUsers);
+  const [servers, setServers] = useState(initialServers);
+  const [permissions, setPermissions] = useState(initialPermissions);
   const [permissionsError, setPermissionsError] = useState('');
   const [migrationPending, setMigrationPending] = useState(false);
 
@@ -236,9 +248,11 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
   const triggerNotice = (msg, isErr = false) => {
     if (isErr) {
       setErrorMessage(msg);
+      toast.error(msg);
       setTimeout(() => setErrorMessage(''), 5000);
     } else {
       setSuccessMessage(msg);
+      toast.success(msg);
       setTimeout(() => setSuccessMessage(''), 4000);
     }
   };
@@ -643,19 +657,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
 
       {/* Main Content Area */}
       <div className="fiori-view-body" style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '16px 32px 32px', boxSizing: 'border-box' }}>
-        {/* Alerts */}
-        {errorMessage && (
-          <div className="sap-alert sap-alert-error" style={{ marginBottom: 14 }}>
-            <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-            <div>{errorMessage}</div>
-          </div>
-        )}
-        {successMessage && (
-          <div className="sap-alert sap-alert-success" style={{ marginBottom: 14 }}>
-            <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
-            <div>{successMessage}</div>
-          </div>
-        )}
+        {/* Alerts handled via Toast */}
 
         {/* =========================================================================
             TAB 1: USERS MANAGEMENT
@@ -701,9 +703,9 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Email Address</th>
+                    <th>Email address</th>
                     <th>Role</th>
-                    <th>Created Date</th>
+                    <th>Created date</th>
                     <th>Password</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
@@ -853,10 +855,10 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Server Name</th>
+                    <th>Server name</th>
                     <th>Environment</th>
-                    <th>Host / Gateway</th>
-                    <th>Sys / Client</th>
+                    <th>Host / gateway</th>
+                    <th>Sys / client</th>
                     <th>Username</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
@@ -883,8 +885,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                               ? 'sap-env-badge-sandbox'
                               : 'sap-env-badge-dev'
                           }`}>
-                            {s.environment}
-                          </span>
+                            {formatEnvironment(s.environment)}</span>
                         </td>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
                           {s.ashost || 'N/A'}
@@ -1056,11 +1057,11 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>User Email</th>
-                    <th>Target SAP Server</th>
+                    <th>User email</th>
+                    <th>Target SAP server</th>
                     <th>Environment</th>
-                    <th>Permitted Features</th>
-                    <th>Granted At</th>
+                    <th>Permitted features</th>
+                    <th>Granted at</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
@@ -1096,8 +1097,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                                 ? 'sap-env-badge-sandbox'
                                 : 'sap-env-badge-dev'
                             }`}>
-                              {p.server_environment || 'DEV'}
-                            </span>
+                              {formatEnvironment(p.server_environment || 'DEV')}</span>
                           </td>
                           <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', maxWidth: '100%', verticalAlign: 'middle' }}>
@@ -1232,12 +1232,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
         maxWidth={440}
       >
         <form onSubmit={handleCreateUser}>
-          {userModalError && (
-            <div className="sap-alert sap-alert-error" style={{ marginBottom: 14 }}>
-              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-              <div style={{ wordBreak: 'break-word', fontSize: 13 }}>{userModalError}</div>
-            </div>
-          )}
+          
           <div className="sap-form-group">
             <label className="sap-form-label">Email Address</label>
             <input
@@ -1309,12 +1304,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
         maxWidth={520}
       >
         <form onSubmit={handleSaveServer}>
-          {serverModalError && (
-            <div className="sap-alert sap-alert-error" style={{ marginBottom: 14 }}>
-              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-              <div style={{ wordBreak: 'break-word', fontSize: 13 }}>{serverModalError}</div>
-            </div>
-          )}
+          
           <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
                 <div className="sap-form-group">
                   <label className="sap-form-label">Server Display Name</label>
@@ -1336,10 +1326,10 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                     value={serverFormData.environment}
                     onChange={(e) => setServerFormData({ ...serverFormData, environment: e.target.value })}
                   >
-                    <option value="SANDBOX">SANDBOX (Sandbox)</option>
-                    <option value="DEV">DEV (Development)</option>
-                    <option value="QA">QA (Quality/Staging)</option>
-                    <option value="PROD">PROD (Production)</option>
+                    <option value="SANDBOX">Sandbox</option>
+                    <option value="DEV">Dev (Development)</option>
+                    <option value="QA">Qa (Quality/Staging)</option>
+                    <option value="PROD">Prod (Production)</option>
                   </select>
                 </div>
               </div>
@@ -1513,12 +1503,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
         style={{ maxHeight: '90vh', overflowY: 'auto' }}
       >
         <form onSubmit={handleGrantPermission}>
-          {grantModalError && (
-            <div className="sap-alert sap-alert-error" style={{ marginBottom: 14 }}>
-              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-              <div style={{ wordBreak: 'break-word', fontSize: 13 }}>{grantModalError}</div>
-            </div>
-          )}
+          
           <div className="sap-form-group">
             <label className="sap-form-label">Select User</label>
             <select
@@ -1531,7 +1516,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             >
               <option value="" disabled>-- Select a User --</option>
               {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
+                <option key={u.id} value={u.id}>{u.email} ({u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1).toLowerCase() : 'User'})</option>
               ))}
             </select>
           </div>
@@ -1547,7 +1532,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
             >
               <option value="" disabled>-- Select a Server --</option>
               {servers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} ({s.environment})</option>
+                <option key={s.id} value={s.id}>{s.name} ({formatEnvironment(s.environment)})</option>
               ))}
             </select>
           </div>
@@ -1658,8 +1643,7 @@ export default function AdminView({ currentUser, onBack, onNavigateHome, onNavig
                         borderRadius: 10,
                         background: '#e2e8f0',
                         color: '#64748b',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
+                        textTransform: 'none',
                         flexShrink: 0
                       }}>
                         Coming soon

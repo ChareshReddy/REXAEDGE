@@ -2,14 +2,21 @@ import React, { useState } from 'react';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser } from '../services/api';
+import { useToast } from '../context/ToastContext';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
 import sapSignInHero from '../assets/sap_signin_hero.jpg';
 
-export default function Login({ onLoginSuccess }) {
+export default function Login({
+  onLoginSuccess }) {
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, _setErrorMessage] = useState('');
+  const setErrorMessage = (msg) => {
+    _setErrorMessage(msg);
+    if (msg) toast.error(msg);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,6 +50,13 @@ export default function Login({ onLoginSuccess }) {
           err.response?.data?.error ||
           'Invalid email or password. Please verify your credentials or contact your administrator.'
         );
+      } else if (
+        err.response?.status === 500 &&
+        (typeof err.response?.data === 'string' ||
+         err.response?.headers?.['content-type']?.includes('text/plain') ||
+         err.isProxyPlainTextError)
+      ) {
+        setErrorMessage("Can't reach the sign-in service. Please try again.");
       } else {
         setErrorMessage(
           err.response?.data?.error ||
@@ -91,12 +105,7 @@ export default function Login({ onLoginSuccess }) {
             </div>
 
             <form onSubmit={handleSubmit} className="sap-login-body-direct">
-              {errorMessage && (
-                <div className="sap-alert sap-alert-error" role="alert">
-                  <AlertCircle size={17} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <div>{errorMessage}</div>
-                </div>
-              )}
+              
 
               <div className="sap-form-group">
                 <label className="sap-form-label" htmlFor="sap-email">

@@ -25,6 +25,7 @@ import Tooltip from './Tooltip';
 import { BOM_FIELD_TOOLTIPS } from '../constants/sapFieldHelp';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -38,6 +39,7 @@ export default function CreateBomView({
   onNavigateHome,
   onNavigateProducts,
   onNavigateBom, initialMaterial, initialPlant }) {
+  const toast = useToast();
   const [headerData, setHeaderData] = useState({
     material: initialMaterial || '',
     plant: initialPlant || '',
@@ -63,6 +65,7 @@ export default function CreateBomView({
 
   const [validationErrors, setValidationErrors] = useState([]);
   const [validationWarnings, setValidationWarnings] = useState([]);
+  const [headerErrors, setHeaderErrors] = useState({});
   const [isValidating, setIsValidating] = useState(false);
   const [preflightPassed, setPreflightPassed] = useState(false);
   const [preflightData, setPreflightData] = useState(null);
@@ -88,6 +91,9 @@ export default function CreateBomView({
   const handleHeaderChange = (field, value) => {
     if (isLocked) return;
     setHeaderData((prev) => ({ ...prev, [field]: value }));
+    if (headerErrors[field]) {
+      setHeaderErrors((prev) => ({ ...prev, [field]: false }));
+    }
     setPreflightPassed(false);
     setPreflightData(null);
     setValidationErrors([]);
@@ -140,13 +146,36 @@ export default function CreateBomView({
   const handleValidate = async () => {
     if (isLocked) return;
     const errors = [];
-    if (!headerData.material.trim()) errors.push('Header Material is required.');
-    if (!headerData.plant.trim()) errors.push('Plant is required.');
-    if (!headerData.bomUsage.trim()) errors.push('BOM Usage is required.');
-    if (!headerData.alternativeBom.trim()) errors.push('Alternative BOM is required.');
-    if (!headerData.validFrom.trim()) errors.push('Valid From date is required.');
-    if (!headerData.baseQty || parseFloat(headerData.baseQty) <= 0) errors.push('Base quantity must be greater than 0.');
-    if (!headerData.bomStatus.trim()) errors.push('BOM Status is required.');
+    const hErrors = {};
+
+    if (!headerData.material.trim()) {
+      errors.push('Header Material is required.');
+      hErrors.material = true;
+    }
+    if (!headerData.plant.trim()) {
+      errors.push('Plant is required.');
+      hErrors.plant = true;
+    }
+    if (!headerData.bomUsage.trim()) {
+      errors.push('BOM Usage is required.');
+      hErrors.bomUsage = true;
+    }
+    if (!headerData.alternativeBom.trim()) {
+      errors.push('Alternative BOM is required.');
+      hErrors.alternativeBom = true;
+    }
+    if (!headerData.validFrom.trim()) {
+      errors.push('Valid From date is required.');
+      hErrors.validFrom = true;
+    }
+    if (!headerData.baseQty || parseFloat(headerData.baseQty) <= 0) {
+      errors.push('Base quantity must be greater than 0.');
+      hErrors.baseQty = true;
+    }
+    if (!headerData.bomStatus.trim()) {
+      errors.push('BOM Status is required.');
+      hErrors.bomStatus = true;
+    }
 
     components.forEach((c, idx) => {
       const rowNum = idx + 1;
@@ -159,11 +188,28 @@ export default function CreateBomView({
     });
 
     if (errors.length > 0) {
+      setHeaderErrors(hErrors);
       setValidationErrors(errors);
       setPreflightPassed(false);
+      toast.validation(errors, 'Validation notice');
+
+      const headerFieldMap = {
+        material: 'createBomMaterial',
+        plant: 'createBomPlant',
+        bomUsage: 'createBomUsage',
+        alternativeBom: 'createBomAlt',
+        validFrom: 'createBomValidFrom',
+        baseQty: 'createBomBaseQty',
+        bomStatus: 'createBomStatus'
+      };
+      const firstInvalidHeader = ['material', 'plant', 'bomUsage', 'alternativeBom', 'validFrom', 'baseQty', 'bomStatus'].find((f) => hErrors[f]);
+      if (firstInvalidHeader && headerFieldMap[firstInvalidHeader]) {
+        document.getElementById(headerFieldMap[firstInvalidHeader])?.focus();
+      }
       return;
     }
 
+    setHeaderErrors({});
     setIsValidating(true);
     setValidationErrors([]);
 
@@ -199,23 +245,35 @@ export default function CreateBomView({
           setPreflightPassed(true);
           setValidationErrors([]);
           setValidationWarnings(validatedBom.warnings || []);
+          toast.success('Pre-flight passed. Material master data, units, and SAP simulation verified.');
+          if (validatedBom.warnings?.length > 0) {
+            toast.warning(validatedBom.warnings.join('\n'), { title: 'Validation warnings' });
+          }
         } else if (validatedBom.status === 'Already exists - skipped') {
+          const errList = [validatedBom.reason || 'BOM already exists in this plant. Overwriting is strictly prohibited.'];
           setPreflightPassed(false);
-          setValidationErrors([validatedBom.reason || 'BOM already exists in this plant. Overwriting is strictly prohibited.']);
+          setValidationErrors(errList);
           setValidationWarnings(validatedBom.warnings || []);
+          toast.validation(errList, 'Validation notice');
         } else {
+          const errList = validatedBom.errors?.length > 0 ? validatedBom.errors : [validatedBom.reason || 'Pre-flight validation failed.'];
           setPreflightPassed(false);
-          setValidationErrors(validatedBom.errors?.length > 0 ? validatedBom.errors : [validatedBom.reason || 'Pre-flight validation failed.']);
+          setValidationErrors(errList);
           setValidationWarnings(validatedBom.warnings || []);
+          toast.validation(errList, 'Validation notice');
         }
       } else {
+        const errList = [res.message || 'Validation service did not return validation status.'];
         setPreflightPassed(false);
-        setValidationErrors([res.message || 'Validation service did not return validation status.']);
+        setValidationErrors(errList);
         setValidationWarnings([]);
+        toast.validation(errList, 'Validation notice');
       }
     } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Error communicating with validation service.';
       setPreflightPassed(false);
-      setValidationErrors([err.response?.data?.message || err.message || 'Error communicating with validation service.']);
+      setValidationErrors([errMsg]);
+      toast.error(errMsg);
     } finally {
       setIsValidating(false);
     }
@@ -231,16 +289,16 @@ export default function CreateBomView({
   const handleExecuteCreate = async () => {
     if (isLocked) return;
     if (!preflightPassed || !preflightData) {
-      alert('Master data must be validated before creating the BOM.');
+      toast.warning('Master data must be validated before creating the BOM.', { title: 'Validation notice' });
       return;
     }
     if (isProd) {
       if (confirmText !== 'CONFIRM') {
-        alert('Please type CONFIRM in uppercase to proceed in Production.');
+        toast.warning('Please type CONFIRM in uppercase to proceed in Production.', { title: 'Validation notice' });
         return;
       }
       if (!businessReason.trim()) {
-        alert('Please provide a valid business reason for Production creation.');
+        toast.warning('Please provide a valid business reason for Production creation.', { title: 'Validation notice' });
         return;
       }
     }
@@ -256,13 +314,18 @@ export default function CreateBomView({
       });
       setExecutionResult(res);
       setIsConfirmModalOpen(false);
+      if (res.success) {
+        toast.success(`BOM created successfully in SAP! Material: ${headerData.material}, Plant: ${headerData.plant}`);
+      }
     } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'BOM creation failed.';
       setExecutionResult({
         success: false,
         status: 'FAILED',
-        message: err.response?.data?.message || err.message || 'BOM creation failed.'
+        message: errMsg
       });
       setIsConfirmModalOpen(false);
+      toast.error(errMsg);
     } finally {
       setIsExecuting(false);
     }
@@ -498,72 +561,6 @@ export default function CreateBomView({
               </div>
             )}
 
-            {/* Validation Alerts */}
-            {validationErrors.length > 0 && (
-              <div
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--sap-error-bg)',
-                  border: '1px solid var(--sap-error-border)',
-                  color: 'var(--sap-error)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 4 }}>
-                  <AlertCircle size={18} />
-                  <span>Validation Notice</span>
-                </div>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-                  {validationErrors.map((err, idx) => (
-                    <li key={idx}>{err}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {preflightPassed && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--sap-success-bg)',
-                    border: '1px solid var(--sap-success-border)',
-                    color: 'var(--sap-success)',
-                    fontSize: 13,
-                    fontWeight: 600
-                  }}
-                >
-                  <CheckCircle2 size={18} />
-                  <span>Pre-flight passed! Material master data, units, and SAP simulation verified.</span>
-                </div>
-                {validationWarnings.length > 0 && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'var(--sap-warning-bg)',
-                      border: '1px solid var(--sap-warning-border)',
-                      color: 'var(--sap-warning)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, marginBottom: 4 }}>
-                      <AlertTriangle size={18} />
-                      <span>Validation Warnings ({validationWarnings.length})</span>
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                      {validationWarnings.map((w, idx) => (
-                        <li key={idx}>{w}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Header Data Card */}
             <div className="sap-card" style={{ padding: 20 }}>
               <h3 className="sap-section-header">
@@ -574,6 +571,7 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">Material*</label>
                   <ValueHelpInput
+                    id="createBomMaterial"
                     kind="material"
                     plant={headerData.plant}
                     placeholder="e.g. A1BH0214C"
@@ -589,6 +587,7 @@ export default function CreateBomView({
                         handleHeaderChange('plant', full.werks);
                       }
                     }}
+                    className={`sap-input sap-form-input ${headerErrors.material ? 'input-error' : ''}`}
                     aria-label="Header Material"
                   />
                 </div>
@@ -596,6 +595,7 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">Plant*</label>
                   <ValueHelpInput
+                    id="createBomPlant"
                     kind="plant"
                     material={headerData.material}
                     placeholder="e.g. 1010"
@@ -603,6 +603,7 @@ export default function CreateBomView({
                     disabled={isLocked}
                     value={headerData.plant}
                     onChange={(e) => handleHeaderChange('plant', e.target.value)}
+                    className={`sap-input sap-form-input ${headerErrors.plant ? 'input-error' : ''}`}
                     aria-label="Header Plant"
                   />
                 </div>
@@ -610,20 +611,23 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">BOM Usage*</label>
                   <ValueHelpInput
+                    id="createBomUsage"
                     kind="bomUsage"
                     placeholder="1"
                     maxLength={1}
                     disabled={isLocked}
                     value={headerData.bomUsage}
                     onChange={(e) => handleHeaderChange('bomUsage', e.target.value)}
+                    className={`sap-input sap-form-input ${headerErrors.bomUsage ? 'input-error' : ''}`}
                   />
                 </div>
 
                 <div>
                   <label className="sap-label sap-form-label">Alternative BOM*</label>
                   <input
+                    id="createBomAlt"
                     type="text"
-                    className="sap-input sap-form-input"
+                    className={`sap-input sap-form-input ${headerErrors.alternativeBom ? 'input-error' : ''}`}
                     placeholder="01"
                     maxLength={2}
                     disabled={isLocked}
@@ -635,8 +639,9 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">Valid From*</label>
                   <input
+                    id="createBomValidFrom"
                     type="text"
-                    className="sap-input sap-form-input"
+                    className={`sap-input sap-form-input ${headerErrors.validFrom ? 'input-error' : ''}`}
                     placeholder="DD.MM.YYYY"
                     disabled={isLocked}
                     value={headerData.validFrom}
@@ -647,9 +652,10 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">Base Quantity*</label>
                   <input
+                    id="createBomBaseQty"
                     type="number"
                     step="any"
-                    className="sap-input sap-form-input"
+                    className={`sap-input sap-form-input ${headerErrors.baseQty ? 'input-error' : ''}`}
                     placeholder="1"
                     disabled={isLocked}
                     value={headerData.baseQty}
@@ -660,8 +666,9 @@ export default function CreateBomView({
                 <div>
                   <label className="sap-label sap-form-label">BOM Status*</label>
                   <input
+                    id="createBomStatus"
                     type="text"
-                    className="sap-input sap-form-input"
+                    className={`sap-input sap-form-input ${headerErrors.bomStatus ? 'input-error' : ''}`}
                     placeholder="01"
                     maxLength={2}
                     disabled={isLocked}

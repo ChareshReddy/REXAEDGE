@@ -26,6 +26,7 @@ import {
   Code
 } from 'lucide-react';
 import Tooltip from './Tooltip';
+import { useToast } from '../context/ToastContext';
 import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv } from '../services/api';
 
 /**
@@ -87,7 +88,9 @@ function getDateRangeValues(preset) {
   return { startDate: '', endDate: '' };
 }
 
-export default function AdminActivityLogsView({ availableServers = [], refreshTrigger = 0 }) {
+export default function AdminActivityLogsView({
+  availableServers = [], refreshTrigger = 0 }) {
+  const toast = useToast();
   const [activeSubTab, setActiveSubTab] = useState('audit'); // 'audit' | 'errors'
 
   // Filter States
@@ -248,7 +251,7 @@ export default function AdminActivityLogsView({ availableServers = [], refreshTr
       downloadBlob(blob, filename);
     } catch (err) {
       console.error('[AdminActivityLogsView] Export failed:', err);
-      alert('CSV Export failed: ' + (err.response?.data?.error || err.message));
+      toast.error('CSV Export failed: ' + (err.response?.data?.error || err.message));
     } finally {
       setIsExporting(false);
     }
@@ -1164,7 +1167,7 @@ export default function AdminActivityLogsView({ availableServers = [], refreshTr
               }}
             >
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>
+                <div style={{ fontSize: 11, fontWeight: 700,  color: '#64748b' }}>
                   {activeSubTab === 'audit' ? 'Audit Log Entry' : 'Error Log Entry'}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginTop: 2 }}>

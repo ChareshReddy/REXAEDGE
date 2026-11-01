@@ -4,6 +4,7 @@ import { Send, Bot, User, Sparkles, AlertTriangle, Trash2, ArrowUpRight, Copy, F
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import EntityTable from './EntityTable';
 import ConfirmationCard from './ConfirmationCard';
+import { useToast } from '../context/ToastContext';
 import CreateBomForm from './CreateBomForm';
 import DeleteBomForm from './DeleteBomForm';
 import BulkBomCopyModal from './BulkBomCopyModal';
@@ -17,7 +18,9 @@ const INITIAL_GREETING = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 };
 
-export default function ChatBox({ isActive = true, onActionExecuted, systemKey = 'DEV' }) {
+export default function ChatBox({
+  isActive = true, onActionExecuted, systemKey = 'DEV' }) {
+  const toast = useToast();
   const [messages, setMessages] = useState([INITIAL_GREETING]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -585,13 +588,7 @@ export default function ChatBox({ isActive = true, onActionExecuted, systemKey =
         </button>
       </div>
 
-      {/* Error Notice Banner */}
-      {errorBanner && (
-        <div className="sap-alert sap-alert-error" style={{ margin: '12px 20px 0' }}>
-          <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-          <div>{errorBanner}</div>
-        </div>
-      )}
+      {/* Error Notice Banner handled via Toast */}
 
       {/* Message History Feed */}
       <div className="sap-chat-history">

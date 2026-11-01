@@ -14,6 +14,7 @@ import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction, verifyCopiedBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 
 export default function CopyBomView({
   systemKey = 'DEV',
@@ -21,10 +22,15 @@ export default function CopyBomView({
   onNavigateHome,
   onNavigateProducts,
   onNavigateBom, initialMaterial, initialPlant }) {
+  const toast = useToast();
   const [proposedAction, setProposedAction] = useState(null);
   const [actionStatus, setActionStatus] = useState('pending'); // 'pending' | 'executing' | 'confirmed' | 'cancelled' | 'failed'
   const [executionResult, setExecutionResult] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, _setErrorMessage] = useState('');
+  const setErrorMessage = (msg) => {
+    _setErrorMessage(msg);
+    if (msg) toast.error(msg);
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
 
@@ -255,13 +261,7 @@ export default function CopyBomView({
       />
 
       <div className="fiori-view-body" style={{ padding: '16px 24px 28px' }}>
-        {/* Error Notice */}
-        {errorMessage && (
-          <div className="sap-alert sap-alert-error" style={{ maxWidth: 760, width: '100%', margin: '0 auto 14px' }}>
-            <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div>{errorMessage}</div>
-          </div>
-        )}
+        {/* Error Notice handled via Toast */}
 
         {/* Step 1: Form View (when no proposal is pending and not yet confirmed) */}
         {!proposedAction && !executionResult && (

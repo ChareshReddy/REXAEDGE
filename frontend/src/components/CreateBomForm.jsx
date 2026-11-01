@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
 import ValueHelpInput from './ValueHelpInput';
+import { useToast } from '../context/ToastContext';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -23,6 +24,7 @@ function getTodayFormatted() {
 }
 
 export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     sourceMaterial: initialValues.sourceMaterial || initialValues.material || '',
     sourcePlant: initialValues.sourcePlant || '',
@@ -60,14 +62,36 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
   const handleValidateSource = async () => {
     setValidationError('');
     const errors = {};
+    const missing = [];
 
-    if (!String(formData.sourceMaterial || '').trim()) errors.sourceMaterial = true;
-    if (!String(formData.sourcePlant || '').trim()) errors.sourcePlant = true;
-    if (!String(formData.sourceUsage || '').trim()) errors.sourceUsage = true;
+    if (!String(formData.sourceMaterial || '').trim()) {
+      errors.sourceMaterial = true;
+      missing.push('Source: Material is required');
+    }
+    if (!String(formData.sourcePlant || '').trim()) {
+      errors.sourcePlant = true;
+      missing.push('Source: Plant is required');
+    }
+    if (!String(formData.sourceUsage || '').trim()) {
+      errors.sourceUsage = true;
+      missing.push('Source: BOM usage is required');
+    }
 
-    if (Object.keys(errors).length > 0) {
+    if (missing.length > 0) {
       setFieldErrors((prev) => ({ ...prev, ...errors }));
-      setValidationError('Please enter Source Material, Plant, and BOM Usage to validate.');
+      const msg = 'Please enter Source Material, Plant, and BOM Usage to validate.';
+      setValidationError(msg);
+      toast.error(msg, { messages: missing });
+
+      const fieldIdMap = {
+        sourceMaterial: 'srcMaterial',
+        sourcePlant: 'srcPlant',
+        sourceUsage: 'srcUsage'
+      };
+      const firstInvalid = ['sourceMaterial', 'sourcePlant', 'sourceUsage'].find((f) => errors[f]);
+      if (firstInvalid && fieldIdMap[firstInvalid]) {
+        document.getElementById(fieldIdMap[firstInvalid])?.focus();
+      }
       return;
     }
 
@@ -88,7 +112,9 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
         setValidationError('');
       } else {
         setIsValidated(false);
-        setValidationError(res.message || 'Source BOM validation failed.');
+        const msg = res.message || 'Source BOM validation failed.';
+        setValidationError(msg);
+        toast.error(msg);
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Error communicating with SAP validation service.';
@@ -99,6 +125,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
       });
       setIsValidated(false);
       setValidationError(msg);
+      toast.error(msg);
     } finally {
       setIsValidating(false);
     }
@@ -111,25 +138,51 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
     // The backend performs strict source validation during Create BOM proposal.
 
     const errors = {};
+    const missing = [];
+
     // ONLY Material, Plant, and BOM Usage are mandatory for Source and Target
-    const requiredFields = [
-      'sourceMaterial',
-      'sourcePlant',
-      'sourceUsage',
-      'targetMaterial',
-      'targetPlant',
-      'targetUsage'
-    ];
+    if (!String(formData.sourceMaterial || '').trim()) {
+      errors.sourceMaterial = true;
+      missing.push('Source: Material is required');
+    }
+    if (!String(formData.sourcePlant || '').trim()) {
+      errors.sourcePlant = true;
+      missing.push('Source: Plant is required');
+    }
+    if (!String(formData.sourceUsage || '').trim()) {
+      errors.sourceUsage = true;
+      missing.push('Source: BOM usage is required');
+    }
+    if (!String(formData.targetMaterial || '').trim()) {
+      errors.targetMaterial = true;
+      missing.push('Target: Material is required');
+    }
+    if (!String(formData.targetPlant || '').trim()) {
+      errors.targetPlant = true;
+      missing.push('Target: Plant is required');
+    }
+    if (!String(formData.targetUsage || '').trim()) {
+      errors.targetUsage = true;
+      missing.push('Target: BOM usage is required');
+    }
 
-    requiredFields.forEach((field) => {
-      if (!String(formData[field] || '').trim()) {
-        errors[field] = true;
-      }
-    });
-
-    if (Object.keys(errors).length > 0) {
+    if (missing.length > 0) {
       setFieldErrors(errors);
-      setValidationError('Please fill in all required fields (Material, Plant, and BOM Usage).');
+      setValidationError('Please fill in the required fields.');
+      toast.error('Please fill in the required fields', { messages: missing });
+
+      const fieldIdMap = {
+        sourceMaterial: 'srcMaterial',
+        sourcePlant: 'srcPlant',
+        sourceUsage: 'srcUsage',
+        targetMaterial: 'targetMaterial',
+        targetPlant: 'targetPlant',
+        targetUsage: 'targetUsage'
+      };
+      const firstInvalid = ['sourceMaterial', 'sourcePlant', 'sourceUsage', 'targetMaterial', 'targetPlant', 'targetUsage'].find((f) => errors[f]);
+      if (firstInvalid && fieldIdMap[firstInvalid]) {
+        document.getElementById(fieldIdMap[firstInvalid])?.focus();
+      }
       return;
     }
 
@@ -151,7 +204,9 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
       srcUsage === tgtUsage &&
       sameAlt
     ) {
-      setValidationError('Source and target BOM are the same. A BOM cannot be copied onto itself.');
+      const msg = 'Source and target BOM are the same. A BOM cannot be copied onto itself.';
+      setValidationError(msg);
+      toast.error(msg);
       return;
     }
 
@@ -187,19 +242,14 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
         </div>
       )}
 
-      {validationError && (
-        <div className="sap-form-alert sap-form-alert-error">
-          <AlertCircle size={16} style={{ flexShrink: 0 }} />
-          <span>{validationError}</span>
-        </div>
-      )}
+      
 
       <form onSubmit={handleSubmit}>
         <div className="sap-form-dual-columns">
           {/* SOURCE / REFERENCE BOM SECTION */}
           <div className="sap-form-section sap-form-section-source">
             <div className="sap-form-section-badge source-badge">
-              <span className="badge-pill">SOURCE</span>
+              <span className="badge-pill">Source</span>
               <span className="badge-title">Reference BOM</span>
             </div>
 
@@ -432,7 +482,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
           {/* TARGET BOM SECTION */}
           <div className="sap-form-section sap-form-section-target">
             <div className="sap-form-section-badge target-badge">
-              <span className="badge-pill">TARGET</span>
+              <span className="badge-pill">Target</span>
               <span className="badge-title">New BOM Destination</span>
             </div>
 

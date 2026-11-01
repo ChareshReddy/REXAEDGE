@@ -679,13 +679,13 @@ button.sap-btn-navy-login:active:not(:disabled) {
 
 /* Subtitles / Taglines: Uniform uppercase and brand blue across all pages */
 .fiori-ph-subtitle {
-  margin: 0 !important;
-  font-size: 11.5px !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  color: var(--sap-brand-blue, #0a6ed1) !important;
-  line-height: 1.3 !important;
+  margin: 4px 0 0 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: var(--sap-text-secondary, #64748b) !important;
+  line-height: 1.4 !important;
   text-align: left !important;
   align-self: flex-start !important;
 }
@@ -1216,12 +1216,11 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 .sap-system-label {
   font-size: 12px !important;
   font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
   color: var(--sap-text-secondary, #64748b) !important;
   line-height: 32px !important;
-  margin: 0 !important;
-  white-space: nowrap !important;
+  display: inline-block !important;
 }
 
 .sap-system-select {

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { validateSourceBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
+import { useToast } from '../context/ToastContext';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
 
@@ -23,15 +24,21 @@ export default function ValidateBomView({
   onNavigateProducts,
   onNavigateHome
 }) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     material: '',
     plant: '',
     bomUsage: '1',
     alternativeBom: ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errorMsg, _setErrorMsg] = useState('');
+  const setErrorMsg = (msg) => {
+    _setErrorMsg(msg);
+    if (msg) toast.error(msg);
+  };
 
   useEffect(() => {
     activityTracker.setOperation('validate_bom', isLoading);
@@ -42,11 +49,27 @@ export default function ValidateBomView({
 
   const handleValidate = async (e) => {
     e.preventDefault();
-    if (!formData.material.trim() || !formData.plant.trim()) {
-      setErrorMsg('Please enter both Material and Plant to validate.');
+    const errors = {};
+    const missing = [];
+
+    if (!formData.material.trim()) {
+      errors.material = true;
+      missing.push('Material number is required');
+    }
+    if (!formData.plant.trim()) {
+      errors.plant = true;
+      missing.push('Plant code is required');
+    }
+
+    if (missing.length > 0) {
+      setFieldErrors(errors);
+      toast.error('Please fill in the required fields', { messages: missing });
+      if (errors.material) document.getElementById('valMaterial')?.focus();
+      else if (errors.plant) document.getElementById('valPlant')?.focus();
       return;
     }
 
+    setFieldErrors({});
     setIsLoading(true);
     setErrorMsg('');
     setResult(null);
@@ -78,6 +101,7 @@ export default function ValidateBomView({
       bomUsage: '1',
       alternativeBom: ''
     });
+    setFieldErrors({});
     setResult(null);
     setErrorMsg('');
   };
@@ -95,13 +119,7 @@ export default function ValidateBomView({
       />
 
       <div className="fiori-view-body">
-        {/* Error Notice */}
-        {errorMsg && (
-          <div className="sap-alert sap-alert-error" style={{ maxWidth: 680, width: '100%', margin: '0 auto 14px' }}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-            <div>{errorMsg}</div>
-          </div>
-        )}
+        {/* Error Notice handled via Toast */}
 
         {/* Small Compact Validation Card (2 rows x 2 columns) */}
         <div className="sap-structured-form-card" style={{ maxWidth: 680, width: '100%', margin: '0 auto 16px' }}>
@@ -114,11 +132,15 @@ export default function ValidateBomView({
                 <div className="sap-form-input-wrapper">
                   <Layers size={13} className="input-icon" />
                   <ValueHelpInput
+                    id="valMaterial"
                     kind="material"
                     plant={formData.plant}
                     placeholder="e.g. 100001"
                     value={formData.material}
-                    onChange={(e) => setFormData((p) => ({ ...p, material: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, material: e.target.value }));
+                      if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
+                    }}
                     onSelect={(val, full) => {
                       setFormData((p) => ({
                         ...p,
@@ -126,7 +148,9 @@ export default function ValidateBomView({
                         ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
                         ...(full?.werks && !p.plant ? { plant: full.werks } : {})
                       }));
+                      if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
                     }}
+                    className={`sap-form-input ${fieldErrors.material ? 'input-error' : ''}`}
                     style={{ paddingLeft: 30 }}
                     aria-label="Validate Material"
                     autoFocus
@@ -141,12 +165,17 @@ export default function ValidateBomView({
                 <div className="sap-form-input-wrapper">
                   <Factory size={13} className="input-icon" />
                   <ValueHelpInput
+                    id="valPlant"
                     kind="plant"
                     material={formData.material}
                     placeholder="e.g. 1000"
                     maxLength={4}
                     value={formData.plant}
-                    onChange={(e) => setFormData((p) => ({ ...p, plant: e.target.value }))}
+                    onChange={(e) => {
+                      setFormData((p) => ({ ...p, plant: e.target.value }));
+                      if (fieldErrors.plant) setFieldErrors((p) => ({ ...p, plant: false }));
+                    }}
+                    className={`sap-form-input ${fieldErrors.plant ? 'input-error' : ''}`}
                     style={{ paddingLeft: 30 }}
                     aria-label="Validate Plant"
                   />

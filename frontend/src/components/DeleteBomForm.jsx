@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Trash2, AlertTriangle, ArrowRight, X, Layers, Factory, Hash } from 'lucide-react';
 import ValueHelpInput from './ValueHelpInput';
+import { useToast } from '../context/ToastContext';
 
-export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
+export default function DeleteBomForm({
+  onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     material: initialValues.material || '',
     plant: initialValues.plant || '',
@@ -25,17 +28,40 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
     e.preventDefault();
 
     const errors = {};
-    const requiredFields = ['material', 'plant', 'alternativeBom', 'bomUsage'];
+    const missing = [];
 
-    requiredFields.forEach((field) => {
-      if (!String(formData[field] || '').trim()) {
-        errors[field] = true;
-      }
-    });
+    if (!String(formData.material || '').trim()) {
+      errors.material = true;
+      missing.push('Material number is required');
+    }
+    if (!String(formData.plant || '').trim()) {
+      errors.plant = true;
+      missing.push('Plant code is required');
+    }
+    if (!String(formData.alternativeBom || '').trim()) {
+      errors.alternativeBom = true;
+      missing.push('Alternative BOM is required');
+    }
+    if (!String(formData.bomUsage || '').trim()) {
+      errors.bomUsage = true;
+      missing.push('BOM usage is required');
+    }
 
-    if (Object.keys(errors).length > 0) {
+    if (missing.length > 0) {
       setFieldErrors(errors);
-      setValidationError('Please fill in all required fields to proceed.');
+      setValidationError('Please fill in the required fields to proceed.');
+      toast.error('Please fill in the required fields', { messages: missing });
+
+      const fieldIdMap = {
+        material: 'delMaterial',
+        plant: 'delPlant',
+        alternativeBom: 'delAlternativeBom',
+        bomUsage: 'delBomUsage'
+      };
+      const firstInvalid = ['material', 'plant', 'alternativeBom', 'bomUsage'].find((f) => errors[f]);
+      if (firstInvalid && fieldIdMap[firstInvalid]) {
+        document.getElementById(fieldIdMap[firstInvalid])?.focus();
+      }
       return;
     }
 
@@ -73,14 +99,7 @@ export default function DeleteBomForm({ onSubmit, onCancel, initialValues = {}, 
         </div>
       </div>
 
-      {validationError && (
-        <div className="sap-form-alert sap-form-alert-error" style={{ margin: hideHeader ? '0 0 12px' : '0 14px 12px', padding: '8px 12px', background: 'var(--sap-error-bg, #fffbeb)', border: '1px solid var(--sap-error-border, #fcd34d)', borderRadius: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--sap-error-text, #b45309)' }}>
-            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-            <span>{validationError}</span>
-          </div>
-        </div>
-      )}
+      
 
       <form onSubmit={handleSubmit}>
         <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: hideHeader ? '4px 2px 10px' : '12px 14px', gap: '10px 14px' }}>

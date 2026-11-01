@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useToast } from '../context/ToastContext';
 import { Upload, Download, Loader2, RefreshCw, XCircle } from 'lucide-react';
 
 /**
@@ -31,11 +32,17 @@ export default function BulkUploadPanel({
   containerStyle = {},
   style = {}
 }) {
+  const toast = useToast();
   const [isDragging, setIsDragging] = useState(false);
   const localInputRef = useRef(null);
   const fileInputRef = inputRef || localInputRef;
 
   const activeError = error || parseError;
+  useEffect(() => {
+    if (activeError) {
+      toast.error(activeError);
+    }
+  }, [activeError, toast]);
   const activeClear = onClear || clearHandler || onClearFile;
 
   const resolvedTemplateAction =
@@ -266,22 +273,9 @@ export default function BulkUploadPanel({
         )}
       </div>
 
-      {/* Parse / Validation Error Alert */}
+      {/* Error Alert handled via Toast */}
       {activeError && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--sap-error-bg)',
-            border: '1px solid var(--sap-error-border)',
-            color: 'var(--sap-error)',
-            fontSize: 13
-          }}
-        >
-          <XCircle size={18} style={{ flexShrink: 0 }} />
+        <div className="sap-sr-only" role="alert" style={{ display: 'none' }}>
           <span>{activeError}</span>
         </div>
       )}
