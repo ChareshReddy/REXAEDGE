@@ -1,57 +1,57 @@
-name: Native Node.js EC2 Deployment
+# name: Native Node.js EC2 Deployment
 
-on:
-  push:
-    branches:
-      - main  # Adjust this to match your deployment branch (e.g., master)
+# on:
+#   push:
+#     branches:
+#       - main  # Adjust this to match your deployment branch (e.g., master)
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout Repository
+#         uses: actions/checkout@v4
 
-      - name: Execute Remote SSH Commands for Deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            echo "🚀 Starting native deployment process..."
+#       - name: Execute Remote SSH Commands for Deployment
+#         uses: appleboy/ssh-action@v1.0.3
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_SSH_KEY }}
+#           port: 22
+#           script: |
+#             echo "🚀 Starting native deployment process..."
             
-            # Navigate to application directory
-            cd /var/www/my_noe_app
+#             # Navigate to application directory
+#             cd /var/www/my_noe_app
             
-            # Fetch latest updates and pull cleanly
-            git fetch --all
-            git reset --hard origin/main
+#             # Fetch latest updates and pull cleanly
+#             git fetch --all
+#             git reset --hard origin/main
             
-            # 🛠️ Backend Setup & Restart
-            echo "📦 Setting up backend dependencies..."
-            # Assuming backend is in the root directory or a /backend folder
-            # Modify 'cd' if it's in a subdirectory, e.g., cd backend
-            npm install --production
+#             # 🛠️ Backend Setup & Restart
+#             echo "📦 Setting up backend dependencies..."
+#             # Assuming backend is in the root directory or a /backend folder
+#             # Modify 'cd' if it's in a subdirectory, e.g., cd backend
+#             npm install --production
             
-            echo "🔄 Restarting backend process with PM2..."
-            # Using PM2 to handle continuous background runtime natively
-            pm2 restart all || pm2 start server.js --name "node-app"
+#             echo "🔄 Restarting backend process with PM2..."
+#             # Using PM2 to handle continuous background runtime natively
+#             pm2 restart all || pm2 start server.js --name "node-app"
             
-            # 🎨 Frontend Setup & Build
-            echo "🎨 Setting up frontend dependencies..."
-            # Adjust the path to your frontend directory if applicable
-            cd frontend
-            npm install
-            npm run build
+#             # 🎨 Frontend Setup & Build
+#             echo "🎨 Setting up frontend dependencies..."
+#             # Adjust the path to your frontend directory if applicable
+#             cd frontend
+#             npm install
+#             npm run build
             
-            # ⚙️ Nginx Reverse Proxy Validation & Reload
-            echo "🔧 Validating Nginx configuration..."
-            sudo nginx -t
+#             # ⚙️ Nginx Reverse Proxy Validation & Reload
+#             echo "🔧 Validating Nginx configuration..."
+#             sudo nginx -t
             
-            echo "🔄 Reloading Nginx service..."
-            sudo systemctl reload nginx
+#             echo "🔄 Reloading Nginx service..."
+#             sudo systemctl reload nginx
             
-            echo "🎉 DEPLOYMENT COMPLETED SUCCESSFULY! 🎉"
+#             echo "🎉 DEPLOYMENT COMPLETED SUCCESSFULY! 🎉"
