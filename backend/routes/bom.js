@@ -24,6 +24,7 @@ import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermis
 import { MODULE_KEYS } from '../config/modules.js';
 import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
 
 const router = express.Router();
@@ -44,10 +45,7 @@ router.get('/ping', requireAppPermission('bom.*'), async (req, res) => {
     }
     return res.status(200).json(pingResult);
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -161,10 +159,7 @@ router.post('/read', requireAppPermission('bom.display'), async (req, res) => {
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `BOM Read failed: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -216,10 +211,7 @@ router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `BOM Creation failed: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -260,10 +252,7 @@ router.post('/hierarchy', requireAppPermission('bom.display'), async (req, res) 
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `Failed to explode BOM hierarchy: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -329,10 +318,7 @@ router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `BOM Copy failed: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -391,12 +377,7 @@ router.post('/verify-copy', requireAppPermission('bom.copy'), async (req, res) =
 
     return res.status(200).json(result);
   } catch (err) {
-    console.error('[bom.js] verify-copy error:', err.message);
-    return res.status(500).json({
-      success: false,
-      status: 'FAILED',
-      message: `Failed to verify copied BOM: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -446,10 +427,7 @@ router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `BOM Delete failed: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -470,11 +448,7 @@ router.post('/batch-validate', requireAppPermission('bom.copy'), async (req, res
     const result = await rfcBatchValidateBoms(items, { copyHierarchy, server: req.selectedServer });
     return res.status(200).json(result);
   } catch (err) {
-    console.error('[bom.js] batch-validate error:', err.message);
-    return res.status(500).json({
-      success: false,
-      message: `Batch validation failed: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -778,10 +752,7 @@ router.post('/create-single', requireAppPermission('bom.create'), async (req, re
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `Failed to create BOM: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -839,10 +810,7 @@ router.post('/create-bulk', requireAppPermission('bom.create'), async (req, res)
       status: 'failed',
       message: err.message
     });
-    return res.status(500).json({
-      success: false,
-      message: `Failed to execute bulk BOM creation: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -1129,10 +1097,7 @@ router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy']), (re
       job: active
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

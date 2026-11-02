@@ -26,6 +26,8 @@ import { BOM_FIELD_TOOLTIPS } from '../constants/sapFieldHelp';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
+import { PageContainer, StickyActionBar } from './layout';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -270,10 +272,10 @@ export default function CreateBomView({
         toast.validation(errList, 'Validation notice');
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Error communicating with validation service.';
+      const info = extractErrorInfo(err, 'Error communicating with validation service.');
       setPreflightPassed(false);
-      setValidationErrors([errMsg]);
-      toast.error(errMsg);
+      setValidationErrors([info.message]);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
       setIsValidating(false);
     }
@@ -318,14 +320,14 @@ export default function CreateBomView({
         toast.success(`BOM created successfully in SAP! Material: ${headerData.material}, Plant: ${headerData.plant}`);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'BOM creation failed.';
+      const info = extractErrorInfo(err, 'BOM creation failed.');
       setExecutionResult({
         success: false,
         status: 'FAILED',
-        message: errMsg
+        message: info.message
       });
       setIsConfirmModalOpen(false);
-      toast.error(errMsg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
       setIsExecuting(false);
     }
@@ -373,7 +375,7 @@ export default function CreateBomView({
         breadcrumbs={getBreadcrumbTrail('create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
-      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <PageContainer hasStickyBar={!executionResult} style={{ marginTop: 24, paddingBottom: executionResult ? 48 : 84 }}>
         {/* RESULT SCREEN */}
         {executionResult ? (
           <div>
@@ -533,8 +535,8 @@ export default function CreateBomView({
           </div>
         ) : (
           /* FORM VIEW */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            {/* In-Progress Execution Banner */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+              {/* In-Progress Execution Banner */}
             {isExecuting && (
               <div
                 style={{
@@ -893,46 +895,16 @@ export default function CreateBomView({
                         </tr>
                       );
                     })}
+                    {components.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="sap-table-empty-row">
+                          Add a component to get started
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
-              <button
-                type="button"
-                className="sap-button"
-                disabled={isLocked}
-                onClick={handleValidate}
-                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
-              >
-                {isValidating ? (
-                  <>
-                    <Loader2 size={16} className="sap-spin" />
-                    <span>Validating...</span>
-                  </>
-                ) : (
-                  <span>Validate Master Data</span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                className="sap-button primary"
-                disabled={!preflightPassed || isLocked}
-                onClick={handleOpenConfirm}
-                style={{ height: 30, padding: '0 24px', fontSize: 'var(--sap-size-button)' }}
-              >
-                {isExecuting ? (
-                  <>
-                    <Loader2 size={16} className="sap-spin" />
-                    <span>Creating BOM in SAP...</span>
-                  </>
-                ) : (
-                  <span>Preview & Create BOM</span>
-                )}
-              </button>
             </div>
           </div>
         )}
@@ -1043,7 +1015,86 @@ export default function CreateBomView({
             </div>
           </div>
         </Modal>
-      </div>
+      </PageContainer>
+
+      {!executionResult && (
+        <StickyActionBar
+          leftActions={
+            <button
+              type="button"
+              className="sap-button sap-btn"
+              disabled={isLocked}
+              onClick={() => {
+                setHeaderData({
+                  material: '',
+                  plant: '',
+                  bomUsage: '1',
+                  alternativeBom: '01',
+                  validFrom: getTodayFormatted(),
+                  baseQty: '1',
+                  bomStatus: '01',
+                  altText: ''
+                });
+                setComponents([{
+                  id: 1,
+                  component: '',
+                  quantity: '1',
+                  itemCategory: 'L',
+                  storageLocation: '',
+                  referenceNumber: '',
+                  costingRelevancy: true,
+                  engineering: true
+                }]);
+                setPreflightPassed(false);
+                setPreflightData(null);
+                setValidationErrors([]);
+                setValidationWarnings([]);
+                setHeaderErrors({});
+              }}
+              style={{ height: 32, padding: '0 16px', fontSize: 13 }}
+            >
+              <span>Reset</span>
+            </button>
+          }
+          rightActions={
+            <>
+              <button
+                type="button"
+                className="sap-button sap-btn sap-btn-secondary"
+                disabled={isLocked}
+                onClick={handleValidate}
+                style={{ height: 32, padding: '0 18px', fontSize: 13 }}
+              >
+                {isValidating ? (
+                  <>
+                    <Loader2 size={15} className="sap-spin" />
+                    <span>Validating...</span>
+                  </>
+                ) : (
+                  <span>Validate Master Data</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="sap-button primary"
+                disabled={!preflightPassed || isLocked}
+                onClick={handleOpenConfirm}
+                style={{ height: 32, padding: '0 24px', fontSize: 13 }}
+              >
+                {isExecuting ? (
+                  <>
+                    <Loader2 size={15} className="sap-spin" />
+                    <span>Creating BOM in SAP...</span>
+                  </>
+                ) : (
+                  <span>Preview & Create BOM</span>
+                )}
+              </button>
+            </>
+          }
+        />
+      )}
     </div>
   );
 }

@@ -224,13 +224,13 @@ export default function FioriLaunchpad({
             systemKey={systemKey}
             breadcrumbs={getBreadcrumbTrail('products', { onNavigateHome, onNavigateProducts })}
           >
-            {/* Dynamic Horizontal Tab Bar (Title > Breadcrumbs > Tabs) */}
+            {/* Dynamic Horizontal Tab Bar (Tabs at bottom edge with 16px above) */}
             {homeGroups.length > 0 && (
               <div
                 className="fiori-home-tabs"
                 role="tablist"
                 aria-label="Application categories"
-                style={{ marginTop: 4 }}
+                style={{ marginTop: 16 }}
               >
                 {homeGroups.map((group, index) => {
                   const isActive = group.name === activeGroupName;

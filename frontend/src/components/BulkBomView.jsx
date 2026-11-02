@@ -31,6 +31,7 @@ import {
 import BulkUploadPanel from './BulkUploadPanel';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   BulkWorkflowSteps,
@@ -116,9 +117,15 @@ export default function BulkBomView({
     initialExecutionReport?.results || initialParsedRows
   );
   const [parseError, _setParseError] = useState('');
-  const setParseError = (msg) => {
-    _setParseError(msg);
-    if (msg) toast.error(msg);
+  const setParseError = (msg, err = null) => {
+    _setParseError(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Error processing bulk BOM file.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
 
   // Validation phase state
@@ -748,7 +755,7 @@ export default function BulkBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked: isExecuting })}
       />
 
-      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="copy" />
 
@@ -825,7 +832,7 @@ export default function BulkBomView({
               </div>
 
               {/* Grid Table */}
-              <div className="sap-bulk-grid-container sap-table-container" tabIndex={0} role="region" aria-label="Execution Results Table">
+              <div className="sap-bulk-grid-container sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Execution Results Table">
                 <table className="sap-table sap-bulk-table">
                   <thead>
                     <tr>
@@ -1012,7 +1019,7 @@ export default function BulkBomView({
                   </div>
 
                   {/* Grid Table */}
-                  <div className="sap-bulk-grid-container" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
+                  <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
                     <table className="sap-bulk-table">
                       <thead>
                         <tr>

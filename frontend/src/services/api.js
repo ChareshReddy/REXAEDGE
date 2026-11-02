@@ -12,6 +12,23 @@ const apiClient = axios.create({
   }
 });
 
+// Interceptor to listen for SAP_UNREACHABLE errors and broadcast server status
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.data?.code === 'SAP_UNREACHABLE') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('sap:server-status', {
+            detail: { connected: false, status: 'UNREACHABLE', reason: 'SAP server not reachable' }
+          })
+        );
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Updates Authorization Bearer header and synchronizes with localStorage
  */

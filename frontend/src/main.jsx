@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 import './index.css';
 import './sap-theme.css';
+import './components/layout/layout.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

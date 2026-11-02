@@ -5,6 +5,7 @@ import { supabaseService, isNetworkOrRetryableError } from '../services/supabase
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -117,9 +118,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
         error: "Can't reach the sign-in service right now. Please try again."
       });
     }
-    return res.status(500).json({
-      error: 'Authentication failed: ' + err.message
-    });
+    return sendFriendlyError(res, req, err, { source: 'backend' });
   }
 });
 
@@ -257,7 +256,7 @@ router.post('/change-password', requireAuth, changePasswordRateLimiter, async (r
     });
   } catch (err) {
     console.error('[auth.js] Error changing password:', err.message);
-    return res.status(500).json({ error: 'Failed to change password: ' + err.message });
+    return sendFriendlyError(res, req, err, { source: 'backend' });
   }
 });
 

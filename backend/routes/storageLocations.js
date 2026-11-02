@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getStorageLocations } from '../services/storageLocationService.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -51,12 +52,7 @@ router.get('/', storageLocationRateLimiter, async (req, res) => {
     if (req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[storageLocationsRoute] Error:', err.message);
-    const statusCode = err.status || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: err.message || 'Failed to retrieve storage locations from SAP.'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

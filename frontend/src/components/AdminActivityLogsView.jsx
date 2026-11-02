@@ -1284,7 +1284,7 @@ export default function AdminActivityLogsView({
                 </div>
               </div>
 
-              {/* Message */}
+              {/* Summary / Friendly Message */}
               {selectedLog.message && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
@@ -1307,112 +1307,147 @@ export default function AdminActivityLogsView({
                 </div>
               )}
 
-              {/* SAP Message if present */}
-              {selectedLog.sap_message && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
-                    SAP System Message
-                  </div>
-                  <div
+              {/* Collapsed Technical details (Admin only) */}
+              {(selectedLog.sap_message || selectedLog.stack || (selectedLog.details && Object.keys(selectedLog.details).length > 0)) && (
+                <details
+                  style={{
+                    marginBottom: 20,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <summary
                     style={{
                       padding: '10px 14px',
-                      backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                      borderRadius: 6,
-                      border: '1px solid var(--color-amber-200, #fde68a)',
                       fontSize: 12,
-                      color: 'var(--color-amber-900, #78350f)',
-                      lineHeight: 1.5,
-                      wordBreak: 'break-word'
-                    }}
-                  >
-                    {selectedLog.sap_message}
-                  </div>
-                </div>
-              )}
-
-              {/* Error Stack Trace (Collapsible) */}
-              {selectedLog.stack && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Technical Stack Trace</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText('stack', selectedLog.stack)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        background: 'none',
-                        border: 'none',
-                        fontSize: 11,
-                        color: '#C2410C',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {copiedKey === 'stack' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
-                      <span>Copy Stack</span>
-                    </button>
-                  </div>
-                  <pre
-                    style={{
-                      backgroundColor: '#0f172a',
-                      color: '#e2e8f0',
-                      borderRadius: 6,
-                      padding: '12px',
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      maxHeight: 200,
-                      overflowY: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
-                    }}
-                  >
-                    {selectedLog.stack}
-                  </pre>
-                </div>
-              )}
-
-              {/* Details JSON View */}
-              {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Sanitized Details (JSON)</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText('detailsJson', JSON.stringify(selectedLog.details, null, 2))}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        background: 'none',
-                        border: 'none',
-                        fontSize: 11,
-                        color: '#C2410C',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {copiedKey === 'detailsJson' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
-                      <span>Copy JSON</span>
-                    </button>
-                  </div>
-                  <pre
-                    style={{
+                      fontWeight: 600,
+                      color: '#475569',
+                      cursor: 'pointer',
                       backgroundColor: '#f8fafc',
-                      color: '#0f172a',
-                      borderRadius: 6,
-                      border: '1px solid #e2e8f0',
-                      padding: '12px',
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      maxHeight: 220,
-                      overflowY: 'auto',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all'
+                      userSelect: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #e2e8f0'
                     }}
                   >
-                    {JSON.stringify(selectedLog.details, null, 2)}
-                  </pre>
-                </div>
+                    <span>Technical details (Admin only)</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Click to view raw details</span>
+                  </summary>
+
+                  <div style={{ padding: '14px' }}>
+                    {/* SAP Message if present */}
+                    {selectedLog.sap_message && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                          Raw SAP System Message
+                        </div>
+                        <div
+                          style={{
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--color-amber-50, #fffbeb)',
+                            borderRadius: 6,
+                            border: '1px solid var(--color-amber-200, #fde68a)',
+                            fontSize: 12,
+                            color: 'var(--color-amber-900, #78350f)',
+                            lineHeight: 1.5,
+                            wordBreak: 'break-word',
+                            fontFamily: 'monospace'
+                          }}
+                        >
+                          {selectedLog.sap_message}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error Stack Trace */}
+                    {selectedLog.stack && (
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Technical Stack Trace</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText('stack', selectedLog.stack)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: 'none',
+                              border: 'none',
+                              fontSize: 11,
+                              color: '#C2410C',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {copiedKey === 'stack' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                            <span>Copy Stack</span>
+                          </button>
+                        </div>
+                        <pre
+                          style={{
+                            backgroundColor: '#0f172a',
+                            color: '#e2e8f0',
+                            borderRadius: 6,
+                            padding: '12px',
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            maxHeight: 200,
+                            overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-all'
+                          }}
+                        >
+                          {selectedLog.stack}
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Details JSON View */}
+                    {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Sanitized Details (JSON)</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText('detailsJson', JSON.stringify(selectedLog.details, null, 2))}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: 'none',
+                              border: 'none',
+                              fontSize: 11,
+                              color: '#C2410C',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {copiedKey === 'detailsJson' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                            <span>Copy JSON</span>
+                          </button>
+                        </div>
+                        <pre
+                          style={{
+                            backgroundColor: '#f8fafc',
+                            color: '#0f172a',
+                            borderRadius: 6,
+                            border: '1px solid #e2e8f0',
+                            padding: '12px',
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            maxHeight: 220,
+                            overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-all'
+                          }}
+                        >
+                          {JSON.stringify(selectedLog.details, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </details>
               )}
 
               {/* User Agent */}

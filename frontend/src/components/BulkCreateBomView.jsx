@@ -43,6 +43,7 @@ import {
 } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function BulkCreateBomView({
   systemKey = 'DEV',
@@ -73,9 +74,15 @@ export default function BulkCreateBomView({
   const [isValidating, setIsValidating] = useState(initialIsValidating);
   const [preflightReport, setPreflightReport] = useState(initialPreflightReport);
   const [parseError, _setParseError] = useState('');
-  const setParseError = (msg) => {
-    _setParseError(msg);
-    if (msg) toast.error(msg);
+  const setParseError = (msg, err = null) => {
+    _setParseError(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Error processing bulk BOM file.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
   const [expandedMessageBoms, setExpandedMessageBoms] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -571,7 +578,7 @@ export default function BulkCreateBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
-      <div className="fiori-body" style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
+      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
@@ -863,7 +870,7 @@ export default function BulkCreateBomView({
                   )}
 
                   {/* Table: natural height, fits card width without horizontal scroll */}
-                  <div className="sap-table-container fiori-table-wrapper" style={{ overflowX: 'hidden', width: '100%', marginBottom: 24 }}>
+                  <div className="sap-table-container fiori-table-wrapper sap-card-table-scroll" style={{ width: '100%', marginBottom: 24, maxHeight: 480 }}>
                     <table
                       className="sap-table preflight-preview-table"
                       style={{

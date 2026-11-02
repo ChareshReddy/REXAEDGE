@@ -4,6 +4,10 @@ import { Search, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { getStorageLocations } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
 import { useDraggableModal } from '../hooks/useDraggableModal';
+import F4PopupOverlay from './F4PopupOverlay';
+import TableLoadingState from './TableLoadingState';
+import F4ErrorState from './F4ErrorState';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 /**
  * SAP-style F4 Value Help popup for Storage Locations (table T001L).
@@ -94,7 +98,7 @@ export default function StorageLocationValueHelpModal({
       .catch((err) => {
         if (controller.signal.aborted) return;
         console.warn('[StorageLocationValueHelp] Load error:', err.message);
-        setError(err.response?.data?.error || err.message || 'Failed to load storage locations from SAP');
+        setError(extractErrorInfo(err, 'Failed to load storage locations from SAP'));
         setAllLocations([]);
       })
       .finally(() => {
@@ -252,14 +256,9 @@ export default function StorageLocationValueHelpModal({
   const modalTitle = countDisplay > 0 ? `Storage Location ${countDisplay} Entries` : 'Storage Location';
 
   return createPortal(
-    <div
+    <F4PopupOverlay
       className="sap-f4-portal-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="storage-location-f4-title"
+      ariaLabelledBy="storage-location-f4-title"
     >
       <div
         ref={modalDialogRef}
@@ -267,7 +266,8 @@ export default function StorageLocationValueHelpModal({
         className="sap-f4-modal-dialog storage-location"
         style={{
           ...dialogStyle,
-          width: 'min(560px, 92vw)',
+          width: 'min(540px, 92vw)',
+          maxWidth: 550,
           outline: 'none',
           maxHeight: '82vh'
         }}
@@ -424,31 +424,26 @@ export default function StorageLocationValueHelpModal({
         {/* Table Content: Only body scrolls */}
         <div ref={tableContainerRef} className="sap-f4-table-container">
           {isLoading ? (
-            <div
-              style={{
-                padding: '48px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                color: 'var(--sap-text-muted)'
-              }}
-            >
-              <Loader2 size={32} className="sap-spin" color="var(--sap-primary, #0a6ed1)" />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Loading storage locations from SAP…</span>
-            </div>
+            <TableLoadingState
+              borderless
+              minHeight={260}
+              message="Loading storage locations from SAP…"
+            />
           ) : error ? (
-            <div
-              style={{
-                padding: '36px 24px',
-                textAlign: 'center',
-                color: 'var(--sap-error-text, #b45309)'
+            <F4ErrorState
+              error={error}
+              onRetry={() => {
+                setError(null);
+                setIsLoading(true);
+                getStorageLocations({ plant: plant || undefined })
+                  .then((res) => {
+                    const list = Array.isArray(res) ? res : res.data || [];
+                    setAllLocations(list);
+                  })
+                  .catch((err) => setError(extractErrorInfo(err, 'Failed to load storage locations from SAP')))
+                  .finally(() => setIsLoading(false));
               }}
-            >
-              <AlertCircle size={28} style={{ margin: '0 auto 8px', display: 'block' }} />
-              <p style={{ margin: '0 0 12px 0', fontSize: 13, fontWeight: 500 }}>{error}</p>
-            </div>
+            />
           ) : filteredLocations.length === 0 ? (
             <div
               style={{
@@ -464,15 +459,15 @@ export default function StorageLocationValueHelpModal({
           ) : (
             <table className="sap-table sap-f4-table">
               <colgroup>
-                <col style={{ width: 75 }} />
-                <col style={{ width: 85 }} />
-                <col />
+                <col style={{ width: 68 }} />
+                <col style={{ width: 72 }} />
+                <col style={{ minWidth: 260, maxWidth: 380 }} />
               </colgroup>
               <thead>
                 <tr>
-                  <th style={{ width: 75, whiteSpace: 'nowrap' }}>Plnt</th>
-                  <th style={{ width: 85, whiteSpace: 'nowrap' }}>SLoc</th>
-                  <th style={{ whiteSpace: 'nowrap' }}>Description</th>
+                  <th style={{ width: 68, whiteSpace: 'nowrap' }}>Plnt</th>
+                  <th style={{ width: 72, whiteSpace: 'nowrap' }}>SLoc</th>
+                  <th style={{ whiteSpace: 'nowrap', minWidth: 260, maxWidth: 380 }}>Description</th>
                 </tr>
               </thead>
               <tbody>
@@ -491,10 +486,10 @@ export default function StorageLocationValueHelpModal({
                       }}
                       onDoubleClick={() => onSelect(item.lgort, item)}
                     >
-                      <td style={{ width: 75, fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
+                      <td style={{ width: 68, fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
                         {item.werks}
                       </td>
-                      <td style={{ width: 85, fontFamily: 'monospace', fontWeight: 700, color: '#0a6ed1' }}>
+                      <td style={{ width: 72, fontFamily: 'monospace', fontWeight: 700, color: '#0a6ed1' }}>
                         {item.lgort}
                       </td>
                       <td
@@ -504,7 +499,9 @@ export default function StorageLocationValueHelpModal({
                           fontWeight: 500,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'nowrap',
+                          minWidth: 260,
+                          maxWidth: 380
                         }}
                       >
                         {item.lgobe || '-'}
@@ -565,7 +562,7 @@ export default function StorageLocationValueHelpModal({
           </div>
         </div>
       </div>
-    </div>,
+    </F4PopupOverlay>,
     document.body
   );
 }

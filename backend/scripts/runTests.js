@@ -1,10 +1,12 @@
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDir = path.resolve(__dirname, '../../frontend');
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 console.log('============================================================');
 console.log('  RUNNING FRONTEND ESLINT (NO-UNDEF & INTEGRITY CHECK)      ');
@@ -80,7 +82,10 @@ const testFiles = [
   'test/toastNotificationLayout.test.js',
   'test/createBomTooltips.test.js',
   'test/bomUsages.test.js',
-  'test/activityLogs.test.js'
+  'test/activityLogs.test.js',
+  'test/bomExplorerLoading.test.js',
+  'test/friendlyError.test.js',
+  'test/homePageRedesign.test.js'
 ];
 
 const env = {
@@ -93,7 +98,7 @@ const env = {
 
 for (const file of testFiles) {
   try {
-    execSync(`node ${file}`, { env, stdio: 'inherit' });
+    execSync(`node ${file}`, { env, stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
   } catch (err) {
     process.exit(err.status || 1);
   }

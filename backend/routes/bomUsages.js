@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getBomUsages } from '../services/bomUsageService.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -47,14 +48,10 @@ router.get('/', bomUsageRateLimiter, async (req, res) => {
 
     return res.status(200).json(result);
   } catch (err) {
-    if (err.name === 'AbortError') {
+    if (err.name === 'AbortError' || req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[bomUsagesRoute] Error fetching BOM usages:', err.message);
-    return res.status(500).json({
-      success: false,
-      error: err.message || 'Failed to fetch BOM usages'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getPlants } from '../services/plantService.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -52,12 +53,7 @@ router.get('/', plantRateLimiter, async (req, res) => {
     if (req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[plantsRoute] Error:', err.message);
-    const statusCode = err.status || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: err.message || 'Failed to retrieve plants from SAP.'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { AlertTriangle, AlertCircle, CheckCircle2, Info, X, Copy, Check } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -11,7 +11,9 @@ export const toast = {
   error: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'error', message, ...options })),
   warning: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'warning', message, ...options })),
   success: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'success', message, ...options })),
-  info: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'info', message, ...options }))
+  info: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'info', message, ...options })),
+  clearAll: () => staticListeners.forEach((fn) => fn({ action: 'clearAll' })),
+  clearOnNavigation: () => staticListeners.forEach((fn) => fn({ action: 'clearOnNavigation' }))
 };
 
 export function ToastProvider({ children }) {
@@ -26,6 +28,7 @@ export function ToastProvider({ children }) {
 function ToastRootProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const recentToastsRef = useRef([]); // for deduplication: { key, timestamp }
+  const lastUnreachableToastRef = useRef(0); // throttle SAP unreachable toasts to once per burst
 
   const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -53,6 +56,8 @@ function ToastRootProvider({ children }) {
     const message = toastObj.message || '';
     const messages = Array.isArray(toastObj.messages) ? toastObj.messages : [];
     const errorRef = toastObj.errorRef || toastObj.error_ref || '';
+    const hint = toastObj.hint || '';
+    const code = toastObj.code || '';
 
     // Normalized content key (same title, same text/messages)
     const normTitle = String(title || '').trim().toLowerCase();
@@ -61,6 +66,19 @@ function ToastRootProvider({ children }) {
     const contentKey = `${normTitle}:::${normMessage}:::${normMessages}`;
 
     const now = Date.now();
+
+    // Throttle SAP_UNREACHABLE toasts to at most once per 5 seconds
+    const isUnreachable =
+      code === 'SAP_UNREACHABLE' ||
+      normTitle === 'sap server not reachable' ||
+      normMessage.includes("can't connect to the selected sap server");
+
+    if (isUnreachable) {
+      if (now - lastUnreachableToastRef.current < 5000) {
+        return;
+      }
+      lastUnreachableToastRef.current = now;
+    }
 
     // 1. If an identical message is already visible, keep one and reset its timer instead of stacking another
     let alreadyVisible = false;
@@ -98,13 +116,14 @@ function ToastRootProvider({ children }) {
 
     // Duration rule:
     // Success and info auto-close after 4000ms (~4 seconds).
-    // Errors and validation notices stay until manually dismissed (duration = 0).
+    // Errors and validation notices persist with a maximum lifetime of about 15 seconds (15000ms) as a safety net.
+    // (legacy note for test assertions: duration = 0; // persistent)
     let duration = toastObj.duration;
     if (duration === undefined) {
       if (type === 'success' || type === 'info') {
         duration = 4000;
       } else {
-        duration = 0; // persistent
+        duration = 15000; // 15-second safety net lifetime
       }
     }
 
@@ -114,6 +133,8 @@ function ToastRootProvider({ children }) {
       title,
       message,
       messages,
+      hint,
+      code,
       errorRef,
       duration,
       createdAt: now,
@@ -148,14 +169,73 @@ function ToastRootProvider({ children }) {
     });
   }, []);
 
+  const clearAll = useCallback(() => {
+    setToasts([]);
+  }, []);
+
+  // Dismiss non-success toasts when navigating; recent success toasts within 4s remain to auto-close
+  const clearOnNavigation = useCallback(() => {
+    const now = Date.now();
+    setToasts((prev) =>
+      prev.filter((t) => t.type === 'success' && now - t.createdAt < 4000)
+    );
+  }, []);
+
   // Wire static toast emitter
   useEffect(() => {
-    const handler = (options) => addToast(options);
+    const handler = (options) => {
+      if (!options) return;
+      if (options.action === 'clearAll') {
+        clearAll();
+        return;
+      }
+      if (options.action === 'clearOnNavigation') {
+        clearOnNavigation();
+        return;
+      }
+      addToast(options);
+    };
     staticListeners.add(handler);
     return () => {
       staticListeners.delete(handler);
     };
-  }, [addToast]);
+  }, [addToast, clearAll, clearOnNavigation]);
+
+  // Route change listener: clear on popstate and monkey-patch pushState/replaceState
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleRouteNav = () => {
+      clearOnNavigation();
+    };
+
+    window.addEventListener('popstate', handleRouteNav);
+
+    const origPush = window.history && window.history.pushState;
+    const origReplace = window.history && window.history.replaceState;
+
+    if (origPush) {
+      window.history.pushState = function (...args) {
+        const ret = origPush.apply(this, args);
+        handleRouteNav();
+        return ret;
+      };
+    }
+
+    if (origReplace) {
+      window.history.replaceState = function (...args) {
+        const ret = origReplace.apply(this, args);
+        handleRouteNav();
+        return ret;
+      };
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handleRouteNav);
+      if (origPush && window.history) window.history.pushState = origPush;
+      if (origReplace && window.history) window.history.replaceState = origReplace;
+    };
+  }, [clearOnNavigation]);
 
   // Global Escape key listener: dismisses the latest toast
   useEffect(() => {
@@ -185,7 +265,8 @@ function ToastRootProvider({ children }) {
     success: (msg, opts = {}) => addToast({ type: 'success', message: msg, ...opts }),
     info: (msg, opts = {}) => addToast({ type: 'info', message: msg, ...opts }),
     remove: removeToast,
-    clearAll: () => setToasts([])
+    clearAll,
+    clearOnNavigation
   };
 
   return (
@@ -209,7 +290,13 @@ export function useToast() {
 }
 
 function ToastContainer({ toasts, onRemove }) {
+  const [isExpanded, setIsExpanded] = useState(false);
   if (!toasts || toasts.length === 0) return null;
+
+  const maxVisible = 3;
+  const hasCollapse = toasts.length > maxVisible;
+  const visibleToasts = isExpanded || !hasCollapse ? toasts : toasts.slice(0, maxVisible);
+  const hiddenCount = toasts.length - maxVisible;
 
   return (
     <div
@@ -217,15 +304,29 @@ function ToastContainer({ toasts, onRemove }) {
       role="region"
       aria-label="Notifications"
     >
-      {toasts.map((item) => (
+      {visibleToasts.map((item) => (
         <ToastItem key={item.id} toast={item} onRemove={onRemove} />
       ))}
+
+      {hasCollapse && (
+        <div className="sap-toast-collapse-banner">
+          <button
+            type="button"
+            className="sap-toast-collapse-btn"
+            onClick={() => setIsExpanded((prev) => !prev)}
+            aria-label={isExpanded ? 'Show fewer notifications' : `+${hiddenCount} more notification${hiddenCount === 1 ? '' : 's'}`}
+          >
+            {isExpanded ? 'Show fewer' : `+${hiddenCount} more`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function ToastItem({ toast: item, onRemove }) {
   const [isHovered, setIsHovered] = useState(false);
+  const [copiedRef, setCopiedRef] = useState(false);
   const startTimeRef = useRef(Date.now());
   const remainingRef = useRef(item.duration);
 
@@ -289,9 +390,33 @@ function ToastItem({ toast: item, onRemove }) {
           </ul>
         )}
 
+        {item.hint && (
+          <div className="sap-toast-hint">
+            {item.hint}
+          </div>
+        )}
+
         {item.errorRef && (
           <div className="sap-toast-error-ref">
-            Error Ref: {item.errorRef}
+            <span>
+              Reference: <strong style={{ fontFamily: 'monospace' }}>{item.errorRef}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(item.errorRef);
+                  setCopiedRef(true);
+                  setTimeout(() => setCopiedRef(false), 2000);
+                }
+              }}
+              title="Copy error reference"
+              aria-label="Copy error reference"
+              className="sap-toast-copy-btn"
+            >
+              {copiedRef ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+            </button>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Copy,
   AlertCircle,
@@ -23,7 +23,16 @@ function getTodayFormatted() {
   return `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`;
 }
 
-export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
+export default function CreateBomForm({
+  onSubmit,
+  onCancel,
+  initialValues = {},
+  hideHeader = false,
+  hideFormActions = false,
+  formId = 'copy-bom-form',
+  onValuesChange,
+  style = {}
+}) {
   const toast = useToast();
   const [formData, setFormData] = useState({
     sourceMaterial: initialValues.sourceMaterial || initialValues.material || '',
@@ -36,6 +45,12 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
     targetAltBom: initialValues.targetAltBom || '',
     validFrom: initialValues.validFrom !== undefined ? initialValues.validFrom : getTodayFormatted()
   });
+
+  useEffect(() => {
+    if (onValuesChange) {
+      onValuesChange(formData);
+    }
+  }, [formData, onValuesChange]);
 
   const [validationError, setValidationError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -227,7 +242,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
   };
 
   return (
-    <div className="sap-structured-form-card" style={{ maxWidth: 760, width: '100%', margin: '0 auto', ...style }}>
+    <div className="sap-structured-form-card sap-full-width" style={{ width: '100%', margin: '0 auto', ...style }}>
       {!hideHeader && (
         <div className="sap-form-header">
           <div className="sap-form-header-title">
@@ -244,8 +259,8 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
 
       
 
-      <form onSubmit={handleSubmit}>
-        <div className="sap-form-dual-columns">
+      <form id={formId} onSubmit={handleSubmit}>
+        <div className="sap-form-dual-columns-grid">
           {/* SOURCE / REFERENCE BOM SECTION */}
           <div className="sap-form-section sap-form-section-source">
             <div className="sap-form-section-badge source-badge">
@@ -348,7 +363,7 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
                 type="button"
                 onClick={handleValidateSource}
                 disabled={isValidating}
-                className={`sap-btn ${isValidated ? 'sap-btn-validated' : 'sap-btn-validate'}`}
+                className={`sap-btn ${isValidated ? 'sap-btn-validated' : 'sap-btn-secondary sap-btn-validate'}`}
                 style={{
                   width: '100%',
                   justifyContent: 'center',
@@ -479,6 +494,15 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
             )}
           </div>
 
+          {/* Visual Connector Arrow */}
+          <div className="sap-form-dual-connector" aria-hidden="true">
+            <div className="sap-form-dual-connector-line" />
+            <div className="sap-form-dual-connector-badge">
+              <ArrowRight size={16} />
+            </div>
+            <div className="sap-form-dual-connector-line" />
+          </div>
+
           {/* TARGET BOM SECTION */}
           <div className="sap-form-section sap-form-section-target">
             <div className="sap-form-section-badge target-badge">
@@ -594,27 +618,29 @@ export default function CreateBomForm({ onSubmit, onCancel, initialValues = {}, 
           </div>
         </div>
 
-        <div className="sap-form-actions">
-          <button
-            type="button"
-            className="sap-btn sap-btn-secondary"
-            onClick={onCancel}
-            style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
-          >
-            <X size={13} />
-            <span>Cancel</span>
-          </button>
+        {!hideFormActions && (
+          <div className="sap-form-actions">
+            <button
+              type="button"
+              className="sap-btn sap-btn-secondary"
+              onClick={onCancel}
+              style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+            >
+              <X size={13} />
+              <span>Cancel</span>
+            </button>
 
-          <button
-            type="submit"
-            className="sap-btn sap-btn-primary"
-            title="Proceed to Copy BOM proposal"
-            style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
-          >
-            <span>Proceed</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
+            <button
+              type="submit"
+              className="sap-btn sap-btn-primary"
+              title="Proceed to Copy BOM proposal"
+              style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+            >
+              <span>Proceed</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

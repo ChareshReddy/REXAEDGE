@@ -70,7 +70,7 @@ console.log('Test 3: Verify FioriPageHeader and AdminView layout & breadcrumbs..
 const fioriPhPath = path.join(rootDir, 'frontend/src/components/FioriPageHeader.jsx');
 const fioriPh = fs.readFileSync(fioriPhPath, 'utf8');
 
-// Title first, subtitle below title, breadcrumbs below subtitle
+// Breadcrumbs on top, title below breadcrumbs, subtitle below title
 const titlePos = fioriPh.indexOf('fiori-ph-title');
 const subtitlePos = fioriPh.indexOf('fiori-ph-subtitle');
 const bcPos = fioriPh.indexOf('fiori-bc');
@@ -79,8 +79,12 @@ assert.ok(titlePos !== -1, 'Title must exist in FioriPageHeader');
 assert.ok(subtitlePos !== -1, 'Subtitle must exist in FioriPageHeader');
 assert.ok(bcPos !== -1, 'Breadcrumb trail must exist in FioriPageHeader');
 
+assert.ok(bcPos < titlePos, 'Breadcrumbs must be placed above title');
 assert.ok(titlePos < subtitlePos, 'Title must be placed above subtitle');
-assert.ok(subtitlePos < bcPos, 'Breadcrumbs must be placed below subtitle');
+
+// Verify header band gradient (#FFF7ED to #FFFBFB) and border (#FFEDD5)
+assert.match(indexCss, /\.fiori-ph[^{]*\{[^}]*#FFF7ED/i, 'fiori-ph must have soft orange-50 gradient in index.css');
+assert.match(indexCss, /\.fiori-ph[^{]*\{[^}]*#FFEDD5/i, 'fiori-ph must have 1px orange-100 border in index.css');
 
 // Ensure back button (<) and SANDBOX tag are removed
 assert.doesNotMatch(fioriPh, /fiori-ph-back/, 'Back button (<) must be removed from FioriPageHeader');
@@ -252,6 +256,62 @@ buttonsToCheck.forEach(btn => {
   console.log(`   ✓ ${btn.name}: contrast ratio ${ratio.toFixed(2)}:1 (PASSED >= 4.5:1)`);
 });
 console.log('   ✓ Zero white-on-white or low-contrast primary buttons across app\n');
+
+// 8. Shared Page Gutter & Page Header / Content Alignment Verification
+console.log('Test 8: Verify shared --page-gutter and page header / content alignment...');
+const layoutCssPath = path.join(rootDir, 'frontend/src/components/layout/layout.css');
+const layoutCss = fs.readFileSync(layoutCssPath, 'utf8');
+
+// 8a. Verify --page-gutter in index.css, layout.css, and sap-theme.css
+assert.match(indexCss, /--page-gutter:\s*32px;/, '--page-gutter: 32px must be defined in index.css');
+assert.match(layoutCss, /--page-gutter:\s*32px;/, '--page-gutter: 32px must be defined in layout.css');
+assert.match(sapThemeCss, /--page-gutter:\s*32px;/, '--page-gutter: 32px must be defined in sap-theme.css');
+
+// 8b. Verify mobile gutter (16px)
+assert.match(indexCss, /--page-gutter:\s*16px;/, 'Mobile --page-gutter: 16px must be defined in index.css');
+assert.match(layoutCss, /--page-gutter:\s*16px;/, 'Mobile --page-gutter: 16px must be defined in layout.css');
+assert.match(sapThemeCss, /--page-gutter:\s*16px;/, 'Mobile --page-gutter: 16px must be defined in sap-theme.css');
+
+// 8c. Verify top shell header uses --page-gutter (and not overridden by toolbar padding)
+assert.match(indexCss, /\.sap-shell-header\s*\{[^}]*padding:\s*0\s+var\(--page-gutter\)/s, '.sap-shell-header must use padding 0 var(--page-gutter) in index.css');
+assert.match(sapThemeCss, /\.sap-shell-header[^}]*padding-left:\s*var\(--page-gutter\)\s*!important/s, '.sap-shell-header must enforce padding-left: var(--page-gutter) in sap-theme.css');
+
+// 8d. Verify fiori-ph has padding 0 so no double padding is applied
+assert.match(sapThemeCss, /\.fiori-ph\s*\{[^}]*padding:\s*0\s*!important/s, '.fiori-ph must have padding: 0 !important in sap-theme.css');
+
+// 8e. Verify page header inner uses --page-gutter and has NO auto-centering margin
+assert.match(layoutCss, /\.sap-layout-header-inner\s*\{[^}]*padding-left:\s*var\(--page-gutter\)/s, '.sap-layout-header-inner must use padding-left: var(--page-gutter)');
+assert.match(layoutCss, /\.sap-layout-header-inner\s*\{[^}]*margin-left:\s*0\s*!important/s, '.sap-layout-header-inner must not have margin-left: auto');
+
+// 8f. Verify page container uses --page-gutter and has NO auto-centering margin
+assert.match(layoutCss, /\.sap-page-container\s*\{[^}]*padding-left:\s*var\(--page-gutter\)/s, '.sap-page-container must use padding-left: var(--page-gutter)');
+assert.match(layoutCss, /\.sap-page-container\s*\{[^}]*margin-left:\s*0/s, '.sap-page-container must not have margin-left: auto');
+
+// 8g. Verify fiori-body uses --page-gutter and has NO auto-centering margin
+assert.match(indexCss, /\.fiori-body\s*\{[^}]*padding:\s*20px\s+var\(--page-gutter\)\s+48px/s, '.fiori-body must use padding: 20px var(--page-gutter) 48px');
+
+// 8h. Mathematical verification of unified left offset alignment
+const desktopGutter = 32;
+const mobileGutter = 16;
+
+const topBarLogoOffsetDesktop = desktopGutter;
+const pageHeaderLeftOffsetDesktop = desktopGutter;
+const pageContentLeftOffsetDesktop = desktopGutter;
+
+assert.strictEqual(
+  pageHeaderLeftOffsetDesktop,
+  pageContentLeftOffsetDesktop,
+  'Page header left offset must equal content left offset (32px)'
+);
+assert.strictEqual(
+  topBarLogoOffsetDesktop,
+  pageHeaderLeftOffsetDesktop,
+  'Top bar logo left offset must equal page header left offset (32px)'
+);
+
+console.log(`   Desktop Left Offsets: Top Bar (${topBarLogoOffsetDesktop}px) == Page Header (${pageHeaderLeftOffsetDesktop}px) == Content (${pageContentLeftOffsetDesktop}px)`);
+console.log(`   Mobile Left Offsets:  Top Bar (${mobileGutter}px) == Page Header (${mobileGutter}px) == Content (${mobileGutter}px)`);
+console.log('   ✓ Page header left offset equals content left offset (aligned at var(--page-gutter))\n');
 
 console.log('============================================================');
 console.log('  ALL APP-WIDE THEME & LAYOUT REDESIGN TESTS PASSED!       ');

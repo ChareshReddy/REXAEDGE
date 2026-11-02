@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Trash2, AlertTriangle, ArrowRight, X, Layers, Factory, Hash } from 'lucide-react';
 import ValueHelpInput from './ValueHelpInput';
 import { useToast } from '../context/ToastContext';
 
 export default function DeleteBomForm({
-  onSubmit, onCancel, initialValues = {}, hideHeader = false, style = {} }) {
+  onSubmit,
+  onCancel,
+  initialValues = {},
+  hideHeader = false,
+  hideFormActions = false,
+  formId = 'delete-bom-form',
+  onValuesChange,
+  style = {}
+}) {
   const toast = useToast();
   const [formData, setFormData] = useState({
     material: initialValues.material || '',
@@ -12,6 +20,12 @@ export default function DeleteBomForm({
     alternativeBom: initialValues.alternativeBom || '',
     bomUsage: initialValues.bomUsage || '1'
   });
+
+  useEffect(() => {
+    if (onValuesChange) {
+      onValuesChange(formData);
+    }
+  }, [formData, onValuesChange]);
 
   const [validationError, setValidationError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -82,7 +96,7 @@ export default function DeleteBomForm({
   };
 
   return (
-    <div className="sap-structured-form-card delete-card" style={{ maxWidth: 680, width: '100%', margin: '0 auto', marginBottom: 16, ...style }}>
+    <div className="sap-structured-form-card delete-card sap-full-width" style={{ width: '100%', margin: '0 auto', marginBottom: 16, ...style }}>
       {!hideHeader && (
         <div className="sap-form-header sap-section-header">
           <div className="sap-form-header-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -92,17 +106,17 @@ export default function DeleteBomForm({
         </div>
       )}
 
-      <div className="sap-form-alert sap-form-alert-warning" style={{ margin: hideHeader ? '4px 0 12px' : '8px 14px 12px', padding: '8px 12px', background: '#FFF8F2', border: '1px solid #FED7AA', borderRadius: 2 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#B45309' }}>
-          <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+      <div className="sap-form-alert sap-form-alert-warning" style={{ margin: hideHeader ? '4px 0 12px' : '8px 14px 12px', padding: '10px 14px', background: '#FFF8F2', border: '1px solid #FED7AA', borderRadius: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#B45309' }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0 }} />
           <span><strong>Destructive Operation:</strong> Deleting a BOM removes component linkages in the specified plant. A safety confirmation check is required prior to execution.</span>
         </div>
       </div>
 
       
 
-      <form onSubmit={handleSubmit}>
-        <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: hideHeader ? '4px 2px 10px' : '12px 14px', gap: '10px 14px' }}>
+      <form id={formId} onSubmit={handleSubmit}>
+        <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', padding: hideHeader ? '8px 4px 14px' : '14px 16px', gap: '14px 18px' }}>
           <div className="sap-form-group">
             <label htmlFor="delMaterial" className="sap-label">
               Material Number <span className="required-star">*</span>
@@ -182,24 +196,26 @@ export default function DeleteBomForm({
           </div>
         </div>
 
-        <div className="sap-form-actions sap-toolbar" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
-          <button
-            type="button"
-            className="sap-button sap-btn"
-            onClick={onCancel}
-          >
-            <X size={13} />
-            <span>Cancel</span>
-          </button>
+        {!hideFormActions && (
+          <div className="sap-form-actions sap-toolbar" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+            <button
+              type="button"
+              className="sap-button sap-btn"
+              onClick={onCancel}
+            >
+              <X size={13} />
+              <span>Cancel</span>
+            </button>
 
-          <button
-            type="submit"
-            className="sap-button sap-btn destructive sap-button-danger"
-          >
-            <span>Proceed to Confirmation</span>
-            <ArrowRight size={13} />
-          </button>
-        </div>
+            <button
+              type="submit"
+              className="sap-button sap-btn destructive sap-button-danger"
+            >
+              <span>Proceed to Confirmation</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

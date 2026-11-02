@@ -583,36 +583,35 @@ export default function AdminView({
 
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
-      {/* Fiori Standard Redesigned Header (Subtitle > Title > Breadcrumbs) */}
-      <div className="fiori-ph" style={{ padding: '16px 0 14px' }}>
-        <div style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '0 32px', boxSizing: 'border-box' }}>
-          <div className="fiori-ph-header-top">
-            <div className="fiori-ph-title-row">
-              <h1 className="fiori-ph-title">System &amp; User Management</h1>
-              <button
-                type="button"
-                className="sap-btn sap-btn-secondary"
-                onClick={handleRefresh}
-                title="Refresh Administration Data"
-                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
-              >
-                <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
-                <span>Refresh</span>
-              </button>
-            </div>
-            <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
-          </div>
-
-          <div className="fiori-bc">
+      {/* Fiori Standard Redesigned Header (Breadcrumbs > Title > Subtitle > Tabs) */}
+      <div className="fiori-ph" style={{ padding: '0' }}>
+        <div className="sap-layout-header-inner">
+          <nav className="fiori-bc" aria-label="Breadcrumb">
             <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
               Home
             </button>
             <span className="fiori-bc-sep">›</span>
             <span className="fiori-bc-current">Enterprise Administration</span>
+          </nav>
+
+          <div className="fiori-ph-title-row">
+            <h1 className="fiori-ph-title">System &amp; User Management</h1>
+            <button
+              type="button"
+              className="sap-btn sap-btn-secondary"
+              onClick={handleRefresh}
+              title="Refresh Administration Data"
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
+            >
+              <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
+              <span>Refresh</span>
+            </button>
           </div>
 
+          <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
+
           {/* Admin Navigation Tabs */}
-          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button
               type="button"
               onClick={() => setActiveTab('users')}
@@ -656,14 +655,14 @@ export default function AdminView({
       </div>
 
       {/* Main Content Area */}
-      <div className="fiori-view-body" style={{ maxWidth: 1400, width: '100%', margin: '0 auto', padding: '16px 32px 32px', boxSizing: 'border-box' }}>
+      <div className="sap-page-container" style={{ marginTop: 20 }}>
         {/* Alerts handled via Toast */}
 
         {/* =========================================================================
             TAB 1: USERS MANAGEMENT
            ========================================================================= */}
         {activeTab === 'users' && (
-          <div style={{ maxWidth: 740, width: '100%' }}>
+          <div style={{ width: '100%' }}>
             {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
@@ -814,7 +813,7 @@ export default function AdminView({
             TAB 2: SAP SERVERS MANAGEMENT
            ========================================================================= */}
         {activeTab === 'servers' && (
-          <div style={{ maxWidth: 910, width: '100%' }}>
+          <div style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
@@ -958,7 +957,7 @@ export default function AdminView({
             TAB 3: PERMISSIONS MATRIX & MANAGEMENT
            ========================================================================= */}
         {activeTab === 'permissions' && (
-          <div style={{ maxWidth: 850, width: '100%' }}>
+          <div style={{ width: '100%' }}>
             {/* Database Migration Pending Notice */}
             {migrationPending && (
               <div

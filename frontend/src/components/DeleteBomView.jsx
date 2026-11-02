@@ -7,14 +7,18 @@ import {
   ShieldCheck,
   ChevronLeft,
   ArrowLeft,
-  Loader2
+  Loader2,
+  X,
+  ArrowRight
 } from 'lucide-react';
 import DeleteBomForm from './DeleteBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
+import { PageContainer, StickyActionBar } from './layout';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function DeleteBomView({
   systemKey = 'DEV',
@@ -28,9 +32,15 @@ export default function DeleteBomView({
   const [actionStatus, setActionStatus] = useState('pending');
   const [executionResult, setExecutionResult] = useState(null);
   const [errorMessage, _setErrorMessage] = useState('');
-  const setErrorMessage = (msg) => {
-    _setErrorMessage(msg);
-    if (msg) toast.error(msg);
+  const setErrorMessage = (msg, err = null) => {
+    _setErrorMessage(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Unable to submit Delete BOM request.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
@@ -103,7 +113,7 @@ export default function DeleteBomView({
       }
       console.error('Error proposing Delete BOM:', err);
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Unable to submit Delete BOM request.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     } finally {
       if (!controller.signal.aborted) {
         setIsSubmitting(false);
@@ -136,7 +146,7 @@ export default function DeleteBomView({
       console.error('Error confirming Delete BOM:', err);
       setActionStatus('failed');
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Failed to execute Delete BOM action.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     }
   };
 
@@ -160,7 +170,7 @@ export default function DeleteBomView({
   };
 
   return (
-    <div className="fiori-app-view-root">
+    <div className="fiori-app-view-root sap-page-viewport">
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
         title="Delete BOM"
@@ -171,136 +181,163 @@ export default function DeleteBomView({
         breadcrumbs={getBreadcrumbTrail('delete_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack }, { isLocked: isSubmitting || actionStatus === 'executing' })}
       />
 
-      <div className="fiori-view-body">
-        {/* Error Notice handled via Toast */}
-
-        {/* Step 1: Form View */}
-        {!proposedAction && !executionResult && (
-          <div className="sap-form-view-section" style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}>
-            {isSubmitting ? (
-              <div
-                className="sap-loading-card"
-                style={{
-                  maxWidth: 680,
-                  width: '100%',
-                  margin: '0 auto',
-                  textAlign: 'center',
-                  padding: '24px 20px',
-                  borderRadius: 'var(--sap-radius)',
-                  border: '1px solid var(--sap-border)'
-                }}
-              >
-                <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
-                <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                  Verifying BOM Existence in SAP...
-                </h4>
-                <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                  Validating material and plant records prior to deletion proposal.
-                </p>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={handleCancelChecking}
-                  style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
+      <PageContainer hasStickyBar={!proposedAction && !executionResult}>
+        <div style={{ marginTop: 20 }}>
+          {/* Step 1: Form View */}
+          {!proposedAction && !executionResult && (
+            <div className="sap-form-view-section" style={{ width: '100%' }}>
+              {isSubmitting ? (
+                <div
+                  className="sap-loading-card"
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '36px 20px',
+                    borderRadius: 'var(--sap-radius)',
+                    border: '1px solid var(--sap-border)'
+                  }}
                 >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <DeleteBomForm
-                onSubmit={handleFormSubmit}
-                onCancel={onBack}
-                initialValues={lastSubmittedForm || {}}
-                hideHeader={true}
-                style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Confirmation Proposal Gate */}
-        {proposedAction && !executionResult && (
-          <div className="sap-proposal-view-section" style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}>
-            <div className="sap-proposal-header-card danger">
-              <ShieldCheck size={20} color="var(--sap-error)" />
-              <div>
-                <h4>Safety Gate: Confirm Permanent BOM Deletion</h4>
-                <p>Deleting a BOM removes the alternative from SAP master records. Review carefully before confirming.</p>
-              </div>
-            </div>
-
-            <ConfirmationCard
-              action={proposedAction}
-              status={actionStatus}
-              onConfirm={handleConfirmAction}
-              onCancel={handleCancelAction}
-            />
-          </div>
-        )}
-
-        {/* Step 3: Success Execution Result Card */}
-        {executionResult && (
-          <div className="sap-result-view-section" style={{ maxWidth: 680, width: '100%', margin: '0 auto' }}>
-            <div className="sap-result-success-card">
-              <div className="sap-result-success-header">
-                <div className="sap-result-success-icon">
-                  <CheckCircle2 size={32} color="var(--sap-success)" />
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                    Verifying BOM Existence in SAP...
+                  </h4>
+                  <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                    Validating material and plant records prior to deletion proposal.
+                  </p>
+                  <button
+                    type="button"
+                    className="sap-button"
+                    onClick={handleCancelChecking}
+                    style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
+                  >
+                    Cancel
+                  </button>
                 </div>
+              ) : (
+                <DeleteBomForm
+                  formId="delete-bom-form"
+                  onSubmit={handleFormSubmit}
+                  onCancel={onBack}
+                  initialValues={lastSubmittedForm || {}}
+                  hideHeader={true}
+                  hideFormActions={true}
+                  style={{ width: '100%' }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Confirmation Proposal Gate */}
+          {proposedAction && !executionResult && (
+            <div className="sap-proposal-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
+              <div className="sap-proposal-header-card danger">
+                <ShieldCheck size={20} color="var(--sap-error)" />
                 <div>
-                  <h3 className="sap-result-success-title">BOM Deleted Successfully</h3>
-                  <p className="sap-result-success-message">{executionResult.reply}</p>
+                  <h4>Safety Gate: Confirm Permanent BOM Deletion</h4>
+                  <p>Deleting a BOM removes the alternative from SAP master records. Review carefully before confirming.</p>
                 </div>
               </div>
 
-              {/* Result Meta Cards */}
-              <div className="sap-result-meta-grid">
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Material</span>
-                  <strong className="sap-result-meta-val">{lastSubmittedForm?.material || '-'}</strong>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Plant</span>
-                  <strong className="sap-result-meta-val">{lastSubmittedForm?.plant || '-'}</strong>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Alternative Deleted</span>
-                  <span className="sap-badge sap-badge-neutral" style={{ fontSize: '13px', padding: '3px 8px' }}>
-                    {lastSubmittedForm?.alternativeBom || '01'}
-                  </span>
-                </div>
-                <div className="sap-result-meta-item">
-                  <span className="sap-result-meta-label">Status</span>
-                  <span className="sap-badge sap-badge-success" style={{ fontSize: '13px', padding: '3px 8px' }}>
-                    DELETED
-                  </span>
-                </div>
-              </div>
+              <ConfirmationCard
+                action={proposedAction}
+                status={actionStatus}
+                onConfirm={handleConfirmAction}
+                onCancel={handleCancelAction}
+              />
+            </div>
+          )}
 
-              {/* Bottom Actions */}
-              <div className="sap-result-actions sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={onBack}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
-                >
-                  <ArrowLeft size={13} />
-                  <span>Return to Launchpad</span>
-                </button>
-                <button
-                  type="button"
-                  className="sap-button destructive"
-                  onClick={handleReset}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
-                >
-                  <Trash2 size={13} />
-                  <span>Delete Another BOM</span>
-                </button>
+          {/* Step 3: Success Execution Result Card */}
+          {executionResult && (
+            <div className="sap-result-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
+              <div className="sap-result-success-card">
+                <div className="sap-result-success-header">
+                  <div className="sap-result-success-icon">
+                    <CheckCircle2 size={32} color="var(--sap-success)" />
+                  </div>
+                  <div>
+                    <h3 className="sap-result-success-title">BOM Deleted Successfully</h3>
+                    <p className="sap-result-success-message">{executionResult.reply}</p>
+                  </div>
+                </div>
+
+                {/* Result Meta Cards */}
+                <div className="sap-result-meta-grid">
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Material</span>
+                    <strong className="sap-result-meta-val">{lastSubmittedForm?.material || '-'}</strong>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Plant</span>
+                    <strong className="sap-result-meta-val">{lastSubmittedForm?.plant || '-'}</strong>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Alternative Deleted</span>
+                    <span className="sap-badge sap-badge-neutral" style={{ fontSize: '13px', padding: '3px 8px' }}>
+                      {lastSubmittedForm?.alternativeBom || '01'}
+                    </span>
+                  </div>
+                  <div className="sap-result-meta-item">
+                    <span className="sap-result-meta-label">Status</span>
+                    <span className="sap-badge sap-badge-success" style={{ fontSize: '13px', padding: '3px 8px' }}>
+                      DELETED
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="sap-result-actions sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
+                  <button
+                    type="button"
+                    className="sap-button"
+                    onClick={onBack}
+                    style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
+                  >
+                    <ArrowLeft size={13} />
+                    <span>Return to Launchpad</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="sap-button destructive"
+                    onClick={handleReset}
+                    style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete Another BOM</span>
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+        </div>
+      </PageContainer>
+
+      {/* Sticky Action Bar */}
+      {!proposedAction && !executionResult && !isSubmitting && (
+        <StickyActionBar>
+          <div className="sap-sticky-actions-left">
+            <button
+              type="button"
+              className="sap-btn sap-btn-secondary"
+              onClick={onBack}
+            >
+              <X size={14} />
+              <span>Cancel</span>
+            </button>
           </div>
-        )}
-      </div>
+          <div className="sap-sticky-actions-right">
+            <button
+              type="submit"
+              form="delete-bom-form"
+              className="sap-btn destructive sap-button-danger"
+              disabled={isSubmitting}
+            >
+              <span>Proceed to Confirmation</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </StickyActionBar>
+      )}
     </div>
   );
 }

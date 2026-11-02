@@ -4,6 +4,10 @@ import { Search, X, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
 import { searchMaterials } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
 import { useDraggableModal } from '../hooks/useDraggableModal';
+import F4PopupOverlay from './F4PopupOverlay';
+import TableLoadingState from './TableLoadingState';
+import F4ErrorState from './F4ErrorState';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function MaterialValueHelpModal({
   isOpen,
@@ -179,7 +183,7 @@ export default function MaterialValueHelpModal({
         setIsRetrying(false);
         setIsLoading(false);
         console.warn('[MaterialValueHelp] Fetch error:', err.message);
-        setError(err.response?.data?.error || err.message || 'Failed to load materials from SAP');
+        setError(extractErrorInfo(err, 'Failed to load materials from SAP'));
         setMaterials([]);
         materialsRef.current = [];
         setSelectedIndex(-1);
@@ -392,14 +396,9 @@ export default function MaterialValueHelpModal({
   ].filter(c => c.value && String(c.value).trim()) : [];
 
   return createPortal(
-    <div
+    <F4PopupOverlay
       className="sap-f4-portal-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="material-f4-title"
+      ariaLabelledBy="material-f4-title"
     >
       <div
         ref={modalDialogRef}
@@ -407,6 +406,8 @@ export default function MaterialValueHelpModal({
         className="sap-f4-modal-dialog material"
         style={{
           ...dialogStyle,
+          width: 'min(640px, 92vw)',
+          maxWidth: 660,
           outline: 'none',
           maxHeight: '82vh'
         }}
@@ -620,43 +621,20 @@ export default function MaterialValueHelpModal({
         {/* Table Content Area: Only body scrolls */}
         <div ref={tableContainerRef} className="sap-f4-table-container">
           {isLoading ? (
-            <div
-              style={{
-                padding: '48px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                color: 'var(--sap-text-muted)'
-              }}
-            >
-              <Loader2 size={32} className="sap-spin" color="var(--sap-primary, #0a6ed1)" />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>
-                {isRetrying
+            <TableLoadingState
+              borderless
+              minHeight={280}
+              message={
+                isRetrying
                   ? 'SAP server is busy. Retrying in a moment…'
-                  : 'Searching SAP materials…'}
-              </span>
-            </div>
+                  : 'Searching SAP materials…'
+              }
+            />
           ) : error ? (
-            <div
-              style={{
-                padding: '36px 24px',
-                textAlign: 'center',
-                color: 'var(--sap-error-text, #b45309)'
-              }}
-            >
-              <AlertCircle size={28} style={{ margin: '0 auto 8px', display: 'block' }} />
-              <p style={{ margin: '0 0 12px 0', fontSize: 13, fontWeight: 500 }}>{error}</p>
-              <button
-                type="button"
-                className="sap-btn sap-btn-secondary"
-                onClick={() => fetchMaterials(searchTerm, 'auto')}
-                style={{ fontSize: 12, padding: '4px 12px' }}
-              >
-                Retry
-              </button>
-            </div>
+            <F4ErrorState
+              error={error}
+              onRetry={() => fetchMaterials(searchTerm, 'auto')}
+            />
           ) : materials.length === 0 ? (
             <div
               style={{
@@ -679,16 +657,16 @@ export default function MaterialValueHelpModal({
               <colgroup>
                 {isTabB ? (
                   <>
-                    <col style={{ width: '40%' }} />
-                    <col style={{ width: '30%' }} />
-                    <col style={{ width: '30%' }} />
+                    <col style={{ width: 160 }} />
+                    <col style={{ width: 80 }} />
+                    <col style={{ width: 80 }} />
                   </>
                 ) : (
                   <>
-                    <col style={{ width: '25%' }} />
-                    <col style={{ width: '49%' }} />
-                    <col style={{ width: '15%' }} />
-                    <col style={{ width: '11%' }} />
+                    <col style={{ width: 150 }} />
+                    <col style={{ minWidth: 240 }} />
+                    <col style={{ width: 75 }} />
+                    <col style={{ width: 65 }} />
                   </>
                 )}
               </colgroup>
@@ -696,16 +674,16 @@ export default function MaterialValueHelpModal({
                 <tr>
                   {isTabB ? (
                     <>
-                      <th style={{ width: '40%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
-                      <th style={{ width: '30%', textAlign: 'center', whiteSpace: 'nowrap' }}>AltBOM</th>
-                      <th style={{ width: '30%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                      <th style={{ width: 160, textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                      <th style={{ width: 80, textAlign: 'center', whiteSpace: 'nowrap' }}>AltBOM</th>
+                      <th style={{ width: 80, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
                     </>
                   ) : (
                     <>
-                      <th style={{ width: '25%', textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
-                      <th style={{ width: '49%', textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
-                      <th style={{ width: '15%', textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
-                      <th style={{ width: '11%', textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
+                      <th style={{ width: 150, textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                      <th style={{ minWidth: 240, textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
+                      <th style={{ width: 75, textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
+                      <th style={{ width: 65, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
                     </>
                   )}
                 </tr>
@@ -844,7 +822,7 @@ export default function MaterialValueHelpModal({
           </div>
         </div>
       </div>
-    </div>,
+    </F4PopupOverlay>,
     document.body
   );
 }

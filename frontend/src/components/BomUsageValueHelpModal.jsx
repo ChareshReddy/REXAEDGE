@@ -5,6 +5,10 @@ import { getBomUsages } from '../services/api';
 import { lockScroll } from '../utils/scrollLock';
 import { useDraggableModal } from '../hooks/useDraggableModal';
 import Tooltip from './Tooltip';
+import F4PopupOverlay from './F4PopupOverlay';
+import TableLoadingState from './TableLoadingState';
+import F4ErrorState from './F4ErrorState';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 /**
  * SAP-style F4 Value Help popup for BOM Usage (tables T416 and T416T).
@@ -87,7 +91,7 @@ export default function BomUsageValueHelpModal({
       .catch((err) => {
         if (controller.signal.aborted) return;
         console.warn('[BomUsageValueHelp] Load error:', err.message);
-        setError(err.response?.data?.error || err.message || 'Failed to load BOM usages from SAP');
+        setError(extractErrorInfo(err, 'Failed to load BOM usages from SAP'));
         setAllUsages([]);
       })
       .finally(() => {
@@ -201,14 +205,10 @@ export default function BomUsageValueHelpModal({
   const showFilterBox = allUsages.length > 20;
 
   return createPortal(
-    <div
+    <F4PopupOverlay
       className="sap-modal-overlay sap-f4-overlay"
       role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
+      ariaLabel={modalTitle}
       style={{
         position: 'fixed',
         inset: 0,
@@ -230,7 +230,7 @@ export default function BomUsageValueHelpModal({
         className="sap-modal-dialog sap-f4-dialog"
         style={{
           width: '100%',
-          maxWidth: 720,
+          maxWidth: 650,
           background: 'var(--sap-card-bg, #ffffff)',
           borderRadius: 'var(--sap-radius-card, 12px)',
           boxShadow: 'var(--sap-shadow-card, 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1))',
@@ -379,31 +379,26 @@ export default function BomUsageValueHelpModal({
           }}
         >
           {isLoading ? (
-            <div
-              style={{
-                padding: '48px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                color: 'var(--sap-text-muted, #94a3b8)'
-              }}
-            >
-              <Loader2 size={32} className="sap-spin" color="var(--sap-primary, #0a6ed1)" />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Loading BOM usages from SAP…</span>
-            </div>
+            <TableLoadingState
+              borderless
+              minHeight={260}
+              message="Loading BOM usages from SAP…"
+            />
           ) : error ? (
-            <div
-              style={{
-                padding: '36px 24px',
-                textAlign: 'center',
-                color: 'var(--sap-error-text, #b45309)'
+            <F4ErrorState
+              error={error}
+              onRetry={() => {
+                setError(null);
+                setIsLoading(true);
+                getBomUsages()
+                  .then((res) => {
+                    const list = Array.isArray(res) ? res : res.data || [];
+                    setAllUsages(list);
+                  })
+                  .catch((err) => setError(extractErrorInfo(err, 'Failed to load BOM usages from SAP')))
+                  .finally(() => setIsLoading(false));
               }}
-            >
-              <AlertCircle size={28} style={{ margin: '0 auto 8px', display: 'block' }} />
-              <p style={{ margin: '0 0 12px 0', fontSize: 13, fontWeight: 500 }}>{error}</p>
-            </div>
+            />
           ) : filteredUsages.length === 0 ? (
             <div
               style={{
@@ -672,7 +667,7 @@ export default function BomUsageValueHelpModal({
           </div>
         </div>
       </div>
-    </div>,
+    </F4PopupOverlay>,
     document.body
   );
 }

@@ -1,4 +1,8 @@
 :root {
+  /* One shared page gutter variable across top bar, page header, and content */
+  --page-gutter: 32px;
+  --topbar-height: 60px;
+
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -187,15 +191,16 @@ input, select {
 /* 1. Top Shell Header - Clean Enterprise White Header (compact height) */
 .sap-shell-header {
   flex-shrink: 0;
-  height: 60px;
-  min-height: 60px;
-  max-height: 60px;
+  height: var(--topbar-height, 60px);
+  min-height: var(--topbar-height, 60px);
+  max-height: var(--topbar-height, 60px);
   background: #ffffff;
   color: #0f2744;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
+  padding: 0 var(--page-gutter) !important;
+  box-sizing: border-box;
   position: relative;
   z-index: 1000;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
@@ -211,6 +216,8 @@ input, select {
   gap: 16px;
   min-width: fit-content;
   height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .sap-brand {
@@ -218,11 +225,14 @@ input, select {
   align-items: center;
   flex-shrink: 0;
   min-width: fit-content;
+  margin: 0;
+  padding: 0;
 }
 
 .sap-brand-logo-container {
   background: transparent;
   padding: 0;
+  margin: 0;
   border-radius: 0;
   display: inline-flex;
   align-items: center;
@@ -242,6 +252,8 @@ input, select {
   max-width: 185px;
   object-fit: contain;
   display: block;
+  margin: 0;
+  padding: 0;
 }
 
 .sap-brand-divider {
@@ -2336,7 +2348,7 @@ input, select {
     gap: 8px !important;
   }
   .sap-shell-header {
-    padding: 0 14px !important;
+    padding: 0 var(--page-gutter) !important;
   }
 }
 
@@ -2394,9 +2406,13 @@ input, select {
 
 /* Mobile & Small Tablet: <= 768px */
 @media (max-width: 768px) {
+  :root {
+    --page-gutter: 16px;
+  }
+
   /* 1. Header on Mobile */
   .sap-shell-header {
-    padding: 0 16px !important;
+    padding: 0 var(--page-gutter) !important;
     height: 58px;
     max-height: 58px;
     box-sizing: border-box;
@@ -2407,10 +2423,13 @@ input, select {
     gap: 8px;
     max-width: calc(100% - 50px);
     flex-shrink: 0;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .sap-brand-logo-container {
-    padding: 3px 8px;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .sap-brand-logo-img {
@@ -2948,14 +2967,17 @@ input, select {
 .sap-assistant-layout {
   flex: 1;
   min-height: 0;
-  height: calc(100vh - 58px);
-  height: calc(100dvh - 58px);
+  height: calc(100vh - var(--topbar-height, 60px));
+  height: calc(100dvh - var(--topbar-height, 60px));
+  max-height: calc(100vh - var(--topbar-height, 60px));
+  max-height: calc(100dvh - var(--topbar-height, 60px));
   display: flex;
   flex-direction: column;
   align-items: stretch;
   overflow: hidden;
   width: 100%;
   padding: 0;
+  box-sizing: border-box;
   background: var(--sap-bg);
 }
 
@@ -5090,12 +5112,13 @@ input[type="checkbox"]:disabled {
   margin-top: 6px;
 }
 
-/* Page Header (Clean, crisp top-to-bottom: Subtitle > Title > Breadcrumbs > Tabs, strictly Left-Aligned) */
+/* Page Header Band (Soft gradient orange-50 #FFF7ED to #FFFBFB, bottom border 1px orange-100 #FFEDD5) */
 .fiori-ph {
-  background: #ffffff;
-  padding: 16px 32px 14px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  background: linear-gradient(180deg, #FFF7ED 0%, #FFFBFB 100%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #FFEDD5 !important;
+  box-shadow: none !important;
   flex-shrink: 0;
   position: relative;
   z-index: 50;
@@ -5105,7 +5128,42 @@ input[type="checkbox"]:disabled {
   text-align: left;
   width: 100%;
   box-sizing: border-box;
-  gap: 8px;
+}
+
+.sap-layout-header {
+  background: linear-gradient(180deg, #FFF7ED 0%, #FFFBFB 100%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #FFEDD5 !important;
+  box-shadow: none !important;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sap-layout-header-inner {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  padding: 16px var(--page-gutter) 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+@media (min-width: 1366px) {
+  .sap-layout-header-inner {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
 }
 
 .fiori-ph-header-top {
@@ -5114,19 +5172,6 @@ input[type="checkbox"]:disabled {
   align-items: flex-start;
   text-align: left;
   width: 100%;
-  gap: 2px;
-}
-
-.fiori-ph-subtitle {
-  margin: 4px 0 0;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  color: var(--sap-text-secondary, #64748b);
-  line-height: 1.4;
-  text-align: left;
-  align-self: flex-start;
 }
 
 .fiori-ph-title-row {
@@ -5135,23 +5180,50 @@ input[type="checkbox"]:disabled {
   justify-content: space-between;
   width: 100%;
   gap: 12px;
+  margin: 0;
 }
 
 .fiori-ph-title {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  color: var(--sap-brand-navy, #0f2744);
+  color: #0f2744;
   letter-spacing: -0.02em;
-  line-height: 1.2;
+  line-height: 1.25;
   text-align: left;
 }
 
 .fiori-ph-title-products {
-  font-size: 26px;
+  font-size: 28px;
 }
 
-/* Breadcrumbs: Plain text links with chevron separators (no pill or border), last item bold */
+.fiori-ph-subtitle {
+  margin: 4px 0 0 0 !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #475569 !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+  align-self: flex-start !important;
+  max-width: 70ch !important;
+}
+
+.sap-layout-subtitle {
+  margin: 4px 0 0 0 !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #475569 !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+  align-self: flex-start !important;
+  max-width: 70ch !important;
+}
+
+/* Breadcrumbs: small (13px), muted slate color, chevrons, hover orange-700, current navy semi-bold */
 .fiori-bc {
   font-size: 13px;
   color: #64748b;
@@ -5159,8 +5231,19 @@ input[type="checkbox"]:disabled {
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
-  margin-top: 4px;
+  margin: 0 0 8px 0;
   line-height: 1.4;
+  text-align: left;
+}
+
+.fiori-bc-desktop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fiori-bc-mobile {
+  display: none;
 }
 
 .fiori-bc-link,
@@ -5187,7 +5270,7 @@ button.fiori-bc-link.sap-button {
 button.fiori-bc-link:hover,
 button.fiori-bc-link.sap-button:hover {
   text-decoration: underline !important;
-  color: #EA580C !important;
+  color: #c2410c !important;
   background: transparent !important;
 }
 
@@ -5199,16 +5282,53 @@ button.fiori-bc-link.sap-button:hover {
 }
 
 .fiori-bc-current {
-  color: var(--sap-brand-navy, #0f2744) !important;
+  color: #0f2744 !important;
   font-size: 13px !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
+}
+
+.fiori-bc-collapsed {
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px;
+}
+
+@media (max-width: 768px) {
+  .fiori-ph-title,
+  .fiori-ph-title-products,
+  .sap-screen-title {
+    font-size: 22px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .fiori-bc-desktop {
+    display: none !important;
+  }
+  .fiori-bc-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .fiori-bc-link,
+  .fiori-bc-current {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Page Body */
 .fiori-body {
-  padding: 20px 32px 48px;
+  padding: 20px var(--page-gutter) 48px;
   flex: 1;
-  max-width: 1400px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .fiori-group-title {
@@ -6165,15 +6285,18 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-modal-dialog.material {
-  width: min(760px, 92vw);
+  width: min(640px, 92vw);
+  max-width: 660px;
 }
 
 .sap-f4-modal-dialog.plant {
-  width: min(620px, 92vw);
+  width: min(560px, 92vw);
+  max-width: 580px;
 }
 
 .sap-f4-modal-dialog.storage-location {
-  width: min(560px, 92vw);
+  width: min(540px, 92vw);
+  max-width: 550px;
 }
 
 .sap-f4-header {
@@ -6313,8 +6436,8 @@ input::-webkit-credentials-auto-fill-button {
    SAP Restrict Value Range Modal (Pre-F4 Dialog)
    ========================================================================== */
 .sap-restrict-modal-dialog {
-  width: min(660px, 94vw);
-  max-width: 680px;
+  width: min(600px, 94vw);
+  max-width: 620px;
   background: #ffffff;
   border-radius: 8px;
   border: 1px solid rgba(0, 0, 0, 0.2);
@@ -6742,63 +6865,78 @@ input::-webkit-credentials-auto-fill-button {
 
 
 /* ============================================================================
-   SHARED TOAST NOTIFICATION COMPONENT (Windows-style bottom-right notifications)
+   SHARED TOAST NOTIFICATION COMPONENT (Floating Top Banner Area)
+   Anchored just under top bar, max-width ~960px, centered, z-index: 100000.
+   Overlays page with ZERO layout shift. Stacks downward with 8px gap.
    ============================================================================ */
 .sap-toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  top: calc(var(--topbar-height, 60px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - (2 * var(--page-gutter, 32px)));
+  max-width: 960px;
   z-index: 100000;
   display: flex;
-  flex-direction: column-reverse;
-  gap: 10px;
-  max-width: 360px;
-  width: 100%;
+  flex-direction: column;
+  gap: 8px;
   pointer-events: none;
   box-sizing: border-box;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .sap-toast-container {
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    max-width: calc(100% - 32px);
-    width: auto;
+    top: calc(var(--topbar-height, 60px) + 8px);
+    left: 12px;
+    right: 12px;
+    transform: none;
+    width: calc(100% - 24px);
+    max-width: none;
   }
 }
 
 .sap-toast {
   pointer-events: auto;
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 12px 16px;
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+  border-left-width: 4px;
+  border-left-style: solid;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
   width: 100%;
-  animation: sap-toast-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  animation: sap-toast-slide-down 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-@keyframes sap-toast-slide-in {
+@keyframes sap-toast-slide-down {
   from {
-    transform: translateX(110%);
+    transform: translateY(-12px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
 
-/* Colors (Sentence case, no red anywhere) */
+@media (prefers-reduced-motion: reduce) {
+  .sap-toast {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Colors (Sentence case, strictly no red) */
 /* Warning / Validation / Error in Amber */
 .sap-toast-error,
 .sap-toast-warning {
   background-color: #FFFBEB; /* Amber-50 */
   border: 1px solid #FCD34D; /* Amber-300 */
+  border-left: 4px solid #F59E0B; /* Amber left accent bar */
   color: #78350F;            /* Amber-900 */
 }
 
@@ -6807,26 +6945,41 @@ input::-webkit-credentials-auto-fill-button {
   color: #B45309;            /* Amber-700 */
 }
 
-/* Success in Orange-50 with Orange-700 text */
+.sap-toast-error .sap-toast-title,
+.sap-toast-warning .sap-toast-title {
+  color: #78350F;
+}
+
+/* Success in Green */
 .sap-toast-success {
-  background-color: #FFF7ED; /* Orange-50 */
-  border: 1px solid #FDBA74; /* Orange-300 */
-  color: #C2410C;            /* Orange-700 */
+  background-color: #F0FDF4; /* Green-50 */
+  border: 1px solid #86EFAC; /* Green-300 */
+  border-left: 4px solid #16A34A; /* Green-600 left accent bar */
+  color: #14532D;            /* Green-900 */
 }
 
 .sap-toast-success .sap-toast-icon {
-  color: #EA580C;            /* Orange-600 */
+  color: #16A34A;            /* Green-600 */
 }
 
-/* Info in Slate/Navy on White */
+.sap-toast-success .sap-toast-title {
+  color: #14532D;
+}
+
+/* Info in Navy / Slate */
 .sap-toast-info {
-  background-color: #FFFFFF;
+  background-color: #FFFFFF; /* White */
   border: 1px solid #CBD5E1; /* Slate-300 */
+  border-left: 4px solid #0F2744; /* Navy left accent bar */
   color: #0F172A;            /* Slate-900 */
 }
 
 .sap-toast-info .sap-toast-icon {
-  color: #1E3A8A;            /* Navy / Slate-800 */
+  color: #0F2744;            /* Brand Navy #0f2744 */
+}
+
+.sap-toast-info .sap-toast-title {
+  color: #0F172A;
 }
 
 .sap-toast-icon-wrap {
@@ -6844,7 +6997,7 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-toast-title {
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.35;
   margin-bottom: 2px;
 }
@@ -6856,7 +7009,7 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-toast-list {
-  margin: 4px 0 0;
+  margin: 6px 0 2px;
   padding-left: 18px;
   font-size: 12px;
   line-height: 1.45;
@@ -6868,19 +7021,42 @@ input::-webkit-credentials-auto-fill-button {
   margin-bottom: 3px;
 }
 
+.sap-toast-hint {
+  font-size: 12px;
+  color: #92400E;
+  background-color: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
 .sap-toast-error-ref {
-  margin-top: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
   font-size: 11px;
-  font-family: monospace;
-  opacity: 0.85;
+  opacity: 0.9;
+}
+
+.sap-toast-copy-btn {
+  background: none;
+  border: none;
+  padding: 1px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
 }
 
 .sap-toast-close-btn {
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 2px 4px;
-  margin-left: 4px;
+  padding: 3px 5px;
+  margin-left: 6px;
   margin-top: -2px;
   margin-right: -4px;
   border-radius: 4px;
@@ -6890,9 +7066,37 @@ input::-webkit-credentials-auto-fill-button {
   align-items: center;
   justify-content: center;
   transition: opacity 0.15s ease, background 0.15s ease;
+  flex-shrink: 0;
 }
 
 .sap-toast-close-btn:hover {
   opacity: 1;
   background: rgba(0, 0, 0, 0.06);
+}
+
+.sap-toast-collapse-banner {
+  pointer-events: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.sap-toast-collapse-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sap-toast-collapse-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
 }
