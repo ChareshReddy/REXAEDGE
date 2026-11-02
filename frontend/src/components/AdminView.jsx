@@ -1596,8 +1596,7 @@ export default function AdminView({
 
             {/* Module Accordion List */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {MODULE_REGISTRY.map((mod) => {
-                const isAvailable = mod.status === MODULE_STATUS.AVAILABLE;
+              {MODULE_REGISTRY.filter((mod) => mod.status === MODULE_STATUS.AVAILABLE).map((mod) => {
                 const modApps = mod.apps || [];
                 const totalApps = modApps.length;
                 const currentPerms = grantFormData.permissions || [];
@@ -1605,57 +1604,6 @@ export default function AdminView({
                 const allChecked = totalApps > 0 && selectedModApps.length === totalApps;
                 const isIndeterminate = selectedModApps.length > 0 && selectedModApps.length < totalApps;
                 const isExpanded = Boolean(expandedModules[mod.key]);
-
-                if (!isAvailable) {
-                  // Coming Soon module: greyed out, "Coming soon" tag, not expandable, not selectable
-                  return (
-                    <div
-                      key={mod.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        borderRadius: 'var(--radius-md, 6px)',
-                        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                        background: 'var(--sap-surface-empty, #f8fafc)',
-                        opacity: 0.65,
-                        cursor: 'not-allowed',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <input
-                          type="checkbox"
-                          disabled
-                          checked={false}
-                          style={{ width: 16, height: 16, margin: 0, cursor: 'not-allowed' }}
-                          aria-label={`${mod.label} (Coming soon)`}
-                        />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-muted)' }}>
-                            {mod.label}
-                          </span>
-                          <span style={{ fontSize: 11.5, color: 'var(--sap-text-subtle, #94a3b8)', marginTop: 1 }}>
-                            {mod.desc}
-                          </span>
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: 10,
-                        background: '#e2e8f0',
-                        color: '#64748b',
-                        textTransform: 'none',
-                        flexShrink: 0
-                      }}>
-                        Coming soon
-                      </span>
-                    </div>
-                  );
-                }
 
                 // Available module: Tri-state checkbox, count, expand chevron, and sub-apps
                 return (
