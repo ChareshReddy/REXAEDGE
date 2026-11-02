@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, X } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser, warmupAuth } from '../services/api';
-import { useToast } from '../context/ToastContext';
+import { useToast, NotificationPlacementProvider } from '../context/ToastContext';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
 import sapSignInHero from '../assets/sap_signin_hero.jpg';
 
