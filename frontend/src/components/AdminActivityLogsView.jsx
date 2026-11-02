@@ -112,11 +112,20 @@ export default function AdminActivityLogsView({
   const [totalCount, setTotalCount] = useState(0);
 
   // Data & Request States
-  const [logs, setLogs] = useState([]);
+  const [allLogs, setAllLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isNotConfigured, setIsNotConfigured] = useState(false);
+
+  // Sliced / displayed logs: if the API returned all records without server slicing, slice client-side
+  const logs = useMemo(() => {
+    if (allLogs.length > pageSize) {
+      const startIndex = (page - 1) * pageSize;
+      return allLogs.slice(startIndex, startIndex + pageSize);
+    }
+    return allLogs;
+  }, [allLogs, page, pageSize]);
 
   // Detail Drawer State
   const [selectedLog, setSelectedLog] = useState(null);
@@ -136,6 +145,7 @@ export default function AdminActivityLogsView({
   const activeParams = useMemo(() => {
     const params = {
       page,
+      pageSize,
       limit: pageSize
     };
 
@@ -191,12 +201,14 @@ export default function AdminActivityLogsView({
 
       if (res?.notConfigured) {
         setIsNotConfigured(true);
-        setLogs([]);
+        setAllLogs([]);
         setTotalCount(0);
       } else {
         setIsNotConfigured(false);
-        setLogs(res?.data || []);
-        setTotalCount(res?.total || 0);
+        const incomingData = Array.isArray(res) ? res : (res?.data || []);
+        const incomingTotal = res?.count ?? res?.total ?? (typeof res?.totalCount === 'number' ? res.totalCount : incomingData.length);
+        setAllLogs(incomingData);
+        setTotalCount(incomingTotal);
       }
     } catch (err) {
       console.error('[AdminActivityLogsView] Failed to load logs:', err);
@@ -652,7 +664,7 @@ export default function AdminActivityLogsView({
         aria-label={`${activeSubTab === 'audit' ? 'Audit' : 'Error'} Logs Table`}
         style={{
           width: '100%',
-          overflowX: 'auto',
+          overflowX: 'hidden',
           overflowY: 'auto',
           height: 'calc(100vh - 350px)',
           minHeight: 400,
@@ -660,23 +672,32 @@ export default function AdminActivityLogsView({
           backgroundColor: '#ffffff',
           borderRadius: 8,
           border: '1px solid var(--color-border, #e2e8f0)',
-          position: 'relative'
+          position: 'relative',
+          boxSizing: 'border-box'
         }}
       >
         {activeSubTab === 'audit' ? (
           /* ============================================================
              AUDIT LOGS TABLE
              ============================================================ */
-          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', maxWidth: 1120, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+          <table
+            className="sap-table sap-admin-compact-table"
+            style={{
+              width: '100%',
+              tableLayout: 'fixed',
+              borderCollapse: 'collapse',
+              boxSizing: 'border-box'
+            }}
+          >
             <colgroup>
-              <col style={{ width: 160 }} />
-              <col style={{ width: 190 }} />
-              <col style={{ width: 130 }} />
-              <col style={{ width: 160 }} />
-              <col style={{ width: 130 }} />
-              <col style={{ width: 100 }} />
-              <col style={{ width: 85 }} />
-              <col style={{ width: 95 }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '8%' }} />
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
@@ -753,111 +774,147 @@ export default function AdminActivityLogsView({
                   </td>
                 </tr>
               ) : (
-                logs.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    style={{
-                      backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-                      borderBottom: '1px solid #f1f5f9',
-                      fontSize: 12
-                    }}
-                  >
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#334155' }}>
-                      {formatDateTime(item.created_at)}
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.user_email || '—'}>
-                      <span style={{ fontWeight: 500, color: '#1e293b' }}>
-                        {item.user_email || item.user_id || 'SYSTEM'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          backgroundColor: '#f1f5f9',
-                          color: '#0f172a',
-                          border: '1px solid #e2e8f0',
-                          fontFamily: 'var(--sap-font-mono, monospace)'
-                        }}
+                logs.map((item, idx) => {
+                  const formattedTime = formatDateTime(item.created_at);
+                  const userDisplay = item.user_email || item.user_id || 'SYSTEM';
+                  const actionDisplay = item.action || '—';
+                  const targetDisplay = item.target || '—';
+                  const serverDisplay = item.server_name || item.server_id || '—';
+                  const statusDisplay = item.status === 'success' ? 'Success' : (item.status || 'Failed');
+                  const durationDisplay = item.duration_ms !== null && item.duration_ms !== undefined ? `${item.duration_ms} ms` : '—';
+
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{
+                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 12
+                      }}
+                    >
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}
+                        title={formattedTime}
                       >
-                        {item.action || '—'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.target || ''}>
-                      {item.target || '—'}
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.server_name || item.server_id || '—'}
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
-                      {item.status === 'success' ? (
+                        {formattedTime}
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={userDisplay}
+                      >
+                        <span style={{ fontWeight: 500, color: '#1e293b' }}>
+                          {userDisplay}
+                        </span>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={actionDisplay}
+                      >
                         <span
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
+                            display: 'inline-block',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            verticalAlign: 'middle',
                             padding: '2px 8px',
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 600,
-                            backgroundColor: '#f0fdf4',
-                            color: '#15803d',
-                            border: '1px solid #bbf7d0'
+                            backgroundColor: '#f1f5f9',
+                            color: '#0f172a',
+                            border: '1px solid #e2e8f0',
+                            fontFamily: 'var(--sap-font-mono, monospace)'
                           }}
                         >
-                          <CheckCircle2 size={12} color="#15803d" />
-                          <span>Success</span>
+                          {actionDisplay}
                         </span>
-                      ) : (
-                        <span
-                          className="sap-badge-failed"
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={targetDisplay}
+                      >
+                        {targetDisplay}
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={serverDisplay}
+                      >
+                        {serverDisplay}
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        title={statusDisplay}
+                      >
+                        {item.status === 'success' ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              backgroundColor: '#f0fdf4',
+                              color: '#15803d',
+                              border: '1px solid #bbf7d0'
+                            }}
+                          >
+                            <CheckCircle2 size={12} color="#15803d" />
+                            <span>Success</span>
+                          </span>
+                        ) : (
+                          <span
+                            className="sap-badge-failed"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 600
+                            }}
+                          >
+                            <AlertCircle size={12} />
+                            <span>Failed</span>
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}
+                        title={durationDisplay}
+                      >
+                        {durationDisplay}
+                      </td>
+                      <td style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetail(item)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,
-                            padding: '2px 8px',
+                            padding: '4px 8px',
                             borderRadius: 4,
+                            border: '1px solid #d1d5db',
+                            backgroundColor: '#ffffff',
+                            cursor: 'pointer',
                             fontSize: 11,
-                            fontWeight: 600
+                            color: '#C2410C',
+                            margin: '0 auto'
                           }}
+                          title="View log details"
+                          aria-label="View log details"
                         >
-                          <AlertCircle size={12} />
-                          <span>Failed</span>
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#64748b' }}>
-                      {item.duration_ms !== null && item.duration_ms !== undefined ? `${item.duration_ms} ms` : '—'}
-                    </td>
-                    <td style={{ padding: '0 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(item)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '4px 8px',
-                          borderRadius: 4,
-                          border: '1px solid #d1d5db',
-                          backgroundColor: '#ffffff',
-                          cursor: 'pointer',
-                          fontSize: 11,
-                          color: '#C2410C',
-                          margin: '0 auto'
-                        }}
-                        title="View log details"
-                      >
-                        <Eye size={12} />
-                        <span>Detail</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                          <Eye size={12} />
+                          <span>Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -865,16 +922,24 @@ export default function AdminActivityLogsView({
           /* ============================================================
              ERROR LOGS TABLE
              ============================================================ */
-          <table className="sap-table sap-admin-compact-table" style={{ width: '100%', maxWidth: 1140, tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+          <table
+            className="sap-table sap-admin-compact-table"
+            style={{
+              width: '100%',
+              tableLayout: 'fixed',
+              borderCollapse: 'collapse',
+              boxSizing: 'border-box'
+            }}
+          >
             <colgroup>
-              <col style={{ width: 160 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 90 }} />
-              <col style={{ width: 170 }} />
-              <col style={{ width: 85 }} />
-              <col style={{ width: 240 }} />
-              <col style={{ width: 160 }} />
-              <col style={{ width: 95 }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '22%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '8%' }} />
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
@@ -951,99 +1016,132 @@ export default function AdminActivityLogsView({
                   </td>
                 </tr>
               ) : (
-                logs.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    style={{
-                      backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-                      borderBottom: '1px solid #f1f5f9',
-                      fontSize: 12
-                    }}
-                  >
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap', color: '#334155' }}>
-                      {formatDateTime(item.created_at)}
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <code style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
-                          {item.error_ref || '—'}
-                        </code>
-                        {item.error_ref && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyText(`ref_${item.id}`, item.error_ref)}
-                            style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#64748b' }}
-                            title="Copy error ref"
-                          >
-                            {copiedKey === `ref_${item.id}` ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          backgroundColor: item.source === 'sap' ? '#f5f3ff' : item.source === 'frontend' ? '#e0f2fe' : '#f8fafc',
-                          color: item.source === 'sap' ? '#6b21a8' : item.source === 'frontend' ? '#0369a1' : '#334155',
-                          border: '1px solid #e2e8f0'
-                        }}
+                logs.map((item, idx) => {
+                  const formattedTime = formatDateTime(item.created_at);
+                  const errorRefDisplay = item.error_ref || '—';
+                  const sourceDisplay = item.source || 'backend';
+                  const routeDisplay = item.route || '—';
+                  const statusDisplay = String(item.http_status || '500');
+                  const messageDisplay = item.message || '—';
+                  const userDisplay = item.user_email || '—';
+
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{
+                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
+                        borderBottom: '1px solid #f1f5f9',
+                        fontSize: 12
+                      }}
+                    >
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}
+                        title={formattedTime}
                       >
-                        {item.source || 'backend'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.route || ''}>
-                      <span style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontSize: 11 }}>{item.route || '—'}</span>
-                    </td>
-                    <td style={{ padding: '0 6px', whiteSpace: 'nowrap' }}>
-                      <span
-                        className="sap-badge-failed"
-                        style={{
-                          display: 'inline-block',
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600
-                        }}
+                        {formattedTime}
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        title={errorRefDisplay}
                       >
-                        {item.http_status || '500'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.message || ''}>
-                      <span style={{ color: '#1e293b' }}>{item.message || '—'}</span>
-                    </td>
-                    <td style={{ padding: '0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.user_email || '—'}
-                    </td>
-                    <td style={{ padding: '0 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDetail(item)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '4px 8px',
-                          borderRadius: 4,
-                          border: '1px solid #d1d5db',
-                          backgroundColor: '#ffffff',
-                          cursor: 'pointer',
-                          fontSize: 11,
-                          color: 'var(--color-amber-800, #b45309)',
-                          margin: '0 auto'
-                        }}
-                        title="View full error details"
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+                          <code style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
+                            {errorRefDisplay}
+                          </code>
+                          {item.error_ref && (
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(`ref_${item.id}`, item.error_ref)}
+                              style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+                              title="Copy error ref"
+                              aria-label="Copy error ref"
+                            >
+                              {copiedKey === `ref_${item.id}` ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        title={sourceDisplay}
                       >
-                        <Eye size={12} />
-                        <span>Detail</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            backgroundColor: item.source === 'sap' ? '#f5f3ff' : item.source === 'frontend' ? '#e0f2fe' : '#f8fafc',
+                            color: item.source === 'sap' ? '#6b21a8' : item.source === 'frontend' ? '#0369a1' : '#334155',
+                            border: '1px solid #e2e8f0'
+                          }}
+                        >
+                          {sourceDisplay}
+                        </span>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={routeDisplay}
+                      >
+                        <span style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontSize: 11 }}>{routeDisplay}</span>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        title={statusDisplay}
+                      >
+                        <span
+                          className="sap-badge-failed"
+                          style={{
+                            display: 'inline-block',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            fontSize: 11,
+                            fontWeight: 600
+                          }}
+                        >
+                          {statusDisplay}
+                        </span>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={messageDisplay}
+                      >
+                        <span style={{ color: '#1e293b' }}>{messageDisplay}</span>
+                      </td>
+                      <td
+                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={userDisplay}
+                      >
+                        {userDisplay}
+                      </td>
+                      <td style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetail(item)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            border: '1px solid #d1d5db',
+                            backgroundColor: '#ffffff',
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            color: 'var(--color-amber-800, #b45309)',
+                            margin: '0 auto'
+                          }}
+                          title="View full error details"
+                          aria-label="View full error details"
+                        >
+                          <Eye size={12} />
+                          <span>Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -1064,8 +1162,8 @@ export default function AdminActivityLogsView({
         }}
       >
         <div>
-          Showing <strong>{logs.length > 0 ? (page - 1) * pageSize + 1 : 0}</strong> to{' '}
-          <strong>{Math.min(page * pageSize, totalCount)}</strong> of <strong>{totalCount}</strong> entries
+          Showing <strong>{totalCount > 0 ? (page - 1) * pageSize + 1 : 0}</strong> to{' '}
+          <strong>{totalCount > 0 ? Math.min(page * pageSize, totalCount) : 0}</strong> of <strong>{totalCount}</strong> entries
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -1103,12 +1201,13 @@ export default function AdminActivityLogsView({
                 opacity: page <= 1 ? 0.5 : 1
               }}
               title="Previous page"
+              aria-label="Previous page"
             >
               <ChevronLeft size={14} />
             </button>
 
             <span>
-              Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+              Page <strong>{totalCount === 0 ? 1 : page}</strong> of <strong>{totalPages}</strong>
             </span>
 
             <button
@@ -1128,6 +1227,7 @@ export default function AdminActivityLogsView({
                 opacity: page >= totalPages ? 0.5 : 1
               }}
               title="Next page"
+              aria-label="Next page"
             >
               <ChevronRight size={14} />
             </button>
