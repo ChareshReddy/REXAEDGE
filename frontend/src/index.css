@@ -36,8 +36,8 @@
   --sap-destructive-text: #ffffff;
 
   /* Neutral & Interactive Surfaces */
-  --sap-surface-hover: #f7faff;
-  --sap-surface-active: #edf4fc;
+  --sap-surface-hover: #FFF7ED;
+  --sap-surface-active: #FFEDD5;
   --sap-surface-subtle: #faf8f8;
   --sap-surface-empty: #f8fafc;
 
@@ -1099,7 +1099,8 @@ input, select {
 }
 
 .sap-table tbody tr:hover {
-  background-color: #f1f6fc;
+  background-color: #FFF7ED;
+  color: #0f2744;
 }
 
 .sap-badge {
@@ -5463,33 +5464,37 @@ button.fiori-bc-link.sap-button:hover {
   color: #ffffff !important;
 }
 
-/* Delete uses a neutral slate tile/icon (not red, not orange) */
+/* Delete BOM Card matches other cards with orange icon tile */
 .fiori-op-icon-badge.danger,
 .fiori-op-icon-badge.destructive,
 button.fiori-op-card.danger .fiori-op-icon-badge,
-button.fiori-op-card.destructive .fiori-op-icon-badge {
-  background-color: #f1f5f9 !important;
-  border: 1px solid #e2e8f0 !important;
-  color: #475569 !important;
+button.fiori-op-card.destructive .fiori-op-icon-badge,
+button.fiori-op-card.fiori-op-card-destructive .fiori-op-icon-badge {
+  background-color: #FFEDD5 !important;
+  border: 1px solid #FED7AA !important;
+  color: #EA580C !important;
 }
 
 .fiori-op-icon-badge.danger svg,
 .fiori-op-icon-badge.destructive svg,
 button.fiori-op-card.danger .fiori-op-icon-badge svg,
-button.fiori-op-card.destructive .fiori-op-icon-badge svg {
-  stroke: #475569 !important;
-  color: #475569 !important;
+button.fiori-op-card.destructive .fiori-op-icon-badge svg,
+button.fiori-op-card.fiori-op-card-destructive .fiori-op-icon-badge svg {
+  stroke: #EA580C !important;
+  color: #EA580C !important;
 }
 
 button.fiori-op-card.danger:hover:not(.disabled) .fiori-op-icon-badge,
-button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge {
-  background-color: #334155 !important;
-  border-color: #334155 !important;
+button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge,
+button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-icon-badge {
+  background-color: #EA580C !important;
+  border-color: #EA580C !important;
   color: #ffffff !important;
 }
 
 button.fiori-op-card.danger:hover:not(.disabled) .fiori-op-icon-badge svg,
-button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
+button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg,
+button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   stroke: #ffffff !important;
   color: #ffffff !important;
 }
@@ -5545,12 +5550,13 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 }
 
 /* ============================================================================
-   FIORI OPERATIONS HUB CARDS (LEVEL 2)
+   FIORI OPERATIONS HUB CARDS (LEVEL 2 & LEVEL 3: COMPACT SIZE)
    ============================================================================ */
 .fiori-op-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
   gap: 16px;
+  justify-content: start;
   width: 100%;
 }
 
@@ -5559,8 +5565,13 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   border: 1px solid var(--sap-border, rgba(0, 0, 0, 0.08));
   border-radius: var(--radius-xl, 12px);
   box-shadow: var(--sap-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04));
-  min-height: 160px;
-  padding: 20px;
+  width: 100%;
+  min-width: 280px;
+  max-width: 320px;
+  height: 130px;
+  min-height: 120px;
+  max-height: 140px;
+  padding: 16px !important;
   text-align: left;
   font-family: inherit;
   color: var(--sap-text, #1e293b);
@@ -5568,16 +5579,16 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: flex-start;
   position: relative;
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
   user-select: none;
-  width: 100%;
   box-sizing: border-box;
 }
 
 .fiori-op-card:hover {
-  border-color: rgba(10, 110, 209, 0.3);
-  box-shadow: var(--sap-shadow-card-hover, 0 4px 12px rgba(15, 39, 68, 0.08), 0 2px 4px rgba(15, 39, 68, 0.04));
+  border-color: #FDBA74 !important; /* orange-300 */
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.12), 0 2px 4px rgba(234, 88, 12, 0.04) !important;
   transform: translateY(-2px);
   background: var(--sap-card-bg, #ffffff);
 }
@@ -5588,8 +5599,8 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 
 .fiori-op-card:focus-visible {
   outline: none;
-  border-color: #0a6ed1;
-  box-shadow: var(--sap-focus-ring);
+  border-color: #EA580C !important;
+  box-shadow: 0 0 0 3px rgba(253, 186, 116, 0.6) !important;
 }
 
 .fiori-op-card:disabled,
@@ -5601,23 +5612,32 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   transform: none;
 }
 
-/* Rounded Square Icon Badge at TOP of card */
+/* Rounded Square Icon Badge at TOP of card (40px compact) */
 .fiori-op-icon-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 14px;
-  flex-shrink: 0;
-  background: #ffd099 !important;
-  color: var(--sap-brand-navy, #0f2744);
-  border: 1px solid rgba(180, 83, 9, 0.2);
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 8px !important;
+  flex-shrink: 0 !important;
+  background-color: #FFEDD5 !important; /* orange-100 */
+  border: 1px solid #FED7AA !important; /* orange-200 */
+  color: #EA580C !important; /* orange-600 */
+  transition: all 150ms ease !important;
 }
 
-/* Destructive / Delete BOM Card: dark slate/navy icon badge - NEVER RED */
+.fiori-op-card:hover:not(.disabled) .fiori-op-icon-badge {
+  background-color: #EA580C !important;
+  border-color: #EA580C !important;
+  color: #ffffff !important;
+}
 
+.fiori-op-card:hover:not(.disabled) .fiori-op-icon-badge svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .fiori-tile:hover,
@@ -5627,22 +5647,22 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 }
 
 .fiori-op-title {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
-  color: var(--sap-text-dark, #1d2d3e);
-  margin-bottom: 5px;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+  color: #0f2744 !important;
+  margin-bottom: 4px !important;
 }
 
 .fiori-op-desc {
-  font-size: 12.5px;
-  color: var(--sap-text-muted, #6a6d70);
-  line-height: 1.35;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  font-size: 13px !important;
+  color: #64748b !important;
+  line-height: 1.35 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  width: 100% !important;
 }
 
 /* ============================================================================
@@ -5935,8 +5955,8 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 .sap-user-avatar-btn:hover,
 .sap-user-avatar-btn.active,
 .sap-user-avatar-btn:focus-visible {
-  background: rgba(15, 39, 68, 0.06);
-  border-color: rgba(15, 39, 68, 0.12);
+  background: #FFF7ED !important; /* orange-50 */
+  border-color: #FDBA74 !important; /* orange-300 */
   outline: none;
 }
 
@@ -5944,8 +5964,10 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1.5px solid var(--sap-brand-blue, #0a6ed1);
-  background: #ffffff;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: #FFF7ED;
   color: var(--sap-brand-navy, #0f2744);
   display: flex;
   align-items: center;
@@ -5960,7 +5982,7 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 .sap-user-avatar-circle.admin {
   background: var(--sap-brand-navy, #0f2744);
   color: #ffffff;
-  border-color: var(--sap-brand-navy, #0f2744);
+  border: none !important;
 }
 
 .sap-user-avatar-name {
@@ -6053,7 +6075,7 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 
 .sap-user-menu-item:hover,
 .sap-user-menu-item:focus-visible {
-  background: #f1f5f9 !important;
+  background: #FFF7ED !important; /* orange-50 */
   color: var(--sap-brand-navy, #0f2744);
   outline: none;
 }
@@ -6068,7 +6090,7 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
   white-space: nowrap;
 }
 
-/* Sign out button: neutral destructive style (dark slate/navy with hover - NEVER RED) */
+/* Sign out button: orange-50 hover background */
 .sap-user-menu-danger,
 .sap-user-menu-signout {
   color: #334155;
@@ -6079,13 +6101,13 @@ button.fiori-op-card.destructive:hover:not(.disabled) .fiori-op-icon-badge svg {
 .sap-user-menu-danger:focus-visible,
 .sap-user-menu-signout:hover,
 .sap-user-menu-signout:focus-visible {
-  background: #1e293b !important;
-  color: #ffffff !important;
+  background: #FFF7ED !important;
+  color: #C2410C !important;
 }
 
 .sap-user-menu-danger:hover .sap-user-menu-icon,
 .sap-user-menu-signout:hover .sap-user-menu-icon {
-  color: #ffffff;
+  color: #EA580C;
 }
 
 .sap-user-menu-divider {
@@ -6275,34 +6297,49 @@ input::-webkit-credentials-auto-fill-button {
 .sap-f4-modal-dialog {
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.36), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border: 1px solid #FDBA74 !important;
+  box-shadow: 0 16px 36px rgba(234, 88, 12, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08) !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: 80vh;
+  max-height: 84vh;
   box-sizing: border-box;
+  width: fit-content;
+  min-width: min(560px, 92vw);
+  max-width: 92vw;
+}
+
+.sap-f4-modal-dialog.bom-usage {
+  width: fit-content;
+  min-width: min(560px, 92vw);
+  max-width: 92vw;
 }
 
 .sap-f4-modal-dialog.material {
-  width: min(640px, 92vw);
-  max-width: 660px;
+  width: fit-content;
+  min-width: min(560px, 92vw);
+  max-width: 92vw;
 }
 
 .sap-f4-modal-dialog.plant {
-  width: min(560px, 92vw);
-  max-width: 580px;
+  width: fit-content;
+  min-width: min(560px, 92vw);
+  max-width: 92vw;
 }
 
 .sap-f4-modal-dialog.storage-location {
-  width: min(540px, 92vw);
-  max-width: 550px;
+  width: fit-content;
+  min-width: min(560px, 92vw);
+  max-width: 92vw;
 }
 
 .sap-f4-header {
   padding: 10px 18px;
-  background: var(--sap-surface-header, #1e293b);
-  color: #ffffff;
+  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important;
+  color: #ffffff !important;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-bottom: 1px solid #C2410C !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6312,12 +6349,79 @@ input::-webkit-credentials-auto-fill-button {
   touch-action: none;
 }
 
+.sap-f4-header h3 {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.sap-f4-header-badge {
+  background: #ffffff !important;
+  color: #EA580C !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  letter-spacing: 0.5px !important;
+  line-height: 1.4 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
 .sap-f4-header:active {
   cursor: grabbing;
 }
 
 .sap-f4-header-close {
   cursor: pointer;
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 6px;
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.sap-f4-header-close:hover {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #C2410C !important;
+}
+
+.sap-f4-header-close:hover svg {
+  stroke: #C2410C !important;
+  color: #C2410C !important;
+}
+
+.sap-f4-header-close:focus-visible {
+  outline: 2px solid #ffffff !important;
+  outline-offset: 2px !important;
+}
+
+.sap-f4-header-close:active {
+  background-color: #FFEDD5 !important;
+  border-color: #FFEDD5 !important;
+  color: #C2410C !important;
+}
+
+.sap-f4-header-close:active svg {
+  stroke: #C2410C !important;
+  color: #C2410C !important;
+}
+
+.sap-f4-header-close svg {
+  stroke: #ffffff !important;
+  color: #ffffff !important;
 }
 
 .sap-f4-search-area {
@@ -6336,10 +6440,56 @@ input::-webkit-credentials-auto-fill-button {
   align-items: center;
 }
 
+.sap-f4-search-row button[type="submit"],
+.sap-f4-search-area button[type="submit"],
+.sap-f4-search-btn {
+  background-color: #EA580C !important;
+  border-color: #EA580C !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.sap-f4-search-row button[type="submit"] svg,
+.sap-f4-search-area button[type="submit"] svg,
+.sap-f4-search-btn svg,
+.sap-f4-search-row button[type="submit"] span,
+.sap-f4-search-area button[type="submit"] span,
+.sap-f4-search-btn span {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.sap-f4-search-row button[type="submit"]:hover:not(:disabled),
+.sap-f4-search-area button[type="submit"]:hover:not(:disabled),
+.sap-f4-search-btn:hover:not(:disabled) {
+  background-color: #C2410C !important;
+  border-color: #C2410C !important;
+  color: #ffffff !important;
+}
+
+.sap-f4-search-row button[type="submit"]:focus-visible,
+.sap-f4-search-area button[type="submit"]:focus-visible,
+.sap-f4-search-btn:focus-visible {
+  outline: 2px solid #EA580C !important;
+  outline-offset: 2px !important;
+}
+
+.sap-f4-search-row button[type="submit"]:active:not(:disabled),
+.sap-f4-search-area button[type="submit"]:active:not(:disabled),
+.sap-f4-search-btn:active:not(:disabled) {
+  background-color: #9A3412 !important;
+  border-color: #9A3412 !important;
+  color: #ffffff !important;
+}
+
 .sap-f4-table-container {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   min-height: 220px;
   background: #ffffff;
   position: relative;
@@ -6348,7 +6498,7 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-f4-table {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto !important;
   border-collapse: collapse;
   font-size: 12.5px;
   text-align: left;
@@ -6357,15 +6507,27 @@ input::-webkit-credentials-auto-fill-button {
 .sap-f4-table thead th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: #FFF7ED !important;
   z-index: 2;
-  box-shadow: 0 1px 0 #e2e8f0;
-  padding: 8px 8px;
+  box-shadow: 0 1px 0 #FFEDD5;
+  border-bottom: 1px solid #FFEDD5 !important;
+  padding: 8px 10px;
   font-weight: 600;
-  color: #475569;
+  color: #0f2744 !important;
   white-space: nowrap;
   user-select: none;
   box-sizing: border-box;
+}
+
+/* Sticky first/key column in header */
+.sap-f4-table thead th:first-child,
+.sap-f4-table thead th.sap-f4-sticky-col {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  background-color: #FFF7ED !important;
+  box-shadow: 1px 0 0 #FFEDD5, 0 1px 0 #FFEDD5;
 }
 
 .sap-f4-table tbody tr {
@@ -6380,29 +6542,71 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-table tbody tr:hover {
-  background-color: #f1f5f9;
+  background-color: #FFF7ED !important;
+  color: #0f2744 !important;
 }
 
 .sap-f4-table tbody tr.selected {
-  background-color: #e0f2fe !important;
-  color: #0369a1;
-  box-shadow: inset 3px 0 0 #0284c7;
+  background-color: #FFEDD5 !important;
+  color: #C2410C !important;
+  box-shadow: inset 3px 0 0 #EA580C !important;
+}
+
+.sap-f4-table tbody tr.selected td {
+  color: #C2410C !important;
+}
+
+/* Sticky first/key column in body */
+.sap-f4-table tbody tr td:first-child,
+.sap-f4-table tbody tr .sap-f4-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background-color: #ffffff;
+  box-shadow: 1px 0 0 #f1f5f9;
+}
+
+.sap-f4-table tbody tr:nth-child(even) td:first-child,
+.sap-f4-table tbody tr:nth-child(even) .sap-f4-sticky-col {
+  background-color: #fafbfc;
+}
+
+.sap-f4-table tbody tr:hover td:first-child,
+.sap-f4-table tbody tr:hover .sap-f4-sticky-col {
+  background-color: #FFF7ED !important;
+  box-shadow: 1px 0 0 #FFEDD5;
+}
+
+.sap-f4-table tbody tr.selected td:first-child,
+.sap-f4-table tbody tr.selected .sap-f4-sticky-col {
+  background-color: #FFEDD5 !important;
+  color: #C2410C !important;
+  box-shadow: inset 3px 0 0 #EA580C, 1px 0 0 #FDBA74 !important;
 }
 
 .sap-f4-table td {
-  padding: 6px 8px;
+  padding: 6px 10px;
   height: 40px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: middle;
   box-sizing: border-box;
 }
 
+/* Last text column: wrap text if needed so it is never clipped */
+.sap-f4-table td:last-child,
+.sap-f4-table td.sap-f4-col-text {
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  text-overflow: clip;
+  min-width: 280px;
+  line-height: 1.4;
+}
+
 .sap-f4-footer {
   padding: 10px 20px;
-  background: var(--sap-surface-subtle, #f8fafc);
-  border-top: 1px solid var(--sap-border-subtle, #e2e8f0);
+  background: #FFF7ED !important;
+  border-top: 1px solid #FFEDD5 !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6440,17 +6644,17 @@ input::-webkit-credentials-auto-fill-button {
   max-width: 620px;
   background: #ffffff;
   border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid #FDBA74 !important;
   overflow: visible !important;
-  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.36), 0 4px 16px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 16px 36px rgba(234, 88, 12, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08) !important;
   position: relative;
 }
 
 .sap-restrict-tab-container {
   display: flex;
   align-items: stretch;
-  background: #f1f5f9;
-  border-bottom: 1px solid var(--sap-border-subtle, #e2e8f0);
+  background: #FFF7ED;
+  border-bottom: 1px solid #FFEDD5;
   height: 38px;
   overflow: visible;
   position: relative;
@@ -6474,12 +6678,12 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-tab-btn {
   padding: 0 14px;
-  background: #e2e8f0;
-  color: var(--sap-text-secondary, #475569);
+  background: #FFF7ED;
+  color: #0f2744;
   font-size: 12.5px;
   font-weight: 500;
   border: none;
-  border-right: 1px solid #cbd5e1;
+  border-right: 1px solid #FFEDD5;
   white-space: nowrap;
   cursor: pointer;
   display: inline-flex;
@@ -6489,22 +6693,22 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-restrict-tab-btn:hover {
-  background: #f8fafc;
-  color: var(--sap-text-primary, #1e293b);
+  background: #FFEDD5 !important;
+  color: #C2410C !important;
 }
 
 .sap-restrict-tab-btn.active {
-  background: #ffffff;
-  color: var(--sap-primary, #0a6ed1);
-  font-weight: 600;
-  box-shadow: inset 0 2px 0 var(--sap-primary, #0a6ed1);
+  background: #ffffff !important;
+  color: #EA580C !important;
+  font-weight: 600 !important;
+  box-shadow: inset 0 2px 0 #EA580C !important;
 }
 
 .sap-restrict-tab-controls {
   display: flex;
   align-items: center;
-  background: #e2e8f0;
-  border-left: 1px solid #cbd5e1;
+  background: #FFF7ED;
+  border-left: 1px solid #FFEDD5;
   padding: 0 4px;
   gap: 2px;
   flex-shrink: 0;
@@ -6522,16 +6726,16 @@ input::-webkit-credentials-auto-fill-button {
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
-  color: #475569;
+  color: #0f2744;
   cursor: pointer;
   transition: all 0.12s ease;
 }
 
 .sap-restrict-arrow-btn:hover,
 .sap-restrict-arrow-btn.active {
-  background: #ffffff;
-  color: var(--sap-primary, #0a6ed1);
-  border-color: #cbd5e1;
+  background: #FFF7ED !important;
+  color: #EA580C !important;
+  border-color: #FDBA74 !important;
 }
 
 .sap-restrict-options-dropdown {
@@ -6541,9 +6745,9 @@ input::-webkit-credentials-auto-fill-button {
   width: 400px;
   max-width: min(420px, 90vw);
   background: #ffffff;
-  border: 1px solid var(--sap-border-subtle, #cbd5e1);
+  border: 1px solid #FDBA74 !important;
   border-radius: 6px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 16px 36px rgba(234, 88, 12, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
   z-index: 9999;
   overflow: hidden;
   animation: sapModalFadeIn 0.12s ease;
@@ -6551,12 +6755,12 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-dropdown-header {
   padding: 8px 14px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: #FFF7ED;
+  border-bottom: 1px solid #FFEDD5;
   font-size: 11.5px;
   font-weight: 700;
   text-transform: none;
-  color: #64748b;
+  color: #C2410C;
   letter-spacing: normal;
 }
 
@@ -6584,13 +6788,14 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-dropdown-item:hover,
 .sap-restrict-dropdown-item.focused {
-  background: #f1f5f9;
+  background: #FFF7ED !important;
+  color: #0f2744 !important;
 }
 
 .sap-restrict-dropdown-item.selected {
-  background: #e0f2fe;
-  color: #0369a1;
-  font-weight: 600;
+  background: #FFEDD5 !important;
+  color: #C2410C !important;
+  font-weight: 600 !important;
 }
 
 .sap-restrict-dropdown-item.unavailable {
@@ -6600,12 +6805,12 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-dropdown-item.unavailable:hover,
 .sap-restrict-dropdown-item.unavailable.focused {
-  background: #f8fafc;
+  background: #FFF7ED !important;
 }
 
 .sap-restrict-dot {
   font-size: 11px;
-  color: #0284c7;
+  color: #EA580C !important;
   flex-shrink: 0;
   width: 14px;
   text-align: center;
@@ -6620,8 +6825,8 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-opt-unavailable-tag {
   font-size: 10px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: #FFF7ED;
+  color: #C2410C;
   padding: 1px 6px;
   border-radius: 4px;
   flex-shrink: 0;
@@ -6681,7 +6886,7 @@ input::-webkit-credentials-auto-fill-button {
   height: 28px;
   padding: 0 8px;
   font-size: 12.5px;
-  border: 1px solid var(--sap-border-subtle, #cbd5e1);
+  border: 1px solid #FED7AA;
   border-radius: 4px;
   box-sizing: border-box;
   font-family: inherit;
@@ -6690,8 +6895,8 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-input:focus {
   outline: none;
-  border-color: var(--sap-primary, #0a6ed1);
-  box-shadow: 0 0 0 2px rgba(10, 110, 209, 0.18);
+  border-color: #FDBA74 !important;
+  box-shadow: 0 0 0 2px rgba(253, 186, 116, 0.6) !important;
 }
 
 .sap-restrict-unavailable-panel {

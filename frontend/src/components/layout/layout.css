@@ -268,25 +268,28 @@
   filter: grayscale(0.2);
 }
 
-/* BOM Operations Hub Grid (5 cards 1 row on wide screens) */
+/* BOM Operations Hub Grid (compact responsive grid, left-aligned) */
 .fiori-op-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
-  gap: 20px !important;
-  width: 100%;
-}
-
-@media (min-width: 1200px) {
-  .fiori-op-grid:has(> :nth-child(5)) {
-    grid-template-columns: repeat(5, 1fr) !important;
-  }
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px)) !important;
+  gap: 16px !important;
+  justify-content: start !important;
+  width: 100% !important;
 }
 
 .fiori-op-card {
-  height: 100%;
-  min-height: 175px;
-  display: flex;
-  flex-direction: column;
+  width: 100% !important;
+  min-width: 280px !important;
+  max-width: 320px !important;
+  height: 130px !important;
+  min-height: 120px !important;
+  max-height: 140px !important;
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  box-sizing: border-box !important;
 }
 
 /* Unconstrained form containers inside PageContainer */

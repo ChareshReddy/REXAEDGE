@@ -61,14 +61,34 @@ export function FioriOpCard({
     <button
       key={id}
       type="button"
-      className={`fiori-op-card ${isDestructive ? 'destructive danger' : ''} ${disabled ? 'disabled' : ''}`}
+      className={`fiori-op-card ${isDestructive ? 'fiori-op-card-destructive' : ''} ${disabled ? 'disabled' : ''}`}
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
     >
-      <div className={`fiori-op-icon-badge ${isDestructive ? 'destructive danger' : ''}`}>
-        <Icon size={22} strokeWidth={1.8} />
+      <div className="fiori-op-icon-badge">
+        <Icon size={20} strokeWidth={1.8} />
       </div>
-      <div className="fiori-op-title">{title}</div>
+      <div className="fiori-op-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
+        <div className="fiori-op-title" style={{ margin: 0 }}>{title}</div>
+        {isDestructive && (
+          <span
+            className="fiori-destructive-badge"
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#B45309',
+              backgroundColor: '#FEF3C7',
+              border: '1px solid #FDE68A',
+              borderRadius: '9999px',
+              padding: '1px 7px',
+              marginLeft: '8px',
+              flexShrink: 0
+            }}
+          >
+            Destructive
+          </span>
+        )}
+      </div>
       <div className="fiori-op-desc">{desc}</div>
     </button>
   );

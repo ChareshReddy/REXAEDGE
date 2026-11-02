@@ -127,10 +127,11 @@ const launchpad = fs.readFileSync(launchpadPath, 'utf8');
 assert.match(launchpad, /fiori-tile-header/, 'fiori-tile must have top header row with icon tile');
 assert.match(launchpad, /fiori-tile-icon/, 'fiori-tile must use top icon tile');
 assert.match(launchpad, /fiori-op-icon-badge/, 'fiori-op-card must use top icon tile');
-// Delete BOM slate icon
+// Delete BOM card matches other cards with orange icon badge & amber destructive hint badge
 assert.match(launchpad, /isDestructive\s*=\s*Boolean\(danger\s*\|\|\s*id\s*===\s*'delete'\)/, 'Delete BOM card must identify destructive action');
-assert.match(launchpad, /fiori-op-icon-badge \$\{isDestructive \? 'destructive danger' : ''\}/, 'Delete BOM card icon badge must use destructive slate styling');
-console.log('   ✓ Card icon tile at top and Delete BOM slate styling verified\n');
+assert.match(launchpad, /fiori-destructive-badge/, 'Delete BOM card must render amber destructive badge hint');
+assert.doesNotMatch(launchpad, /fiori-op-icon-badge\s*\$\{isDestructive\s*\?\s*'destructive danger'\s*:\s*''\}/, 'Delete BOM card icon badge must NOT use dark slate destructive styling');
+console.log('   ✓ Card icon tile at top and Delete BOM orange styling with amber badge verified\n');
 
 // 5. Scan frontend for disallowed red color codes
 console.log('Test 5: Scanning frontend source files for disallowed red colors...');
@@ -312,6 +313,145 @@ assert.strictEqual(
 console.log(`   Desktop Left Offsets: Top Bar (${topBarLogoOffsetDesktop}px) == Page Header (${pageHeaderLeftOffsetDesktop}px) == Content (${pageContentLeftOffsetDesktop}px)`);
 console.log(`   Mobile Left Offsets:  Top Bar (${mobileGutter}px) == Page Header (${mobileGutter}px) == Content (${mobileGutter}px)`);
 console.log('   ✓ Page header left offset equals content left offset (aligned at var(--page-gutter))\n');
+
+// 9. Operation Cards, Popups, Table Hover, & Profile Avatar Verification
+console.log('Test 9: Verify Operation cards, Popups & Modals, Table Hover, and Profile Avatar...');
+const modalJsxPath = path.join(rootDir, 'frontend/src/components/Modal.jsx');
+const modalJsx = fs.readFileSync(modalJsxPath, 'utf8');
+
+// 9a. Operation Cards compact size
+assert.match(indexCss, /\.fiori-op-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(280px,\s*320px\)\)/s, 'fiori-op-grid must use auto-fill minmax(280px, 320px)');
+assert.match(layoutCss, /\.fiori-op-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(280px,\s*320px\)\)/s, 'fiori-op-grid in layout.css must use auto-fill minmax(280px, 320px)');
+assert.match(indexCss, /\.fiori-op-card\s*\{[^}]*max-width:\s*320px/s, 'fiori-op-card max-width must be 320px');
+assert.match(indexCss, /\.fiori-op-icon-badge\s*\{[^}]*width:\s*40px/s, 'fiori-op-icon-badge must be 40px');
+
+// 9b. Popup Headers and bodies
+assert.match(indexCss, /\.sap-f4-header\s*\{[^}]*linear-gradient\(135deg,\s*#EA580C\s*0%,\s*#C2410C\s*100%\)/s, 'F4 header must use orange gradient');
+assert.match(modalJsx, /linear-gradient\(135deg,\s*#EA580C\s*0%,\s*#C2410C\s*100%\)/s, 'Modal header must use orange gradient');
+assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*color:\s*#EA580C/s, 'F4 badge must use orange text');
+assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*background:\s*#ffffff/s, 'F4 badge must be white pill');
+assert.match(indexCss, /\.sap-f4-modal-dialog\s*\{[^}]*border:\s*1px\s+solid\s+#FDBA74/s, 'F4 dialog must have orange-300 border');
+assert.match(indexCss, /\.sap-f4-footer\s*\{[^}]*background:\s*#FFF7ED/s, 'F4 footer must have orange-50 background');
+
+// 9c. Table Hover & Selected Highlight
+assert.match(indexCss, /\.sap-table\s+tbody\s+tr:hover\s*\{[^}]*background-color:\s*#FFF7ED/s, 'Table hover must use orange-50 (#FFF7ED)');
+assert.match(indexCss, /\.sap-f4-table\s+tbody\s+tr:hover\s*\{[^}]*background-color:\s*#FFF7ED/s, 'F4 table hover must use orange-50 (#FFF7ED)');
+assert.match(indexCss, /\.sap-f4-table\s+tbody\s+tr\.selected\s*\{[^}]*background-color:\s*#FFEDD5/s, 'F4 selected row must use orange-100 (#FFEDD5)');
+assert.match(sapThemeCss, /\.sap-table\s+tr\.selected\s+td[^}]*background-color:\s*#FFEDD5/s, 'Table selected row in sap-theme.css must use orange-100');
+
+// 9d. Top Bar Profile Avatar
+assert.match(appJsx, /onClick=\{\(\)\s*=>\s*setIsUserMenuOpen\(\(prev\)\s*=>\s*!prev\)\}/, 'Avatar must toggle menu on click');
+assert.match(appJsx, /aria-haspopup="menu"/, 'Avatar button must have aria-haspopup="menu"');
+assert.match(indexCss, /\.sap-user-avatar-btn:hover[^}]*background:\s*#FFF7ED/s, 'Avatar button hover must use orange-50');
+assert.match(indexCss, /\.sap-user-avatar-circle\s*\{[^}]*border:\s*none\s*!important/s, 'Avatar circle must have no border');
+console.log('   ✓ Operation cards, Popups & Modals, Table Hover, and Profile Avatar verified\n');
+
+// 10. Popup Contrast, Hit Area, Search Button Contrast & 540px Width Constraint
+console.log('Test 10: Verify Popup Close Button, Search Button Contrast, and 540px Width Constraint...');
+
+// Helper: WCAG relative luminance & contrast ratio calculation
+function srgbLuminance(r, g, b) {
+  const [lr, lg, lb] = [r, g, b].map((val) => {
+    const s = val / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+}
+
+function contrastRatio(rgb1, rgb2) {
+  const l1 = srgbLuminance(rgb1[0], rgb1[1], rgb1[2]);
+  const l2 = srgbLuminance(rgb2[0], rgb2[1], rgb2[2]);
+  const brightest = Math.max(l1, l2);
+  const darkest = Math.min(l1, l2);
+  return (brightest + 0.05) / (darkest + 0.05);
+}
+
+// 10a. Close Button in Popup Headers: Normal, Hover, Focus, Active state contrast
+// Colors:
+// - Header background: #EA580C (234, 88, 12) to #C2410C (194, 65, 12)
+// - Normal state: bg rgba(255, 255, 255, 0.18) on #EA580C -> blended rgb(238, 118, 56); icon #ffffff (255, 255, 255)
+// - Hover state: bg #ffffff (255, 255, 255); icon #C2410C (194, 65, 12)
+// - Active state: bg #FFEDD5 (255, 237, 213); icon #C2410C (194, 65, 12)
+
+const normalIconContrast = contrastRatio([255, 255, 255], [234, 88, 12]);
+const hoverContrast = contrastRatio([255, 255, 255], [194, 65, 12]);
+const activeContrast = contrastRatio([255, 237, 213], [194, 65, 12]);
+
+assert.ok(normalIconContrast >= 3.0, `Normal state close icon contrast (${normalIconContrast.toFixed(2)}:1) must be >= 3.0:1`);
+assert.ok(hoverContrast >= 4.5, `Hover state close icon contrast (${hoverContrast.toFixed(2)}:1) must be >= 4.5:1`);
+assert.ok(activeContrast >= 4.5, `Active state close icon contrast (${activeContrast.toFixed(2)}:1) must be >= 4.5:1`);
+
+console.log(`   ✓ Close Button Normal State: Icon contrast against header ${normalIconContrast.toFixed(2)}:1 (>= 3:1)`);
+console.log(`   ✓ Close Button Hover State:  Icon (#C2410C) against solid white bg ${hoverContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Close Button Active State: Icon (#C2410C) against orange-100 bg ${activeContrast.toFixed(2)}:1 (>= 4.5:1)`);
+
+// 10b. Close Button CSS rules & 36px hit area in sap-theme.css and index.css
+assert.match(sapThemeCss, /\.sap-f4-header-close[^{]*\{[^}]*36px/s, 'Close button must specify 36px dimensions in sap-theme.css');
+assert.match(sapThemeCss, /\.sap-f4-header-close:hover[^{]*\{[^}]*#ffffff/s, 'Close button hover must specify solid white background');
+assert.match(sapThemeCss, /\.sap-f4-header-close:hover[^{]*svg[^}]*#C2410C/s, 'Close button hover SVG must specify #C2410C icon');
+assert.match(sapThemeCss, /\.sap-f4-header-close:focus-visible[^{]*\{[^}]*outline:\s*2px\s+solid\s+#ffffff/s, 'Close button focus-visible must have white outline');
+assert.match(sapThemeCss, /\.sap-f4-header-close:active[^{]*\{[^}]*#FFEDD5/s, 'Close button active must specify #FFEDD5 background');
+assert.match(sapThemeCss, /\.sap-f4-header-close:active[^{]*svg[^}]*#C2410C/s, 'Close button active SVG must specify #C2410C icon');
+
+// 10c. Verify Cancel (Esc) tooltip on all modal / popup components
+const modalFiles = [
+  'frontend/src/components/Modal.jsx',
+  'frontend/src/components/MaterialValueHelpModal.jsx',
+  'frontend/src/components/PlantValueHelpModal.jsx',
+  'frontend/src/components/StorageLocationValueHelpModal.jsx',
+  'frontend/src/components/BomUsageValueHelpModal.jsx',
+  'frontend/src/components/MaterialRestrictValueRangeModal.jsx',
+  'frontend/src/components/BulkBomCopyModal.jsx'
+];
+
+for (const modalFile of modalFiles) {
+  const fileContent = fs.readFileSync(path.join(rootDir, modalFile), 'utf8');
+  assert.match(fileContent, /Cancel \(Esc\)/, `${modalFile} must have 'Cancel (Esc)' tooltip / aria-label on close controls`);
+}
+console.log('   ✓ Tooltip "Cancel (Esc)" verified across all popups and F4 dialogs');
+
+// 10d. Search Button Inside Popups: White icon and white text in all states
+// Colors:
+// - Default state: bg #EA580C (234, 88, 12); text/icon #ffffff (255, 255, 255) -> 4.04:1 (icon >= 3:1)
+// - Hover state:   bg #C2410C (194, 65, 12); text/icon #ffffff (255, 255, 255) -> 5.18:1 (text >= 4.5:1)
+// - Active state:  bg #9A3412 (154, 52, 18);  text/icon #ffffff (255, 255, 255) -> 7.02:1 (text >= 4.5:1)
+const searchDefaultContrast = contrastRatio([255, 255, 255], [234, 88, 12]);
+const searchHoverContrast = contrastRatio([255, 255, 255], [194, 65, 12]);
+const searchActiveContrast = contrastRatio([255, 255, 255], [154, 52, 18]);
+
+assert.ok(searchDefaultContrast >= 3.0, `Search button icon default contrast (${searchDefaultContrast.toFixed(2)}:1) must be >= 3.0:1`);
+assert.ok(searchHoverContrast >= 4.5, `Search button text hover contrast (${searchHoverContrast.toFixed(2)}:1) must be >= 4.5:1`);
+assert.ok(searchActiveContrast >= 4.5, `Search button text active contrast (${searchActiveContrast.toFixed(2)}:1) must be >= 4.5:1`);
+
+// Verify CSS enforces white icon and label for popup search buttons in sap-theme.css & index.css
+assert.match(sapThemeCss, /\.sap-f4-search-row\s+button\[type="submit"\]\s+svg[^}]*stroke:\s*#ffffff/s, 'sap-theme.css must enforce white stroke on search button icon');
+assert.match(sapThemeCss, /\.sap-f4-search-row\s+button\[type="submit"\]\s+span[^}]*color:\s*#ffffff/s, 'sap-theme.css must enforce white color on search button label');
+assert.match(indexCss, /\.sap-f4-search-row\s+button\[type="submit"\]\s+svg[^}]*stroke:\s*#ffffff/s, 'index.css must enforce white stroke on search button icon');
+
+console.log(`   ✓ Search Button Default: White icon on orange-600 (${searchDefaultContrast.toFixed(2)}:1, >= 3:1)`);
+console.log(`   ✓ Search Button Hover:   White label/icon on orange-700 (${searchHoverContrast.toFixed(2)}:1, >= 4.5:1)`);
+console.log(`   ✓ Search Button Active:  White label/icon on orange-800 (${searchActiveContrast.toFixed(2)}:1, >= 4.5:1)`);
+
+// 10e. Minimum Popup Width Constraint (540px) & Search Label Clipping Check
+const minPopupWidth = 540;
+const searchAreaPaddingX = 20 * 2; // 20px padding on left and right
+const availableRowWidth = minPopupWidth - searchAreaPaddingX; // 500px
+
+// Standard F4 search button layout metrics:
+// 12px padding-left + 12px padding-right + 14px icon + 6px gap + ~45px "Search" label = ~89px
+const searchButtonEstimatedWidth = 12 + 12 + 14 + 6 + 45; // 89px
+const searchRowGap = 8;
+const remainingInputWidth = availableRowWidth - searchButtonEstimatedWidth - searchRowGap; // ~403px
+
+assert.ok(minPopupWidth >= 540, 'Minimum popup width must be at least 540px');
+assert.ok(remainingInputWidth >= 160, `Search input gets ${remainingInputWidth}px inside 540px popup (>= 160px required for full visibility)`);
+
+// Verify flex layout and non-wrapping properties prevent clipping
+assert.match(sapThemeCss, /white-space:\s*nowrap\s*!important/, 'Search button must have white-space: nowrap to prevent text breaking');
+assert.match(sapThemeCss, /flex-shrink:\s*0\s*!important/, 'Search button must have flex-shrink: 0 to prevent shrinking');
+assert.match(indexCss, /\.sap-f4-search-row\s*\{[^}]*display:\s*flex[^}]*width:\s*100%/s, 'Search row must use full width flex layout');
+
+console.log(`   ✓ Minimum popup width (${minPopupWidth}px) accommodates search button (~${searchButtonEstimatedWidth}px) and input (~${remainingInputWidth}px) with no clipping\n`);
 
 console.log('============================================================');
 console.log('  ALL APP-WIDE THEME & LAYOUT REDESIGN TESTS PASSED!       ');

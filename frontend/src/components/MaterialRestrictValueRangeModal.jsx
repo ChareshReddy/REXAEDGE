@@ -888,10 +888,18 @@ export default function MaterialRestrictValueRangeModal({
           <button
             type="button"
             onClick={onClose}
-            className="sap-f4-header-close"
+            className="sap-f4-header-close sap-modal-close-btn"
             title="Cancel (Esc)"
-            aria-label="Cancel and close"
+            aria-label="Cancel (Esc)"
             data-no-drag="true"
+            style={{
+              width: 36,
+              height: 36,
+              minWidth: 36,
+              minHeight: 36,
+              padding: 0,
+              cursor: 'pointer'
+            }}
           >
             <X size={16} />
           </button>
@@ -1140,7 +1148,7 @@ export default function MaterialRestrictValueRangeModal({
               {isSearching ? (
                 <Loader2 size={14} className="sap-spin" style={{ marginRight: 6 }} />
               ) : (
-                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#16a34a' }} />
+                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#ffffff' }} />
               )}
               Continue
             </button>

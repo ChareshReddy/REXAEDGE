@@ -263,8 +263,9 @@ export default function PlantValueHelpModal({
         className="sap-f4-modal-dialog plant"
         style={{
           ...dialogStyle,
-          width: 'min(560px, 92vw)',
-          maxWidth: 580,
+          width: 'fit-content',
+          minWidth: 'min(560px, 92vw)',
+          maxWidth: '92vw',
           outline: 'none',
           maxHeight: '82vh'
         }}
@@ -282,36 +283,39 @@ export default function PlantValueHelpModal({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
             <span
+              className="sap-f4-header-badge"
               style={{
-                background: 'rgba(255,255,255,0.14)',
-                padding: '3px 7px',
-                borderRadius: 4,
+                background: '#ffffff',
+                color: '#EA580C',
+                padding: '2px 8px',
+                borderRadius: 9999,
                 fontSize: 11,
                 fontWeight: 700,
-                letterSpacing: 0.5
+                letterSpacing: 0.5,
+                border: 'none',
+                lineHeight: 1.4
               }}
             >
               F4
             </span>
-            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>
+            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#ffffff' }}>
               {modalTitle}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="sap-modal-close-btn sap-button"
+            className="sap-f4-header-close sap-modal-close-btn sap-button"
             title="Cancel (Esc)"
-            aria-label="Close dialog"
+            aria-label="Cancel (Esc)"
             data-no-drag="true"
             style={{
-              height: 28,
-              minHeight: 28,
-              padding: '0 8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              width: 36,
+              height: 36,
+              minWidth: 36,
+              minHeight: 36,
+              padding: 0,
+              cursor: 'pointer'
             }}
           >
             <X size={16} />
@@ -380,7 +384,7 @@ export default function PlantValueHelpModal({
 
             <button
               type="submit"
-              className="sap-button primary"
+              className="sap-button primary sap-f4-search-btn"
               style={{
                 height: 30,
                 padding: '0 14px',
@@ -390,11 +394,12 @@ export default function PlantValueHelpModal({
                 alignItems: 'center',
                 gap: 6,
                 whiteSpace: 'nowrap',
-                flexShrink: 0
+                flexShrink: 0,
+                color: '#ffffff'
               }}
             >
-              <Search size={14} />
-              <span>Search</span>
+              <Search size={14} color="#ffffff" style={{ stroke: '#ffffff' }} />
+              <span style={{ color: '#ffffff' }}>Search</span>
             </button>
           </form>
         </div>
@@ -435,27 +440,33 @@ export default function PlantValueHelpModal({
               </p>
             </div>
           ) : (
-            <table className="sap-table sap-f4-table">
+            <table className="sap-table sap-f4-table" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse' }}>
               <colgroup>
-                <col style={{ width: 75 }} />
-                <col style={{ width: 230 }} />
-                <col style={{ minWidth: 160 }} />
+                <col style={{ width: 75, minWidth: 75 }} />
+                <col style={{ width: 230, minWidth: 200 }} />
+                <col style={{ minWidth: 180 }} />
               </colgroup>
               <thead>
-                <tr>
-                  <th style={{ width: 75, whiteSpace: 'nowrap' }}>Plnt</th>
-                  <th style={{ width: 230, whiteSpace: 'nowrap' }}>Name 1</th>
-                  <th style={{ whiteSpace: 'nowrap', minWidth: 160 }}>City / Location</th>
+                <tr style={{ background: '#FFF7ED', borderBottom: '1px solid #FFEDD5' }}>
+                  <th className="sap-f4-sticky-col" style={{ width: 75, minWidth: 75, whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Plnt</th>
+                  <th style={{ width: 230, minWidth: 200, whiteSpace: 'nowrap' }}>Name 1</th>
+                  <th style={{ whiteSpace: 'nowrap', minWidth: 180 }}>City / Location</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPlants.map((p, idx) => {
                   const isSelected = idx === selectedIndex;
+                  const rowBg = isSelected ? '#FFEDD5' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
                   return (
                     <tr
                       key={`${p.werks}-${idx}`}
                       ref={(el) => (rowRefs.current[idx] = el)}
                       className={isSelected ? 'selected' : ''}
+                      style={{
+                        cursor: 'pointer',
+                        background: rowBg,
+                        borderBottom: '1px solid #f1f5f9'
+                      }}
                       onClick={(e) => {
                         e.preventDefault();
                         setSelectedIndex(idx);
@@ -464,7 +475,20 @@ export default function PlantValueHelpModal({
                       }}
                       onDoubleClick={() => onSelect(p.werks, p)}
                     >
-                      <td style={{ width: 80, fontFamily: 'monospace', fontWeight: 700, color: '#0a6ed1' }}>
+                      <td
+                        className="sap-f4-sticky-col"
+                        style={{
+                          width: 75,
+                          minWidth: 75,
+                          fontFamily: 'monospace',
+                          fontWeight: 700,
+                          color: isSelected ? '#C2410C' : '#0a6ed1',
+                          position: 'sticky',
+                          left: 0,
+                          zIndex: 1,
+                          backgroundColor: rowBg
+                        }}
+                      >
                         <span style={{ verticalAlign: 'middle' }}>{p.werks}</span>
                         {p.isExtended && (
                           <span
@@ -487,23 +511,27 @@ export default function PlantValueHelpModal({
                       <td
                         title={p.name1 || ''}
                         style={{
-                          width: '45%',
+                          width: 230,
+                          minWidth: 200,
                           color: '#1e293b',
                           fontWeight: 500,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.4
                         }}
                       >
                         {p.name1 || '-'}
                       </td>
                       <td
+                        className="sap-f4-col-text"
                         title={p.ort01 || ''}
                         style={{
+                          minWidth: 180,
                           color: '#64748b',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          overflow: 'visible',
+                          lineHeight: 1.4
                         }}
                       >
                         {p.ort01 || '-'}
@@ -517,7 +545,7 @@ export default function PlantValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-panel-bg)' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: '#FFF7ED' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredPlants[selectedIndex] ? (
               <span title={`${filteredPlants[selectedIndex].werks} - ${filteredPlants[selectedIndex].name1 || ''}`}>
