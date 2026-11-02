@@ -142,6 +142,7 @@ export default function DeleteBomForm({
                 autoFocus
               />
             </div>
+            <div className="sap-field-error-msg">{fieldErrors.material ? 'Material number is required' : ''}</div>
           </div>
 
           <div className="sap-form-group">
@@ -159,6 +160,7 @@ export default function DeleteBomForm({
                 className={`sap-input sap-form-input ${fieldErrors.plant ? 'input-error' : ''}`}
               />
             </div>
+            <div className="sap-field-error-msg">{fieldErrors.plant ? 'Plant code is required' : ''}</div>
           </div>
 
           <div className="sap-form-group">
@@ -175,6 +177,7 @@ export default function DeleteBomForm({
                 className={`sap-input sap-form-input ${fieldErrors.alternativeBom ? 'input-error' : ''}`}
               />
             </div>
+            <div className="sap-field-error-msg">{fieldErrors.alternativeBom ? 'Alternative BOM is required' : ''}</div>
           </div>
 
           <div className="sap-form-group">
@@ -193,6 +196,7 @@ export default function DeleteBomForm({
                 aria-label="Delete BOM Usage"
               />
             </div>
+            <div className="sap-field-error-msg">{fieldErrors.bomUsage ? 'BOM Usage is required' : ''}</div>
           </div>
         </div>
 

@@ -26,6 +26,7 @@ import {
   Code
 } from 'lucide-react';
 import Tooltip from './Tooltip';
+import Notification from './Notification';
 import { useToast } from '../context/ToastContext';
 import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv } from '../services/api';
 
@@ -363,6 +364,17 @@ export default function AdminActivityLogsView({
           </button>
         </div>
       </div>
+
+      {/* Inline Error Notice */}
+      {errorMsg && (
+        <Notification
+          placement="inline"
+          type="error"
+          message={errorMsg}
+          onClose={() => setErrorMsg('')}
+          style={{ marginBottom: 12 }}
+        />
+      )}
 
       {/* Unconfigured / Missing Database Schema Notice */}
       {isNotConfigured && (

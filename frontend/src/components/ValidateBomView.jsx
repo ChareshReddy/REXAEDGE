@@ -172,6 +172,7 @@ export default function ValidateBomView({
                           autoFocus
                         />
                       </div>
+                      <div className="sap-field-error-msg">{fieldErrors.material ? 'Material number is required' : ''}</div>
                     </div>
 
                     <div className="sap-form-group">
@@ -196,6 +197,7 @@ export default function ValidateBomView({
                           aria-label="Validate Plant"
                         />
                       </div>
+                      <div className="sap-field-error-msg">{fieldErrors.plant ? 'Plant code is required' : ''}</div>
                     </div>
 
                     <div className="sap-form-group">
@@ -212,6 +214,7 @@ export default function ValidateBomView({
                           aria-label="Validate BOM Usage"
                         />
                       </div>
+                      <div className="sap-field-error-msg"></div>
                     </div>
 
                     <div className="sap-form-group">
@@ -226,6 +229,7 @@ export default function ValidateBomView({
                           onChange={(e) => setFormData((p) => ({ ...p, alternativeBom: e.target.value }))}
                         />
                       </div>
+                      <div className="sap-field-error-msg"></div>
                     </div>
                   </div>
                 </form>

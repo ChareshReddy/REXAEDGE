@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useId } from 'react';
 import { X } from 'lucide-react';
 import { lockScroll } from '../utils/scrollLock';
+import { NotificationPlacementProvider, NotificationOutlet } from '../context/ToastContext';
 
 /**
  * Shared accessible Modal dialog component.
@@ -166,9 +167,11 @@ export default function Modal({
         }}
       >
         {customLayout ? (
-          children
+          <NotificationPlacementProvider placement="popup">
+            {children}
+          </NotificationPlacementProvider>
         ) : (
-          <>
+          <NotificationPlacementProvider placement="popup">
             {headerContent ? (
               headerContent
             ) : title ? (
@@ -255,6 +258,7 @@ export default function Modal({
             ) : null}
 
             <div className="sap-modal-body" style={{ padding: padding || '20px 24px', flex: 1, overflowY: 'auto' }}>
+              <NotificationOutlet placement="popup" />
               {children}
             </div>
 
@@ -276,7 +280,7 @@ export default function Modal({
                 {footer}
               </div>
             )}
-          </>
+          </NotificationPlacementProvider>
         )}
       </div>
     </div>

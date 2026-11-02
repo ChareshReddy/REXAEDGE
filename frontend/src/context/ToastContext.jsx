@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, AlertCircle, CheckCircle2, Info, X, Copy, Check } from 'lucide-react';
+import { Info, AlertTriangle, CheckCircle2, Check, Copy, X } from 'lucide-react';
+import Notification, {
+  NotificationPlacementContext,
+  NotificationPlacementProvider,
+  useNotificationPlacement
+} from '../components/Notification';
+
+export { Notification, NotificationPlacementContext, NotificationPlacementProvider, useNotificationPlacement };
 
 const ToastContext = createContext(null);
 
@@ -12,20 +19,27 @@ export const toast = {
   warning: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'warning', message, ...options })),
   success: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'success', message, ...options })),
   info: (message, options = {}) => staticListeners.forEach((fn) => fn({ type: 'info', message, ...options })),
+  validation: (messages, title = 'Validation notice', options = {}) => {
+    if (Array.isArray(messages)) {
+      staticListeners.forEach((fn) => fn({ type: 'warning', title, messages, ...options }));
+    } else {
+      staticListeners.forEach((fn) => fn({ type: 'warning', title, message: messages, ...options }));
+    }
+  },
   clearAll: () => staticListeners.forEach((fn) => fn({ action: 'clearAll' })),
   clearOnNavigation: () => staticListeners.forEach((fn) => fn({ action: 'clearOnNavigation' }))
 };
 
-export function ToastProvider({ children }) {
+export function ToastProvider({ children, suppressBanner = false }) {
   const parent = useContext(ToastContext);
   if (parent) {
     // Already inside a ToastProvider, avoid nested portals
     return <>{children}</>;
   }
-  return <ToastRootProvider>{children}</ToastRootProvider>;
+  return <ToastRootProvider suppressBanner={suppressBanner}>{children}</ToastRootProvider>;
 }
 
-function ToastRootProvider({ children }) {
+function ToastRootProvider({ children, suppressBanner = false }) {
   const [toasts, setToasts] = useState([]);
   const recentToastsRef = useRef([]); // for deduplication: { key, timestamp }
   const lastUnreachableToastRef = useRef(0); // throttle SAP unreachable toasts to once per burst
@@ -130,6 +144,7 @@ function ToastRootProvider({ children }) {
     const newToast = {
       id: `toast-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
+      placement: toastObj.placement || 'banner',
       title,
       message,
       messages,
@@ -160,10 +175,10 @@ function ToastRootProvider({ children }) {
         return updated;
       }
 
-      // Max 4 visible at a time: evict oldest if necessary
+      // Max 3 visible at a time: evict oldest if necessary
       const updated = [...prev, newToast];
-      if (updated.length > 4) {
-        return updated.slice(updated.length - 4);
+      if (updated.length > 3) {
+        return updated.slice(updated.length - 3);
       }
       return updated;
     });
@@ -252,6 +267,7 @@ function ToastRootProvider({ children }) {
   }, []);
 
   const toastMethods = {
+    toasts,
     show: addToast,
     error: (msg, opts = {}) => addToast({ type: 'error', message: msg, ...opts }),
     warning: (msg, opts = {}) => addToast({ type: 'warning', message: msg, ...opts }),
@@ -273,8 +289,9 @@ function ToastRootProvider({ children }) {
     <ToastContext.Provider value={toastMethods}>
       {children}
       {typeof document !== 'undefined' &&
+        !suppressBanner &&
         createPortal(
-          <ToastContainer toasts={toasts} onRemove={removeToast} />,
+          <ToastContainer toasts={toasts} onRemove={removeToast} suppressBanner={suppressBanner} />,
           document.body
         )}
     </ToastContext.Provider>
@@ -283,20 +300,69 @@ function ToastRootProvider({ children }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    return toast;
-  }
-  return ctx;
+  const placementCtx = useNotificationPlacement();
+  const activePlacement = placementCtx?.placement || 'banner';
+
+  const base = ctx || toast;
+
+  return {
+    ...base,
+    error: (msg, opts = {}) => base.error(msg, { placement: opts.placement || activePlacement, ...opts }),
+    warning: (msg, opts = {}) => base.warning(msg, { placement: opts.placement || activePlacement, ...opts }),
+    success: (msg, opts = {}) => base.success(msg, { placement: opts.placement || activePlacement, ...opts }),
+    info: (msg, opts = {}) => base.info(msg, { placement: opts.placement || activePlacement, ...opts }),
+    validation: (msgs, title, opts = {}) => base.validation(msgs, title, { placement: opts?.placement || activePlacement, ...opts })
+  };
 }
 
-function ToastContainer({ toasts, onRemove }) {
+/**
+ * Shared NotificationOutlet renders active toasts designated for a specific placement ('inline' | 'popup').
+ */
+export function NotificationOutlet({ placement = 'inline', className = '', style = {} }) {
+  const { toasts, remove } = useToast();
+  if (!toasts || !Array.isArray(toasts)) return null;
+  const matching = toasts.filter((t) => t.placement === placement);
+  if (matching.length === 0) return null;
+
+  return (
+    <div className={`sap-notification-outlet sap-notification-outlet-${placement} ${className}`} style={style}>
+      {matching.map((t) => (
+        <Notification
+          key={t.id}
+          placement={placement}
+          type={t.type}
+          title={t.title}
+          message={t.message}
+          messages={t.messages}
+          hint={t.hint}
+          errorRef={t.errorRef}
+          onClose={() => remove && remove(t.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ToastContainer({ toasts, onRemove, suppressBanner = false }) {
+  if (suppressBanner) return null;
+
+  // On auth pages (login and any other pre-login page), suppress the global floating banner completely
+  if (typeof document !== 'undefined') {
+    const isAuthPage = Boolean(
+      document.querySelector('.sap-login-viewport, .sap-login-canvas, .sap-auth-page')
+    );
+    if (isAuthPage) return null;
+  }
+
   const [isExpanded, setIsExpanded] = useState(false);
-  if (!toasts || toasts.length === 0) return null;
+  // Banner only renders toasts targeted for banner (or default)
+  const bannerToasts = (toasts || []).filter((t) => !t.placement || t.placement === 'banner');
+  if (bannerToasts.length === 0) return null;
 
   const maxVisible = 3;
-  const hasCollapse = toasts.length > maxVisible;
-  const visibleToasts = isExpanded || !hasCollapse ? toasts : toasts.slice(0, maxVisible);
-  const hiddenCount = toasts.length - maxVisible;
+  const hasCollapse = bannerToasts.length > maxVisible;
+  const visibleToasts = isExpanded || !hasCollapse ? bannerToasts : bannerToasts.slice(0, maxVisible);
+  const hiddenCount = bannerToasts.length - maxVisible;
 
   return (
     <div
@@ -327,6 +393,7 @@ function ToastContainer({ toasts, onRemove }) {
 function ToastItem({ toast: item, onRemove }) {
   const [isHovered, setIsHovered] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [isListExpanded, setIsListExpanded] = useState(false);
   const startTimeRef = useRef(Date.now());
   const remainingRef = useRef(item.duration);
 
@@ -383,11 +450,28 @@ function ToastItem({ toast: item, onRemove }) {
         {item.message && <div className="sap-toast-message">{item.message}</div>}
 
         {item.messages && item.messages.length > 0 && (
-          <ul className="sap-toast-list">
-            {item.messages.map((msg, idx) => (
-              <li key={idx}>{msg}</li>
-            ))}
-          </ul>
+          <>
+            <ul className={`sap-toast-list ${isListExpanded ? 'is-expanded' : ''}`}>
+              {(isListExpanded || item.messages.length <= 3
+                ? item.messages
+                : item.messages.slice(0, 3)
+              ).map((msg, idx) => (
+                <li key={idx}>{msg}</li>
+              ))}
+            </ul>
+            {item.messages.length > 3 && (
+              <button
+                type="button"
+                className="sap-toast-list-expand-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsListExpanded(!isListExpanded);
+                }}
+              >
+                {isListExpanded ? 'Show less' : `+${item.messages.length - 3} more`}
+              </button>
+            )}
+          </>
         )}
 
         {item.hint && (

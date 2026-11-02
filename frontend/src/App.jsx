@@ -545,7 +545,7 @@ export default function App({
 
   if (!user) {
     return (
-      <ToastProvider>
+      <ToastProvider suppressBanner={true}>
         <Login authConfig={authConfig} onLoginSuccess={handleLoginSuccess} />
       </ToastProvider>
     );

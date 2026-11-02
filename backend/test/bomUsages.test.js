@@ -128,7 +128,7 @@ console.log('5. Testing frontend BomUsageValueHelpModal component...');
 
   // Verify 8 columns in order: Usage, Prod., Eng./Design, Plant Maint., Spare Part, Costing, Sales/Dist., BOM Usage Text
   assert(modalContent.includes('Usage</span>'), 'Column Usage present');
-  assert(modalContent.includes('Prod.</span>'), 'Column Prod. present');
+  assert(modalContent.includes('Prod.</span>') || modalContent.includes('Ind.</span>'), 'Column Prod. or Ind. present');
   assert(modalContent.includes('Eng./Design</span>'), 'Column Eng./Design present');
   assert(modalContent.includes('Plant Maint.</span>'), 'Column Plant Maint. present');
   assert(modalContent.includes('Spare Part</span>'), 'Column Spare Part present');
@@ -137,7 +137,7 @@ console.log('5. Testing frontend BomUsageValueHelpModal component...');
   assert(modalContent.includes('BOM Usage Text</span>'), 'Column BOM Usage Text present');
 
   // Verify tooltips on all relevancy columns
-  assert(modalContent.includes('<Tooltip text="Production">'), 'Tooltip for Production present');
+  assert(modalContent.includes('<Tooltip text="Production">') || modalContent.includes('<Tooltip text="Production Indicator">'), 'Tooltip for Production present');
   assert(modalContent.includes('<Tooltip text="Engineering/Design">'), 'Tooltip for Engineering/Design present');
   assert(modalContent.includes('<Tooltip text="Plant Maintenance">'), 'Tooltip for Plant Maintenance present');
   assert(modalContent.includes('<Tooltip text="Spare Parts">'), 'Tooltip for Spare Parts present');

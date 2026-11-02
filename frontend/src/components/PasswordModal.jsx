@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Key, Check, AlertCircle, Loader2 } from 'lucide-react';
 import Modal from './Modal';
 import PasswordInput from './PasswordInput';
+import Notification from './Notification';
 import { checkPasswordRules } from '../utils/passwordPolicy';
 import { adminSetUserPassword, changeUserPassword } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -35,8 +36,7 @@ export default function PasswordModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, _setErrorMessage] = useState('');
   const setErrorMessage = (msg) => {
-    _setErrorMessage(msg);
-    if (msg) toast.error(msg);
+    _setErrorMessage(msg || '');
   };
 
   // Clear fields whenever modal opens or closes
@@ -131,7 +131,15 @@ export default function PasswordModal({
     >
       <form onSubmit={handleSubmit} className="sap-modal-form">
         <div className="sap-modal-body" style={{ gap: 12 }}>
-          
+          {errorMessage && (
+            <Notification
+              placement="popup"
+              type="error"
+              message={errorMessage}
+              onClose={() => setErrorMessage('')}
+              style={{ marginBottom: 4 }}
+            />
+          )}
 
           {/* User mode only: Current Password */}
           {mode === 'user' && (
