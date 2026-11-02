@@ -651,22 +651,27 @@ export default function App({
             )}
           </div>
 
-          {/* 4. User profile avatar (no chevron, 150ms hover delay dropdown, accessible) */}
+          {/* 4. User profile avatar (accessible click toggle, keyboard accessible) */}
           <div
             className="sap-user-menu-wrapper"
             ref={userMenuRef}
-            onMouseEnter={handleUserMenuMouseEnter}
-            onMouseLeave={handleUserMenuMouseLeave}
           >
             <button
               type="button"
               className={`sap-user-avatar-btn sap-button ${isUserMenuOpen ? 'active' : ''}`}
-              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-              onFocus={handleUserMenuFocus}
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsUserMenuOpen((prev) => !prev);
+                } else if (e.key === 'Escape') {
+                  setIsUserMenuOpen(false);
+                }
+              }}
               title={user.email}
               aria-label={`User profile menu for ${user.email}`}
               aria-expanded={isUserMenuOpen}
-              aria-haspopup="true"
+              aria-haspopup="menu"
             >
               <div className={`sap-user-avatar-circle ${user.role === 'admin' ? 'admin' : ''}`}>
                 {user.email ? user.email.charAt(0).toUpperCase() : 'A'}

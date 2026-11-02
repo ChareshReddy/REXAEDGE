@@ -415,12 +415,17 @@ export default function BulkBomCopyModal({
             style={{
               opacity: (isExecuting || isValidating) ? 0.35 : 1,
               pointerEvents: (isExecuting || isValidating) ? 'none' : 'auto',
-              cursor: (isExecuting || isValidating) ? 'not-allowed' : 'pointer'
+              cursor: (isExecuting || isValidating) ? 'not-allowed' : 'pointer',
+              width: 36,
+              height: 36,
+              minWidth: 36,
+              minHeight: 36,
+              padding: 0
             }}
-            title={(isExecuting || isValidating) ? 'Operation in progress' : 'Close dialog'}
-            aria-label="Close dialog"
+            title={(isExecuting || isValidating) ? 'Operation in progress' : 'Cancel (Esc)'}
+            aria-label="Cancel (Esc)"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 

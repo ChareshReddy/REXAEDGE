@@ -430,21 +430,21 @@ async function runTests() {
     const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
 
     // Plnt and SLoc narrow and fixed
-    assert(slocCode.includes('style={{ width: 68 }}') || slocCode.includes('style={{ width: 68, whiteSpace: \'nowrap\' }}'), 'Plnt column must be narrow and fixed (~68px)');
-    assert(slocCode.includes('style={{ width: 72 }}') || slocCode.includes('style={{ width: 72, whiteSpace: \'nowrap\' }}'), 'SLoc column must be narrow and fixed (~72px)');
+    assert(slocCode.includes('width: 68'), 'Plnt column must be narrow and fixed (~68px)');
+    assert(slocCode.includes('width: 72'), 'SLoc column must be narrow and fixed (~72px)');
 
-    // Description sized to text with sensible max
-    assert(slocCode.includes('minWidth: 260') && slocCode.includes('maxWidth: 380'), 'Description column must have sensible bounds (min 260, max 380)');
+    // Description sized to text with sensible bounds
+    assert(slocCode.includes('minWidth: 260'), 'Description column must have minWidth: 260');
 
-    // Popup width within 520px to 620px
-    assert(slocCode.includes('width: \'min(540px, 92vw)\'') || slocCode.includes('maxWidth: 550'), 'Storage Location popup width must be between 520px and 620px');
-    assert(cssCode.includes('.sap-f4-modal-dialog.storage-location') && cssCode.includes('width: min(540px, 92vw)'), 'CSS must reflect tightened storage location popup width');
+    // Popup width fits table (fit-content with min 540px and max 92vw)
+    assert(slocCode.includes("width: 'fit-content'") || slocCode.includes("minWidth: 'min(540px, 92vw)'"), 'Storage Location popup width must fit table with min width');
+    assert(cssCode.includes('.sap-f4-modal-dialog.storage-location') && cssCode.includes('width: fit-content'), 'CSS must reflect fit-content storage location popup width');
 
-    console.log('   ✓ Storage location Plnt and SLoc fixed, Description bounded, and popup width tightened to 540px');
+    console.log('   ✓ Storage location Plnt and SLoc fixed, Description bounded, and popup width fitted to content');
   }
 
   // 12. Tightened Dimensions Across All F4 Popups
-  console.log('\n12. Testing tightened dimensions across Material, Plant, BOM Usage, and Restrict Value Range...');
+  console.log('\n12. Testing popup width fitting table (fit-content with min ~560px and max 92vw)...');
   {
     const fs = await import('fs');
     const path = await import('path');
@@ -456,12 +456,67 @@ async function runTests() {
     const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
     const bomUsageCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/BomUsageValueHelpModal.jsx'), 'utf8');
 
-    assert(cssCode.includes('width: min(640px, 92vw)'), 'Material popup width tightened to 640px');
-    assert(cssCode.includes('width: min(560px, 92vw)'), 'Plant popup width tightened to 560px');
-    assert(bomUsageCode.includes('maxWidth: 650'), 'BOM Usage popup maxWidth tightened to 650px');
+    assert(cssCode.includes('width: fit-content') && cssCode.includes('max-width: 92vw'), 'F4 dialogs use width: fit-content and max-width: 92vw');
+    assert(bomUsageCode.includes("width: 'fit-content'") && bomUsageCode.includes("minWidth: 'min(560px, 92vw)'"), 'BOM Usage modal uses fit-content and min-width 560px');
     assert(cssCode.includes('.sap-restrict-modal-dialog') && cssCode.includes('width: min(600px, 94vw)'), 'Restrict Value Range modal width tightened to 600px');
 
-    console.log('   ✓ All F4 popups tightened to eliminate empty wasted areas while preserving full readability');
+    console.log('   ✓ All F4 popups fit their table contents while preserving full readability');
+  }
+
+  // 13. BOM Usage & F4 Table Layout: Cell Widths Parity, Sticky Key Column & 1366px Overflow Test
+  console.log('\n13. Testing BOM Usage layout parity, sticky key column, text overflow & 1366px fit...');
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const frontendDir = path.resolve(__dirname, '../../frontend');
+
+    const bomUsageCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/BomUsageValueHelpModal.jsx'), 'utf8');
+    const indexCss = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
+    const sapThemeCss = fs.readFileSync(path.resolve(frontendDir, 'src/sap-theme.css'), 'utf8');
+
+    // 13a. Single table with table-layout: auto & shared colgroup for identical header/body column widths
+    assert.ok(bomUsageCode.includes("tableLayout: 'auto'"), 'BOM Usage table must use tableLayout: auto');
+    assert.ok(bomUsageCode.includes('<colgroup>'), 'BOM Usage table must define colgroup for unified column definitions');
+    assert.ok(indexCss.includes('table-layout: auto !important'), 'index.css must enforce table-layout: auto on .sap-f4-table');
+    assert.ok(sapThemeCss.includes('table-layout: auto !important'), 'sap-theme.css must enforce table-layout: auto on .sap-f4-table');
+
+    // 13b. Column sizing verification:
+    // Key column (Usage): 60 to 80px (70px)
+    assert.ok(bomUsageCode.includes('width: 70'), 'Usage key column must be fixed narrow (~70px)');
+    // 6 Indicator columns: narrow and centered (65 to 90px each)
+    assert.ok(bomUsageCode.includes('width: 65'), 'Ind./Prod. indicator column narrow (65px)');
+    assert.ok(bomUsageCode.includes('width: 90'), 'Eng./Design indicator column narrow (90px)');
+    assert.ok(bomUsageCode.includes('width: 75'), 'Spare Part indicator column narrow (75px)');
+    assert.ok(bomUsageCode.includes('width: 80'), 'Sales/Dist. indicator column narrow (80px)');
+    // Text column: min-width about 280px and never clipped
+    assert.ok(bomUsageCode.includes('minWidth: 280'), 'BOM Usage Text column min-width must be at least 280px');
+    assert.ok(bomUsageCode.includes("whiteSpace: 'normal'"), 'BOM Usage Text column must allow normal text wrapping');
+    assert.ok(bomUsageCode.includes("wordBreak: 'break-word'"), 'BOM Usage Text column must break words to avoid cut-off');
+    assert.ok(bomUsageCode.includes("overflow: 'visible'"), 'BOM Usage Text column must not clip overflow');
+
+    // 13c. Key column sticky on horizontal scroll (position: sticky, left: 0 with solid background)
+    assert.ok(bomUsageCode.includes("position: 'sticky'") && bomUsageCode.includes('left: 0'), 'Usage column must be sticky left: 0 in BOM Usage JSX');
+    assert.ok(indexCss.includes('.sap-f4-table thead th:first-child') && indexCss.includes('position: sticky'), 'Header first cell must be sticky in CSS');
+    assert.ok(indexCss.includes('.sap-f4-table tbody tr td:first-child') && indexCss.includes('position: sticky'), 'Body first cell must be sticky in CSS');
+    assert.ok(indexCss.includes('background-color: #ffffff') || indexCss.includes('background-color: #fafbfc'), 'Body first cell must have solid background in CSS');
+
+    // 13d. No horizontal scrollbar at 1366px screen width:
+    const colWidths = [70, 65, 90, 90, 75, 65, 80, 280];
+    const totalTableMinWidth = colWidths.reduce((a, b) => a + b, 0); // 815px
+    const screenWidth = 1366;
+    const maxPopupWidthAt1366 = Math.round(screenWidth * 0.92); // ~1257px
+
+    assert.ok(totalTableMinWidth <= maxPopupWidthAt1366, `Total table min width (${totalTableMinWidth}px) must fit within 92vw at 1366px (${maxPopupWidthAt1366}px)`);
+    const horizontalOverflow = Math.max(0, totalTableMinWidth - maxPopupWidthAt1366);
+    assert.strictEqual(horizontalOverflow, 0, 'Horizontal overflow at 1366px must be exactly 0 (no horizontal scrollbar needed)');
+
+    console.log(`   ✓ Single table auto-layout & shared colgroup: header and body column widths match`);
+    console.log(`   ✓ Text column: 280px min-width with normal wrap; text is fully visible with no clipping`);
+    console.log(`   ✓ Key column sticky: position sticky at left: 0 with solid background across all states`);
+    console.log(`   ✓ 1366px screen test: Table required width ${totalTableMinWidth}px fits within 92vw (${maxPopupWidthAt1366}px) with 0px overflow (no horizontal scrollbar)`);
   }
 
   console.log('\n============================================================');

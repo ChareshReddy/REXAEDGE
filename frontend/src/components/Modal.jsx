@@ -154,7 +154,14 @@ export default function Modal({
           maxWidth,
           width,
           outline: 'none',
-          ...(padding ? { padding } : (!customLayout && !headerContent ? { padding: '20px 24px' } : {})),
+          padding: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          border: '1px solid #FDBA74',
+          borderRadius: 8,
+          boxShadow: '0 16px 36px rgba(234, 88, 12, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)',
+          background: '#ffffff',
           ...style
         }}
       >
@@ -166,13 +173,18 @@ export default function Modal({
               headerContent
             ) : title ? (
               <div
-                className="sap-section-header"
+                className="sap-modal-header"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: subtitle ? 6 : 16,
-                  padding: '8px 12px'
+                  padding: '12px 18px',
+                  background: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
+                  color: '#ffffff',
+                  borderTopLeftRadius: 'inherit',
+                  borderTopRightRadius: 'inherit',
+                  borderBottom: '1px solid #C2410C',
+                  flexShrink: 0
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -181,21 +193,21 @@ export default function Modal({
                       <div
                         className="sap-bulk-icon-badge"
                         style={{
-                          backgroundColor: iconBadgeBg,
-                          color: iconColor,
-                          borderColor: iconBadgeBorder || 'transparent',
+                          backgroundColor: '#ffffff',
+                          color: '#EA580C',
+                          borderColor: 'rgba(255, 255, 255, 0.4)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           width: 28,
                           height: 28,
-                          borderRadius: 2
+                          borderRadius: 4
                         }}
                       >
-                        <Icon size={16} />
+                        <Icon size={16} color="#EA580C" />
                       </div>
                     ) : (
-                      <Icon size={18} color={iconColor} style={{ flexShrink: 0 }} />
+                      <Icon size={18} color="#ffffff" style={{ flexShrink: 0 }} />
                     )
                   )}
                   <div>
@@ -205,13 +217,13 @@ export default function Modal({
                         fontSize: 16,
                         fontWeight: 700,
                         margin: 0,
-                        color: '#111111'
+                        color: '#ffffff'
                       }}
                     >
                       {title}
                     </h3>
                     {subtitle && (
-                      <p className="sap-label" style={{ margin: '2px 0 0', fontSize: 12 }}>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'rgba(255, 255, 255, 0.85)' }}>
                         {subtitle}
                       </p>
                     )}
@@ -226,10 +238,15 @@ export default function Modal({
                     style={{
                       cursor: isLoading ? 'not-allowed' : 'pointer',
                       opacity: isLoading ? 0.35 : 1,
-                      pointerEvents: isLoading ? 'none' : 'auto'
+                      pointerEvents: isLoading ? 'none' : 'auto',
+                      width: 36,
+                      height: 36,
+                      minWidth: 36,
+                      minHeight: 36,
+                      padding: 0
                     }}
-                    title={isLoading ? 'Operation in progress' : 'Close'}
-                    aria-label="Close dialog"
+                    title={isLoading ? 'Operation in progress' : 'Cancel (Esc)'}
+                    aria-label="Cancel (Esc)"
                   >
                     <X size={16} />
                   </button>
@@ -237,10 +254,25 @@ export default function Modal({
               </div>
             ) : null}
 
-            {children}
+            <div className="sap-modal-body" style={{ padding: padding || '20px 24px', flex: 1, overflowY: 'auto' }}>
+              {children}
+            </div>
 
             {footer && (
-              <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+              <div
+                className="sap-modal-footer"
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  justifyContent: 'flex-end',
+                  padding: '12px 20px',
+                  background: '#FFF7ED',
+                  borderTop: '1px solid #FFEDD5',
+                  borderBottomLeftRadius: 'inherit',
+                  borderBottomRightRadius: 'inherit',
+                  flexShrink: 0
+                }}
+              >
                 {footer}
               </div>
             )}
