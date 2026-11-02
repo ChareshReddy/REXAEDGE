@@ -113,7 +113,7 @@ export function isNetworkOrRetryableError(err) {
   if (!err) return false;
 
   const status = Number(err.status || err.statusCode || 0);
-  // Never retry client auth failures (400, 401, 403, 422)
+  // Never retry client auth failures (400, 401, 403, 422, 429)
   if (status >= 400 && status < 500) {
     return false;
   }
@@ -121,29 +121,22 @@ export function isNetworkOrRetryableError(err) {
     return false;
   }
 
-  const code = String(err.code || '');
+  const code = String(err.code || '').toUpperCase();
   const name = String(err.name || '');
   const msg = String(err.message || '').toLowerCase();
 
-  return (
-    code === 'ETIMEDOUT' ||
-    code === 'ECONNRESET' ||
-    code === 'ECONNREFUSED' ||
-    code === 'ENOTFOUND' ||
-    code === 'EAI_AGAIN' ||
-    code === 'UND_ERR_CONNECT_TIMEOUT' ||
-    code === 'UND_ERR_HEADERS_TIMEOUT' ||
-    code === 'UND_ERR_SOCKET' ||
-    name === 'AbortError' ||
-    name === 'TimeoutError' ||
-    name === 'AuthRetryableFetchError' ||
-    msg.includes('fetch failed') ||
-    msg.includes('timeout') ||
-    msg.includes('socket hang up') ||
-    msg.includes('network') ||
-    msg.includes('econnreset') ||
-    status >= 500
-  );
+  // Retry on HTTP 502, 503, 504 and 500
+  if (status === 502 || status === 503 || status === 504 || status === 500) {
+    return true;
+  }
+
+  // Transient network errors: timeouts, connection reset, DNS errors, "fetch failed"
+  const isDnsError = code === 'ENOTFOUND' || code === 'EAI_AGAIN' || msg.includes('getaddrinfo');
+  const isConnReset = code === 'ECONNRESET' || code === 'ECONNREFUSED' || msg.includes('econnreset') || msg.includes('socket hang up') || msg.includes('connection reset') || msg.includes('network') || msg.includes('socket');
+  const isTimeout = code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT' || code === 'UND_ERR_HEADERS_TIMEOUT' || code === 'UND_ERR_SOCKET' || name === 'TimeoutError' || name === 'AbortError' || msg.includes('timeout');
+  const isFetchFailed = name === 'AuthRetryableFetchError' || msg.includes('fetch failed');
+
+  return isDnsError || isConnReset || isTimeout || isFetchFailed;
 }
 
 /**
@@ -852,57 +845,108 @@ export const supabaseService = {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const performSignIn = async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12000);
+    const logSignInAttempt = ({ attempt, elapsedMs, error, status, success }) => {
+      const errorName = error?.name || (error ? 'Error' : 'none');
+      const errorCode = error?.code || 'none';
+      const httpStatus = error?.status || error?.statusCode || status || (success ? 200 : 'none');
+      console.log(
+        `[AUTH_SIGN_IN] attempt=${attempt} elapsed_ms=${elapsedMs} success=${Boolean(success)} error_name=${errorName} error_code=${errorCode} http_status=${httpStatus}`
+      );
+    };
+
+    const MAX_ATTEMPTS = 3;
+    const ATTEMPT_TIMEOUT_MS = 8000;
+    const RETRY_DELAYS = [800, 1500];
+    const OVERALL_BUDGET_MS = 20000;
+    const overallStart = Date.now();
+
+    const performSingleAttempt = async (attemptNum) => {
+      const attemptStart = Date.now();
+      let timer;
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const timeoutErr = new Error('Sign-in attempt timed out after 8000ms');
+          timeoutErr.name = 'TimeoutError';
+          timeoutErr.code = 'ETIMEDOUT';
+          reject(timeoutErr);
+        }, ATTEMPT_TIMEOUT_MS);
+      });
+
       try {
-        const { data, error } = await liveAuthClient.auth.signInWithPassword({
-          email,
-          password
-        });
-        return { data, error };
+        const res = await Promise.race([
+          liveAuthClient.auth.signInWithPassword({ email, password }),
+          timeoutPromise
+        ]);
+        const elapsed = Date.now() - attemptStart;
+        if (res?.error) {
+          logSignInAttempt({ attempt: attemptNum, elapsedMs: elapsed, error: res.error, success: false });
+        } else {
+          logSignInAttempt({ attempt: attemptNum, elapsedMs: elapsed, status: 200, success: true });
+        }
+        return { res, err: null };
+      } catch (err) {
+        const elapsed = Date.now() - attemptStart;
+        logSignInAttempt({ attempt: attemptNum, elapsedMs: elapsed, error: err, success: false });
+        return { res: null, err };
       } finally {
         clearTimeout(timer);
       }
     };
 
-    let result;
-    try {
-      result = await performSignIn();
-    } catch (err) {
-      if (isNetworkOrRetryableError(err)) {
-        if (process.env.DEBUG_AUTH) {
-          console.warn(`[Supabase Auth] Attempt 1 failed with network error (${err.message}). Retrying in 500ms...`);
+    let result = null;
+    let lastRetryableError = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const elapsedTotal = Date.now() - overallStart;
+      if (elapsedTotal >= OVERALL_BUDGET_MS) {
+        break;
+      }
+
+      const { res, err } = await performSingleAttempt(attempt);
+
+      if (err) {
+        if (isNetworkOrRetryableError(err)) {
+          lastRetryableError = err;
+          if (attempt < MAX_ATTEMPTS) {
+            const delay = RETRY_DELAYS[attempt - 1];
+            const remainingBudget = OVERALL_BUDGET_MS - (Date.now() - overallStart);
+            if (remainingBudget > 0) {
+              await new Promise((r) => setTimeout(r, Math.min(delay, remainingBudget)));
+              continue;
+            }
+          }
+          break;
         }
-        await new Promise((r) => setTimeout(r, 500));
-        try {
-          result = await performSignIn();
-        } catch (retryErr) {
-          throw new Error("Can't reach the sign-in service right now. Please try again.");
-        }
-      } else {
         throw err;
       }
+
+      if (res?.error) {
+        if (isNetworkOrRetryableError(res.error)) {
+          lastRetryableError = res.error;
+          if (attempt < MAX_ATTEMPTS) {
+            const delay = RETRY_DELAYS[attempt - 1];
+            const remainingBudget = OVERALL_BUDGET_MS - (Date.now() - overallStart);
+            if (remainingBudget > 0) {
+              await new Promise((r) => setTimeout(r, Math.min(delay, remainingBudget)));
+              continue;
+            }
+          }
+          break;
+        }
+        // Client errors (400, 401, 429, invalid credentials) MUST NEVER retry
+        return { data: null, error: res.error };
+      }
+
+      // Success
+      result = res;
+      break;
     }
 
-    // Check if result returned a transient network/retryable error without throwing
-    if (result?.error && isNetworkOrRetryableError(result.error)) {
-      if (process.env.DEBUG_AUTH) {
-        console.warn(`[Supabase Auth] Attempt 1 returned retryable error (${result.error.message}). Retrying in 500ms...`);
-      }
-      await new Promise((r) => setTimeout(r, 500));
-      try {
-        result = await performSignIn();
-      } catch (retryErr) {
+    if (!result) {
+      if (lastRetryableError) {
         throw new Error("Can't reach the sign-in service right now. Please try again.");
       }
-    }
-
-    if (result?.error) {
-      if (isNetworkOrRetryableError(result.error)) {
-        throw new Error("Can't reach the sign-in service right now. Please try again.");
-      }
-      return { data: null, error: result.error };
+      throw new Error("Can't reach the sign-in service right now. Please try again.");
     }
     if (!result?.data?.user) return { data: null, error: new Error('Authentication failed') };
 

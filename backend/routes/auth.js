@@ -1,13 +1,45 @@
 import express from 'express';
 import { loginRateLimiter, changePasswordRateLimiter } from '../middleware/security.js';
 import { requireAuth } from '../middleware/auth.js';
-import { supabaseService, isNetworkOrRetryableError } from '../services/supabaseClient.js';
+import { supabaseService, isNetworkOrRetryableError, warmupDatabaseConnection } from '../services/supabaseClient.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
+
+let isWarmupRunning = false;
+let lastWarmupTimestamp = 0;
+const WARMUP_COOLDOWN_MS = 30000; // at most one every 30 seconds
+
+/**
+ * GET /api/auth/warmup
+ * Public fire-and-forget endpoint to pre-warm the database/auth connection.
+ * Coalesced: at most one upstream request every 30 seconds and no concurrent requests.
+ * Uses existing per-IP loginRateLimiter.
+ */
+router.get('/warmup', loginRateLimiter, (req, res) => {
+  res.status(200).json({ status: 'ok' });
+
+  const now = Date.now();
+  if (isWarmupRunning || (now - lastWarmupTimestamp < WARMUP_COOLDOWN_MS)) {
+    return;
+  }
+
+  isWarmupRunning = true;
+  lastWarmupTimestamp = now;
+
+  if (typeof warmupDatabaseConnection === 'function') {
+    warmupDatabaseConnection()
+      .catch(() => {})
+      .finally(() => {
+        isWarmupRunning = false;
+      });
+  } else {
+    isWarmupRunning = false;
+  }
+});
 
 const COOKIE_NAME = 'sb_access_token';
 const LEGACY_COOKIE_NAME = 'sap_session_id';

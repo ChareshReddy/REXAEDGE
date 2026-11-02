@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import PasswordInput from './PasswordInput';
-import { loginUser } from '../services/api';
+import { loginUser, warmupAuth } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
 import sapSignInHero from '../assets/sap_signin_hero.jpg';
@@ -12,7 +12,19 @@ export default function Login({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showSlowNotice, setShowSlowNotice] = useState(false);
+  const slowNoticeTimerRef = useRef(null);
   const [errorMessage, _setErrorMessage] = useState('');
+
+  useEffect(() => {
+    // Fire-and-forget warm-up request on mount; ignore every outcome with no UI change
+    warmupAuth();
+    return () => {
+      if (slowNoticeTimerRef.current) {
+        clearTimeout(slowNoticeTimerRef.current);
+      }
+    };
+  }, []);
   const setErrorMessage = (msg) => {
     _setErrorMessage(msg);
     if (msg) toast.error(msg);
@@ -43,6 +55,13 @@ export default function Login({
     }
 
     setIsLoading(true);
+    setShowSlowNotice(false);
+    if (slowNoticeTimerRef.current) {
+      clearTimeout(slowNoticeTimerRef.current);
+    }
+    slowNoticeTimerRef.current = setTimeout(() => {
+      setShowSlowNotice(true);
+    }, 4000);
 
     try {
       const result = await loginUser(cleanEmail, password);
@@ -80,7 +99,12 @@ export default function Login({
         );
       }
     } finally {
+      if (slowNoticeTimerRef.current) {
+        clearTimeout(slowNoticeTimerRef.current);
+        slowNoticeTimerRef.current = null;
+      }
       setIsLoading(false);
+      setShowSlowNotice(false);
     }
   };
 
@@ -180,6 +204,21 @@ export default function Login({
                   </>
                 )}
               </button>
+
+              {isLoading && showSlowNotice && (
+                <p
+                  className="sap-login-connecting-notice"
+                  style={{
+                    fontSize: '0.8125rem',
+                    color: '#6b7280',
+                    textAlign: 'center',
+                    marginTop: '8px',
+                    marginBottom: '0'
+                  }}
+                >
+                  Connecting to the sign-in service...
+                </p>
+              )}
 
               <p className="sap-login-admin-note">
                 Accounts are created and managed by your administrators.

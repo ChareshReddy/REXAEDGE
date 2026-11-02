@@ -177,13 +177,21 @@ export function isLoginRetryableError(error) {
 }
 
 /**
+ * Sends a fire-and-forget request to the auth warm-up endpoint to pre-warm connections.
+ */
+export function warmupAuth() {
+  return apiClient.get('/auth/warmup', { timeout: 10000 }).catch(() => {});
+}
+
+/**
  * Validates credentials via authentication endpoint.
  * Implements a safe, single retry for infrastructure failures (502/503/504, network errors, 500 text/plain).
  * Never retries on credential or client errors (400/401/403/429).
+ * Client-side timeout is configured to at least 25s (26s) to allow backend retry budget.
  */
 export async function loginUser(email, password, { retryDelay = 300 } = {}) {
   const performLogin = () =>
-    apiClient.post('/auth/login', { email, username: email, password });
+    apiClient.post('/auth/login', { email, username: email, password }, { timeout: 26000 });
 
   let response;
   try {
