@@ -14,9 +14,10 @@ import {
 import { validateSourceBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
-import { PageContainer, SummaryPanel, StickyActionBar } from './layout';
+import { PageContainer, StickyActionBar } from './layout';
 
 export default function ValidateBomView({
   systemKey = 'DEV',
@@ -36,9 +37,15 @@ export default function ValidateBomView({
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMsg, _setErrorMsg] = useState('');
-  const setErrorMsg = (msg) => {
-    _setErrorMsg(msg);
-    if (msg) toast.error(msg);
+  const setErrorMsg = (msg, err = null) => {
+    _setErrorMsg(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Error communicating with SAP validation service.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
 
   useEffect(() => {
@@ -89,7 +96,7 @@ export default function ValidateBomView({
     } catch (err) {
       console.error('BOM validation error:', err);
       const text = err.response?.data?.message || err.message || 'Error communicating with SAP validation service.';
-      setErrorMsg(text);
+      setErrorMsg(text, err);
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +128,7 @@ export default function ValidateBomView({
 
       <PageContainer hasStickyBar={true}>
         <div style={{ marginTop: 20 }}>
-          <div className="sap-layout-content-with-summary">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
               {/* Validation Parameters Card */}
               <div className="sap-structured-form-card sap-full-width" style={{ width: '100%' }}>
                 <form id="validate-bom-form" onSubmit={handleValidate}>
@@ -258,26 +264,8 @@ export default function ValidateBomView({
                 </div>
               )}
             </div>
-
-            {/* SummaryPanel for wide screens (>= 1500px) */}
-            <SummaryPanel
-              title="Validation Overview"
-              status={
-                result
-                  ? (result.bomExists ? 'BOM exists in SAP' : 'No BOM found')
-                  : (formData.material && formData.plant ? 'Ready to validate' : 'Enter material and plant')
-              }
-              items={[
-                { label: 'Material', value: formData.material },
-                { label: 'Plant', value: formData.plant },
-                { label: 'BOM Usage', value: formData.bomUsage },
-                { label: 'Alternative BOM', value: formData.alternativeBom || '01 (Default)' },
-                { label: 'Validation Status', value: result ? (result.bomExists ? 'Valid BOM ✓' : 'BOM Not Found') : null }
-              ]}
-            />
           </div>
-        </div>
-      </PageContainer>
+        </PageContainer>
 
       {/* Sticky Action Bar */}
       <StickyActionBar>

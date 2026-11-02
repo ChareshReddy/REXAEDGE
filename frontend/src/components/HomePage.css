@@ -1,947 +1,792 @@
 /* ==========================================================================
-   RexaEdge Home Page Styles - Pixel-Matched to Target
+   RexaEdge Home Page Styles - Polished Single-Screen Layout
+   Strict Orange/Navy Design System, No Red, Sentence Case, Fixed Aspect Ratios
    ========================================================================== */
 
 .rexa-home-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 60px);
-  background: var(--sap-bg, #FFFBFB);
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--sap-bg, #fffbfb);
   color: #1e293b;
   font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-  overflow-x: hidden;
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
 }
 
 /* ==========================================================================
-   1. HERO SECTION
+   DESKTOP SINGLE-SCREEN FIT (1366x768, 1536x864, and 1920x1080)
+   No page scroll bar; flex column under top bar:
+   - Hero flex: 1 1 0% (absorbs all remaining vertical space, making hero larger)
+   - About band: auto (fits content tightly, padding 20px, ~0 wasted space)
+   - Footer: 44px reserved first
+   All sections min-height: 0 so nothing overflows or clips at 90%, 100%, 110% zoom.
+   ========================================================================== */
+
+@media (min-width: 1024px) and (min-height: 680px) {
+  /* min-height: 680px / 760px desktop single-screen lock */
+  .rexa-home-page {
+    height: calc(100vh - var(--topbar-height, 60px));
+    height: calc(100dvh - var(--topbar-height, 60px));
+    max-height: calc(100vh - var(--topbar-height, 60px));
+    max-height: calc(100dvh - var(--topbar-height, 60px));
+    overflow: hidden;
+  }
+
+  .rexa-hero-section {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    padding: clamp(14px, 1.8vh, 24px) 0 !important;
+    box-sizing: border-box;
+  }
+
+  .rexa-hero-container {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+  }
+
+  .rexa-hero-laptop-frame {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    max-width: clamp(420px, 36vw, 560px);
+  }
+
+  .rexa-about-section {
+    flex: 0 0 auto;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    padding: clamp(8px, 1.2vh, 14px) 0 !important;
+    box-sizing: border-box;
+  }
+
+  .rexa-about-container {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .rexa-about-unified-card {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .rexa-footer {
+    flex: 0 0 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+}
+
+/* Fallback for smaller viewports or heights below 680px / phones: normal scrolling */
+@media (max-height: 679px), (max-width: 1023px) {
+  .rexa-home-page {
+    min-height: calc(100vh - var(--topbar-height, 60px));
+    height: auto;
+    overflow-y: auto;
+  }
+
+  .rexa-hero-section {
+    padding: 24px 0;
+  }
+
+  .rexa-about-section {
+    padding: 16px 0 24px;
+  }
+
+  .rexa-footer {
+    padding: 12px 0;
+  }
+}
+
+/* ==========================================================================
+   ENTRANCE ANIMATIONS (Staggered fade-up, 200-300ms, disabled for reduced motion)
+   ========================================================================== */
+
+@keyframes rexaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rexa-hero-content-col {
+  animation: rexaFadeUp 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 40ms;
+}
+
+.rexa-hero-image-col {
+  animation: rexaFadeUp 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 100ms;
+}
+
+.rexa-about-section {
+  animation: rexaFadeUp 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rexa-hero-content-col,
+  .rexa-hero-image-col,
+  .rexa-about-section {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* ==========================================================================
+   1. HERO SECTION (Soft orange-50 gradient, 4-6% dot grid, blurred glow)
    ========================================================================== */
 
 .rexa-hero-section {
   position: relative;
-  height: clamp(460px, 34vw, 660px);
-  min-height: 460px;
-  max-height: 660px;
-  background-color: #041633;
-  color: #ffffff;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-}
-
-/* Background photo on right & smooth horizontal fade from dark navy */
-.rexa-hero-bg-wrapper {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 58%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.rexa-hero-laptop-photo {
+  background-color: #fffbfb;
+  background-image: 
+    radial-gradient(circle, rgba(234, 88, 12, 0.05) 1.2px, transparent 1.2px),
+    linear-gradient(135deg, #fff7ed 0%, #fffbfb 100%);
+  background-size: 24px 24px, 100% 100%;
+  border-bottom: 1px solid #fed7aa;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: right center;
-  display: block;
-}
-
-.rexa-hero-fade-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    #041633 0%,
-    #041633 8%,
-    rgba(4, 22, 51, 0.92) 28%,
-    rgba(4, 22, 51, 0.65) 50%,
-    rgba(4, 22, 51, 0.15) 75%,
-    rgba(4, 22, 51, 0) 100%
-  );
+  box-sizing: border-box;
+  padding: clamp(14px, 1.8vh, 24px) 0;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .rexa-hero-container {
-  position: relative;
-  z-index: 2;
   width: 100%;
-  max-width: 1536px;
-  margin: 0 auto;
-  padding: 0 4%;
-  display: flex;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
   align-items: center;
-  justify-content: space-between;
+  gap: clamp(24px, 2.5vw, 36px);
   box-sizing: border-box;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
+/* Hero Left Content Column (vertically centered) */
 .rexa-hero-content-col {
-  flex: 0 0 auto;
-  max-width: 650px;
-  width: 100%;
-}
-
-/* Eyebrow: SMART · SECURE · SCALABLE (12px, wide spacing, light gray-white) */
-.rexa-hero-eyebrow {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: normal;
-  color: #e2e8f0;
-  text-transform: none;
-  margin-bottom: 16px;
-  user-select: none;
-}
-
-/* Heading: The AI Edge for Your ERP (clamp 44px to 76px, bold, 2 lines) */
-.rexa-hero-heading {
-  font-size: clamp(44px, 4.2vw, 76px);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -1px;
-  color: #ffffff;
-  margin: 0 0 16px 0;
-}
-
-.rexa-hero-blue-text {
-  color: #1c7bff;
-}
-
-/* Paragraph: clamp 18px to 24px, light on dark, max width 640px */
-.rexa-hero-paragraph {
-  font-size: clamp(16px, 1.3vw, 21px);
-  line-height: 1.5;
-  color: #cbd5e1;
-  margin: 0 0 28px 0;
-  max-width: 640px;
-}
-
-/* Explore Products Card (~650px wide, white, 12px radius, soft shadow) */
-.rexa-explore-card {
-  width: 100%;
-  max-width: 640px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.28), 0 3px 10px rgba(0, 0, 0, 0.12);
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-  box-sizing: border-box;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
-  user-select: none;
-}
-
-.rexa-explore-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.rexa-explore-icon-tile {
-  width: 54px;
-  height: 54px;
-  border-radius: 10px;
-  background: #ffd099 !important;
-  color: #0f2744;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rexa-explore-grid-icon {
-  color: #0f2744;
-}
-
-.rexa-explore-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.rexa-explore-title {
-  font-size: clamp(20px, 1.8vw, 26px);
-  font-weight: 700;
-  color: #0f172a;
-  line-height: 1.2;
-}
-
-.rexa-explore-desc {
-  font-size: 13px;
-  line-height: 1.45;
-  color: #64748b;
-  margin-top: 3px;
-}
-
-.rexa-explore-arrow-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #1e293b;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
-}
-
-.rexa-explore-card:hover .rexa-explore-arrow-btn {
-  border-color: #EA580C;
-  color: #EA580C;
-  background: #FFF7ED;
-}
-
-/* Three Glass Chips stacked at right of text, slightly staggered */
-.rexa-hero-chips-col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  flex-shrink: 0;
-  margin-left: 20px;
-  position: relative;
-  z-index: 3;
+  justify-content: center;
+  align-self: center;
+  max-width: 680px;
+  min-height: 0;
 }
 
-.rexa-glass-chip {
-  background: rgba(11, 35, 75, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  padding: 10px 18px;
+/* Eyebrow: Smart • Secure • Scalable */
+.rexa-hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s ease, background 0.2s ease;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ea580c;
+  text-transform: none;
+  margin-bottom: 8px;
   user-select: none;
 }
 
-.rexa-glass-chip:hover {
-  background: rgba(16, 45, 95, 0.88);
-  transform: translateX(-3px);
+.rexa-hero-eyebrow-dot {
+  color: #fdba74;
 }
 
-.rexa-chip-1 {
-  align-self: flex-start;
-  margin-left: 0;
-}
-
-.rexa-chip-2 {
-  align-self: flex-start;
-  margin-left: 12px;
-}
-
-.rexa-chip-3 {
-  align-self: flex-start;
-  margin-left: 22px;
-}
-
-.rexa-chip-icon-wrap {
-  color: #38bdf8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rexa-chip-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.rexa-chip-line1 {
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.rexa-chip-line2 {
-  font-size: 13px;
-  font-weight: 500;
-  color: #e2e8f0;
-}
-
-/* ==========================================================================
-   2. ABOUT CARDS SECTION
-   ========================================================================== */
-
-.rexa-about-section {
-  background: var(--sap-bg, #FFFBFB);
-  padding: 36px 2.5% 44px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.rexa-about-grid {
-  max-width: 1536px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-.rexa-about-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  padding: 24px 26px;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 20px;
-  box-sizing: border-box;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.rexa-about-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-}
-
-.rexa-about-card-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-.rexa-about-heading {
-  font-size: 22px;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.3px;
+/* Headline: The AI edge for your ERP */
+.rexa-hero-heading {
+  font-size: clamp(32px, 2.8vw, 48px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.8px;
+  color: #0f2744;
   margin: 0 0 10px 0;
 }
 
-.rexa-about-blue-title {
-  color: #1565d8;
+@media (min-width: 1400px) and (min-height: 800px) {
+  .rexa-hero-heading {
+    font-size: clamp(40px, 3.2vw, 56px);
+    letter-spacing: -1.2px;
+  }
 }
 
-.rexa-about-desc {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: #64748b;
-  margin: 0 0 18px 0;
+.rexa-hero-orange-text {
+  color: #ea580c;
 }
 
-/* 3 Pills in row */
-.rexa-about-pills-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-}
-
-.rexa-about-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.rexa-about-pill-circle {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.rexa-about-pill-circle.blue {
-  background: #ebf3fc;
-  color: #1565d8;
-}
-
-.rexa-about-pill-circle.amber {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.rexa-about-pill-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.rexa-about-pill-heading {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.rexa-about-pill-sub {
-  font-size: 10px;
-  color: #64748b;
-}
-
-/* Learn More */
-.rexa-about-learn-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  color: #1565d8;
-  font-size: 13.5px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  margin-top: auto;
-  transition: all 0.15s ease;
-  width: fit-content;
-}
-
-.rexa-about-learn-more:hover {
-  color: #0d47a1;
-  gap: 9px;
-}
-
-.rexa-about-card-img-wrap {
-  width: 145px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rexa-about-card-img {
-  width: 100%;
-  height: 135px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-}
-
-/* ==========================================================================
-   3. FOOTER
-   ========================================================================== */
-
-.rexa-footer {
-  background: linear-gradient(180deg, #0b2557 0%, #0a1b40 100%);
-  color: #94a3b8;
-  padding: 24px 4%;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.rexa-footer-inner {
-  max-width: 1536px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.rexa-footer-logo-box {
-  display: flex;
-  align-items: center;
-}
-
-.rexa-footer-logo-img {
-  height: 32px;
-  width: auto;
-  object-fit: contain;
-}
-
-.rexa-footer-nav-box {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.rexa-footer-link {
-  background: transparent;
-  border: none;
-  color: #cbd5e1;
-  font-size: 13.5px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 4px;
-  transition: color 0.15s ease;
-}
-
-.rexa-footer-link:hover,
-.rexa-footer-link.active {
-  color: #ffffff;
-}
-
-.rexa-footer-sep {
+/* Subtitle */
+.rexa-hero-paragraph {
+  font-size: clamp(12.5px, 0.88vw, 14.5px);
+  line-height: 1.45;
   color: #475569;
-  font-size: 12px;
+  margin: 0 0 16px 0;
+  max-width: 620px;
 }
 
-.rexa-footer-legal-box {
-  text-align: right;
-  line-height: 1.5;
-  font-size: 11.5px;
-  color: #94a3b8;
-}
-
-.rexa-footer-line1 {
-  font-weight: 500;
-  color: #cbd5e1;
-}
-
-.rexa-footer-line2 {
-  font-size: 11px;
-  opacity: 0.85;
-}
-
-/* ==========================================================================
-   4. MODALS
-   ========================================================================== */
-
-.rexa-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
-}
-
-.rexa-modal-dialog {
-  background: #ffffff;
-  border-radius: 14px;
-  width: 100%;
-  max-width: 580px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-  border: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-}
-
-.rexa-modal-dialog-large {
-  max-width: 760px;
-}
-
-.rexa-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 22px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-  border-radius: 14px 14px 0 0;
-}
-
-.rexa-modal-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rexa-modal-title-wrap h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.rexa-modal-icon-blue {
-  color: #1565d8;
-}
-
-.rexa-modal-close-btn {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.rexa-modal-close-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.rexa-modal-body {
-  padding: 20px 22px;
-  overflow-y: auto;
-}
-
-.rexa-modal-banner {
+/* Integrated Hero Actions */
+.rexa-hero-actions {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #f1f5f9;
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 16px;
-  border: 1px solid #e2e8f0;
-}
-
-.rexa-modal-banner-img {
-  width: 72px;
-  height: 60px;
-  object-fit: cover;
-  border-radius: 6px;
-}
-
-.rexa-modal-banner h4 {
-  margin: 0 0 3px 0;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.rexa-modal-banner p {
+  flex-wrap: wrap;
   margin: 0;
-  font-size: 12px;
-  color: #64748b;
 }
 
-.rexa-modal-desc {
-  font-size: 13px;
-  line-height: 1.6;
-  color: #334155;
-  margin: 0 0 16px 0;
-}
-
-.rexa-modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 22px;
-  border-top: 1px solid #e2e8f0;
-  background: #f8fafc;
-  border-radius: 0 0 14px 14px;
-}
-
-.rexa-btn-secondary {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 15px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.rexa-btn-primary {
-  background: #EA580C;
-  border: 1px solid #EA580C;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 16px;
-  border-radius: 6px;
-  cursor: pointer;
+/* Primary Button: Subtle orange gradient (orange-500 to orange-600) + arrow hover shift */
+.rexa-btn-hero-primary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.rexa-btn-primary:hover {
-  background: #C2410C;
-  border-color: #C2410C;
-}
-
-.rexa-about-split-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.rexa-about-split-card {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 14px;
-}
-
-.rexa-about-split-thumb {
-  width: 100%;
-  height: 110px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-bottom: 10px;
-}
-
-.rexa-about-split-card h4 {
-  font-size: 14px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 6px 0;
-}
-
-.rexa-about-split-card p {
-  font-size: 12px;
-  line-height: 1.5;
-  color: #475569;
-  margin: 0;
-}
-
-.rexa-contact-layout {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 20px;
-}
-
-.rexa-contact-info-panel {
-  background: #f1f5f9;
-  border-radius: 10px;
-  padding: 16px;
-}
-
-.rexa-contact-info-panel h4 {
-  margin: 0 0 6px 0;
+  gap: 8px;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border: 1px solid #ea580c;
+  border-radius: 8px;
+  padding: 9px 18px;
   font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.28);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.rexa-btn-hero-primary:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  border-color: #c2410c;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.38);
+  transform: translateY(-1px);
+}
+
+.rexa-btn-hero-primary .rexa-btn-arrow {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rexa-btn-hero-primary:hover .rexa-btn-arrow {
+  transform: translateX(3px);
+}
+
+.rexa-btn-hero-primary:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button: Orange border, fills orange-50 on hover */
+.rexa-btn-hero-secondary,
+.rexa-hero-secondary-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #fdba74; /* orange-300 border */
+  color: #c2410c; /* orange-700 text */
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 9px 18px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.rexa-btn-hero-secondary:hover,
+.rexa-hero-secondary-link:hover {
+  background: #fff7ed; /* fills orange-50 on hover */
+  border-color: #fb923c;
+  color: #9a3412;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.12);
+}
+
+.rexa-btn-hero-secondary:active,
+.rexa-hero-secondary-link:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rexa-btn-hero-primary,
+  .rexa-btn-hero-primary:hover,
+  .rexa-btn-hero-primary .rexa-btn-arrow,
+  .rexa-btn-hero-primary:hover .rexa-btn-arrow,
+  .rexa-btn-hero-secondary,
+  .rexa-btn-hero-secondary:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Hero Values: Compact vertical list with 24px gap below buttons */
+.rexa-hero-values {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rexa-hero-value-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 36px rounded orange-50 icon tile with hover raise to orange-100 */
+.rexa-hero-value-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #fff7ed; /* orange-50 */
+  color: #ea580c; /* orange-600 */
+  border: 1px solid #ffedd5; /* orange-100 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.rexa-hero-value-item:hover .rexa-hero-value-icon-wrap {
+  background: #ffedd5; /* orange-100 */
+  border-color: #fed7aa; /* orange-200 */
+  transform: translateY(-1px);
+}
+
+.rexa-hero-value-text {
+  font-size: clamp(11.5px, 0.8vw, 12.5px);
+  line-height: 1.35;
+  color: #475569;
+  min-width: 0;
+}
+
+.rexa-hero-value-title {
   font-weight: 700;
   color: #0f172a;
 }
 
-.rexa-contact-info-panel p {
-  margin: 0 0 14px 0;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: #64748b;
+.rexa-hero-value-sep {
+  color: #94a3b8;
+  margin: 0 4px;
 }
 
-.rexa-contact-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.rexa-contact-item-icon {
-  color: #1565d8;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.rexa-contact-item div {
-  display: flex;
-  flex-direction: column;
-  font-size: 11.5px;
-}
-
-.rexa-contact-item strong {
-  color: #0f172a;
-}
-
-.rexa-contact-item span {
-  color: #64748b;
-}
-
-.rexa-contact-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.rexa-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rexa-form-field label {
-  font-size: 11px;
-  font-weight: 600;
+.rexa-hero-value-desc {
   color: #475569;
 }
 
-.rexa-form-field input,
-.rexa-form-field textarea {
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 12px;
-  color: #0f172a;
-  outline: none;
-  font-family: inherit;
-}
-
-.rexa-form-field input:focus,
-.rexa-form-field textarea:focus {
-  border-color: #1565d8;
-}
-
-.rexa-contact-submit-btn {
-  background: #EA580C;
-  border: 1px solid #EA580C;
-  color: #ffffff;
-  font-size: 12.5px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
+/* Hero Right Image Column: with large blurred orange-200 glow shape */
+.rexa-hero-image-col {
+  position: relative;
+  display: flex;
   justify-content: center;
-  gap: 6px;
-  margin-top: 4px;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 8px 0;
+  box-sizing: border-box;
 }
 
-.rexa-contact-submit-btn:hover {
-  background: #C2410C;
-  border-color: #C2410C;
-}
-
-.rexa-contact-success {
-  text-align: center;
-  padding: 24px 10px;
-}
-
-.rexa-success-check-circle {
-  width: 50px;
-  height: 50px;
+/* Large blurred orange-200 glow shape behind hero image */
+.rexa-hero-image-glow {
+  position: absolute;
+  width: clamp(260px, 32vw, 440px);
+  height: clamp(260px, 32vw, 440px);
   border-radius: 50%;
-  background: #dcfce7;
-  color: #16a34a;
-  display: inline-flex;
+  background: radial-gradient(circle, rgba(254, 215, 170, 0.6) 0%, rgba(253, 186, 116, 0.3) 40%, rgba(255, 247, 237, 0) 70%);
+  filter: blur(45px);
+  pointer-events: none;
+  z-index: 0;
+  transform: translateZ(0);
+}
+
+/* Hero Laptop Frame: rounded frame, thin orange-200 border, soft orange-tinted shadow */
+.rexa-hero-laptop-frame {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  max-width: clamp(420px, 36vw, 560px);
+  max-height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #fed7aa;
+  box-shadow: 0 14px 34px -4px rgba(234, 88, 12, 0.12), 0 4px 12px rgba(15, 39, 68, 0.05);
+  background: #ffffff;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
 }
 
-.rexa-contact-success h4 {
-  margin: 0 0 6px 0;
-  font-size: 16px;
-  color: #0f172a;
+.rexa-hero-laptop-frame:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px -4px rgba(234, 88, 12, 0.18), 0 6px 16px rgba(15, 39, 68, 0.08);
 }
 
-.rexa-contact-success p {
-  margin: 0;
-  font-size: 12.5px;
-  color: #64748b;
+@media (prefers-reduced-motion: reduce) {
+  .rexa-hero-laptop-frame,
+  .rexa-hero-laptop-frame:hover {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+.rexa-hero-laptop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* ==========================================================================
-   5. RESPONSIVE BREAKPOINTS (1920, 1536, 1366, 1024, 768, 390 px)
+   2. ABOUT BAND (Fits content tightly, card padding 20px, ~0 wasted space)
    ========================================================================== */
 
-@media (max-width: 1280px) {
-  .rexa-hero-chips-col {
-    margin-left: 10px;
+.rexa-about-section {
+  background: #ffffff;
+  width: 100%;
+  box-sizing: border-box;
+  padding: clamp(8px, 1.2vh, 14px) 0;
+  flex: 0 0 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+}
+
+.rexa-about-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  height: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+/* Unified Card with 3px orange gradient top accent line */
+.rexa-about-unified-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #ffedd5;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr auto 1fr;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  align-items: stretch;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  overflow: hidden;
+}
+
+/* Top accent line (3px orange gradient) on card */
+.rexa-about-unified-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #ea580c 0%, #fdba74 50%, #ea580c 100%);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  z-index: 2;
+}
+
+.rexa-about-unified-card:hover {
+  border-color: #fed7aa;
+  box-shadow: 0 6px 18px rgba(15, 39, 68, 0.06);
+}
+
+/* "About us" highlight pulse (~1.5s orange outline pulse) */
+@keyframes rexa-about-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.45), 0 4px 14px rgba(234, 88, 12, 0.1);
+    border-color: #ea580c;
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.3), 0 8px 24px rgba(234, 88, 12, 0.18);
+    border-color: #ea580c;
+  }
+  100% {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-color: #ffedd5;
   }
 }
 
-@media (max-width: 1024px) {
-  .rexa-hero-section {
-    height: auto;
-    min-height: auto;
-    max-height: none;
-    padding: 40px 0;
-  }
+.rexa-about-unified-card.highlighted {
+  animation: rexa-about-pulse 1.5s ease-in-out forwards;
+}
 
-  .rexa-hero-bg-wrapper {
-    width: 100%;
-    opacity: 0.35;
+@media (prefers-reduced-motion: reduce) {
+  .rexa-about-unified-card.highlighted {
+    animation: none;
+    border-color: #ea580c !important;
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.25) !important;
   }
+}
 
+/* Vertical Divider between the two columns */
+.rexa-about-col-divider {
+  width: 1px;
+  background: #ffedd5;
+  margin: 16px 0;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+/* Each Column inside the Unified Card: top-aligned, consistent 20px padding */
+.rexa-about-col {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 20px 20px;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.rexa-about-col-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Eyebrow labels in orange */
+.rexa-about-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ea580c;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+
+.rexa-about-heading {
+  font-size: clamp(13.5px, 1vw, 15px);
+  font-weight: 700;
+  color: #0f2744;
+  letter-spacing: -0.2px;
+  margin: 0 0 4px 0;
+  line-height: 1.25;
+}
+
+.rexa-about-desc {
+  font-size: clamp(11px, 0.78vw, 12px);
+  line-height: 1.42;
+  color: #64748b;
+  margin: 0 0 10px 0;
+  min-height: calc(1.42 * 12px * 3);
+  height: calc(1.42 * 12px * 3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Feature tags as soft pills with icons */
+.rexa-about-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0;
+  min-height: 24px;
+}
+
+.rexa-about-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+  border-radius: 9999px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  transition: background-color 0.15s ease;
+}
+
+.rexa-about-tag:hover {
+  background: #ffedd5;
+}
+
+/* Thumbnail in Column 1 (Next IT Point building) with 1px orange-100 border */
+.rexa-about-thumb-wrap {
+  width: 120px;
+  height: 90px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 0;
+  border: 1px solid #ffedd5;
+  background: #fff7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.rexa-about-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Logo Tile in Column 2 (RexaEdge logo) with 1px orange-100 border */
+.rexa-about-logo-tile {
+  background: #ffffff;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.rexa-about-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ==========================================================================
+   3. CLEAN LIGHT FOOTER (Slim single line, ~44px, fully visible)
+   ========================================================================== */
+
+.rexa-footer {
+  background: #ffffff;
+  color: #64748b;
+  border-top: 1px solid #fed7aa;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 !important;
+  flex: 0 0 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  z-index: 10;
+}
+
+.rexa-footer-inner {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 var(--page-gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.rexa-footer-left {
+  display: flex;
+  align-items: center;
+}
+
+.rexa-footer-right {
+  display: flex;
+  align-items: center;
+}
+
+.rexa-footer-product-text {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.rexa-footer-copy-text {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Tablets and Mobile Phones)
+   ========================================================================== */
+
+@media (max-width: 1023px) {
   .rexa-hero-container {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 28px;
+    grid-template-columns: 1fr;
+    gap: 24px;
   }
 
-  .rexa-hero-chips-col {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-left: 0;
-    gap: 10px;
+  .rexa-hero-laptop-frame {
+    max-width: 480px;
+    height: 260px;
   }
 
-  .rexa-chip-1, .rexa-chip-2, .rexa-chip-3 {
-    margin-left: 0;
-  }
-
-  .rexa-about-grid {
+  .rexa-about-unified-card {
     grid-template-columns: 1fr;
   }
+
+  .rexa-about-col-divider {
+    width: 100%;
+    height: 1px;
+    margin: 0;
+  }
+
+  .rexa-about-col {
+    padding: 16px;
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 639px) {
   .rexa-hero-heading {
-    font-size: 36px;
+    font-size: 24px;
   }
 
-  .rexa-explore-card {
-    max-width: 100%;
+  .rexa-hero-paragraph {
+    font-size: 13px;
   }
 
-  .rexa-about-card {
+  .rexa-about-col {
     flex-direction: column-reverse;
+    gap: 12px;
   }
 
-  .rexa-about-card-img-wrap {
+  .rexa-about-thumb-wrap {
     width: 100%;
-  }
-
-  .rexa-about-card-img {
-    height: 180px;
+    height: 110px;
   }
 
   .rexa-footer-inner {
     flex-direction: column;
-    text-align: center;
-    gap: 14px;
-  }
-
-  .rexa-footer-legal-box {
-    text-align: center;
-  }
-
-  .rexa-contact-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .rexa-hero-section {
-    padding: 30px 0;
-  }
-
-  .rexa-hero-bg-wrapper {
-    opacity: 0.15;
-  }
-
-  .rexa-hero-heading {
-    font-size: 28px;
-  }
-
-  .rexa-hero-paragraph {
-    font-size: 15px;
-  }
-
-  .rexa-explore-card {
-    padding: 12px 14px;
-    gap: 12px;
-  }
-
-  .rexa-explore-icon-tile {
-    width: 44px;
-    height: 44px;
-  }
-
-  .rexa-explore-title {
-    font-size: 18px;
-  }
-
-  .rexa-glass-chip {
-    width: 100%;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 8px var(--page-gutter);
   }
 }

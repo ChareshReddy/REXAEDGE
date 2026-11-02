@@ -18,8 +18,24 @@ export default function Login({
     if (msg) toast.error(msg);
   };
 
+  const clearErrors = () => {
+    if (errorMessage) _setErrorMessage('');
+    toast.clearAll();
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    clearErrors();
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    clearErrors();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearErrors();
     const cleanEmail = email.trim();
     if (!cleanEmail || !password.trim()) {
       setErrorMessage('Please enter both your email address and password.');
@@ -27,13 +43,13 @@ export default function Login({
     }
 
     setIsLoading(true);
-    setErrorMessage('');
 
     try {
       const result = await loginUser(cleanEmail, password);
       // Immediately clear raw password from component state
       setPassword('');
       if (result.success && result.user) {
+        toast.clearAll();
         onLoginSuccess(result.user);
       } else {
         setErrorMessage(result.error || 'Login failed. Please check your credentials.');
@@ -121,7 +137,7 @@ export default function Login({
                     className="sap-input sap-input-with-icon"
                     placeholder="e.g. user@nextitpoint.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={handleEmailChange}
                     disabled={isLoading}
                     autoComplete="email"
                     autoFocus
@@ -139,7 +155,7 @@ export default function Login({
                   name="password"
                   placeholder="Enter password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   disabled={isLoading}
                   autoComplete="current-password"
                   required

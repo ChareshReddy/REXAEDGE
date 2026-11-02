@@ -13,6 +13,7 @@ import {
   ListOrdered,
   Network
 } from 'lucide-react';
+import TableLoadingState from './TableLoadingState';
 
 const DEFAULT_BP_COLUMNS = [
   { name: 'BusinessPartner', label: 'BP ID', readOnly: true },
@@ -364,10 +365,11 @@ export default function EntityTable({
       {/* Table Body */}
       <div className="sap-table-container" tabIndex={0} role="region" aria-label={`${entityLabel} Table`}>
         {isLoading ? (
-          <div className="sap-loading-state">
-            <span className="sap-spinner sap-spinner-blue" style={{ width: 32, height: 32, borderWidth: 3 }} />
-            <p>Loading {entityLabel.toLowerCase()}...</p>
-          </div>
+          <TableLoadingState
+            borderless
+            minHeight={260}
+            message={`Loading ${entityLabel.toLowerCase()}...`}
+          />
         ) : data.length === 0 ? (
           <div className="sap-empty-state">
             <FileSpreadsheet size={40} color="var(--sap-text-subtle)" />

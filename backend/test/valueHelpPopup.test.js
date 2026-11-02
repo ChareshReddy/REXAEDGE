@@ -347,6 +347,123 @@ async function runTests() {
     console.log('   ✓ Material & Plant column widths match exact specification (compact, no horizontal overflow)');
   }
 
+  // 9. Backdrop Click Protection Across All F4 Popups
+  console.log('\n9. Testing backdrop click does NOT close any F4 popup (no exceptions)...');
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const frontendDir = path.resolve(__dirname, '../../frontend');
+
+    const popupFiles = [
+      'src/components/StorageLocationValueHelpModal.jsx',
+      'src/components/PlantValueHelpModal.jsx',
+      'src/components/MaterialValueHelpModal.jsx',
+      'src/components/BomUsageValueHelpModal.jsx',
+      'src/components/MaterialRestrictValueRangeModal.jsx'
+    ];
+
+    for (const file of popupFiles) {
+      const code = fs.readFileSync(path.resolve(frontendDir, file), 'utf8');
+      assert(
+        code.includes('F4PopupOverlay'),
+        `${file} must use shared F4PopupOverlay component`
+      );
+      assert(
+        !code.includes('if (e.target === e.currentTarget) onClose()') &&
+        !code.includes('if (e.target === e.currentTarget) { onClose()') &&
+        !code.includes('if (e.target === e.currentTarget) {\n          onClose()') &&
+        !code.includes('if (e.target === e.currentTarget) {\r\n          onClose()'),
+        `${file} must NOT contain backdrop click-to-close handler`
+      );
+    }
+
+    // Verify F4PopupOverlay implementation prevents default on backdrop clicks
+    const overlayCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/F4PopupOverlay.jsx'), 'utf8');
+    assert(overlayCode.includes('e.stopPropagation()'), 'F4PopupOverlay must stop propagation on backdrop clicks');
+    assert(overlayCode.includes('e.preventDefault()'), 'F4PopupOverlay must prevent default to keep focus and typed filter');
+
+    console.log('   ✓ All 5 F4 popup types use F4PopupOverlay; backdrop click-to-close completely eliminated');
+  }
+
+  // 10. Explicit Close Triggers: X, Cancel, Esc, and Select
+  console.log('\n10. Testing X, Cancel, Esc, and Select explicitly close popups...');
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const frontendDir = path.resolve(__dirname, '../../frontend');
+
+    const popupFiles = [
+      'src/components/StorageLocationValueHelpModal.jsx',
+      'src/components/PlantValueHelpModal.jsx',
+      'src/components/MaterialValueHelpModal.jsx',
+      'src/components/BomUsageValueHelpModal.jsx',
+      'src/components/MaterialRestrictValueRangeModal.jsx'
+    ];
+
+    for (const file of popupFiles) {
+      const code = fs.readFileSync(path.resolve(frontendDir, file), 'utf8');
+      assert(code.includes("e.key === 'Escape'"), `${file} must handle Escape key`);
+      assert(code.includes('onClose') && code.includes('Cancel'), `${file} must contain Cancel action invoking onClose`);
+      assert(code.includes('onClose'), `${file} must contain X close button invoking onClose`);
+    }
+
+    console.log('   ✓ Verified X button, Cancel (Esc) button, Escape key, and Selection close all popups');
+  }
+
+  // 11. Storage Location Table Column Fitting & Popup Width
+  console.log('\n11. Testing Storage Location column fitting & reduced width (520px - 620px)...');
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const frontendDir = path.resolve(__dirname, '../../frontend');
+
+    const slocCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/StorageLocationValueHelpModal.jsx'), 'utf8');
+    const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
+
+    // Plnt and SLoc narrow and fixed
+    assert(slocCode.includes('style={{ width: 68 }}') || slocCode.includes('style={{ width: 68, whiteSpace: \'nowrap\' }}'), 'Plnt column must be narrow and fixed (~68px)');
+    assert(slocCode.includes('style={{ width: 72 }}') || slocCode.includes('style={{ width: 72, whiteSpace: \'nowrap\' }}'), 'SLoc column must be narrow and fixed (~72px)');
+
+    // Description sized to text with sensible max
+    assert(slocCode.includes('minWidth: 260') && slocCode.includes('maxWidth: 380'), 'Description column must have sensible bounds (min 260, max 380)');
+
+    // Popup width within 520px to 620px
+    assert(slocCode.includes('width: \'min(540px, 92vw)\'') || slocCode.includes('maxWidth: 550'), 'Storage Location popup width must be between 520px and 620px');
+    assert(cssCode.includes('.sap-f4-modal-dialog.storage-location') && cssCode.includes('width: min(540px, 92vw)'), 'CSS must reflect tightened storage location popup width');
+
+    console.log('   ✓ Storage location Plnt and SLoc fixed, Description bounded, and popup width tightened to 540px');
+  }
+
+  // 12. Tightened Dimensions Across All F4 Popups
+  console.log('\n12. Testing tightened dimensions across Material, Plant, BOM Usage, and Restrict Value Range...');
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const frontendDir = path.resolve(__dirname, '../../frontend');
+
+    const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
+    const bomUsageCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/BomUsageValueHelpModal.jsx'), 'utf8');
+
+    assert(cssCode.includes('width: min(640px, 92vw)'), 'Material popup width tightened to 640px');
+    assert(cssCode.includes('width: min(560px, 92vw)'), 'Plant popup width tightened to 560px');
+    assert(bomUsageCode.includes('maxWidth: 650'), 'BOM Usage popup maxWidth tightened to 650px');
+    assert(cssCode.includes('.sap-restrict-modal-dialog') && cssCode.includes('width: min(600px, 94vw)'), 'Restrict Value Range modal width tightened to 600px');
+
+    console.log('   ✓ All F4 popups tightened to eliminate empty wasted areas while preserving full readability');
+  }
+
   console.log('\n============================================================');
   console.log('  ALL SAP F4 VALUE HELP POPUP TESTS PASSED (100%)           ');
   console.log('============================================================\n');

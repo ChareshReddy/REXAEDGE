@@ -43,6 +43,7 @@ import {
 } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function BulkCreateBomView({
   systemKey = 'DEV',
@@ -73,9 +74,15 @@ export default function BulkCreateBomView({
   const [isValidating, setIsValidating] = useState(initialIsValidating);
   const [preflightReport, setPreflightReport] = useState(initialPreflightReport);
   const [parseError, _setParseError] = useState('');
-  const setParseError = (msg) => {
-    _setParseError(msg);
-    if (msg) toast.error(msg);
+  const setParseError = (msg, err = null) => {
+    _setParseError(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Error processing bulk BOM file.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
   const [expandedMessageBoms, setExpandedMessageBoms] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);

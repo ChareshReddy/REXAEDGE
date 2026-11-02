@@ -22,6 +22,7 @@ import adminLogsRoutes from './routes/adminLogs.js';
 import clientLogsRoutes from './routes/clientLogs.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { recordRouteError } from './utils/auditHelper.js';
+import { sendFriendlyError } from './utils/friendlyError.js';
 import { requireAuth } from './middleware/auth.js';
 import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
 import dns from 'dns';
@@ -210,17 +211,7 @@ app.use((req, res) => {
 
 // Global Error Handler (never leak stack trace or credentials in response)
 app.use((err, req, res, next) => {
-  const httpStatus = err.status || 500;
-  const errorRef = recordRouteError(req, err, {
-    source: 'backend',
-    httpStatus,
-    errorCode: err.code || 'SERVER_ERROR'
-  });
-  console.error(`[Error Ref: ${errorRef}] Unhandled server error:`, err.message);
-  res.status(httpStatus).json({
-    error: err.message || 'Internal server error',
-    error_ref: errorRef
-  });
+  sendFriendlyError(res, req, err);
 });
 
 // HTTP keep-alive resilience configuration

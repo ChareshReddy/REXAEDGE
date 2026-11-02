@@ -5,6 +5,7 @@ import { MODULE_KEYS } from '../config/modules.js';
 import { searchMaterials, getMaterialDetail } from '../services/materialSearchService.js';
 import { searchMaterialsByOption } from '../services/searchByOptionService.js';
 import { SAP_SEARCH_OPTIONS } from '../config/searchHelpOptions.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 import materialCheckRouter from './materialCheck.js';
 
 const router = express.Router();
@@ -74,12 +75,7 @@ router.get('/search', materialSearchRateLimiter, requireAppPermission('bom.*'), 
     if (req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[materialsRoute] Search error:', err.message);
-    const statusCode = err.status || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: err.message || 'Failed to search materials in SAP.'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -151,12 +147,7 @@ router.post('/search-by-option', materialSearchRateLimiter, requireAppPermission
     if (req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[materialsRoute] search-by-option error:', err.message);
-    const statusCode = err.status || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: err.message || 'Failed to execute search by option.'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -199,12 +190,7 @@ router.get('/:matnr', materialSearchRateLimiter, requireAppPermission('bom.*'), 
     if (req.destroyed || res.writableEnded) {
       return;
     }
-    console.error('[materialsRoute] Detail error:', err.message);
-    const statusCode = err.status || 500;
-    return res.status(statusCode).json({
-      success: false,
-      error: err.message || 'Failed to retrieve material details from SAP.'
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

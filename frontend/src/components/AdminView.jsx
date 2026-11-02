@@ -583,36 +583,35 @@ export default function AdminView({
 
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
-      {/* Fiori Standard Redesigned Header (Subtitle > Title > Breadcrumbs) */}
+      {/* Fiori Standard Redesigned Header (Breadcrumbs > Title > Subtitle > Tabs) */}
       <div className="fiori-ph" style={{ padding: '0' }}>
         <div className="sap-layout-header-inner">
-          <div className="fiori-ph-header-top">
-            <div className="fiori-ph-title-row">
-              <h1 className="fiori-ph-title">System &amp; User Management</h1>
-              <button
-                type="button"
-                className="sap-btn sap-btn-secondary"
-                onClick={handleRefresh}
-                title="Refresh Administration Data"
-                style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
-              >
-                <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
-                <span>Refresh</span>
-              </button>
-            </div>
-            <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
-          </div>
-
-          <div className="fiori-bc">
+          <nav className="fiori-bc" aria-label="Breadcrumb">
             <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
               Home
             </button>
             <span className="fiori-bc-sep">›</span>
             <span className="fiori-bc-current">Enterprise Administration</span>
+          </nav>
+
+          <div className="fiori-ph-title-row">
+            <h1 className="fiori-ph-title">System &amp; User Management</h1>
+            <button
+              type="button"
+              className="sap-btn sap-btn-secondary"
+              onClick={handleRefresh}
+              title="Refresh Administration Data"
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
+            >
+              <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
+              <span>Refresh</span>
+            </button>
           </div>
 
+          <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
+
           {/* Admin Navigation Tabs */}
-          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button
               type="button"
               onClick={() => setActiveTab('users')}

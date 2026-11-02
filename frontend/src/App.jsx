@@ -96,6 +96,7 @@ export default function App({
   };
 
   const navigateToView = (tab, subView = null, replace = false) => {
+    toast.clearOnNavigation();
     setActiveTab(tab);
     if (subView !== null) {
       setLaunchpadSubView(subView);
@@ -362,6 +363,7 @@ export default function App({
   }, [selectedServer?.id, user?.role]);
 
   const handleServerChange = (serverId) => {
+    toast.clearAll();
     const chosen = availableServers.find((s) => s.id === serverId);
     if (chosen) {
       setSelectedServer(chosen);
@@ -372,6 +374,7 @@ export default function App({
   };
 
   const handleLoginSuccess = (userData) => {
+    toast.clearAll();
     setUser(userData);
     setSelectedHomeGroup('');
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
@@ -379,11 +382,13 @@ export default function App({
   };
 
   const handleLogout = async () => {
+    toast.clearAll();
     try {
       await logoutUser();
     } catch {
       // Ignore network errors during logout
     } finally {
+      toast.clearAll();
       setUser(null);
       setAvailableServers([]);
       setSelectedServer(null);
@@ -511,6 +516,24 @@ export default function App({
     };
   }, [user, selectedServer?.id, availableServers.length]);
 
+  // Listen for global SAP unreachable broadcasts from API interceptors
+  useEffect(() => {
+    const handleServerStatus = (e) => {
+      if (e.detail?.status === 'UNREACHABLE') {
+        setSapSession((prev) => ({
+          ...prev,
+          connected: false,
+          status: 'UNREACHABLE',
+          message: 'SAP server not reachable'
+        }));
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sap:server-status', handleServerStatus);
+      return () => window.removeEventListener('sap:server-status', handleServerStatus);
+    }
+  }, []);
+
   if (isCheckingAuth) {
     return (
       <div className="sap-login-viewport" style={{ color: 'var(--sap-shell-text)', flexDirection: 'column', gap: 16 }}>
@@ -574,7 +597,7 @@ export default function App({
               ? `Connected to ${selectedServer?.name || 'SAP Server'}${sapSession.latencyMs ? ` (${sapSession.latencyMs}ms)` : ' (< 50ms)'}`
               : isChecking
               ? 'Checking connection...'
-              : 'Not connected';
+              : 'SAP server not reachable';
 
             return (
               <div

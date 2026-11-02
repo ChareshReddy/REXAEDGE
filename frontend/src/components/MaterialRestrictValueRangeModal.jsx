@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { lockScroll } from '../utils/scrollLock';
 import { searchMaterialsByOption } from '../services/api';
+import { extractErrorInfo } from '../utils/friendlyError';
 import { useDraggableModal } from '../hooks/useDraggableModal';
 import ValueHelpInput from './ValueHelpInput';
+import F4PopupOverlay from './F4PopupOverlay';
 
 export const ALL_SEARCH_OPTIONS = [
   {
@@ -766,8 +768,7 @@ export default function MaterialRestrictValueRangeModal({
     } catch (err) {
       if (controller.signal.aborted) return;
       setIsSearching(false);
-      const msg = err.response?.data?.error || err.message || 'Failed to search materials.';
-      setErrorMsg(msg);
+      setErrorMsg(extractErrorInfo(err, 'Failed to search materials.'));
     }
   }, [
     activeOption,
@@ -841,15 +842,10 @@ export default function MaterialRestrictValueRangeModal({
   const currentTabValues = formValues[activeTabKey] || {};
 
   return createPortal(
-    <div
+    <F4PopupOverlay
       className="sap-f4-portal-overlay"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
       onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="sap-restrict-range-title"
+      ariaLabelledBy="sap-restrict-range-title"
     >
       <div
         ref={dialogRef}
@@ -857,8 +853,8 @@ export default function MaterialRestrictValueRangeModal({
         className="sap-f4-modal-dialog sap-restrict-modal-dialog"
         style={{
           ...dialogStyle,
-          width: 'min(660px, 94vw)',
-          maxWidth: 680,
+          width: 'min(600px, 94vw)',
+          maxWidth: 620,
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '85vh'
@@ -991,9 +987,35 @@ export default function MaterialRestrictValueRangeModal({
         {/* Tab Content Form Area */}
         <div className="sap-restrict-content-area">
           {errorMsg && (
-            <div className="sap-f4-error" style={{ marginBottom: 16 }}>
-              <AlertCircle size={16} style={{ flexShrink: 0 }} />
-              <span>{errorMsg}</span>
+            <div
+              className="sap-f4-error"
+              style={{
+                marginBottom: 16,
+                backgroundColor: '#fffbeb',
+                border: '1px solid #fde68a',
+                color: '#92400e',
+                borderRadius: 6,
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+                fontSize: 12,
+                lineHeight: 1.4
+              }}
+            >
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1, color: '#d97706' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{typeof errorMsg === 'object' ? errorMsg.title : 'Search notice'}</div>
+                <div>{typeof errorMsg === 'object' ? errorMsg.message : errorMsg}</div>
+                {typeof errorMsg === 'object' && errorMsg.hint && (
+                  <div style={{ marginTop: 4, opacity: 0.9 }}>{errorMsg.hint}</div>
+                )}
+                {typeof errorMsg === 'object' && errorMsg.errorRef && (
+                  <div style={{ marginTop: 4, fontSize: 11, color: '#64748b' }}>
+                    Reference: <code>{errorMsg.errorRef}</code>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1149,7 +1171,7 @@ export default function MaterialRestrictValueRangeModal({
           </div>
         </div>
       </div>
-    </div>,
+    </F4PopupOverlay>,
     document.body
   );
 }

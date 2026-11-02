@@ -11,13 +11,14 @@ import {
   ArrowRight,
   X
 } from 'lucide-react';
-import { PageContainer, SummaryPanel, StickyActionBar } from './layout';
+import { PageContainer, StickyActionBar } from './layout';
 import CreateBomForm from './CreateBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
 import { sendChatMessage, confirmChatAction, cancelChatAction, verifyCopiedBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function CopyBomView({
   systemKey = 'DEV',
@@ -30,23 +31,18 @@ export default function CopyBomView({
   const [actionStatus, setActionStatus] = useState('pending'); // 'pending' | 'executing' | 'confirmed' | 'cancelled' | 'failed'
   const [executionResult, setExecutionResult] = useState(null);
   const [errorMessage, _setErrorMessage] = useState('');
-  const setErrorMessage = (msg) => {
-    _setErrorMessage(msg);
-    if (msg) toast.error(msg);
+  const setErrorMessage = (msg, err = null) => {
+    _setErrorMessage(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Failed to execute Copy BOM action.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
-  const [currentFormValues, setCurrentFormValues] = useState({
-    sourceMaterial: initialMaterial || '',
-    sourcePlant: initialPlant || '',
-    sourceUsage: '1',
-    sourceAltBom: '',
-    targetMaterial: initialMaterial || '',
-    targetPlant: '',
-    targetUsage: '1',
-    targetAltBom: '',
-    validFrom: ''
-  });
 
   // Background Verification State
   const [isReadingBack, setIsReadingBack] = useState(false);
@@ -129,7 +125,7 @@ export default function CopyBomView({
       }
       console.error('Error proposing Copy BOM:', err);
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Unable to submit Copy BOM request.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     } finally {
       if (!controller.signal.aborted) {
         setIsSubmitting(false);
@@ -200,7 +196,7 @@ export default function CopyBomView({
       console.error('Error confirming Copy BOM:', err);
       setActionStatus('failed');
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Failed to execute Copy BOM action.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     }
   };
 
@@ -278,67 +274,45 @@ export default function CopyBomView({
         <div style={{ marginTop: 20 }}>
           {/* Step 1: Form View (when no proposal is pending and not yet confirmed) */}
           {!proposedAction && !executionResult && (
-            <div className="sap-layout-content-with-summary">
-              <div className="sap-form-view-section" style={{ width: '100%' }}>
-                {isSubmitting ? (
-                  <div
-                    className="sap-loading-card"
-                    style={{
-                      width: '100%',
-                      textAlign: 'center',
-                      padding: '36px 20px',
-                      borderRadius: 'var(--sap-radius)',
-                      border: '1px solid var(--sap-border)'
-                    }}
+            <div className="sap-form-view-section" style={{ width: '100%' }}>
+              {isSubmitting ? (
+                <div
+                  className="sap-loading-card"
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '36px 20px',
+                    borderRadius: 'var(--sap-radius)',
+                    border: '1px solid var(--sap-border)'
+                  }}
+                >
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                    Validating BOMs in SAP...
+                  </h4>
+                  <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                    Simulating multi-level BOM creation in the target plant to verify all components and plants before execution.
+                  </p>
+                  <button
+                    type="button"
+                    className="sap-button"
+                    onClick={handleCancelChecking}
+                    style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
                   >
-                    <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
-                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                      Validating BOMs in SAP...
-                    </h4>
-                    <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                      Simulating multi-level BOM creation in the target plant to verify all components and plants before execution.
-                    </p>
-                    <button
-                      type="button"
-                      className="sap-button"
-                      onClick={handleCancelChecking}
-                      style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <CreateBomForm
-                    formId="copy-bom-form"
-                    onSubmit={handleFormSubmit}
-                    onCancel={onBack}
-                    onValuesChange={setCurrentFormValues}
-                    initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
-                    hideHeader={true}
-                    hideFormActions={true}
-                    style={{ width: '100%' }}
-                  />
-                )}
-              </div>
-
-              {/* SummaryPanel for wide screens (>= 1500px) */}
-              <SummaryPanel
-                title="Copy Overview"
-                status={
-                  currentFormValues.sourceMaterial && currentFormValues.targetPlant
-                    ? `Copy ${currentFormValues.sourceMaterial} to plant ${currentFormValues.targetPlant}`
-                    : 'Fill required source & target fields'
-                }
-                items={[
-                  { label: 'Source Material', value: currentFormValues.sourceMaterial },
-                  { label: 'Source Plant', value: currentFormValues.sourcePlant },
-                  { label: 'Source Usage', value: currentFormValues.sourceUsage ? `${currentFormValues.sourceUsage}${currentFormValues.sourceAltBom ? ` (Alt ${currentFormValues.sourceAltBom})` : ''}` : null },
-                  { label: 'Target Material', value: currentFormValues.targetMaterial },
-                  { label: 'Target Plant', value: currentFormValues.targetPlant },
-                  { label: 'Target Usage', value: currentFormValues.targetUsage ? `${currentFormValues.targetUsage}${currentFormValues.targetAltBom ? ` (Alt ${currentFormValues.targetAltBom})` : ''}` : null },
-                  { label: 'Valid From', value: currentFormValues.validFrom }
-                ]}
-              />
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <CreateBomForm
+                  formId="copy-bom-form"
+                  onSubmit={handleFormSubmit}
+                  onCancel={onBack}
+                  initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
+                  hideHeader={true}
+                  hideFormActions={true}
+                  style={{ width: '100%' }}
+                />
+              )}
             </div>
           )}
 

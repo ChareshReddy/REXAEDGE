@@ -31,6 +31,7 @@ import {
 import BulkUploadPanel from './BulkUploadPanel';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   BulkWorkflowSteps,
@@ -116,9 +117,15 @@ export default function BulkBomView({
     initialExecutionReport?.results || initialParsedRows
   );
   const [parseError, _setParseError] = useState('');
-  const setParseError = (msg) => {
-    _setParseError(msg);
-    if (msg) toast.error(msg);
+  const setParseError = (msg, err = null) => {
+    _setParseError(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Error processing bulk BOM file.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
 
   // Validation phase state

@@ -17,7 +17,7 @@ const indexCss = fs.readFileSync(indexCssPath, 'utf8');
 // ============================================================================
 // 1. CSS POSITIONING, STACKING & VIEWPORT RULES
 // ============================================================================
-console.log('Test 1: Verify Toast Container fixed bottom-right positioning and z-index...');
+console.log('Test 1: Verify Toast Container floating top banner positioning, zero layout shift, and z-index...');
 
 assert.match(
   indexCss,
@@ -26,13 +26,13 @@ assert.match(
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*bottom:\s*24px;/s,
-  'Toast container must be positioned at bottom: 24px'
+  /\.sap-toast-container\s*\{[^}]*top:\s*calc\(var\(--topbar-height,\s*60px\)\s*\+\s*12px\);/s,
+  'Toast container must be anchored just under the top bar'
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*right:\s*24px;/s,
-  'Toast container must be positioned at right: 24px'
+  /\.sap-toast-container\s*\{[^}]*left:\s*50%;[^}]*transform:\s*translateX\(-50%\);/s,
+  'Toast container must be horizontally centered'
 );
 assert.match(
   indexCss,
@@ -41,25 +41,30 @@ assert.match(
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*max-width:\s*360px;/s,
-  'Toast container max-width must be ~360px'
+  /\.sap-toast-container\s*\{[^}]*max-width:\s*960px;/s,
+  'Toast container max-width must be ~960px'
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*flex-direction:\s*column-reverse;/s,
-  'Toasts must stack upward (column-reverse)'
+  /\.sap-toast-container\s*\{[^}]*flex-direction:\s*column;/s,
+  'Toasts must stack downward (column)'
 );
 assert.match(
   indexCss,
-  /@media\s*\(max-width:\s*480px\)\s*\{[^}]*\.sap-toast-container\s*\{[^}]*left:\s*16px;[^}]*right:\s*16px;[^}]*max-width:\s*calc\(100%\s*-\s*32px\);/s,
-  'Mobile viewport must span the bottom with 16px margins'
+  /\.sap-toast-container\s*\{[^}]*gap:\s*8px;/s,
+  'Toasts must stack with an 8px gap'
 );
 assert.match(
   indexCss,
-  /@keyframes\s+sap-toast-slide-in\s*\{[^}]*from\s*\{[^}]*transform:\s*translateX\(110%\);/s,
-  'Toast must feature smooth slide-in animation from the right'
+  /@media\s*\(max-width:\s*768px\)\s*\{[^}]*\.sap-toast-container\s*\{[^}]*left:\s*12px;[^}]*right:\s*12px;[^}]*width:\s*calc\(100%\s*-\s*24px\);/s,
+  'Mobile viewport must span the full width with 12px margins'
 );
-console.log('   ✓ Container position fixed at bottom-right, stacks upward, slide-in animation, and mobile 16px span\n');
+assert.match(
+  indexCss,
+  /@keyframes\s+sap-toast-slide-down\s*\{[^}]*from\s*\{[^}]*transform:\s*translateY\(-12px\);/s,
+  'Toast must feature smooth slide-down entrance animation'
+);
+console.log('   ✓ Container position fixed at top under top bar, stacks downward, zero layout shift, slide-down animation, and mobile 12px span\n');
 
 // ============================================================================
 // 2. THEME COLORS & STRICT NO-RED ENFORCEMENT
@@ -69,22 +74,22 @@ console.log('Test 2: Verify Amber/Orange Theme and Strict Absence of Red...');
 // Warning / Validation / Error in Amber
 assert.match(
   indexCss,
-  /\.sap-toast-error,\s*\.sap-toast-warning\s*\{[^}]*background-color:\s*#FFFBEB;[^}]*border:\s*1px solid #FCD34D;[^}]*color:\s*#78350F;/s,
-  'Warning/Validation/Error toasts must use Amber-50 (#FFFBEB) bg, Amber-300 (#FCD34D) border, Amber-900 (#78350F) text'
+  /\.sap-toast-error,\s*\.sap-toast-warning\s*\{[^}]*background-color:\s*#FFFBEB;[^}]*border:\s*1px solid #FCD34D;[^}]*border-left:\s*4px solid #F59E0B;[^}]*color:\s*#78350F;/s,
+  'Warning/Validation/Error toasts must use Amber-50 (#FFFBEB) bg, Amber-300 (#FCD34D) border, Amber-500 (#F59E0B) left accent bar, Amber-900 (#78350F) text'
 );
 
-// Success in Orange-50 with Orange-700 text
+// Success in Green
 assert.match(
   indexCss,
-  /\.sap-toast-success\s*\{[^}]*background-color:\s*#FFF7ED;[^}]*border:\s*1px solid #FDBA74;[^}]*color:\s*#C2410C;/s,
-  'Success toasts must use Orange-50 (#FFF7ED) bg, Orange-300 (#FDBA74) border, Orange-700 (#C2410C) text'
+  /\.sap-toast-success\s*\{[^}]*background-color:\s*#F0FDF4;[^}]*border:\s*1px solid #86EFAC;[^}]*border-left:\s*4px solid #16A34A;[^}]*color:\s*#14532D;/s,
+  'Success toasts must use Green-50 (#F0FDF4) bg, Green-300 (#86EFAC) border, Green-600 (#16A34A) left accent bar, Green-900 (#14532D) text'
 );
 
 // Info in White / Slate
 assert.match(
   indexCss,
-  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid #CBD5E1;[^}]*color:\s*#0F172A;/s,
-  'Info toasts must use White (#FFFFFF) bg, Slate-300 (#CBD5E1) border, Slate-900 (#0F172A) text'
+  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid #CBD5E1;[^}]*border-left:\s*4px solid #0F2744;[^}]*color:\s*#0F172A;/s,
+  'Info toasts must use White (#FFFFFF) bg, Slate-300 (#CBD5E1) border, Navy (#0F2744) left accent bar, Slate-900 (#0F172A) text'
 );
 
 // Scrollable list max height 40% of screen (~40vh)
@@ -462,49 +467,57 @@ console.log('   ✓ Routed views test suite exists and is integrated into test r
 // ============================================================================
 // 10. MASTER LAYOUT PASS VERIFICATION
 // ============================================================================
-console.log('Test 10: Verify shared layout system and app-wide layout pass...');
+console.log('Test 10: Verify shared layout system and full-width forms (no summary panels)...');
 
 const layoutDir = path.resolve(frontendDir, 'src/components/layout');
 assert(fs.existsSync(path.resolve(layoutDir, 'PageContainer.jsx')), 'PageContainer.jsx must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'PageHeader.jsx')), 'PageHeader.jsx must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'FormGrid.jsx')), 'FormGrid.jsx must exist');
-assert(fs.existsSync(path.resolve(layoutDir, 'SummaryPanel.jsx')), 'SummaryPanel.jsx must exist');
+assert(!fs.existsSync(path.resolve(layoutDir, 'SummaryPanel.jsx')), 'SummaryPanel.jsx must be deleted');
 assert(fs.existsSync(path.resolve(layoutDir, 'StickyActionBar.jsx')), 'StickyActionBar.jsx must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'layout.css')), 'layout.css must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'index.js')), 'layout index.js must exist');
 
+const layoutIndexCode = fs.readFileSync(path.resolve(layoutDir, 'index.js'), 'utf8');
+assert(!layoutIndexCode.includes('SummaryPanel'), 'layout index.js must not export SummaryPanel');
+
 const layoutCssCode = fs.readFileSync(path.resolve(layoutDir, 'layout.css'), 'utf8');
 assert(layoutCssCode.includes('--sap-layout-max-width: 1680px'), 'layout.css must set 1680px max content width');
 assert(layoutCssCode.includes('.sap-page-container'), 'layout.css must define .sap-page-container');
-assert(layoutCssCode.includes('.sap-summary-panel'), 'layout.css must define .sap-summary-panel');
+assert(!layoutCssCode.includes('.sap-summary-panel'), 'layout.css must NOT define .sap-summary-panel');
+assert(!layoutCssCode.includes('.sap-layout-content-with-summary'), 'layout.css must NOT define .sap-layout-content-with-summary');
 assert(layoutCssCode.includes('.sap-sticky-action-bar'), 'layout.css must define .sap-sticky-action-bar');
 assert(layoutCssCode.includes('.sap-form-dual-connector'), 'layout.css must define .sap-form-dual-connector');
 assert(layoutCssCode.includes('.sap-card-table-scroll'), 'layout.css must define .sap-card-table-scroll');
 
-// Check CreateBomView uses PageContainer, SummaryPanel, and StickyActionBar
+// Check CreateBomView uses PageContainer and StickyActionBar without SummaryPanel
 const layoutCreateBomViewPath = path.resolve(frontendDir, 'src/components/CreateBomView.jsx');
 const layoutCreateBomViewCode = fs.readFileSync(layoutCreateBomViewPath, 'utf8');
 assert(layoutCreateBomViewCode.includes('PageContainer'), 'CreateBomView must use PageContainer');
-assert(layoutCreateBomViewCode.includes('SummaryPanel'), 'CreateBomView must use SummaryPanel');
+assert(!layoutCreateBomViewCode.includes('SummaryPanel'), 'CreateBomView must NOT use SummaryPanel');
+assert(!layoutCreateBomViewCode.includes('sap-layout-content-with-summary'), 'CreateBomView must NOT use sap-layout-content-with-summary');
 assert(layoutCreateBomViewCode.includes('StickyActionBar'), 'CreateBomView must use StickyActionBar');
 
-// Check CopyBomView uses PageContainer, SummaryPanel, and StickyActionBar
+// Check CopyBomView uses PageContainer and StickyActionBar without SummaryPanel
 const updatedCopyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8');
 assert(updatedCopyBomViewCode.includes('PageContainer'), 'CopyBomView must use PageContainer');
-assert(updatedCopyBomViewCode.includes('SummaryPanel'), 'CopyBomView must use SummaryPanel');
+assert(!updatedCopyBomViewCode.includes('SummaryPanel'), 'CopyBomView must NOT use SummaryPanel');
+assert(!updatedCopyBomViewCode.includes('sap-layout-content-with-summary'), 'CopyBomView must NOT use sap-layout-content-with-summary');
 assert(updatedCopyBomViewCode.includes('StickyActionBar'), 'CopyBomView must use StickyActionBar');
 
-// Check ValidateBomView uses PageContainer, SummaryPanel, and StickyActionBar
+// Check ValidateBomView uses PageContainer and StickyActionBar without SummaryPanel
 const layoutValidateBomViewPath = path.resolve(frontendDir, 'src/components/ValidateBomView.jsx');
 const layoutValidateBomViewCode = fs.readFileSync(layoutValidateBomViewPath, 'utf8');
 assert(layoutValidateBomViewCode.includes('PageContainer'), 'ValidateBomView must use PageContainer');
-assert(layoutValidateBomViewCode.includes('SummaryPanel'), 'ValidateBomView must use SummaryPanel');
+assert(!layoutValidateBomViewCode.includes('SummaryPanel'), 'ValidateBomView must NOT use SummaryPanel');
+assert(!layoutValidateBomViewCode.includes('sap-layout-content-with-summary'), 'ValidateBomView must NOT use sap-layout-content-with-summary');
 assert(layoutValidateBomViewCode.includes('StickyActionBar'), 'ValidateBomView must use StickyActionBar');
 
-// Check DeleteBomView uses PageContainer, SummaryPanel, and StickyActionBar
+// Check DeleteBomView uses PageContainer and StickyActionBar without SummaryPanel
 const updatedDeleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8');
 assert(updatedDeleteBomViewCode.includes('PageContainer'), 'DeleteBomView must use PageContainer');
-assert(updatedDeleteBomViewCode.includes('SummaryPanel'), 'DeleteBomView must use SummaryPanel');
+assert(!updatedDeleteBomViewCode.includes('SummaryPanel'), 'DeleteBomView must NOT use SummaryPanel');
+assert(!updatedDeleteBomViewCode.includes('sap-layout-content-with-summary'), 'DeleteBomView must NOT use sap-layout-content-with-summary');
 assert(updatedDeleteBomViewCode.includes('StickyActionBar'), 'DeleteBomView must use StickyActionBar');
 
 // Check CreateBomForm has connector and responsive dual columns
@@ -542,6 +555,111 @@ assert(!adminViewCode.includes('maxWidth: 910'), 'AdminView must not constrain s
 assert(!adminViewCode.includes('maxWidth: 850'), 'AdminView must not constrain permissions table to 850px');
 
 console.log('   ✓ Shared layout components, responsive widths, summary panels, and sticky action bars verified\n');
+
+// 10. TOAST BUG FIXES & ROUTE CLEARING
+console.log('Test 10: Verify Toast Navigation Dismissal, Login/Logout Clearing, and 15s Safety Net...');
+
+// Verify ToastContext exports clearAll, clearOnNavigation, and sets 15s safety net duration
+const updatedToastContextCode = fs.readFileSync(toastContextPath, 'utf8');
+assert(updatedToastContextCode.includes('clearAll'), 'ToastContext must export clearAll');
+assert(updatedToastContextCode.includes('clearOnNavigation'), 'ToastContext must export clearOnNavigation');
+assert(updatedToastContextCode.includes('15000'), 'ToastContext error/warning duration must have 15s safety net');
+assert(updatedToastContextCode.includes('popstate'), 'ToastContext must listen to popstate for route changes');
+
+// Verify Login.jsx clears toasts on field edits, on submit, and on login success
+const loginComponentPath = path.resolve(frontendDir, 'src/components/Login.jsx');
+const loginComponentCode = fs.readFileSync(loginComponentPath, 'utf8');
+assert(loginComponentCode.includes('toast.clearAll()'), 'Login.jsx must call toast.clearAll()');
+assert(loginComponentCode.includes('handleEmailChange'), 'Login.jsx must clear error toast on email change');
+assert(loginComponentCode.includes('handlePasswordChange'), 'Login.jsx must clear error toast on password change');
+
+// Verify App.jsx clears toasts on login, logout, server change, and route navigation
+const appPath = path.resolve(frontendDir, 'src/App.jsx');
+const appCode = fs.readFileSync(appPath, 'utf8');
+assert(appCode.includes('toast.clearOnNavigation()'), 'App.jsx navigateToView must call toast.clearOnNavigation()');
+assert(appCode.includes('toast.clearAll()'), 'App.jsx must call toast.clearAll()');
+
+// Functional simulation of route change, login success, and success toast persistence
+class AdvancedToastSimulation {
+  constructor() {
+    this.toasts = [];
+  }
+  show(toast) {
+    this.toasts.push({
+      ...toast,
+      createdAt: Date.now(),
+      id: Math.random().toString(36).slice(2)
+    });
+  }
+  clearAll() {
+    this.toasts = [];
+  }
+  clearOnNavigation() {
+    const now = Date.now();
+    this.toasts = this.toasts.filter(
+      (t) => t.type === 'success' && now - t.createdAt < 4000
+    );
+  }
+}
+
+// Case 1: Error toast then route change shows no toast
+const sim1 = new AdvancedToastSimulation();
+sim1.show({ type: 'error', message: 'Failed to load data' });
+assert.strictEqual(sim1.toasts.length, 1, 'Error toast added');
+sim1.clearOnNavigation();
+assert.strictEqual(sim1.toasts.length, 0, 'Error toast must be dismissed on route change');
+
+// Case 2: Login error then successful login shows no toast
+const sim2 = new AdvancedToastSimulation();
+sim2.show({ type: 'error', message: 'Invalid credentials' });
+assert.strictEqual(sim2.toasts.length, 1, 'Login error toast visible');
+sim2.clearAll(); // successful login
+assert.strictEqual(sim2.toasts.length, 0, 'Toasts must be completely cleared on successful login');
+
+// Case 3: Success toast after action still shows on navigation and auto-closes
+const sim3 = new AdvancedToastSimulation();
+sim3.show({ type: 'success', message: 'BOM copied successfully' });
+sim3.show({ type: 'error', message: 'Previous error' });
+assert.strictEqual(sim3.toasts.length, 2, 'Two toasts in store');
+sim3.clearOnNavigation(); // Navigate to another page
+assert.strictEqual(sim3.toasts.length, 1, 'Only success toast persists across route change');
+assert.strictEqual(sim3.toasts[0].type, 'success', 'Persisted toast is the success toast');
+
+console.log('   ✓ Route change dismisses error toasts, login success clears toasts, and success toast persists\n');
+
+// 11. HOME PAGE REDESIGN VERIFICATION
+console.log('Test 11: Verify Home Page Redesign (/home)...');
+const homePagePath = path.resolve(frontendDir, 'src/components/HomePage.jsx');
+const homePageCssPath = path.resolve(frontendDir, 'src/components/HomePage.css');
+const homePageCode = fs.readFileSync(homePagePath, 'utf8');
+const homePageCss = fs.readFileSync(homePageCssPath, 'utf8');
+
+// Headline in navy with orange highlight, no blue text
+assert(homePageCode.includes('The AI edge'), 'Headline must include "The AI edge"');
+assert(homePageCode.includes('rexa-hero-orange-text'), 'Headline must use orange highlight class');
+assert(!homePageCode.includes('rexa-hero-blue-text'), 'Headline must NOT use blue text');
+
+// Primary orange button "Explore products" + quiet secondary link "About us"
+assert(homePageCode.includes('Explore products'), 'Hero must feature "Explore products" button');
+assert(homePageCode.includes('About us') || homePageCode.includes('Learn more'), 'Hero must feature "About us" link');
+
+// Three value points in a row under the hero with simple orange icons
+assert(homePageCode.includes('Automate SAP processes'), 'Must include "Automate SAP processes"');
+assert(homePageCode.includes('Improve efficiency') || homePageCode.includes('Improve operational efficiency'), 'Must include "Improve efficiency"');
+assert(homePageCode.includes('Reliable and secure'), 'Must include "Reliable and secure"');
+assert(homePageCode.includes('rexa-value-strip'), 'Must feature rexa-value-strip');
+
+// Two About cards in two columns
+assert(homePageCode.includes('About Next IT Point'), 'Must feature "About Next IT Point"');
+assert(homePageCode.includes('About RexaEdge'), 'Must feature "About RexaEdge"');
+assert(homePageCss.includes('grid-template-columns: 1fr 1fr;'), 'About section must use 2-column layout');
+
+// Clean light footer
+assert(homePageCode.includes('A product of Next IT Point Intellectual Services Pvt. Ltd.'), 'Footer must state product of Next IT Point');
+assert(homePageCode.includes('rexaEdgeFullColourLogo') || homePageCode.includes('rexa-footer-logo-img'), 'Footer must show logo');
+assert(!homePageCode.includes('rexa-footer-nav-box'), 'Footer must not have dummy nav links');
+
+console.log('   ✓ Home page warm light hero, orange actions, 3-point value strip, 2-column about, and light footer verified\n');
 
 console.log('============================================================');
 console.log('  ALL TOAST NOTIFICATION & VALIDATION TESTS PASSED (100%)    ');

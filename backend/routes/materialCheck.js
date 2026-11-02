@@ -2,6 +2,7 @@ import express from 'express';
 import { checkMaterialMaintenance } from '../services/materialCheck.js';
 import { rfcReadBom } from '../services/sapRfcClient.js';
 import { verifyBomInCs03, getMockBomDataset } from '../services/sapGuiClient.js';
+import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -72,11 +73,10 @@ async function handleMaterialCheck(req, res) {
     const checkResult = await checkMaterialMaintenance(targetMaterials, plant);
     return res.status(200).json(checkResult);
   } catch (err) {
-    console.error('[materialCheckRoute] Error:', err.message);
-    return res.status(500).json({
-      success: false,
-      error: err.message || 'Internal server error during material maintenance check.'
-    });
+    if (req.destroyed || res.writableEnded) {
+      return;
+    }
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 }
 

@@ -26,7 +26,8 @@ import { BOM_FIELD_TOOLTIPS } from '../constants/sapFieldHelp';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
-import { PageContainer, SummaryPanel, StickyActionBar } from './layout';
+import { extractErrorInfo } from '../utils/friendlyError';
+import { PageContainer, StickyActionBar } from './layout';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -271,10 +272,10 @@ export default function CreateBomView({
         toast.validation(errList, 'Validation notice');
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'Error communicating with validation service.';
+      const info = extractErrorInfo(err, 'Error communicating with validation service.');
       setPreflightPassed(false);
-      setValidationErrors([errMsg]);
-      toast.error(errMsg);
+      setValidationErrors([info.message]);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
       setIsValidating(false);
     }
@@ -319,14 +320,14 @@ export default function CreateBomView({
         toast.success(`BOM created successfully in SAP! Material: ${headerData.material}, Plant: ${headerData.plant}`);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.message || 'BOM creation failed.';
+      const info = extractErrorInfo(err, 'BOM creation failed.');
       setExecutionResult({
         success: false,
         status: 'FAILED',
-        message: errMsg
+        message: info.message
       });
       setIsConfirmModalOpen(false);
-      toast.error(errMsg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
       setIsExecuting(false);
     }
@@ -534,9 +535,7 @@ export default function CreateBomView({
           </div>
         ) : (
           /* FORM VIEW */
-          <div className="sap-layout-content-with-summary">
-            {/* Left Main Form Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
               {/* In-Progress Execution Banner */}
             {isExecuting && (
               <div
@@ -908,26 +907,7 @@ export default function CreateBomView({
               </div>
             </div>
           </div>
-
-          {/* Right Summary Panel (Wide Screens >= 1500px) */}
-          <SummaryPanel
-            title="BOM Summary"
-            items={[
-              { label: 'Material', value: headerData.material, placeholder: 'Enter material' },
-              { label: 'Plant', value: headerData.plant, placeholder: 'Enter plant' },
-              { label: 'BOM Usage', value: headerData.bomUsage },
-              { label: 'Alternative BOM', value: headerData.alternativeBom },
-              { label: 'Valid From', value: headerData.validFrom },
-              { label: 'Components', value: `${components.length} item${components.length === 1 ? '' : 's'}` },
-              {
-                label: 'Preflight Status',
-                value: preflightPassed ? 'Verified in SAP ✓' : (validationErrors.length > 0 ? 'Validation Notice' : 'Not Validated'),
-                placeholder: 'Click Validate'
-              }
-            ]}
-          />
-        </div>
-      )}
+        )}
 
         {/* CONFIRMATION MODAL */}
         <Modal

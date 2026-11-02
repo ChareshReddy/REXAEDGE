@@ -9,6 +9,7 @@ import {
 import { pingRfcServer } from '../services/sapRfcClient.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { extractToken, requireAuth, requireServerAccess, requireAppPermission } from '../middleware/auth.js';
+import { sendFriendlyError, toFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
 
@@ -187,11 +188,7 @@ router.post('/sessions/select', requireAuth, requireAppPermission('bom.*'), asyn
       health
     });
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      code: 'SELECTION_ERROR',
-      message: `Failed to select SAP GUI session: ${err.message}`
-    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 
@@ -284,11 +281,15 @@ router.get('/session-status', requireAuth, requireAppPermission('bom.*'), async 
     const health = await checkSapSessionHealth();
     return res.status(200).json(health);
   } catch (err) {
+    const friendly = toFriendlyError(err);
     return res.status(200).json({
       connected: false,
       status: 'SERVER_UNAVAILABLE',
-      code: 'SAP_SERVER_UNAVAILABLE',
-      message: `The SAP server is currently unavailable: ${err.message}`
+      code: friendly.code,
+      title: friendly.title,
+      message: friendly.message,
+      hint: friendly.hint,
+      retryable: friendly.retryable
     });
   }
 });

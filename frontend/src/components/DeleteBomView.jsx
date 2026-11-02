@@ -14,10 +14,11 @@ import {
 import DeleteBomForm from './DeleteBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
-import { PageContainer, SummaryPanel, StickyActionBar } from './layout';
+import { PageContainer, StickyActionBar } from './layout';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
+import { extractErrorInfo } from '../utils/friendlyError';
 
 export default function DeleteBomView({
   systemKey = 'DEV',
@@ -31,18 +32,18 @@ export default function DeleteBomView({
   const [actionStatus, setActionStatus] = useState('pending');
   const [executionResult, setExecutionResult] = useState(null);
   const [errorMessage, _setErrorMessage] = useState('');
-  const setErrorMessage = (msg) => {
-    _setErrorMessage(msg);
-    if (msg) toast.error(msg);
+  const setErrorMessage = (msg, err = null) => {
+    _setErrorMessage(typeof msg === 'string' ? msg : '');
+    if (err) {
+      const info = extractErrorInfo(err, typeof msg === 'string' ? msg : 'Unable to submit Delete BOM request.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } else if (msg) {
+      const info = extractErrorInfo(msg);
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    }
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmittedForm, setLastSubmittedForm] = useState(null);
-  const [currentFormValues, setCurrentFormValues] = useState({
-    material: '',
-    plant: '',
-    alternativeBom: '',
-    bomUsage: '1'
-  });
 
   useEffect(() => {
     activityTracker.setOperation('delete_bom', isSubmitting || actionStatus === 'executing');
@@ -112,7 +113,7 @@ export default function DeleteBomView({
       }
       console.error('Error proposing Delete BOM:', err);
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Unable to submit Delete BOM request.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     } finally {
       if (!controller.signal.aborted) {
         setIsSubmitting(false);
@@ -145,7 +146,7 @@ export default function DeleteBomView({
       console.error('Error confirming Delete BOM:', err);
       setActionStatus('failed');
       const text = err.response?.data?.reply || err.response?.data?.error || err.message || 'Failed to execute Delete BOM action.';
-      setErrorMessage(text);
+      setErrorMessage(text, err);
     }
   };
 
@@ -184,65 +185,45 @@ export default function DeleteBomView({
         <div style={{ marginTop: 20 }}>
           {/* Step 1: Form View */}
           {!proposedAction && !executionResult && (
-            <div className="sap-layout-content-with-summary">
-              <div className="sap-form-view-section" style={{ width: '100%' }}>
-                {isSubmitting ? (
-                  <div
-                    className="sap-loading-card"
-                    style={{
-                      width: '100%',
-                      textAlign: 'center',
-                      padding: '36px 20px',
-                      borderRadius: 'var(--sap-radius)',
-                      border: '1px solid var(--sap-border)'
-                    }}
+            <div className="sap-form-view-section" style={{ width: '100%' }}>
+              {isSubmitting ? (
+                <div
+                  className="sap-loading-card"
+                  style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '36px 20px',
+                    borderRadius: 'var(--sap-radius)',
+                    border: '1px solid var(--sap-border)'
+                  }}
+                >
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
+                    Verifying BOM Existence in SAP...
+                  </h4>
+                  <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
+                    Validating material and plant records prior to deletion proposal.
+                  </p>
+                  <button
+                    type="button"
+                    className="sap-button"
+                    onClick={handleCancelChecking}
+                    style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
                   >
-                    <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
-                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
-                      Verifying BOM Existence in SAP...
-                    </h4>
-                    <p style={{ fontSize: '12.5px', color: 'var(--sap-text-muted)', maxWidth: 480, margin: '0 auto' }}>
-                      Validating material and plant records prior to deletion proposal.
-                    </p>
-                    <button
-                      type="button"
-                      className="sap-button"
-                      onClick={handleCancelChecking}
-                      style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)', marginTop: 20 }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <DeleteBomForm
-                    formId="delete-bom-form"
-                    onSubmit={handleFormSubmit}
-                    onCancel={onBack}
-                    onValuesChange={setCurrentFormValues}
-                    initialValues={lastSubmittedForm || {}}
-                    hideHeader={true}
-                    hideFormActions={true}
-                    style={{ width: '100%' }}
-                  />
-                )}
-              </div>
-
-              {/* SummaryPanel for wide screens (>= 1500px) */}
-              <SummaryPanel
-                title="Deletion Target"
-                status={
-                  currentFormValues.material && currentFormValues.plant
-                    ? `Delete BOM ${currentFormValues.material} (${currentFormValues.plant})`
-                    : 'Fill required deletion fields'
-                }
-                items={[
-                  { label: 'Material Number', value: currentFormValues.material },
-                  { label: 'Plant Code', value: currentFormValues.plant },
-                  { label: 'Alternative BOM', value: currentFormValues.alternativeBom },
-                  { label: 'BOM Usage', value: currentFormValues.bomUsage },
-                  { label: 'Operation Type', value: 'Permanent Deletion' }
-                ]}
-              />
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <DeleteBomForm
+                  formId="delete-bom-form"
+                  onSubmit={handleFormSubmit}
+                  onCancel={onBack}
+                  initialValues={lastSubmittedForm || {}}
+                  hideHeader={true}
+                  hideFormActions={true}
+                  style={{ width: '100%' }}
+                />
+              )}
             </div>
           )}
 

@@ -34,7 +34,7 @@
   --sap-font-mono: var(--font-mono, "JetBrains Mono", Consolas, "Courier New", monospace);
 
   /* Font Sizes */
-  --sap-size-screen-title: 24px;
+  --sap-size-screen-title: 28px;
   --sap-size-section-header: 16px;
   --sap-size-label: 14px;
   --sap-size-body: 14px;
@@ -63,6 +63,15 @@
   --sap-button-bg: var(--sap-neutral-btn-bg);
   --sap-button-border: var(--sap-border-color);
   --sap-button-text: var(--sap-text-primary);
+
+  /* Shared Page Gutter Variable */
+  --page-gutter: 32px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --page-gutter: 16px;
+  }
 }
 
 /* Base Body and App Background Overrides */
@@ -105,10 +114,10 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Products Page Title (+2px from standard type scale) */
+/* Products Page Title */
 .fiori-ph-title.fiori-ph-title-products,
 .sap-screen-title.fiori-ph-title-products {
-  font-size: calc(var(--sap-size-screen-title, 24px) + 2px) !important;
+  font-size: 28px !important;
 }
 
 /* Section Header Bar: Plain headings with thin divider line, NO box/background */
@@ -653,19 +662,40 @@ button.sap-btn-navy-login:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-/* Page Header & Breadcrumbs Alignment (Strictly Left-Aligned) */
+/* Page Header Band (Soft gradient orange-50 #FFF7ED to #FFFBFB, bottom border 1px orange-100 #FFEDD5) */
 .fiori-ph {
-  background: #ffffff !important;
-  padding: 16px 32px 14px !important;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+  background: linear-gradient(180deg, #FFF7ED 0%, #FFFBFB 100%) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-bottom: 1px solid #FFEDD5 !important;
+  box-shadow: none !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
   text-align: left !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  gap: 8px !important;
+}
+
+.sap-layout-header-inner {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  padding: 16px var(--page-gutter) 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+@media (min-width: 1366px) {
+  .sap-layout-header-inner {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+  }
 }
 
 .fiori-ph-header-top {
@@ -674,20 +704,20 @@ button.sap-btn-navy-login:active:not(:disabled) {
   align-items: flex-start !important;
   text-align: left !important;
   width: 100% !important;
-  gap: 2px !important;
 }
 
-/* Subtitles / Taglines: Uniform uppercase and brand blue across all pages */
+/* Subtitles / Taglines: 15px regular slate-600 #475569, 4px below title, max-width 70ch */
 .fiori-ph-subtitle {
   margin: 4px 0 0 !important;
-  font-size: 13px !important;
+  font-size: 15px !important;
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
-  color: var(--sap-text-secondary, #64748b) !important;
-  line-height: 1.4 !important;
+  color: #475569 !important;
+  line-height: 1.5 !important;
   text-align: left !important;
   align-self: flex-start !important;
+  max-width: 70ch !important;
 }
 
 .fiori-ph-title-row {
@@ -695,6 +725,7 @@ button.sap-btn-navy-login:active:not(:disabled) {
   align-items: center !important;
   justify-content: space-between !important;
   width: 100% !important;
+  margin: 0 !important;
 }
 
 .fiori-bc {
@@ -702,6 +733,9 @@ button.sap-btn-navy-login:active:not(:disabled) {
   align-items: center !important;
   justify-content: flex-start !important;
   text-align: left !important;
+  margin: 0 0 8px 0 !important;
+  font-size: 13px !important;
+  color: #64748b !important;
 }
 
 .fiori-home-tabs {
@@ -709,7 +743,9 @@ button.sap-btn-navy-login:active:not(:disabled) {
   align-items: center !important;
   justify-content: flex-start !important;
   align-self: flex-start !important;
-  padding: 2px 0 4px 0 !important;
+  padding: 0 !important;
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
   background: transparent !important;
   border: none !important;
 }
@@ -718,6 +754,8 @@ button.sap-btn-navy-login:active:not(:disabled) {
   background: transparent !important;
   border: none !important;
   padding: 0 !important;
+  margin-top: 16px !important;
+  margin-bottom: 0 !important;
   box-shadow: none !important;
 }
 
@@ -879,7 +917,6 @@ button.fiori-tile.off .fiori-tile-desc {
    TOOLBARS & STATUS BARS
    ========================================================================== */
 .sap-toolbar,
-.sap-shell-header,
 .sap-f4-search-area,
 .sap-modal-footer,
 .bulk-workflow-steps,
@@ -897,6 +934,14 @@ button.fiori-tile.off .fiori-tile-desc {
   flex-wrap: wrap !important;
   box-shadow: none !important;
   box-sizing: border-box;
+}
+
+.sap-shell-header,
+header.sap-shell-header,
+header.sap-shell-header.sap-toolbar {
+  padding-left: var(--page-gutter) !important;
+  padding-right: var(--page-gutter) !important;
+  box-sizing: border-box !important;
 }
 
 /* Status Bar Area (12px) */
