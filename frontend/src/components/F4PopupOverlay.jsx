@@ -1,4 +1,5 @@
 import React from 'react';
+import { NotificationPlacementProvider } from '../context/ToastContext';
 
 /**
  * Shared F4 Value Help Popup Overlay component.
@@ -44,7 +45,9 @@ export default function F4PopupOverlay({
       style={style}
       {...restProps}
     >
-      {children}
+      <NotificationPlacementProvider placement="popup">
+        {children}
+      </NotificationPlacementProvider>
     </div>
   );
 }

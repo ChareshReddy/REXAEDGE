@@ -37,6 +37,7 @@ import {
 import { MODULE_REGISTRY, MODULE_STATUS, MODULE_KEYS, BOM_APP_LIST, ALL_BOM_APPS, normalizePermissions, formatPermissionsSummary, getPermissionsSummaryParts } from '@shared/modules.js';
 import activityTracker from '../services/activityTracker';
 import Modal from './Modal';
+import Notification from './Notification';
 import { useToast } from '../context/ToastContext';
 import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
@@ -98,7 +99,9 @@ export default function AdminView({
 
   // Data states
   const [users, setUsers] = useState(initialUsers);
+  const [usersError, setUsersError] = useState('');
   const [servers, setServers] = useState(initialServers);
+  const [serversError, setServersError] = useState('');
   const [permissions, setPermissions] = useState(initialPermissions);
   const [permissionsError, setPermissionsError] = useState('');
   const [migrationPending, setMigrationPending] = useState(false);
@@ -171,6 +174,8 @@ export default function AdminView({
   const loadData = async () => {
     setIsLoading(true);
     setErrorMessage('');
+    setUsersError('');
+    setServersError('');
     setPermissionsError('');
     try {
       const [usersResult, serversResult, permsResult] = await Promise.allSettled([
@@ -185,32 +190,35 @@ export default function AdminView({
       if (usersResult.status === 'fulfilled') {
         const usersList = usersResult.value || [];
         setUsers(usersList);
+        setUsersError('');
         if (usersList.length && !grantFormData.user_id) {
           setGrantFormData((prev) => ({ ...prev, user_id: usersList[0].id }));
         }
       } else {
         const userErr = usersResult.reason?.response?.data?.error || usersResult.reason?.message || 'Failed to retrieve users.';
         console.error('[Admin] Error loading users:', usersResult.reason);
-        globalErrors.push(`Users: ${userErr}`);
+        setUsersError(userErr);
       }
 
       // 2. SAP Servers Tab
       if (serversResult.status === 'fulfilled') {
         const serversList = serversResult.value || [];
         setServers(serversList);
+        setServersError('');
         if (serversList.length && !grantFormData.server_id) {
           setGrantFormData((prev) => ({ ...prev, server_id: serversList[0].id }));
         }
       } else {
         const serverErr = serversResult.reason?.response?.data?.error || serversResult.reason?.message || 'Failed to retrieve SAP servers.';
         console.error('[Admin] Error loading servers:', serversResult.reason);
-        globalErrors.push(`SAP Servers: ${serverErr}`);
+        setServersError(serverErr);
       }
 
       // 3. Access Permissions Tab
       if (permsResult.status === 'fulfilled') {
         const permsList = permsResult.value || [];
         setPermissions(permsList);
+        setPermissionsError('');
         if (permsList.migrationPending || permsList.some((p) => p.legacyFallback)) {
           setMigrationPending(true);
         } else {
@@ -220,11 +228,6 @@ export default function AdminView({
         const permErr = permsResult.reason?.response?.data?.error || permsResult.reason?.message || 'Failed to retrieve permissions.';
         console.error('[Admin] Error loading access permissions:', permsResult.reason);
         setPermissionsError(permErr);
-      }
-
-      // If Users or Servers failed, show at top-level; if only permissions failed, tab shows its own error
-      if (globalErrors.length > 0) {
-        setErrorMessage(globalErrors.join(' | '));
       }
     } catch (err) {
       console.error('Failed to load admin data:', err);
@@ -663,6 +666,17 @@ export default function AdminView({
            ========================================================================= */}
         {activeTab === 'users' && (
           <div style={{ width: '100%' }}>
+            {usersError && (
+              <Notification
+                placement="inline"
+                type="error"
+                title="Users unavailable"
+                message={usersError}
+                onClose={() => setUsersError('')}
+                style={{ marginBottom: 12 }}
+              />
+            )}
+
             {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
@@ -814,6 +828,17 @@ export default function AdminView({
            ========================================================================= */}
         {activeTab === 'servers' && (
           <div style={{ width: '100%' }}>
+            {serversError && (
+              <Notification
+                placement="inline"
+                type="error"
+                title="SAP Servers unavailable"
+                message={serversError}
+                onClose={() => setServersError('')}
+                style={{ marginBottom: 12 }}
+              />
+            )}
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
@@ -982,33 +1007,14 @@ export default function AdminView({
 
             {/* Permissions Tab Specific Error */}
             {permissionsError && (
-              <div
-                style={{
-                  background: 'var(--sap-error-bg, #fde8e8)',
-                  border: '1px solid var(--sap-error-border, #f8b4b4)',
-                  color: 'var(--sap-error-text, #9b1c1c)',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm, 4px)',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
-                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-                  <span><strong>Access Permissions unavailable:</strong> {permissionsError}</span>
-                </div>
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-secondary"
-                  onClick={loadData}
-                  style={{ fontSize: 11, height: 26, padding: '0 8px' }}
-                >
-                  Retry
-                </button>
-              </div>
+              <Notification
+                placement="inline"
+                type="error"
+                title="Access Permissions unavailable"
+                message={permissionsError}
+                onClose={() => setPermissionsError('')}
+                style={{ marginBottom: 12 }}
+              />
             )}
 
             {/* Header row with search and Grant Permission button */}

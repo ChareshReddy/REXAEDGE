@@ -295,6 +295,7 @@ export default function CreateBomForm({
                   aria-label="Source Material"
                 />
               </div>
+              <div className="sap-field-error-msg">{fieldErrors.sourceMaterial ? 'Material is required' : ''}</div>
             </div>
 
             <div className="sap-form-group">
@@ -316,6 +317,7 @@ export default function CreateBomForm({
                   aria-label="Source Plant"
                 />
               </div>
+              <div className="sap-field-error-msg">{fieldErrors.sourcePlant ? 'Plant is required' : ''}</div>
             </div>
 
             <div className="sap-form-row">
@@ -337,6 +339,7 @@ export default function CreateBomForm({
                     aria-label="Source BOM Usage"
                   />
                 </div>
+                <div className="sap-field-error-msg">{fieldErrors.sourceUsage ? 'BOM Usage is required' : ''}</div>
               </div>
 
               <div className="sap-form-group sap-form-col">
@@ -354,6 +357,7 @@ export default function CreateBomForm({
                     className="sap-form-input"
                   />
                 </div>
+                <div className="sap-field-error-msg"></div>
               </div>
             </div>
 
@@ -537,6 +541,7 @@ export default function CreateBomForm({
                   aria-label="Target Material"
                 />
               </div>
+              <div className="sap-field-error-msg">{fieldErrors.targetMaterial ? 'Material is required' : ''}</div>
             </div>
 
             <div className="sap-form-group">
@@ -558,6 +563,7 @@ export default function CreateBomForm({
                   aria-label="Target Plant"
                 />
               </div>
+              <div className="sap-field-error-msg">{fieldErrors.targetPlant ? 'Plant is required' : ''}</div>
             </div>
 
             <div className="sap-form-row">
@@ -579,6 +585,7 @@ export default function CreateBomForm({
                     aria-label="Target BOM Usage"
                   />
                 </div>
+                <div className="sap-field-error-msg">{fieldErrors.targetUsage ? 'BOM Usage is required' : ''}</div>
               </div>
 
               <div className="sap-form-group sap-form-col">
@@ -596,6 +603,7 @@ export default function CreateBomForm({
                     className="sap-form-input"
                   />
                 </div>
+                <div className="sap-field-error-msg"></div>
               </div>
             </div>
 
@@ -614,6 +622,7 @@ export default function CreateBomForm({
                   className="sap-form-input"
                 />
               </div>
+              <div className="sap-field-error-msg"></div>
             </div>
           </div>
         </div>

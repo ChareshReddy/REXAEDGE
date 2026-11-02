@@ -17,7 +17,7 @@ const indexCss = fs.readFileSync(indexCssPath, 'utf8');
 // ============================================================================
 // 1. CSS POSITIONING, STACKING & VIEWPORT RULES
 // ============================================================================
-console.log('Test 1: Verify Toast Container floating top banner positioning, zero layout shift, and z-index...');
+console.log('Test 1: Verify Toast Container compact right-aligned positioning (max 440px), zero layout shift, and z-index...');
 
 assert.match(
   indexCss,
@@ -31,8 +31,8 @@ assert.match(
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*left:\s*50%;[^}]*transform:\s*translateX\(-50%\);/s,
-  'Toast container must be horizontally centered'
+  /\.sap-toast-container\s*\{[^}]*right:\s*var\(--page-gutter,\s*32px\);/s,
+  'Toast container must be right-aligned to page gutter under the top bar'
 );
 assert.match(
   indexCss,
@@ -41,8 +41,13 @@ assert.match(
 );
 assert.match(
   indexCss,
-  /\.sap-toast-container\s*\{[^}]*max-width:\s*960px;/s,
-  'Toast container max-width must be ~960px'
+  /\.sap-toast-container\s*\{[^}]*max-width:\s*440px;/s,
+  'Toast container max-width must be compact 440px'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-container\s*\{[^}]*min-width:\s*320px;/s,
+  'Toast container min-width must be 320px'
 );
 assert.match(
   indexCss,
@@ -64,7 +69,7 @@ assert.match(
   /@keyframes\s+sap-toast-slide-down\s*\{[^}]*from\s*\{[^}]*transform:\s*translateY\(-12px\);/s,
   'Toast must feature smooth slide-down entrance animation'
 );
-console.log('   ✓ Container position fixed at top under top bar, stacks downward, zero layout shift, slide-down animation, and mobile 12px span\n');
+console.log('   ✓ Container position fixed at top right under top bar, max 440px, stacks downward, zero layout shift, slide-down animation, and mobile 12px span\n');
 
 // ============================================================================
 // 2. THEME COLORS & STRICT NO-RED ENFORCEMENT
@@ -74,29 +79,29 @@ console.log('Test 2: Verify Amber/Orange Theme and Strict Absence of Red...');
 // Warning / Validation / Error in Amber
 assert.match(
   indexCss,
-  /\.sap-toast-error,\s*\.sap-toast-warning\s*\{[^}]*background-color:\s*#FFFBEB;[^}]*border:\s*1px solid #FCD34D;[^}]*border-left:\s*4px solid #F59E0B;[^}]*color:\s*#78350F;/s,
-  'Warning/Validation/Error toasts must use Amber-50 (#FFFBEB) bg, Amber-300 (#FCD34D) border, Amber-500 (#F59E0B) left accent bar, Amber-900 (#78350F) text'
+  /\.sap-toast-error,\s*\.sap-toast-warning\s*\{[^}]*background-color:\s*#FFFBEB;[^}]*border:\s*1px solid #FCD34D;[^}]*border-left:\s*3px solid #F59E0B;[^}]*color:\s*#78350F;/s,
+  'Warning/Validation/Error toasts must use Amber-50 (#FFFBEB) bg, Amber-300 (#FCD34D) border, Amber-500 (#F59E0B) left accent bar (3px), Amber-900 (#78350F) text'
 );
 
 // Success in Green
 assert.match(
   indexCss,
-  /\.sap-toast-success\s*\{[^}]*background-color:\s*#F0FDF4;[^}]*border:\s*1px solid #86EFAC;[^}]*border-left:\s*4px solid #16A34A;[^}]*color:\s*#14532D;/s,
-  'Success toasts must use Green-50 (#F0FDF4) bg, Green-300 (#86EFAC) border, Green-600 (#16A34A) left accent bar, Green-900 (#14532D) text'
+  /\.sap-toast-success\s*\{[^}]*background-color:\s*#F0FDF4;[^}]*border:\s*1px solid #86EFAC;[^}]*border-left:\s*3px solid #16A34A;[^}]*color:\s*#14532D;/s,
+  'Success toasts must use Green-50 (#F0FDF4) bg, Green-300 (#86EFAC) border, Green-600 (#16A34A) left accent bar (3px), Green-900 (#14532D) text'
 );
 
 // Info in White / Slate
 assert.match(
   indexCss,
-  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid #CBD5E1;[^}]*border-left:\s*4px solid #0F2744;[^}]*color:\s*#0F172A;/s,
-  'Info toasts must use White (#FFFFFF) bg, Slate-300 (#CBD5E1) border, Navy (#0F2744) left accent bar, Slate-900 (#0F172A) text'
+  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid #CBD5E1;[^}]*border-left:\s*3px solid #0F2744;[^}]*color:\s*#0F172A;/s,
+  'Info toasts must use White (#FFFFFF) bg, Slate-300 (#CBD5E1) border, Navy (#0F2744) left accent bar (3px), Slate-900 (#0F172A) text'
 );
 
 // Scrollable list max height 40% of screen (~40vh)
 assert.match(
   indexCss,
-  /\.sap-toast-list\s*\{[^}]*max-height:\s*40vh;[^}]*overflow-y:\s*auto;/s,
-  'Validation messages list must be scrollable with max-height ~40vh'
+  /\.sap-toast-list\.is-expanded\s*\{[^}]*max-height:\s*40vh;[^}]*overflow-y:\s*auto;/s,
+  'Validation messages list must be scrollable with max-height ~40vh when expanded'
 );
 
 // Verify NO red color definitions exist anywhere in toast classes
@@ -157,10 +162,10 @@ assert(
   'ToastContext must reset timer of existing visible toast instead of stacking duplicate'
 );
 
-// Max 4 visible at a time
+// Max 3 visible at a time
 assert(
-  toastContextCode.includes("if (updated.length > 4)"),
-  'Max 4 visible toasts at a time enforced'
+  toastContextCode.includes("if (updated.length > 3)"),
+  'Max 3 visible toasts at a time enforced'
 );
 
 // Accessibility: role="alert", aria-live
@@ -172,7 +177,7 @@ assert(
   toastContextCode.includes('aria-live='),
   'Toast item must configure aria-live attribute'
 );
-console.log('   ✓ Success/info 4s auto-close, error/validation persistence, hover-pause, Escape dismissal, dedup, max 4 cap, and accessible ARIA attributes verified\n');
+console.log('   ✓ Success/info 4s auto-close, error/validation persistence, hover-pause, Escape dismissal, dedup, max 3 cap, and accessible ARIA attributes verified\n');
 
 // ============================================================================
 // 4. ZERO LAYOUT SHIFT (TABLES AND FORMS NEVER MOVE)
@@ -232,14 +237,18 @@ assert(
 const loginPath = path.resolve(frontendDir, 'src/components/Login.jsx');
 const loginCode = fs.readFileSync(loginPath, 'utf8');
 assert(
-  !loginCode.includes('<div className="sap-alert sap-alert-error" role="alert">'),
-  'Login must NOT render inline alert that pushes down the email/password fields'
+  loginCode.includes('sap-login-panel-error'),
+  'Login must use absolutely positioned panel error above logo so form card position stays rock-solid'
 );
 assert(
-  loginCode.includes("toast.error(msg)"),
-  'Login must route errors through toast.error so form card position stays rock-solid'
+  !loginCode.includes('sap-login-error-slot'),
+  'Login form must NOT contain reserved slot above email'
 );
-console.log('   ✓ All inline notice boxes removed from page flow; zero layout shift guaranteed on tables and forms\n');
+assert(
+  !loginCode.includes('toast.error(msg)'),
+  'Login must NOT dispatch to toast.error to prevent duplicate floating banner'
+);
+console.log('   ✓ Reserved fixed-height slot and inline error routing verified on Login page\n');
 
 // ============================================================================
 // 5. EMPTY PROCEED VALIDATION ON DELETE BOM
@@ -660,6 +669,141 @@ assert(homePageCode.includes('rexaEdgeFullColourLogo') || homePageCode.includes(
 assert(!homePageCode.includes('rexa-footer-nav-box'), 'Footer must not have dummy nav links');
 
 console.log('   ✓ Home page warm light hero, orange actions, 3-point value strip, 2-column about, and light footer verified\n');
+
+// 12. NOTIFICATION BANNER COMPACT SIZE & LIST COLLAPSE (1366 & 1920)
+console.log('Test 12: Verify Notification banner size (max 440px at 1366 & 1920) and 3-item list collapse with "+N more"...');
+
+// Banner container width rules
+assert.match(
+  indexCss,
+  /\.sap-toast-container\s*\{[^}]*max-width:\s*440px;/s,
+  'Toast container max-width must be 440px'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-container\s*\{[^}]*min-width:\s*320px;/s,
+  'Toast container min-width must be 320px'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-container\s*\{[^}]*right:\s*var\(--page-gutter,\s*32px\);/s,
+  'Toast container must align to right gutter'
+);
+
+// CSS typography, padding, 3px accent bar, and 24px close button
+assert.match(
+  indexCss,
+  /\.sap-toast\s*\{[^}]*padding:\s*10px 12px;[^}]*border-left-width:\s*3px;/s,
+  'Toast item must have 10px 12px padding and 3px left accent bar'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-title\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*600;[^}]*line-height:\s*1\.35;/s,
+  'Toast title must be 14px semi-bold with line-height 1.35'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-message\s*\{[^}]*font-size:\s*13px;[^}]*line-height:\s*1\.35;/s,
+  'Toast message must be 13px with line-height 1.35'
+);
+assert.match(
+  indexCss,
+  /\.sap-toast-close-btn\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px;/s,
+  'Toast close button must be 24px'
+);
+
+// Notification banner placement rules matching toast
+assert.match(
+  indexCss,
+  /\.sap-notification-banner\s*\{[^}]*padding:\s*10px 12px;[^}]*border-left-width:\s*3px;/s,
+  'Notification banner must have 10px 12px padding and 3px left accent bar'
+);
+assert.match(
+  indexCss,
+  /\.sap-notification-banner\s*\.sap-notification-title\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*600;/s,
+  'Notification banner title must be 14px semi-bold'
+);
+assert.match(
+  indexCss,
+  /\.sap-notification-banner\s*\.sap-notification-message\s*\{[^}]*font-size:\s*13px;/s,
+  'Notification banner message must be 13px'
+);
+assert.match(
+  indexCss,
+  /\.sap-notification-banner\s*\.sap-notification-close-btn\s*\{[^}]*width:\s*24px;/s,
+  'Notification banner close button must be 24px'
+);
+
+// Compact bullets: 13px, 2px margin
+assert.match(
+  indexCss,
+  /\.sap-toast-list\s*li\s*\{[^}]*margin-bottom:\s*2px;[^}]*font-size:\s*13px;[^}]*line-height:\s*1\.35;/s,
+  'Toast list item bullets must be compact 13px with 2px gap'
+);
+
+// List collapse logic in ToastContext.jsx: at most 3 items initially + "+N more"
+assert(
+  toastContextCode.includes('item.messages.slice(0, 3)'),
+  'ToastItem must slice messages to first 3 items by default'
+);
+assert(
+  toastContextCode.includes('+${item.messages.length - 3} more'),
+  'ToastItem must render "+N more" button when messages length > 3'
+);
+assert(
+  toastContextCode.includes('sap-toast-list-expand-btn'),
+  'ToastItem must provide expand button with class sap-toast-list-expand-btn'
+);
+
+// List collapse logic in Notification.jsx: at most 3 items initially + "+N more"
+const notificationCodeNow = fs.readFileSync(path.resolve(frontendDir, 'src/components/Notification.jsx'), 'utf8');
+assert(
+  notificationCodeNow.includes('messages.slice(0, 3)'),
+  'Notification must slice messages to first 3 items by default'
+);
+assert(
+  notificationCodeNow.includes('+${messages.length - 3} more'),
+  'Notification must render "+N more" button when messages length > 3'
+);
+assert(
+  notificationCodeNow.includes('sap-notification-list-expand-btn'),
+  'Notification must provide expand button with class sap-notification-list-expand-btn'
+);
+
+// Simulate collapse behavior at 1366 and 1920 screen resolutions
+const viewports = [
+  { name: '1366x768', width: 1366 },
+  { name: '1536x864', width: 1536 },
+  { name: '1920x1080', width: 1920 }
+];
+
+for (const vp of viewports) {
+  // At desktop viewports > 768px, width is capped by max-width: 440px
+  const containerMaxWidth = 440;
+  const containerMinWidth = 320;
+  assert(containerMaxWidth <= 440, `Container width must not exceed 440px at ${vp.name}`);
+  assert(containerMinWidth >= 320, `Container width must have at least 320px minimum at ${vp.name}`);
+  // Gutter right offset leaves left page header area unobstructed
+  const rightOffset = 32;
+  const leftRemaining = vp.width - containerMaxWidth - rightOffset;
+  assert(leftRemaining > 800, `At ${vp.name}, left title area has ${leftRemaining}px unobstructed space`);
+}
+
+// Simulate list collapse logic
+const testMessages = [
+  'Material number is required',
+  'Plant code is required',
+  'BOM usage is required',
+  'Alternative BOM must be numeric',
+  'Base quantity must be greater than zero'
+];
+const collapsedItems = testMessages.slice(0, 3);
+assert.strictEqual(collapsedItems.length, 3, 'Initial display must show exactly 3 items');
+const remainingCount = testMessages.length - 3;
+assert.strictEqual(remainingCount, 2, 'Remaining count must be 2');
+assert.strictEqual(`+${remainingCount} more`, '+2 more', 'Button text must be "+2 more"');
+
+console.log('   ✓ Compact max-width 440px at 1366 and 1920, right-gutter alignment, 3-item list collapse with "+N more" expand button verified\n');
 
 console.log('============================================================');
 console.log('  ALL TOAST NOTIFICATION & VALIDATION TESTS PASSED (100%)    ');

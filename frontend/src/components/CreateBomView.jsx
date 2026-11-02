@@ -592,6 +592,7 @@ export default function CreateBomView({
                     className={`sap-input sap-form-input ${headerErrors.material ? 'input-error' : ''}`}
                     aria-label="Header Material"
                   />
+                  <div className="sap-field-error-msg">{headerErrors.material ? 'Material is required' : ''}</div>
                 </div>
 
                 <div>
@@ -608,6 +609,7 @@ export default function CreateBomView({
                     className={`sap-input sap-form-input ${headerErrors.plant ? 'input-error' : ''}`}
                     aria-label="Header Plant"
                   />
+                  <div className="sap-field-error-msg">{headerErrors.plant ? 'Plant is required' : ''}</div>
                 </div>
 
                 <div>
@@ -622,6 +624,7 @@ export default function CreateBomView({
                     onChange={(e) => handleHeaderChange('bomUsage', e.target.value)}
                     className={`sap-input sap-form-input ${headerErrors.bomUsage ? 'input-error' : ''}`}
                   />
+                  <div className="sap-field-error-msg">{headerErrors.bomUsage ? 'BOM Usage is required' : ''}</div>
                 </div>
 
                 <div>
@@ -636,6 +639,7 @@ export default function CreateBomView({
                     value={headerData.alternativeBom}
                     onChange={(e) => handleHeaderChange('alternativeBom', e.target.value)}
                   />
+                  <div className="sap-field-error-msg">{headerErrors.alternativeBom ? 'Alternative BOM is required' : ''}</div>
                 </div>
 
                 <div>
@@ -649,6 +653,7 @@ export default function CreateBomView({
                     value={headerData.validFrom}
                     onChange={(e) => handleHeaderChange('validFrom', e.target.value)}
                   />
+                  <div className="sap-field-error-msg">{headerErrors.validFrom ? 'Valid From date is required' : ''}</div>
                 </div>
 
                 <div>
@@ -663,6 +668,7 @@ export default function CreateBomView({
                     value={headerData.baseQty}
                     onChange={(e) => handleHeaderChange('baseQty', e.target.value)}
                   />
+                  <div className="sap-field-error-msg">{headerErrors.baseQty ? 'Base Quantity must be > 0' : ''}</div>
                 </div>
 
                 <div>
@@ -677,6 +683,7 @@ export default function CreateBomView({
                     value={headerData.bomStatus}
                     onChange={(e) => handleHeaderChange('bomStatus', e.target.value)}
                   />
+                  <div className="sap-field-error-msg">{headerErrors.bomStatus ? 'BOM Status is required' : ''}</div>
                 </div>
 
                 <div>
@@ -690,6 +697,7 @@ export default function CreateBomView({
                     value={headerData.altText}
                     onChange={(e) => handleHeaderChange('altText', e.target.value)}
                   />
+                  <div className="sap-field-error-msg"></div>
                 </div>
               </div>
             </div>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, X } from 'lucide-react';
 import PasswordInput from './PasswordInput';
 import { loginUser } from '../services/api';
-import { useToast } from '../context/ToastContext';
+import { useToast, NotificationPlacementProvider } from '../context/ToastContext';
 import rexaEdgeLogo from '../assets/rexaedge_logo.png';
 import sapSignInHero from '../assets/sap_signin_hero.jpg';
 
@@ -14,8 +14,7 @@ export default function Login({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, _setErrorMessage] = useState('');
   const setErrorMessage = (msg) => {
-    _setErrorMessage(msg);
-    if (msg) toast.error(msg);
+    _setErrorMessage(msg || '');
   };
 
   const clearErrors = () => {
@@ -108,85 +107,118 @@ export default function Login({
           RIGHT PANEL (~50% width): Form Card with Centered Logo & Border
          ===================================================================== */}
       <div className="sap-login-right-panel">
-        <div className="sap-login-form-area">
-          {/* Top-center: RexaEdge Brand Logo outside the form border */}
-          <div className="sap-login-brand-center">
-            <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-login-brand-logo-img" />
-          </div>
+        <NotificationPlacementProvider placement="inline">
+          {/* Absolutely positioned error message above RexaEdge logo (zero layout shift) */}
+          {errorMessage ? (
+            <div
+              className="sap-login-panel-error"
+              role="alert"
+              aria-live="assertive"
+            >
+              <div
+                className="sap-login-error-alert"
+                title={errorMessage}
+              >
+                <div className="sap-login-error-icon-wrap" aria-hidden="true">
+                  <AlertCircle size={18} className="sap-login-error-icon" />
+                </div>
+                <div className="sap-login-error-content">
+                  <div className="sap-login-error-title">Sign in notice</div>
+                  <div className="sap-login-error-text">
+                    {errorMessage}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="sap-login-error-close"
+                  onClick={clearErrors}
+                  aria-label="Dismiss error"
+                  title="Dismiss error"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+          ) : null}
 
-          <div className="sap-login-canvas">
-            <div className="sap-login-header-direct">
-              <h2>Welcome to RexaEdge</h2>
-              <p>Sign in to continue</p>
+          <div className="sap-login-form-area">
+            {/* Top-center: RexaEdge Brand Logo outside the form border */}
+            <div className="sap-login-brand-center">
+              <img src={rexaEdgeLogo} alt="RexaEdge" className="sap-login-brand-logo-img" />
             </div>
 
-            <form onSubmit={handleSubmit} className="sap-login-body-direct">
-              
+            <div className="sap-login-canvas">
+              <div className="sap-login-header-direct">
+                <h2>Welcome to RexaEdge</h2>
+                <p>Sign in to continue</p>
+              </div>
 
-              <div className="sap-form-group">
-                <label className="sap-form-label" htmlFor="sap-email">
-                  Email address
-                </label>
-                <div className="sap-input-group sap-input-icon-wrapper">
-                  <span className="sap-input-icon-left" aria-hidden="true">
-                    <Mail size={16} />
-                  </span>
-                  <input
-                    id="sap-email"
-                    type="email"
-                    className="sap-input sap-input-with-icon"
-                    placeholder="e.g. user@nextitpoint.com"
-                    value={email}
-                    onChange={handleEmailChange}
+              <form onSubmit={handleSubmit} className="sap-login-body-direct">
+                <div className="sap-form-group">
+                  <label className="sap-form-label" htmlFor="sap-email">
+                    Email address
+                  </label>
+                  <div className="sap-input-group sap-input-icon-wrapper">
+                    <span className="sap-input-icon-left" aria-hidden="true">
+                      <Mail size={16} />
+                    </span>
+                    <input
+                      id="sap-email"
+                      type="email"
+                      className="sap-input sap-input-with-icon"
+                      placeholder="e.g. user@nextitpoint.com"
+                      value={email}
+                      onChange={handleEmailChange}
+                      disabled={isLoading}
+                      autoComplete="email"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="sap-form-group">
+                  <label className="sap-form-label" htmlFor="sap-password">
+                    Password
+                  </label>
+                  <PasswordInput
+                    id="sap-password"
+                    name="password"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={handlePasswordChange}
                     disabled={isLoading}
-                    autoComplete="email"
-                    autoFocus
+                    autoComplete="current-password"
                     required
+                    leftIcon={<Lock size={16} />}
                   />
                 </div>
-              </div>
 
-              <div className="sap-form-group">
-                <label className="sap-form-label" htmlFor="sap-password">
-                  Password
-                </label>
-                <PasswordInput
-                  id="sap-password"
-                  name="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={handlePasswordChange}
+                <button
+                  type="submit"
+                  className="sap-btn-navy-login"
                   disabled={isLoading}
-                  autoComplete="current-password"
-                  required
-                  leftIcon={<Lock size={16} />}
-                />
-              </div>
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="sap-spinner" style={{ width: 14, height: 14 }} />
+                      <span>Signing in...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={15} />
+                      <span>Sign In</span>
+                    </>
+                  )}
+                </button>
 
-              <button
-                type="submit"
-                className="sap-btn-navy-login"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="sap-spinner" style={{ width: 14, height: 14 }} />
-                    <span>Signing in...</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock size={15} />
-                    <span>Sign In</span>
-                  </>
-                )}
-              </button>
-
-              <p className="sap-login-admin-note">
-                Accounts are created and managed by your administrators.
-              </p>
-            </form>
+                <p className="sap-login-admin-note">
+                  Accounts are created and managed by your administrators.
+                </p>
+              </form>
+            </div>
           </div>
-        </div>
+        </NotificationPlacementProvider>
 
         {/* Footer centered at bottom of right panel */}
         <footer className="sap-login-footer">
