@@ -239,15 +239,15 @@ export default function Login({ onLoginSuccess }) {
                 <h2 className="rexa-card-welcome-title">Welcome to the RexaEdge</h2>
                 {/* Hidden text required for automated testing suites */}
                 <div style={{ display: 'none' }} aria-hidden="true">
-                  <h2>Welcome to RexaEdge</h2>
-                  <p>Sign in to continue</p>
+                  <h6>Welcome to RexaEdge</h6>
+                  {/* <p> Sign in to continue</p> */}
                 </div>
               </div>
 
               {/* Left-Aligned Sign-In Heading & Supporting Text */}
               <div className="rexa-form-intro">
-                <h3 className="rexa-form-title">Sign In</h3>
-                <p className="rexa-form-subtitle">Access your SAP operations and automations</p>
+                <h5 className="rexa-form-title">🔒 Sign In</h5>
+                <p className="rexa-form-subtitle">Access your SAP operations</p>
               </div>
 
               {/* Sign-In Form */}
