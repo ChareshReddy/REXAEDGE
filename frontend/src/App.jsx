@@ -694,8 +694,8 @@ export default function App({
 
                 {/* Multi-Session Capability Preserved */}
                 {sapSession.sessions && sapSession.sessions.length > 0 && (
-                  <div style={{ padding: '8px 14px', background: '#f8fafc', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', marginBottom: 6 }}>
+                  <div style={{ padding: '8px 14px', background: '#ffffff', borderBottom: '1px solid var(--sap-border, #FED7AA)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted, #475569)', marginBottom: 6 }}>
                       Active SAP Sessions ({sapSession.sessions.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -714,17 +714,17 @@ export default function App({
                               padding: '5px 8px',
                               fontSize: '12px',
                               borderRadius: '4px',
-                              border: isSelected ? '1px solid var(--sap-brand-blue, #0a6ed1)' : '1px solid rgba(0,0,0,0.05)',
-                              background: isSelected ? '#f0f7ff' : '#ffffff',
+                              border: isSelected ? '1px solid var(--sap-primary, #EA580C)' : '1px solid var(--sap-border, #FED7AA)',
+                              background: isSelected ? '#FFF7ED' : '#ffffff',
                               cursor: 'pointer',
-                              color: isSelected ? 'var(--sap-brand-blue, #0a6ed1)' : 'var(--sap-text-body, #334155)',
+                              color: isSelected ? 'var(--sap-primary, #EA580C)' : 'var(--sap-text-body, #334155)',
                               fontWeight: isSelected ? 600 : 400,
                               textAlign: 'left'
                             }}
                           >
                             <span>{sess.user} ({sess.system}/{sess.client})</span>
                             {isSelected ? (
-                              <span style={{ fontSize: '10px', color: '#107e3e', fontWeight: 700 }}>Active</span>
+                              <span style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>Active</span>
                             ) : (
                               <span style={{ fontSize: '10px', color: '#64748b' }}>Select</span>
                             )}

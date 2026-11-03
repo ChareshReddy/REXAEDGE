@@ -90,11 +90,11 @@ assert.match(
   'Success toasts must use Green-50 (#F0FDF4) bg, Green-300 (#86EFAC) border, Green-600 (#16A34A) left accent bar (3px), Green-900 (#14532D) text'
 );
 
-// Info in White / Slate
+// Info in White / Slate or Warm Border
 assert.match(
   indexCss,
-  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid #CBD5E1;[^}]*border-left:\s*3px solid #0F2744;[^}]*color:\s*#0F172A;/s,
-  'Info toasts must use White (#FFFFFF) bg, Slate-300 (#CBD5E1) border, Navy (#0F2744) left accent bar (3px), Slate-900 (#0F172A) text'
+  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid (?:#CBD5E1|var\(--sap-border,\s*#FED7AA\));[^}]*border-left:\s*3px solid #0F2744;[^}]*color:\s*#0F172A;/s,
+  'Info toasts must use White (#FFFFFF) bg, border #CBD5E1 or var(--sap-border, #FED7AA), Navy (#0F2744) left accent bar (3px), Slate-900 (#0F172A) text'
 );
 
 // Scrollable list max height 40% of screen (~40vh)
@@ -483,51 +483,55 @@ assert(fs.existsSync(path.resolve(layoutDir, 'PageContainer.jsx')), 'PageContain
 assert(fs.existsSync(path.resolve(layoutDir, 'PageHeader.jsx')), 'PageHeader.jsx must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'FormGrid.jsx')), 'FormGrid.jsx must exist');
 assert(!fs.existsSync(path.resolve(layoutDir, 'SummaryPanel.jsx')), 'SummaryPanel.jsx must be deleted');
-assert(fs.existsSync(path.resolve(layoutDir, 'StickyActionBar.jsx')), 'StickyActionBar.jsx must exist');
+assert(!fs.existsSync(path.resolve(layoutDir, 'StickyActionBar.jsx')), 'StickyActionBar.jsx must be deleted');
 assert(fs.existsSync(path.resolve(layoutDir, 'layout.css')), 'layout.css must exist');
 assert(fs.existsSync(path.resolve(layoutDir, 'index.js')), 'layout index.js must exist');
 
 const layoutIndexCode = fs.readFileSync(path.resolve(layoutDir, 'index.js'), 'utf8');
 assert(!layoutIndexCode.includes('SummaryPanel'), 'layout index.js must not export SummaryPanel');
+assert(!layoutIndexCode.includes('StickyActionBar'), 'layout index.js must not export StickyActionBar');
 
 const layoutCssCode = fs.readFileSync(path.resolve(layoutDir, 'layout.css'), 'utf8');
 assert(layoutCssCode.includes('--sap-layout-max-width: 1680px'), 'layout.css must set 1680px max content width');
 assert(layoutCssCode.includes('.sap-page-container'), 'layout.css must define .sap-page-container');
 assert(!layoutCssCode.includes('.sap-summary-panel'), 'layout.css must NOT define .sap-summary-panel');
 assert(!layoutCssCode.includes('.sap-layout-content-with-summary'), 'layout.css must NOT define .sap-layout-content-with-summary');
-assert(layoutCssCode.includes('.sap-sticky-action-bar'), 'layout.css must define .sap-sticky-action-bar');
+assert(!layoutCssCode.includes('.sap-sticky-action-bar'), 'layout.css must NOT define .sap-sticky-action-bar');
+assert(layoutCssCode.includes('.sap-card-action-row'), 'layout.css must define .sap-card-action-row');
 assert(layoutCssCode.includes('.sap-form-dual-connector'), 'layout.css must define .sap-form-dual-connector');
 assert(layoutCssCode.includes('.sap-card-table-scroll'), 'layout.css must define .sap-card-table-scroll');
 
-// Check CreateBomView uses PageContainer and StickyActionBar without SummaryPanel
+// Check CreateBomView uses PageContainer and in-card action row without StickyActionBar
 const layoutCreateBomViewPath = path.resolve(frontendDir, 'src/components/CreateBomView.jsx');
 const layoutCreateBomViewCode = fs.readFileSync(layoutCreateBomViewPath, 'utf8');
 assert(layoutCreateBomViewCode.includes('PageContainer'), 'CreateBomView must use PageContainer');
 assert(!layoutCreateBomViewCode.includes('SummaryPanel'), 'CreateBomView must NOT use SummaryPanel');
 assert(!layoutCreateBomViewCode.includes('sap-layout-content-with-summary'), 'CreateBomView must NOT use sap-layout-content-with-summary');
-assert(layoutCreateBomViewCode.includes('StickyActionBar'), 'CreateBomView must use StickyActionBar');
+assert(!layoutCreateBomViewCode.includes('StickyActionBar'), 'CreateBomView must NOT use StickyActionBar');
+assert(layoutCreateBomViewCode.includes('sap-card-action-row'), 'CreateBomView must use sap-card-action-row');
 
-// Check CopyBomView uses PageContainer and StickyActionBar without SummaryPanel
+// Check CopyBomView uses PageContainer and in-card action row without StickyActionBar
 const updatedCopyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8');
 assert(updatedCopyBomViewCode.includes('PageContainer'), 'CopyBomView must use PageContainer');
 assert(!updatedCopyBomViewCode.includes('SummaryPanel'), 'CopyBomView must NOT use SummaryPanel');
 assert(!updatedCopyBomViewCode.includes('sap-layout-content-with-summary'), 'CopyBomView must NOT use sap-layout-content-with-summary');
-assert(updatedCopyBomViewCode.includes('StickyActionBar'), 'CopyBomView must use StickyActionBar');
+assert(!updatedCopyBomViewCode.includes('StickyActionBar'), 'CopyBomView must NOT use StickyActionBar');
 
-// Check ValidateBomView uses PageContainer and StickyActionBar without SummaryPanel
+// Check ValidateBomView uses PageContainer and in-card action row without StickyActionBar
 const layoutValidateBomViewPath = path.resolve(frontendDir, 'src/components/ValidateBomView.jsx');
 const layoutValidateBomViewCode = fs.readFileSync(layoutValidateBomViewPath, 'utf8');
 assert(layoutValidateBomViewCode.includes('PageContainer'), 'ValidateBomView must use PageContainer');
 assert(!layoutValidateBomViewCode.includes('SummaryPanel'), 'ValidateBomView must NOT use SummaryPanel');
 assert(!layoutValidateBomViewCode.includes('sap-layout-content-with-summary'), 'ValidateBomView must NOT use sap-layout-content-with-summary');
-assert(layoutValidateBomViewCode.includes('StickyActionBar'), 'ValidateBomView must use StickyActionBar');
+assert(!layoutValidateBomViewCode.includes('StickyActionBar'), 'ValidateBomView must NOT use StickyActionBar');
+assert(layoutValidateBomViewCode.includes('sap-card-action-row'), 'ValidateBomView must use sap-card-action-row');
 
-// Check DeleteBomView uses PageContainer and StickyActionBar without SummaryPanel
+// Check DeleteBomView uses PageContainer and in-card action row without StickyActionBar
 const updatedDeleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8');
 assert(updatedDeleteBomViewCode.includes('PageContainer'), 'DeleteBomView must use PageContainer');
 assert(!updatedDeleteBomViewCode.includes('SummaryPanel'), 'DeleteBomView must NOT use SummaryPanel');
 assert(!updatedDeleteBomViewCode.includes('sap-layout-content-with-summary'), 'DeleteBomView must NOT use sap-layout-content-with-summary');
-assert(updatedDeleteBomViewCode.includes('StickyActionBar'), 'DeleteBomView must use StickyActionBar');
+assert(!updatedDeleteBomViewCode.includes('StickyActionBar'), 'DeleteBomView must NOT use StickyActionBar');
 
 // Check CreateBomForm has connector and responsive dual columns
 const updatedCreateBomFormCode = fs.readFileSync(createBomFormPath, 'utf8');
