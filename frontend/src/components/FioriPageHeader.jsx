@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from '../context/RouterContext';
 
 /**
  * Shared Fiori Page Header Component
@@ -23,6 +24,28 @@ export default function FioriPageHeader({
 }) {
   const isProductsPage = title === 'Products';
 
+  const renderBreadcrumbItem = (b) => {
+    if (b.path || b.to) {
+      return (
+        <Link to={b.path || b.to} className="fiori-bc-link">
+          {b.label}
+        </Link>
+      );
+    }
+    if (b.onClick) {
+      return (
+        <button
+          type="button"
+          className="fiori-bc-link"
+          onClick={b.onClick}
+        >
+          {b.label}
+        </button>
+      );
+    }
+    return <span className="fiori-bc-current">{b.label}</span>;
+  };
+
   return (
     <div className={`fiori-ph ${className}`} style={style}>
       <div className="sap-layout-header-inner">
@@ -33,17 +56,7 @@ export default function FioriPageHeader({
               breadcrumbs.map((b, idx) => (
                 <React.Fragment key={idx}>
                   {idx > 0 && <span className="fiori-bc-sep">›</span>}
-                  {b.onClick ? (
-                    <button
-                      type="button"
-                      className="fiori-bc-link"
-                      onClick={b.onClick}
-                    >
-                      {b.label}
-                    </button>
-                  ) : (
-                    <span className="fiori-bc-current">{b.label}</span>
-                  )}
+                  {renderBreadcrumbItem(b)}
                 </React.Fragment>
               ))
             ) : (
@@ -52,32 +65,12 @@ export default function FioriPageHeader({
                   {breadcrumbs.map((b, idx) => (
                     <React.Fragment key={idx}>
                       {idx > 0 && <span className="fiori-bc-sep">›</span>}
-                      {b.onClick ? (
-                        <button
-                          type="button"
-                          className="fiori-bc-link"
-                          onClick={b.onClick}
-                        >
-                          {b.label}
-                        </button>
-                      ) : (
-                        <span className="fiori-bc-current">{b.label}</span>
-                      )}
+                      {renderBreadcrumbItem(b)}
                     </React.Fragment>
                   ))}
                 </span>
                 <span className="fiori-bc-mobile">
-                  {breadcrumbs[0].onClick ? (
-                    <button
-                      type="button"
-                      className="fiori-bc-link"
-                      onClick={breadcrumbs[0].onClick}
-                    >
-                      {breadcrumbs[0].label}
-                    </button>
-                  ) : (
-                    <span className="fiori-bc-current">{breadcrumbs[0].label}</span>
-                  )}
+                  {renderBreadcrumbItem(breadcrumbs[0])}
                   <span className="fiori-bc-sep">›</span>
                   <span
                     className="fiori-bc-collapsed"
@@ -86,19 +79,7 @@ export default function FioriPageHeader({
                     …
                   </span>
                   <span className="fiori-bc-sep">›</span>
-                  {breadcrumbs[breadcrumbs.length - 1].onClick ? (
-                    <button
-                      type="button"
-                      className="fiori-bc-link"
-                      onClick={breadcrumbs[breadcrumbs.length - 1].onClick}
-                    >
-                      {breadcrumbs[breadcrumbs.length - 1].label}
-                    </button>
-                  ) : (
-                    <span className="fiori-bc-current">
-                      {breadcrumbs[breadcrumbs.length - 1].label}
-                    </span>
-                  )}
+                  {renderBreadcrumbItem(breadcrumbs[breadcrumbs.length - 1])}
                 </span>
               </>
             )}

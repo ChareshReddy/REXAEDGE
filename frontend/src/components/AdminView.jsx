@@ -43,6 +43,8 @@ import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
 import AdminActivityLogsView from './AdminActivityLogsView';
 import { formatEnvironment } from '../utils/textFormatters';
+import { useRouter } from '../context/RouterContext';
+import { ROUTE_IDS } from '../config/routes';
 
 /**
  * TriStateCheckbox: Accessible checkbox with HTML5 indeterminate state support
@@ -89,7 +91,20 @@ export default function AdminView({
   initialPermissions = []
 }) {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState(initialTab); // 'users' | 'servers' | 'permissions'
+  let routerContext = null;
+  try {
+    routerContext = useRouter();
+  } catch (_) {}
+
+  const [localActiveTab, setLocalActiveTab] = useState(initialTab);
+  const activeTab = routerContext?.route?.adminTab || localActiveTab;
+
+  const handleAdminTabChange = (tabKey, routeId) => {
+    setLocalActiveTab(tabKey);
+    if (routerContext?.navigate && routeId) {
+      routerContext.navigate(routeId);
+    }
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -617,7 +632,7 @@ export default function AdminView({
           <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             <button
               type="button"
-              onClick={() => setActiveTab('users')}
+              onClick={() => handleAdminTabChange('users', ROUTE_IDS.ADMIN_USERS)}
               className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
             >
               <Users size={14} />
@@ -627,7 +642,7 @@ export default function AdminView({
 
             <button
               type="button"
-              onClick={() => setActiveTab('servers')}
+              onClick={() => handleAdminTabChange('servers', ROUTE_IDS.ADMIN_SERVERS)}
               className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
             >
               <Server size={14} />
@@ -637,7 +652,7 @@ export default function AdminView({
 
             <button
               type="button"
-              onClick={() => setActiveTab('permissions')}
+              onClick={() => handleAdminTabChange('permissions', ROUTE_IDS.ADMIN_PERMISSIONS)}
               className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
             >
               <KeyRound size={14} />
@@ -647,7 +662,7 @@ export default function AdminView({
 
             <button
               type="button"
-              onClick={() => setActiveTab('activity-logs')}
+              onClick={() => handleAdminTabChange('activity-logs', ROUTE_IDS.ADMIN_LOGS_AUDIT)}
               className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
             >
               <Activity size={14} />

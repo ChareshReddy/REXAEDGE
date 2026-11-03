@@ -57,8 +57,23 @@ import rexaEdgeFullColourLogo from './assets/rexaedge_full_colour.png';
 import HomePage from './components/HomePage';
 import activityTracker from './services/activityTracker';
 import { formatEnvironment } from './utils/textFormatters';
+import { RouterProvider, useRouter, Link } from './context/RouterContext';
+import {
+  ROUTES,
+  ROUTE_IDS,
+  ACTION_TO_ROUTE_ID,
+  SUBVIEW_TO_ROUTE_ID,
+  normalizePath,
+  isInternalPath,
+  resolveLegacyRedirect,
+  getRouteByPath,
+  getRouteById,
+  routeTo
+} from './config/routes';
+import AccessDeniedView from './components/AccessDeniedView';
+import NotFoundView from './components/NotFoundView';
 
-export default function App({
+function AppContent({
   initialUser = null,
   initialCheckingAuth = true,
   initialServers = [],
@@ -67,6 +82,7 @@ export default function App({
   initialLaunchpadSubView = 'home',
   initialEnabledModules = ['bom']
 } = {}) {
+  const router = useRouter();
   const [user, setUser] = useState(initialUser);
   const [authConfig, setAuthConfig] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(initialCheckingAuth);
@@ -80,8 +96,34 @@ export default function App({
   const [isLoadingServers, setIsLoadingServers] = useState(initialServers.length === 0);
 
   // Application view state - defaults to modern Home page matching RexaEdge ERP portal
-  const [activeTab, setActiveTab] = useState(initialActiveTab); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin'
-  const [launchpadSubView, setLaunchpadSubView] = useState(initialLaunchpadSubView); // 'home' | 'bom_operations' | 'bom_create_operations' | 'bom_copy_operations'
+  const getInitialActiveTab = () => {
+    if (initialActiveTab && initialActiveTab !== 'home') return initialActiveTab;
+    const path = normalizePath(router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '/home'));
+    if (path.startsWith('/admin')) return 'admin';
+    if (path === '/products/bom/create/single') return 'create_bom';
+    if (path === '/products/bom/create/bulk') return 'bulk_create_bom';
+    if (path === '/products/bom/copy/single') return 'copy_bom';
+    if (path === '/products/bom/copy/bulk') return 'bulk_bom';
+    if (path === '/products/bom/display') return 'bom_explorer';
+    if (path === '/products/bom/validate') return 'validate_bom';
+    if (path === '/products/bom/delete') return 'delete_bom';
+    if (path.startsWith('/products')) return 'launchpad';
+    if (path === '/home' || path === '/') return 'home';
+    if (path === '/about' || path === '/contact' || path === '/signin') return 'home';
+    return 'not_found';
+  };
+
+  const getInitialLaunchpadSubView = () => {
+    if (initialLaunchpadSubView && initialLaunchpadSubView !== 'home') return initialLaunchpadSubView;
+    const path = normalizePath(router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '/home'));
+    if (path === '/products/bom/create') return 'bom_create_operations';
+    if (path === '/products/bom/copy') return 'bom_copy_operations';
+    if (path === '/products/bom') return 'bom_operations';
+    return 'home';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialActiveTab); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'not_found' | 'access_denied'
+  const [launchpadSubView, setLaunchpadSubView] = useState(getInitialLaunchpadSubView); // 'home' | 'bom_operations' | 'bom_create_operations' | 'bom_copy_operations'
 
   const getPathForView = (tab, subView) => {
     if (tab === 'home') return '/home';
@@ -91,7 +133,14 @@ export default function App({
       if (subView === 'bom_copy_operations') return '/products/bom/copy';
       return '/products';
     }
-    if (tab === 'admin') return '/admin';
+    if (tab === 'admin') return '/admin/users';
+    if (tab === 'create_bom') return '/products/bom/create/single';
+    if (tab === 'bulk_create_bom') return '/products/bom/create/bulk';
+    if (tab === 'copy_bom') return '/products/bom/copy/single';
+    if (tab === 'bulk_bom') return '/products/bom/copy/bulk';
+    if (tab === 'bom_explorer') return '/products/bom/display';
+    if (tab === 'validate_bom') return '/products/bom/validate';
+    if (tab === 'delete_bom') return '/products/bom/delete';
     return `/${tab}`;
   };
 
@@ -101,9 +150,11 @@ export default function App({
     if (subView !== null) {
       setLaunchpadSubView(subView);
     }
-    if (typeof window !== 'undefined' && window.history) {
-      const targetSub = subView !== null ? subView : (tab === 'launchpad' ? launchpadSubView : null);
-      const targetPath = getPathForView(tab, targetSub);
+    const targetSub = subView !== null ? subView : (tab === 'launchpad' ? launchpadSubView : null);
+    const targetPath = getPathForView(tab, targetSub);
+    if (router?.navigate) {
+      router.navigate(targetPath, { replace });
+    } else if (typeof window !== 'undefined' && window.history) {
       if (window.location.pathname !== targetPath) {
         if (replace) {
           window.history.replaceState({ tab, subView: targetSub }, '', targetPath);
@@ -217,11 +268,49 @@ export default function App({
   useEffect(() => {
     function handleLocationChange() {
       if (typeof window === 'undefined') return;
-      const path = (window.location.pathname || '').toLowerCase();
+      const path = normalizePath(window.location.pathname);
       const hash = (window.location.hash || '').toLowerCase();
 
-      if (path === '/admin' || hash === '#admin') {
-        if (user?.role === 'admin') {
+      // Check legacy redirects
+      const redirect = resolveLegacyRedirect(path);
+      if (redirect) {
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({ path: redirect }, '', redirect);
+        }
+      }
+
+      if (path === '/products/bom/create/single' || path === '/create_bom' || hash === '#create_bom') {
+        setActiveTab('create_bom');
+        return;
+      }
+      if (path === '/products/bom/create/bulk' || path === '/bulk_create_bom' || hash === '#bulk_create_bom') {
+        setActiveTab('bulk_create_bom');
+        return;
+      }
+      if (path === '/products/bom/copy/single' || path === '/copy_bom' || hash === '#copy_bom') {
+        setActiveTab('copy_bom');
+        return;
+      }
+      if (path === '/products/bom/copy/bulk' || path === '/bulk_bom' || hash === '#bulk_bom') {
+        setActiveTab('bulk_bom');
+        return;
+      }
+      if (path === '/products/bom/display' || path === '/bom_explorer' || hash === '#bom_explorer') {
+        setActiveTab('bom_explorer');
+        return;
+      }
+      if (path === '/products/bom/validate' || path === '/validate_bom' || hash === '#validate_bom') {
+        setActiveTab('validate_bom');
+        return;
+      }
+      if (path === '/products/bom/delete' || path === '/delete_bom' || hash === '#delete_bom') {
+        setActiveTab('delete_bom');
+        return;
+      }
+      if (path.startsWith('/admin') || hash === '#admin') {
+        if (user && user.role !== 'admin') {
+          setActiveTab('access_denied');
+        } else {
           setActiveTab('admin');
         }
         return;
@@ -250,14 +339,17 @@ export default function App({
         setActiveTab('home');
         return;
       }
-
-      // Feature direct action routes
-      const featureTabs = ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'bom_explorer', 'validate_bom', 'delete_bom'];
-      for (const ft of featureTabs) {
-        if (path === `/${ft}` || hash === `#${ft}`) {
-          setActiveTab(ft);
-          return;
-        }
+      if (path === '/about') {
+        setActiveTab('home');
+        return;
+      }
+      if (path === '/contact') {
+        setActiveTab('home');
+        setIsHeaderContactOpen(true);
+        return;
+      }
+      if (path === '/signin') {
+        return;
       }
 
       // Default root path: map to /home
@@ -266,7 +358,11 @@ export default function App({
         if (window.history && window.history.replaceState) {
           window.history.replaceState({ tab: 'home' }, '', '/home');
         }
+        return;
       }
+
+      // If not recognized: 404
+      setActiveTab('not_found');
     }
 
     window.addEventListener('popstate', handleLocationChange);
@@ -275,7 +371,33 @@ export default function App({
     return () => {
       window.removeEventListener('popstate', handleLocationChange);
     };
-  }, [user?.role]);
+  }, [user, router?.pathname]);
+
+  // Auth guard & redirect handler
+  useEffect(() => {
+    if (isCheckingAuth) return;
+
+    const currentPath = normalizePath(window.location.pathname);
+
+    // Unauthenticated user attempting to access protected route
+    if (!user) {
+      if (currentPath !== '/signin') {
+        const returnTarget = currentPath !== '/' ? currentPath : '/home';
+        if (router?.navigate) {
+          router.navigate(`/signin?returnTo=${encodeURIComponent(returnTarget)}`, { replace: true });
+        }
+      }
+      return;
+    }
+
+    // Authenticated user landing on /signin or root /
+    if (currentPath === '/signin' || currentPath === '/') {
+      if (router?.navigate) {
+        router.navigate('/home', { replace: true });
+      }
+      return;
+    }
+  }, [user, isCheckingAuth, router]);
 
   // Verify active session on initial mount
   useEffect(() => {
@@ -379,6 +501,20 @@ export default function App({
     setSelectedHomeGroup('');
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
     if (savedId) prefetchPlants(savedId);
+
+    if (typeof window !== 'undefined') {
+      const query = new URLSearchParams(window.location.search);
+      const returnTo = query.get('returnTo');
+      if (returnTo && isInternalPath(returnTo) && returnTo !== '/signin') {
+        if (router?.navigate) {
+          router.navigate(returnTo, { replace: true });
+        }
+      } else {
+        if (router?.navigate) {
+          router.navigate(ROUTE_IDS.HOME, { replace: true });
+        }
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -395,6 +531,9 @@ export default function App({
       setActiveTab('launchpad');
       setLaunchpadSubView('home');
       setSelectedHomeGroup('');
+      if (router?.navigate) {
+        router.navigate(ROUTE_IDS.SIGN_IN, { replace: true });
+      }
     }
   };
 
@@ -557,27 +696,18 @@ export default function App({
       {/* SAP Shell Top Header */}
       <header className="sap-shell-header sap-toolbar">
         <div className="sap-shell-header-left">
-          <div
+          <Link
+            to={ROUTE_IDS.HOME}
             className="sap-brand"
-            onClick={() => { navigateToView('home'); }}
-            style={{ cursor: 'pointer' }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setActiveTab('home');
-              }
-            }}
+            style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
             title="RexaEdge - Return to Home"
             aria-label="RexaEdge - Return to Home"
           >
             <div className="sap-brand-logo-container" title="RexaEdge">
               <img src={rexaEdgeFullColourLogo} alt="RexaEdge" className="sap-brand-logo-img" />
             </div>
-          </div>
-
-                  </div>
+          </Link>
+        </div>
 
         {/* Desktop actions and user badge */}
         <div className="sap-shell-actions">
@@ -742,7 +872,15 @@ export default function App({
                       className="sap-user-menu-item"
                       onClick={() => {
                         setIsUserMenuOpen(false);
-                        setActiveTab(activeTab === 'admin' ? 'home' : 'admin');
+                        if (activeTab === 'admin') {
+                          navigateToView('home');
+                        } else {
+                          if (router?.navigate) {
+                            router.navigate(ROUTE_IDS.ADMIN_USERS);
+                          } else {
+                            setActiveTab('admin');
+                          }
+                        }
                       }}
                       role="menuitem"
                     >
@@ -1029,114 +1167,30 @@ export default function App({
           </div>
         )}
 
-        {/* Module Guard: Render "Not available for this server" for non-admins if navigating to an unenabled module */}
-        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && user?.role !== 'admin' && getModuleKeyForAction(activeTab) && !enabledModules.includes(getModuleKeyForAction(activeTab)) && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '60px 24px',
-              textAlign: 'center',
-              maxWidth: 520,
-              margin: '60px auto',
-              background: 'var(--sap-card-bg)',
-              borderRadius: 'var(--radius-xl)',
-              border: '1px solid var(--sap-border-subtle)',
-              boxShadow: 'var(--sap-shadow-md)'
-            }}
-          >
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--sap-error-bg)',
-                color: 'var(--sap-error)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
-              }}
-            >
-              <ShieldCheck size={30} />
-            </div>
-            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
-              Not Available For This Server
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
-              This module is not enabled for{' '}
-              <strong>{selectedServer?.name || 'this server'}</strong>.
-              Please switch to another server or contact an administrator to enable access.
-            </p>
-            <button
-              type="button"
-              className="sap-button sap-btn sap-btn-primary"
-              onClick={() => {
-                setActiveTab('launchpad');
-                setLaunchpadSubView('home');
-              }}
-              style={{ padding: '8px 18px', fontSize: 13 }}
-            >
-              Return to Products
-            </button>
-          </div>
+        {/* Module Guard: Render AccessDeniedView for non-admins if navigating to an unenabled module */}
+        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && activeTab !== 'not_found' && activeTab !== 'access_denied' && user?.role !== 'admin' && getModuleKeyForAction(activeTab) && !enabledModules.includes(getModuleKeyForAction(activeTab)) && (
+          <AccessDeniedView
+            reason={`This module is not enabled for ${selectedServer?.name || 'this server'}. Please switch to another server or contact an administrator to enable access.`}
+            details={selectedServer?.name ? `Server: ${selectedServer.name}` : null}
+          />
         )}
 
         {/* App Permission Guard: Direct URL or deep link to non-permitted app */}
-        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && !hasAppAccess && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '60px 24px',
-              textAlign: 'center',
-              maxWidth: 520,
-              margin: '60px auto',
-              background: 'var(--sap-card-bg)',
-              borderRadius: 'var(--radius-xl)',
-              border: '1px solid var(--sap-border-subtle)',
-              boxShadow: 'var(--sap-shadow-md)'
-            }}
-          >
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--sap-error-bg)',
-                color: 'var(--sap-error)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
-              }}
-            >
-              <ShieldCheck size={30} />
-            </div>
-            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
-              You don't have access to this feature
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
-              You do not have permission to run this feature on{' '}
-              <strong>{selectedServer?.name || 'this server'}</strong>.
-              Please switch to another server or contact an administrator to request access.
-            </p>
-            <button
-              type="button"
-              className="sap-button sap-btn sap-btn-primary"
-              onClick={() => {
-                setActiveTab('launchpad');
-                setLaunchpadSubView('home');
-              }}
-              style={{ padding: '8px 18px', fontSize: 13 }}
-            >
-              Back to Products
-            </button>
-          </div>
+        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && activeTab !== 'not_found' && activeTab !== 'access_denied' && !hasAppAccess && (
+          <AccessDeniedView
+            reason="You do not have permission to run this feature on this server. Please switch to another server or contact an administrator to request access."
+            details={selectedServer?.name ? `Server: ${selectedServer.name}` : null}
+          />
+        )}
+
+        {/* 404 Route Not Found */}
+        {activeTab === 'not_found' && (
+          <NotFoundView pathname={router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '')} />
+        )}
+
+        {/* Admin Access Denied for Non-Admins */}
+        {activeTab === 'access_denied' && (
+          <AccessDeniedView reason="This section is restricted to enterprise administrators." />
         )}
 
         {activeTab === 'create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
@@ -1259,7 +1313,7 @@ export default function App({
           </div>
         )}
 
-        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <div  style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
           <button
             type="button"
             className="sap-button sap-btn sap-btn-secondary"
@@ -1378,5 +1432,51 @@ export default function App({
       />
     </div>
     </ToastProvider>
+  );
+}
+
+export default function App(props = {}) {
+  const {
+    initialActiveTab = 'home',
+    initialLaunchpadSubView = 'home'
+  } = props;
+
+  let initialPath = '/home';
+  if (initialActiveTab === 'launchpad') {
+    if (initialLaunchpadSubView === 'bom_operations') {
+      initialPath = '/products/bom';
+    } else if (initialLaunchpadSubView === 'bom_create_operations') {
+      initialPath = '/products/bom/create';
+    } else if (initialLaunchpadSubView === 'bom_copy_operations') {
+      initialPath = '/products/bom/copy';
+    } else {
+      initialPath = '/products';
+    }
+  } else if (initialActiveTab === 'admin') {
+    initialPath = '/admin/users';
+  } else if (initialActiveTab === 'create_bom') {
+    initialPath = '/products/bom/create/single';
+  } else if (initialActiveTab === 'bulk_create_bom') {
+    initialPath = '/products/bom/create/bulk';
+  } else if (initialActiveTab === 'copy_bom') {
+    initialPath = '/products/bom/copy/single';
+  } else if (initialActiveTab === 'bulk_bom') {
+    initialPath = '/products/bom/copy/bulk';
+  } else if (initialActiveTab === 'bom_explorer') {
+    initialPath = '/products/bom/display';
+  } else if (initialActiveTab === 'validate_bom') {
+    initialPath = '/products/bom/validate';
+  } else if (initialActiveTab === 'delete_bom') {
+    initialPath = '/products/bom/delete';
+  } else if (initialActiveTab && initialActiveTab !== 'home') {
+    initialPath = `/${initialActiveTab}`;
+  } else if (typeof window !== 'undefined' && window.location.pathname) {
+    initialPath = window.location.pathname;
+  }
+
+  return (
+    <RouterProvider initialPath={initialPath}>
+      <AppContent {...props} />
+    </RouterProvider>
   );
 }

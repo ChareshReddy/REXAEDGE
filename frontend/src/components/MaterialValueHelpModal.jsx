@@ -589,24 +589,7 @@ export default function MaterialValueHelpModal({
           </form>
         </div>
 
-        {/* Notice Banner (Empty Search / Capping / Loading / Error) */}
-        {isEmptySearch && !isLoading && materials.length > 0 && (
-          <div
-            style={{
-              padding: '6px 20px',
-              background: '#FFF7ED',
-              borderBottom: '1px solid #FFEDD5',
-              fontSize: 11.5,
-              color: '#C2410C',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              flexShrink: 0
-            }}
-          >
-            <span>Showing first 100 – refine your search</span>
-          </div>
-        )}
+       
 
         {isCapped && !isLoading && (
           <div
@@ -843,7 +826,7 @@ export default function MaterialValueHelpModal({
               style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
             >
               <X size={14} style={{ marginRight: 4 }} />
-              <span>Cancel (Esc)</span>
+              <span>Cancel</span>
             </button>
             <button
               type="button"
@@ -862,7 +845,7 @@ export default function MaterialValueHelpModal({
               }}
             >
               <Check size={14} style={{ marginRight: 4 }} />
-              <span>Select (Enter)</span>
+              <span>Select</span>
             </button>
           </div>
         </div>

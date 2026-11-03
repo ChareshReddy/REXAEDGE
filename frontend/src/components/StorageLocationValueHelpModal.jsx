@@ -563,7 +563,7 @@ export default function StorageLocationValueHelpModal({
               style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 14px' }}
             >
               <X size={14} style={{ marginRight: 4 }} />
-              <span>Cancel (Esc)</span>
+              <span>Cancel</span>
             </button>
             <button
               type="button"
@@ -582,7 +582,7 @@ export default function StorageLocationValueHelpModal({
               }}
             >
               <Check size={14} style={{ marginRight: 4 }} />
-              <span>Select (Enter)</span>
+              <span>Select</span>
             </button>
           </div>
         </div>

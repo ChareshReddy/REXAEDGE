@@ -29,6 +29,8 @@ import Tooltip from './Tooltip';
 import Notification from './Notification';
 import { useToast } from '../context/ToastContext';
 import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv } from '../services/api';
+import { useRouter } from '../context/RouterContext';
+import { ROUTE_IDS } from '../config/routes';
 
 /**
  * Formats ISO date string to readable local date and time.
@@ -90,9 +92,15 @@ function getDateRangeValues(preset) {
 }
 
 export default function AdminActivityLogsView({
-  availableServers = [], refreshTrigger = 0 }) {
+  availableServers = [], refreshTrigger = 0, initialSubTab = 'audit' }) {
   const toast = useToast();
-  const [activeSubTab, setActiveSubTab] = useState('audit'); // 'audit' | 'errors'
+  let routerContext = null;
+  try {
+    routerContext = useRouter();
+  } catch (_) {}
+
+  const [localActiveSubTab, setLocalActiveSubTab] = useState(initialSubTab);
+  const activeSubTab = routerContext?.route?.adminSubTab || localActiveSubTab;
 
   // Filter States
   const [datePreset, setDatePreset] = useState('today'); // 'today' | '7d' | '30d' | 'custom' | 'all'
@@ -231,7 +239,14 @@ export default function AdminActivityLogsView({
   // Reset page to 1 when filters or sub-tab change
   const handleSubTabChange = (newSubTab) => {
     if (newSubTab !== activeSubTab) {
-      setActiveSubTab(newSubTab);
+      setLocalActiveSubTab(newSubTab);
+      if (routerContext?.navigate) {
+        if (newSubTab === 'audit') {
+          routerContext.navigate(ROUTE_IDS.ADMIN_LOGS_AUDIT);
+        } else if (newSubTab === 'errors') {
+          routerContext.navigate(ROUTE_IDS.ADMIN_LOGS_ERRORS);
+        }
+      }
       setPage(1);
       setSelectedLog(null);
     }

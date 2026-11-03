@@ -23,6 +23,7 @@ import {
 import Modal from './Modal';
 import BulkUploadPanel from './BulkUploadPanel';
 import {
+  BulkFlowContainer,
   BulkWorkflowSteps,
   BulkFileInfoBar,
   BulkJobProgressCard,
@@ -578,7 +579,7 @@ export default function BulkCreateBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
-      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
+      <BulkFlowContainer>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
@@ -692,7 +693,17 @@ export default function BulkCreateBomView({
               </div>
 
               <div className="sap-table-container fiori-table-wrapper" style={{ maxHeight: 380 }}>
-                <table className="sap-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <table className="sap-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <colgroup>
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '22%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '30%' }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th style={{ width: 60, textAlign: 'center' }}>Seq</th>
@@ -767,7 +778,7 @@ export default function BulkCreateBomView({
           </div>
         ) : (
           /* UPLOAD & PREVIEW VIEW */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: allBoms.length > 0 ? 16 : 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: allBoms.length > 0 ? 16 : 24 }}>
             {allBoms.length === 0 ? (
               /* Shared Bulk Upload Panel (shown before upload) */
               <BulkUploadPanel
@@ -803,14 +814,7 @@ export default function BulkCreateBomView({
                   executionLabel="Creating BOMs in SAP"
                 />
 
-                {/* Slim one-line header above preview (shown after file upload) */}
-                <BulkFileInfoBar
-                  fileName={fileName}
-                  countText={`${allBoms.length} BOM${allBoms.length === 1 ? '' : 's'}`}
-                  isLocked={isLocked}
-                  onDownloadTemplate={handleDownloadTemplate}
-                  onChangeFile={handleReset}
-                />
+
 
                 
 
@@ -826,6 +830,30 @@ export default function BulkCreateBomView({
                         {allBoms.length} BOM(s) found across {totalComponentRows} component row(s)
                       </div>
                     </div>
+
+                    {fileName && (
+                      <span
+                        className="sap-file-badge"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '4px 12px',
+                          background: 'var(--sap-surface-subtle, #f1f5f9)',
+                          border: '1px solid var(--sap-border-subtle, #cbd5e1)',
+                          borderRadius: '6px',
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          color: 'var(--sap-text-dark, #0f2744)'
+                        }}
+                        title={fileName}
+                      >
+                        <FileSpreadsheet size={15} color="var(--sap-primary, #0070f2)" style={{ flexShrink: 0 }} />
+                        <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {fileName}
+                        </span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Pagination Controls if > 300 component rows */}
@@ -870,7 +898,7 @@ export default function BulkCreateBomView({
                   )}
 
                   {/* Table: natural height, fits card width without horizontal scroll */}
-                  <div className="sap-table-container fiori-table-wrapper sap-card-table-scroll" style={{ width: '100%', marginBottom: 24, maxHeight: 480 }}>
+                  <div className="sap-table-container fiori-table-wrapper sap-card-table-scroll" style={{ width: '100%', marginBottom: 0, maxHeight: 480, minHeight: 0, height: 'auto', overflowX: 'auto', overflowY: 'auto' }}>
                     <table
                       className="sap-table preflight-preview-table"
                       style={{
@@ -1384,6 +1412,7 @@ export default function BulkCreateBomView({
           )}
           </div>
         )}
+      </BulkFlowContainer>
 
         {/* CONFIRMATION MODAL */}
         <Modal
@@ -1491,7 +1520,6 @@ export default function BulkCreateBomView({
             </div>
           </div>
         </Modal>
-      </div>
     </div>
   );
 }
