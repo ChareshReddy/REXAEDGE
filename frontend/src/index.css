@@ -133,6 +133,16 @@
 
   /* Focus Ring */
   --sap-focus-ring: 0 0 0 2px rgba(10, 110, 209, 0.25);
+
+  /* Popup / Modal Header Design Tokens */
+  --sap-popup-header-bg: #FFEDD5;
+  --sap-popup-header-border: #FED7AA;
+  --sap-popup-header-title: #0f2744;
+  --sap-popup-header-badge-bg: #EA580C;
+  --sap-popup-header-badge-text: #ffffff;
+  --sap-popup-header-close-color: #C2410C;
+  --sap-popup-header-close-hover-bg: #FED7AA;
+  --sap-popup-header-close-active-bg: #FDBA74;
 }
 
 * {
@@ -6453,11 +6463,11 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-f4-header {
   padding: 10px 18px;
-  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important;
-  color: #ffffff !important;
+  background: var(--sap-popup-header-bg, #FFEDD5) !important;
+  color: var(--sap-popup-header-title, #0f2744) !important;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  border-bottom: 1px solid #C2410C !important;
+  border-bottom: 1px solid var(--sap-popup-header-border, #FED7AA) !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6468,13 +6478,13 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-header h3 {
-  color: #ffffff !important;
+  color: var(--sap-popup-header-title, #0f2744) !important;
   font-weight: 700 !important;
 }
 
 .sap-f4-header-badge {
-  background: #ffffff !important;
-  color: #EA580C !important;
+  background: var(--sap-popup-header-badge-bg, #EA580C) !important;
+  color: var(--sap-popup-header-badge-text, #ffffff) !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   padding: 2px 8px !important;
@@ -6493,9 +6503,9 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-f4-header-close {
   cursor: pointer;
-  color: #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.18) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: var(--sap-popup-header-close-color, #C2410C) !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
   border-radius: 6px;
   padding: 0;
   width: 36px;
@@ -6511,8 +6521,8 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-header-close:hover {
-  background-color: #ffffff !important;
-  border-color: #ffffff !important;
+  background-color: var(--sap-popup-header-close-hover-bg, #FED7AA) !important;
+  border-color: var(--sap-popup-header-close-hover-bg, #FED7AA) !important;
   color: #C2410C !important;
 }
 
@@ -6522,13 +6532,13 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-header-close:focus-visible {
-  outline: 2px solid #ffffff !important;
+  outline: 2px solid #EA580C !important;
   outline-offset: 2px !important;
 }
 
 .sap-f4-header-close:active {
-  background-color: #FFEDD5 !important;
-  border-color: #FFEDD5 !important;
+  background-color: var(--sap-popup-header-close-active-bg, #FDBA74) !important;
+  border-color: var(--sap-popup-header-close-active-bg, #FDBA74) !important;
   color: #C2410C !important;
 }
 
@@ -6538,8 +6548,8 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-header-close svg {
-  stroke: #ffffff !important;
-  color: #ffffff !important;
+  stroke: var(--sap-popup-header-close-color, #C2410C) !important;
+  color: var(--sap-popup-header-close-color, #C2410C) !important;
 }
 
 .sap-f4-search-area {
@@ -6771,8 +6781,8 @@ input::-webkit-credentials-auto-fill-button {
 .sap-restrict-tab-container {
   display: flex;
   align-items: stretch;
-  background: #FFF7ED;
-  border-bottom: 1px solid #FFEDD5;
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--sap-popup-header-border, #FED7AA);
   height: 38px;
   overflow: visible;
   position: relative;
@@ -6796,12 +6806,12 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-restrict-tab-btn {
   padding: 0 14px;
-  background: #FFF7ED;
-  color: #0f2744;
+  background: #ffffff !important;
+  color: #0f2744 !important;
   font-size: 12.5px;
   font-weight: 500;
   border: none;
-  border-right: 1px solid #FFEDD5;
+  border-right: 1px solid var(--sap-popup-header-border, #FED7AA);
   white-space: nowrap;
   cursor: pointer;
   display: inline-flex;
@@ -6811,22 +6821,22 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-restrict-tab-btn:hover {
-  background: #FFEDD5 !important;
+  background: #FFF7ED !important;
   color: #C2410C !important;
 }
 
 .sap-restrict-tab-btn.active {
   background: #ffffff !important;
-  color: #EA580C !important;
+  color: #C2410C !important;
   font-weight: 600 !important;
-  box-shadow: inset 0 2px 0 #EA580C !important;
+  box-shadow: inset 0 -2px 0 #EA580C !important;
 }
 
 .sap-restrict-tab-controls {
   display: flex;
   align-items: center;
-  background: #FFF7ED;
-  border-left: 1px solid #FFEDD5;
+  background: #ffffff !important;
+  border-left: 1px solid var(--sap-popup-header-border, #FED7AA);
   padding: 0 4px;
   gap: 2px;
   flex-shrink: 0;
@@ -6844,9 +6854,14 @@ input::-webkit-credentials-auto-fill-button {
   border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
-  color: #0f2744;
+  color: #C2410C !important;
   cursor: pointer;
   transition: all 0.12s ease;
+}
+
+.sap-restrict-arrow-btn svg {
+  stroke: #C2410C !important;
+  color: #C2410C !important;
 }
 
 .sap-restrict-arrow-btn:hover,
@@ -6854,6 +6869,12 @@ input::-webkit-credentials-auto-fill-button {
   background: #FFF7ED !important;
   color: #EA580C !important;
   border-color: #FDBA74 !important;
+}
+
+.sap-restrict-arrow-btn:hover svg,
+.sap-restrict-arrow-btn.active svg {
+  stroke: #EA580C !important;
+  color: #EA580C !important;
 }
 
 .sap-restrict-options-dropdown {

@@ -85,7 +85,8 @@ const testFiles = [
   'test/activityLogs.test.js',
   'test/bomExplorerLoading.test.js',
   'test/friendlyError.test.js',
-  'test/homePageRedesign.test.js'
+  'test/homePageRedesign.test.js',
+  'test/popupHeaderColorFix.test.js'
 ];
 
 const env = {

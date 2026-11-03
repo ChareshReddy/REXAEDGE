@@ -252,11 +252,11 @@ export default function BomUsageValueHelpModal({
           className="sap-modal-header sap-f4-header"
           style={{
             padding: '12px 16px',
-            borderBottom: '1px solid var(--sap-border-color, #e2e8f0)',
+            borderBottom: '1px solid var(--sap-popup-header-border, #FED7AA)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--sap-panel-bg, #f8fafc)',
+            background: 'var(--sap-popup-header-bg, #FFEDD5)',
             borderTopLeftRadius: 'inherit',
             borderTopRightRadius: 'inherit',
             cursor: 'move',
@@ -268,8 +268,8 @@ export default function BomUsageValueHelpModal({
             <span
               className="sap-f4-header-badge"
               style={{
-                background: '#ffffff',
-                color: '#EA580C',
+                background: 'var(--sap-popup-header-badge-bg, #EA580C)',
+                color: 'var(--sap-popup-header-badge-text, #ffffff)',
                 padding: '2px 8px',
                 borderRadius: 9999,
                 fontSize: 11,
@@ -286,7 +286,7 @@ export default function BomUsageValueHelpModal({
                 margin: 0,
                 fontSize: 14,
                 fontWeight: 700,
-                color: '#ffffff'
+                color: 'var(--sap-popup-header-title, #0f2744)'
               }}
             >
               {modalTitle}

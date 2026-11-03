@@ -428,8 +428,8 @@ export default function MaterialValueHelpModal({
             <span
               className="sap-f4-header-badge"
               style={{
-                background: '#ffffff',
-                color: '#EA580C',
+                background: 'var(--sap-popup-header-badge-bg, #EA580C)',
+                color: 'var(--sap-popup-header-badge-text, #ffffff)',
                 padding: '2px 8px',
                 borderRadius: 9999,
                 fontSize: 11,
@@ -441,7 +441,7 @@ export default function MaterialValueHelpModal({
             >
               F4
             </span>
-            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--sap-size-section-header)', fontWeight: 700, color: '#ffffff' }}>
+            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--sap-size-section-header)', fontWeight: 700, color: 'var(--sap-popup-header-title, #0f2744)' }}>
               {modalTitle}
             </h3>
           </div>

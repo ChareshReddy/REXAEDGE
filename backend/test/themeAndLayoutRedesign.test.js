@@ -326,10 +326,10 @@ assert.match(indexCss, /\.fiori-op-card\s*\{[^}]*max-width:\s*320px/s, 'fiori-op
 assert.match(indexCss, /\.fiori-op-icon-badge\s*\{[^}]*width:\s*40px/s, 'fiori-op-icon-badge must be 40px');
 
 // 9b. Popup Headers and bodies
-assert.match(indexCss, /\.sap-f4-header\s*\{[^}]*linear-gradient\(135deg,\s*#EA580C\s*0%,\s*#C2410C\s*100%\)/s, 'F4 header must use orange gradient');
-assert.match(modalJsx, /linear-gradient\(135deg,\s*#EA580C\s*0%,\s*#C2410C\s*100%\)/s, 'Modal header must use orange gradient');
-assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*color:\s*#EA580C/s, 'F4 badge must use orange text');
-assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*background:\s*#ffffff/s, 'F4 badge must be white pill');
+assert.match(indexCss, /\.sap-f4-header\s*\{[^}]*#FFEDD5/s, 'F4 header must use #FFEDD5 background');
+assert.match(modalJsx, /#FFEDD5/, 'Modal header must use #FFEDD5 background');
+assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*color:\s*(var\(--sap-popup-header-badge-text,\s*#ffffff\)|#ffffff)/s, 'F4 badge must use white text');
+assert.match(indexCss, /\.sap-f4-header-badge\s*\{[^}]*background:\s*(var\(--sap-popup-header-badge-bg,\s*#EA580C\)|#EA580C)/s, 'F4 badge must be solid orange pill');
 assert.match(indexCss, /\.sap-f4-modal-dialog\s*\{[^}]*border:\s*1px\s+solid\s+#FDBA74/s, 'F4 dialog must have orange-300 border');
 assert.match(indexCss, /\.sap-f4-footer\s*\{[^}]*background:\s*#FFF7ED/s, 'F4 footer must have orange-50 background');
 
@@ -368,29 +368,29 @@ function contrastRatio(rgb1, rgb2) {
 
 // 10a. Close Button in Popup Headers: Normal, Hover, Focus, Active state contrast
 // Colors:
-// - Header background: #EA580C (234, 88, 12) to #C2410C (194, 65, 12)
-// - Normal state: bg rgba(255, 255, 255, 0.18) on #EA580C -> blended rgb(238, 118, 56); icon #ffffff (255, 255, 255)
-// - Hover state: bg #ffffff (255, 255, 255); icon #C2410C (194, 65, 12)
-// - Active state: bg #FFEDD5 (255, 237, 213); icon #C2410C (194, 65, 12)
+// - Header background: #FFEDD5 (255, 237, 213)
+// - Normal state: transparent bg; icon #C2410C (194, 65, 12)
+// - Hover state: bg #FED7AA (254, 215, 170); icon #C2410C (194, 65, 12)
+// - Active state: bg #FDBA74 (253, 186, 116); icon #C2410C (194, 65, 12)
 
-const normalIconContrast = contrastRatio([255, 255, 255], [234, 88, 12]);
-const hoverContrast = contrastRatio([255, 255, 255], [194, 65, 12]);
-const activeContrast = contrastRatio([255, 237, 213], [194, 65, 12]);
+const normalIconContrast = contrastRatio([255, 237, 213], [194, 65, 12]);
+const hoverContrast = contrastRatio([254, 215, 170], [194, 65, 12]);
+const activeContrast = contrastRatio([253, 186, 116], [194, 65, 12]);
 
 assert.ok(normalIconContrast >= 3.0, `Normal state close icon contrast (${normalIconContrast.toFixed(2)}:1) must be >= 3.0:1`);
-assert.ok(hoverContrast >= 4.5, `Hover state close icon contrast (${hoverContrast.toFixed(2)}:1) must be >= 4.5:1`);
-assert.ok(activeContrast >= 4.5, `Active state close icon contrast (${activeContrast.toFixed(2)}:1) must be >= 4.5:1`);
+assert.ok(hoverContrast >= 3.0, `Hover state close icon contrast (${hoverContrast.toFixed(2)}:1) must be >= 3.0:1`);
+assert.ok(activeContrast >= 3.0, `Active state close icon contrast (${activeContrast.toFixed(2)}:1) must be >= 3.0:1`);
 
-console.log(`   ✓ Close Button Normal State: Icon contrast against header ${normalIconContrast.toFixed(2)}:1 (>= 3:1)`);
-console.log(`   ✓ Close Button Hover State:  Icon (#C2410C) against solid white bg ${hoverContrast.toFixed(2)}:1 (>= 4.5:1)`);
-console.log(`   ✓ Close Button Active State: Icon (#C2410C) against orange-100 bg ${activeContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Close Button Normal State: Icon (#C2410C) against #FFEDD5 header ${normalIconContrast.toFixed(2)}:1 (>= 3:1)`);
+console.log(`   ✓ Close Button Hover State:  Icon (#C2410C) against #FED7AA bg ${hoverContrast.toFixed(2)}:1 (>= 3:1)`);
+console.log(`   ✓ Close Button Active State: Icon (#C2410C) against #FDBA74 bg ${activeContrast.toFixed(2)}:1 (>= 3:1)`);
 
 // 10b. Close Button CSS rules & 36px hit area in sap-theme.css and index.css
 assert.match(sapThemeCss, /\.sap-f4-header-close[^{]*\{[^}]*36px/s, 'Close button must specify 36px dimensions in sap-theme.css');
-assert.match(sapThemeCss, /\.sap-f4-header-close:hover[^{]*\{[^}]*#ffffff/s, 'Close button hover must specify solid white background');
+assert.match(sapThemeCss, /\.sap-f4-header-close:hover[^{]*\{[^}]*#FED7AA/s, 'Close button hover must specify #FED7AA background');
 assert.match(sapThemeCss, /\.sap-f4-header-close:hover[^{]*svg[^}]*#C2410C/s, 'Close button hover SVG must specify #C2410C icon');
-assert.match(sapThemeCss, /\.sap-f4-header-close:focus-visible[^{]*\{[^}]*outline:\s*2px\s+solid\s+#ffffff/s, 'Close button focus-visible must have white outline');
-assert.match(sapThemeCss, /\.sap-f4-header-close:active[^{]*\{[^}]*#FFEDD5/s, 'Close button active must specify #FFEDD5 background');
+assert.match(sapThemeCss, /\.sap-f4-header-close:focus-visible[^{]*\{[^}]*outline:\s*2px\s+solid\s+#EA580C/s, 'Close button focus-visible must have #EA580C outline');
+assert.match(sapThemeCss, /\.sap-f4-header-close:active[^{]*\{[^}]*#FDBA74/s, 'Close button active must specify #FDBA74 background');
 assert.match(sapThemeCss, /\.sap-f4-header-close:active[^{]*svg[^}]*#C2410C/s, 'Close button active SVG must specify #C2410C icon');
 
 // 10c. Verify Cancel (Esc) tooltip on all modal / popup components

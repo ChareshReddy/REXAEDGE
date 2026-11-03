@@ -66,6 +66,16 @@
 
   /* Shared Page Gutter Variable */
   --page-gutter: 32px;
+
+  /* Popup / Modal Header Design Tokens */
+  --sap-popup-header-bg: #FFEDD5;
+  --sap-popup-header-border: #FED7AA;
+  --sap-popup-header-title: #0f2744;
+  --sap-popup-header-badge-bg: #EA580C;
+  --sap-popup-header-badge-text: #ffffff;
+  --sap-popup-header-close-color: #C2410C;
+  --sap-popup-header-close-hover-bg: #FED7AA;
+  --sap-popup-header-close-active-bg: #FDBA74;
 }
 
 @media (max-width: 768px) {
@@ -145,18 +155,18 @@ html, body {
   padding-bottom: 0 !important;
 }
 
-/* Modal and F4 Dialog Headers: Orange gradient background with bold white text */
+/* Modal and F4 Dialog Headers: Plain light orange #FFEDD5 (orange-100) with navy bold title */
 .sap-f4-header,
 .sap-modal-header,
 .sap-bulk-modal-header {
-  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important;
+  background: var(--sap-popup-header-bg, #FFEDD5) !important;
   font-size: var(--sap-size-section-header) !important;
   font-weight: 700 !important;
   font-family: var(--sap-font-family) !important;
-  color: #ffffff !important;
+  color: var(--sap-popup-header-title, #0f2744) !important;
   padding: 10px 18px !important;
   border: none !important;
-  border-bottom: 1px solid #C2410C !important;
+  border-bottom: 1px solid var(--sap-popup-header-border, #FED7AA) !important;
   border-radius: 8px 8px 0 0 !important;
   margin: 0 !important;
   display: flex !important;
@@ -166,23 +176,23 @@ html, body {
 .sap-modal-header h3,
 .sap-bulk-modal-header h3,
 .sap-bulk-modal-title h3 {
-  color: #ffffff !important;
+  color: var(--sap-popup-header-title, #0f2744) !important;
   font-weight: 700 !important;
 }
 
 .sap-bulk-modal-title p {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: #475569 !important;
 }
 
 .sap-bulk-modal-header .sap-bulk-icon-badge {
-  background: #ffffff !important;
-  color: #EA580C !important;
-  border-color: rgba(255, 255, 255, 0.4) !important;
+  background: #FED7AA !important;
+  color: #C2410C !important;
+  border-color: #FDBA74 !important;
 }
 
 .sap-bulk-modal-header .sap-bulk-icon-badge svg {
-  color: #EA580C !important;
-  stroke: #EA580C !important;
+  color: #C2410C !important;
+  stroke: #C2410C !important;
 }
 
 /* ==========================================================================
@@ -685,12 +695,12 @@ button.sap-value-help-btn svg,
   stroke: currentColor !important;
 }
 
-/* Modal Close Button (Top right X):
-   Normal: translucent white background (rgba(255,255,255,0.18)) with white X icon
-   Hover: solid white background with orange-700 (#C2410C) X icon
-   Focus-visible: white outline ring
-   Active: orange-100 (#FFEDD5) background with orange-700 (#C2410C) icon
-   36px square hit area
+/* Popup / Modal Close (X) button:
+   Normal: transparent background with an orange-700 (#C2410C) X icon
+   Hover: #FED7AA (orange-200) background with the same icon
+   Focus-visible: 2px orange-600 ring
+   Active: #FDBA74 (orange-300) background with the same icon
+   Icon contrast >= 3:1 in every state, 36px hit area
 */
 button.sap-modal-close-btn,
 .sap-modal-close-btn,
@@ -698,9 +708,9 @@ button.sap-f4-header-close,
 .sap-f4-header-close,
 button.sap-modal-close,
 .sap-modal-close {
-  background-color: rgba(255, 255, 255, 0.18) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  color: #ffffff !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--sap-popup-header-close-color, #C2410C) !important;
   width: 36px !important;
   min-width: 36px !important;
   max-width: 36px !important;
@@ -724,8 +734,8 @@ button.sap-f4-header-close svg,
 .sap-f4-header-close svg,
 button.sap-modal-close svg,
 .sap-modal-close svg {
-  stroke: #ffffff !important;
-  color: #ffffff !important;
+  stroke: var(--sap-popup-header-close-color, #C2410C) !important;
+  color: var(--sap-popup-header-close-color, #C2410C) !important;
   width: 16px !important;
   height: 16px !important;
   transition: stroke 0.15s ease, color 0.15s ease !important;
@@ -737,8 +747,8 @@ button.sap-f4-header-close:hover:not(:disabled),
 .sap-f4-header-close:hover:not(:disabled),
 button.sap-modal-close:hover:not(:disabled),
 .sap-modal-close:hover:not(:disabled) {
-  background-color: #ffffff !important;
-  border-color: #ffffff !important;
+  background-color: var(--sap-popup-header-close-hover-bg, #FED7AA) !important;
+  border-color: var(--sap-popup-header-close-hover-bg, #FED7AA) !important;
   color: #C2410C !important;
 }
 
@@ -758,7 +768,7 @@ button.sap-f4-header-close:focus-visible,
 .sap-f4-header-close:focus-visible,
 button.sap-modal-close:focus-visible,
 .sap-modal-close:focus-visible {
-  outline: 2px solid #ffffff !important;
+  outline: 2px solid #EA580C !important;
   outline-offset: 2px !important;
 }
 
@@ -768,8 +778,8 @@ button.sap-f4-header-close:active:not(:disabled),
 .sap-f4-header-close:active:not(:disabled),
 button.sap-modal-close:active:not(:disabled),
 .sap-modal-close:active:not(:disabled) {
-  background-color: #FFEDD5 !important;
-  border-color: #FFEDD5 !important;
+  background-color: var(--sap-popup-header-close-active-bg, #FDBA74) !important;
+  border-color: var(--sap-popup-header-close-active-bg, #FDBA74) !important;
   color: #C2410C !important;
 }
 
