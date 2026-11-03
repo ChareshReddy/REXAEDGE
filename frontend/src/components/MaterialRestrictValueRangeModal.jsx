@@ -878,8 +878,8 @@ export default function MaterialRestrictValueRangeModal({
               style={{
                 margin: 0,
                 fontSize: 'var(--sap-size-section-header, 15px)',
-                fontWeight: 600,
-                color: 'var(--sap-shell-text, #ffffff)'
+                fontWeight: 700,
+                color: 'var(--sap-popup-header-title, #0f2744)'
               }}
             >
               Restrict Value Range

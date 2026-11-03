@@ -400,7 +400,7 @@ export default function BulkBomCopyModal({
         <div className="sap-bulk-modal-header">
           <div className="sap-bulk-modal-title">
             <div className="sap-bulk-icon-badge">
-              <FileSpreadsheet size={16} color="var(--sap-primary)" />
+              <FileSpreadsheet size={16} color="#C2410C" />
             </div>
             <div>
               <h3>Bulk BOM Copy via Excel</h3>

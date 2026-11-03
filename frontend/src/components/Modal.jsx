@@ -182,11 +182,11 @@ export default function Modal({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px 18px',
-                  background: 'linear-gradient(135deg, #EA580C 0%, #C2410C 100%)',
-                  color: '#ffffff',
+                  background: 'var(--sap-popup-header-bg, #FFEDD5)',
+                  color: 'var(--sap-popup-header-title, #0f2744)',
                   borderTopLeftRadius: 'inherit',
                   borderTopRightRadius: 'inherit',
-                  borderBottom: '1px solid #C2410C',
+                  borderBottom: '1px solid var(--sap-popup-header-border, #FED7AA)',
                   flexShrink: 0
                 }}
               >
@@ -196,9 +196,9 @@ export default function Modal({
                       <div
                         className="sap-bulk-icon-badge"
                         style={{
-                          backgroundColor: '#ffffff',
-                          color: '#EA580C',
-                          borderColor: 'rgba(255, 255, 255, 0.4)',
+                          backgroundColor: '#FED7AA',
+                          color: '#C2410C',
+                          borderColor: '#FDBA74',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -207,10 +207,10 @@ export default function Modal({
                           borderRadius: 4
                         }}
                       >
-                        <Icon size={16} color="#EA580C" />
+                        <Icon size={16} color="#C2410C" />
                       </div>
                     ) : (
-                      <Icon size={18} color="#ffffff" style={{ flexShrink: 0 }} />
+                      <Icon size={18} color="#C2410C" style={{ flexShrink: 0 }} />
                     )
                   )}
                   <div>
@@ -220,13 +220,13 @@ export default function Modal({
                         fontSize: 16,
                         fontWeight: 700,
                         margin: 0,
-                        color: '#ffffff'
+                        color: 'var(--sap-popup-header-title, #0f2744)'
                       }}
                     >
                       {title}
                     </h3>
                     {subtitle && (
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'rgba(255, 255, 255, 0.85)' }}>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--sap-text-secondary, #475569)' }}>
                         {subtitle}
                       </p>
                     )}
