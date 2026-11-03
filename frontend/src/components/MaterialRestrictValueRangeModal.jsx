@@ -1171,7 +1171,7 @@ export default function MaterialRestrictValueRangeModal({
               onClick={onClose}
               disabled={isSearching}
               className="sap-button sap-button-secondary sap-restrict-btn-cancel"
-              title="Cancel (Esc)"
+              title="Cancel"
             >
               <X size={14} strokeWidth={2.5} style={{ marginRight: 6 }} />
               Cancel

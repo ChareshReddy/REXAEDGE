@@ -1,12 +1,45 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowRight,
+  Check,
   FileSpreadsheet,
   Download,
   RefreshCw,
   Loader2
 } from 'lucide-react';
 import { getBomJob, cancelBomJob } from '../services/api';
+
+/**
+ * Shared layout wrapper for both bulk flows (Bulk Copy BOM and Bulk Create BOM).
+ * Ensures a single shared container width aligned with page breadcrumbs and title,
+ * fills available width with max-width 1920px, left-aligned with no auto-centering.
+ */
+export function BulkFlowContainer({ children, className = '', style = {} }) {
+  return (
+    <div
+      className={`fiori-body sap-bulk-flow-container ${className}`.trim()}
+      style={{
+        width: '100%',
+        maxWidth: 1920,
+        marginLeft: 0,
+        marginRight: 'auto',
+        boxSizing: 'border-box',
+        paddingLeft: 'var(--page-gutter, 32px)',
+        paddingRight: 'var(--page-gutter, 32px)',
+        paddingTop: 20,
+        paddingBottom: 84,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 16,
+        ...style
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 
 /**
  * Standard column specifications for Bulk Upload helper chips
@@ -96,40 +129,150 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
  * Step 2: Validate data
  * Step 3: Create BOMs (for create) / Copy BOMs (for copy)
  */
-export function BulkWorkflowSteps({ activeStep = 1, style = {}, maxWidth, mode = 'create', type }) {
-  const resolvedMaxWidth = maxWidth !== undefined ? maxWidth : (activeStep === 1 ? 750 : 1100);
+export function BulkWorkflowSteps({ activeStep = 1, style = {}, mode = 'create', type }) {
   const isCopy = (mode === 'copy' || type === 'copy');
   const step3Label = isCopy ? 'Copy BOMs' : 'Create BOMs';
+
   return (
     <div
       className="sap-bulk-steps-bar"
       style={{
-        maxWidth: resolvedMaxWidth,
-        width: '100%',
-        margin: '0 auto 16px',
-        borderRadius: 8,
+        display: 'inline-flex',
+        alignItems: 'center',
+        width: 'fit-content',
+        maxWidth: '100%',
+        height: 44,
+        minHeight: 44,
+        margin: '0 0 16px 0',
+        marginLeft: 0,
+        marginRight: 'auto',
+        alignSelf: 'flex-start',
+        padding: '0 16px',
+        gap: 12,
+        background: '#ffffff',
         border: '1px solid var(--sap-border, #e2e8f0)',
-        transition: 'max-width 0.2s ease',
+        borderRadius: 'var(--radius-lg, 8px)',
+        boxSizing: 'border-box',
         ...style
       }}
     >
-      <div className={`sap-bulk-step ${activeStep >= 1 ? 'active' : ''}`}>
-        <span className="step-num">1</span>
-        <span>Upload file</span>
+      <div
+        className={`sap-bulk-step ${activeStep === 1 ? 'active' : activeStep > 1 ? 'complete' : 'upcoming'}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+      >
+        <span
+          className="step-num"
+          style={{
+            width: 24,
+            height: 24,
+            minWidth: 24,
+            minHeight: 24,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 700,
+            background: activeStep === 1 ? '#111827' : activeStep > 1 ? 'var(--sap-primary, #0a6ed1)' : 'var(--sap-surface-empty, #f1f5f9)',
+            color: activeStep >= 1 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
+            boxSizing: 'border-box'
+          }}
+        >
+          {activeStep > 1 ? <Check size={14} /> : 1}
+        </span>
+        <span
+          className="step-label"
+          style={{
+            fontSize: 14,
+            fontWeight: activeStep === 1 ? 700 : activeStep > 1 ? 600 : 500,
+            color: activeStep >= 1 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Upload file
+        </span>
       </div>
-      <div className="step-arrow">
-        <ArrowRight size={12} />
+
+      <div className="step-arrow" style={{ color: 'var(--sap-border, #cbd5e1)', display: 'flex', alignItems: 'center' }}>
+        <ArrowRight size={14} />
       </div>
-      <div className={`sap-bulk-step ${activeStep >= 2 ? 'active' : ''}`}>
-        <span className="step-num">2</span>
-        <span>Validate data</span>
+
+      <div
+        className={`sap-bulk-step ${activeStep === 2 ? 'active' : activeStep > 2 ? 'complete' : 'upcoming'}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+      >
+        <span
+          className="step-num"
+          style={{
+            width: 24,
+            height: 24,
+            minWidth: 24,
+            minHeight: 24,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 700,
+            background: activeStep === 2 ? '#111827' : activeStep > 2 ? 'var(--sap-primary, #0a6ed1)' : 'var(--sap-surface-empty, #f1f5f9)',
+            color: activeStep >= 2 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
+            boxSizing: 'border-box'
+          }}
+        >
+          {activeStep > 2 ? <Check size={14} /> : 2}
+        </span>
+        <span
+          className="step-label"
+          style={{
+            fontSize: 14,
+            fontWeight: activeStep === 2 ? 700 : activeStep > 2 ? 600 : 500,
+            color: activeStep >= 2 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Validate data
+        </span>
       </div>
-      <div className="step-arrow">
-        <ArrowRight size={12} />
+
+      <div className="step-arrow" style={{ color: 'var(--sap-border, #cbd5e1)', display: 'flex', alignItems: 'center' }}>
+        <ArrowRight size={14} />
       </div>
-      <div className={`sap-bulk-step ${activeStep >= 3 ? 'active' : ''}`}>
-        <span className="step-num">3</span>
-        <span>{step3Label}</span>
+
+      <div
+        className={`sap-bulk-step ${activeStep === 3 ? 'active' : 'upcoming'}`}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
+      >
+        <span
+          className="step-num"
+          style={{
+            width: 24,
+            height: 24,
+            minWidth: 24,
+            minHeight: 24,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 700,
+            background: activeStep === 3 ? '#111827' : 'var(--sap-surface-empty, #f1f5f9)',
+            color: activeStep >= 3 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
+            boxSizing: 'border-box'
+          }}
+        >
+          3
+        </span>
+        <span
+          className="step-label"
+          style={{
+            fontSize: 14,
+            fontWeight: activeStep === 3 ? 700 : 500,
+            color: activeStep >= 3 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {step3Label}
+        </span>
       </div>
     </div>
   );
@@ -153,6 +296,9 @@ export function BulkFileInfoBar({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        width: '100%',
+        alignSelf: 'stretch',
+        boxSizing: 'border-box',
         padding: '10px 14px',
         background: 'var(--sap-surface-subtle, #f8fafc)',
         border: '1px solid var(--sap-border-subtle, #e2e8f0)',
@@ -258,6 +404,9 @@ export function BulkJobProgressCard({
       style={{
         padding: '16px 20px',
         marginBottom: 16,
+        width: '100%',
+        alignSelf: 'stretch',
+        boxSizing: 'border-box',
         borderLeft: '4px solid var(--sap-primary, #0070f2)',
         background: '#f8fafc',
         ...style

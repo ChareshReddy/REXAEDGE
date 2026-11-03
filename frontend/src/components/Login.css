@@ -1,0 +1,578 @@
+/* ============================================================================
+   REXAEDGE SAP APPLICATION PORTAL SIGN-IN STYLESHEET
+   Matches reference: SAP Application Portal.png (16:9 full-screen desktop layout)
+   ============================================================================ */
+
+/* Viewport Root Container */
+.rexa-portal-viewport,
+.sap-login-viewport {
+  position: relative !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  background-color: #71330F !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Full-Screen Canva Template Background Image (Real DOM element guarantees rendering) */
+.rexa-portal-bg-img {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+}
+
+/* ============================================================================
+   LEFT SECTION (~58% width): Typography & Translucent Module Cards
+   ============================================================================ */
+.rexa-portal-left,
+.sap-login-left-panel {
+  flex: 0 0 58% !important;
+  width: 58% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  box-sizing: border-box !important;
+  padding-left: clamp(40px, 6.2vw, 110px) !important;
+  padding-top: clamp(48px, 6.8vw, 105px) !important;
+  padding-right: clamp(24px, 3.2vw, 54px) !important;
+  z-index: 2 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Left Content Column */
+.rexa-portal-left-content {
+  position: relative;
+  z-index: 4;
+  max-width: 680px;
+  color: #FFFFFF;
+}
+
+/* Main Heading: "SAP Operations Hub" (approx 56–60px on 1920px desktop) */
+.rexa-portal-heading {
+  font-size: clamp(32px, 3.2vw, 56px);
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.15;
+  margin: 0 0 clamp(8px, 0.8vw, 14px) 0;
+  letter-spacing: -0.025em;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Subtitle: "Automate  •  Integrate  •  Execute" (approx 30–34px on 1920px desktop) */
+.rexa-portal-tagline {
+  font-size: clamp(17px, 1.7vw, 30px);
+  font-weight: 500;
+  color: #FFFFFF;
+  line-height: 1.25;
+  margin: 0 0 clamp(12px, 1.2vw, 20px) 0;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Description: Two lines (approx 21–23px on 1920px desktop) */
+.rexa-portal-desc {
+  font-size: clamp(13px, 1.2vw, 21px);
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.94);
+  line-height: 1.5;
+  max-width: 600px;
+  margin: 0 0 clamp(24px, 2.5vw, 42px) 0;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Module Cards Row */
+.rexa-portal-tiles {
+  display: flex;
+  gap: clamp(8px, 1.1vw, 16px);
+  align-items: stretch;
+  flex-wrap: nowrap;
+}
+
+/* Compact Translucent Glass Module Card */
+.rexa-glass-tile {
+  flex: 0 0 auto;
+  width: clamp(84px, 6.8vw, 114px);
+  height: clamp(96px, 7.8vw, 128px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(30, 10, 2, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 6px;
+  box-sizing: border-box;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.rexa-glass-tile-icon {
+  color: #FF8A00;
+  margin-bottom: clamp(6px, 0.6vw, 10px);
+  flex-shrink: 0;
+}
+
+.rexa-glass-tile-label {
+  font-size: clamp(10.5px, 0.8vw, 13px);
+  font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.25;
+  margin: 0;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================================
+   RIGHT SECTION (~42% width): Large White Sign-In Card
+   ============================================================================ */
+.rexa-portal-right,
+.sap-login-right-panel {
+  flex: 0 0 42% !important;
+  width: 42% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  padding: 30px 20px !important;
+  box-sizing: border-box !important;
+  z-index: 2 !important;
+}
+
+/* ============================================================================
+   LARGE WHITE SIGN-IN CARD CONTAINER
+   ============================================================================ */
+.rexa-card-outer {
+  position: relative;
+  z-index: 10;
+  background: #FFFFFF;
+  border-radius: 26px;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow:
+    0 22px 50px -10px rgba(0, 0, 0, 0.15),
+    0 8px 24px -4px rgba(0, 0, 0, 0.09),
+    0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  width: clamp(340px, 30vw, 475px);
+  max-width: 480px;
+  padding: clamp(24px, 2.3vw, 38px) clamp(26px, 2.5vw, 42px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  animation: rexa-card-rise 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rexa-card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Logo container placed above canvas */
+.rexa-card-header-logo-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: clamp(10px, 1.0vw, 16px);
+}
+
+/* Logo: Approx 260px wide on 1920px desktop */
+.rexa-card-logo {
+  width: clamp(190px, 15vw, 260px);
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Inner Form Canvas */
+.rexa-portal-card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Centered Welcome text: "Welcome to the RexaEdge" (approx 25–28px on 1920px) */
+.rexa-card-welcome {
+  text-align: center;
+  margin-bottom: clamp(12px, 1.2vw, 20px);
+}
+
+.rexa-card-welcome-title {
+  font-size: clamp(17px, 1.45vw, 25px);
+  color: #172B4D !important;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* Left-Aligned Sign-In Heading & Supporting Text */
+.rexa-form-intro {
+  text-align: left;
+  margin-bottom: clamp(14px, 1.3vw, 20px);
+}
+
+/* "Sign In" bold heading (approx 36–40px on 1920px) */
+.rexa-form-title {
+  font-size: clamp(24px, 2.0vw, 36px);
+  font-weight: 700;
+  color: #172B4D;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Supporting text: "Access your SAP operations and automations" (approx 20–22px on 1920px) */
+.rexa-form-subtitle {
+  font-size: clamp(13px, 1.05vw, 18px);
+  color: #344054;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Form Layout */
+.rexa-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.1vw, 16px);
+  width: 100%;
+}
+
+.rexa-field-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.rexa-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Input Wrapper & Floating Icons */
+.rexa-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.rexa-input-icon-left {
+  position: absolute;
+  left: 16px;
+  color: #6B7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+  transition: color 0.18s ease;
+}
+
+.rexa-input-wrap:focus-within .rexa-input-icon-left {
+  color: #FF6A00;
+}
+
+/* Standardized Input Styling matching reference */
+.rexa-input-field {
+  width: 100%;
+  height: clamp(46px, 3.6vw, 58px);
+  padding: 0 16px 0 50px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 12px;
+  font-size: clamp(14px, 1.0vw, 16px);
+  font-weight: 400;
+  color: #172B4D;
+  background-color: #FFFFFF;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.rexa-input-field::placeholder {
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+.rexa-input-field:hover:not(:disabled) {
+  border-color: #9CA3AF;
+}
+
+.rexa-input-field:focus {
+  border-color: #FF6A00;
+  box-shadow: 0 0 0 3.5px rgba(255, 106, 0, 0.16);
+  background-color: #FFFFFF;
+}
+
+.rexa-password-field {
+  padding-right: 50px;
+}
+
+/* Password Toggle Icon Button */
+.rexa-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7280;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.18s ease, background-color 0.18s ease;
+  z-index: 2;
+}
+
+.rexa-password-toggle:hover {
+  color: #172B4D;
+  background-color: #F3F4F6;
+}
+
+.rexa-password-toggle:focus-visible {
+  outline: 2px solid #FF6A00;
+  outline-offset: 1px;
+}
+
+/* ============================================================================
+   PROMINENT FULL-WIDTH BRIGHT ORANGE SIGN IN BUTTON
+   ============================================================================ */
+.sap-btn-navy-login {
+  position: relative;
+  width: 100%;
+  height: clamp(48px, 3.8vw, 62px);
+  margin-top: clamp(4px, 0.5vw, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #FF6A00 !important;
+  color: #FFFFFF !important;
+  font-size: clamp(16px, 1.2vw, 19px);
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 106, 0, 0.32);
+  transition: background-color 0.2s ease, transform 0.16s ease, box-shadow 0.2s ease;
+  letter-spacing: -0.01em;
+}
+
+.sap-btn-navy-login:hover:not(:disabled) {
+  background: #E85D04 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(232, 93, 4, 0.42);
+}
+
+.sap-btn-navy-login:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(232, 93, 4, 0.25);
+}
+
+.sap-btn-navy-login:focus-visible {
+  outline: 3px solid rgba(255, 106, 0, 0.45);
+  outline-offset: 2px;
+}
+
+.sap-btn-navy-login:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.rexa-btn-arrow {
+  transition: transform 0.18s ease;
+}
+
+.sap-btn-navy-login:hover:not(:disabled) .rexa-btn-arrow {
+  transform: translateX(3px);
+}
+
+/* Inline Spinner for Button Loading */
+.sap-spinner {
+  display: inline-block;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #FFFFFF;
+  animation: rexa-spin 0.7s linear infinite;
+}
+
+@keyframes rexa-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slow Connection Notice */
+.rexa-slow-notice {
+  text-align: center;
+  font-size: 13px;
+  color: #8C4300;
+  background-color: #FFF4E5;
+  border: 1px solid #FFE0B2;
+  border-radius: 8px;
+  padding: 8px 12px;
+  animation: rexa-fade-in 0.25s ease;
+}
+
+@keyframes rexa-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================================================
+   ERROR ALERT OVERLAY (Required by backend test suite)
+   ============================================================================ */
+.sap-login-panel-error {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+}
+
+.sap-login-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-left: 3px solid #EF4444;
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #991B1B;
+  font-size: 13.5px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  animation: rexa-slide-down 0.22s ease forwards;
+}
+
+@keyframes rexa-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sap-login-error-icon {
+  flex-shrink: 0;
+  color: #EF4444;
+}
+
+.sap-login-error-text {
+  flex: 1;
+  line-height: 1.35;
+}
+
+.sap-login-error-close {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: #991B1B;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sap-login-error-close:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN (Tablet & Mobile Fallbacks)
+   ============================================================================ */
+@media (max-width: 1024px) {
+  .rexa-portal-viewport {
+    flex-direction: column;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .rexa-portal-left {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 40px 24px 24px;
+  }
+
+  .rexa-portal-right {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 24px 20px 48px;
+  }
+
+  .rexa-card-outer {
+    width: 100%;
+    max-width: 440px;
+  }
+}
+
+@media (max-width: 640px) {
+  .rexa-portal-tiles {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .rexa-glass-tile {
+    width: 100%;
+    height: 90px;
+  }
+
+  .rexa-card-outer {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+}

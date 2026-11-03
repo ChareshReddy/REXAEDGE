@@ -1713,22 +1713,20 @@ input, select {
   width: 100%;
   overflow: hidden;
   display: flex;
-  background-color: #ffffff;
+  position: relative;
 }
 
 /* Left Brand Panel (~50% width, full background image) */
 .sap-login-left-panel {
-  flex: 0 0 50%;
-  width: 50%;
+  flex: 0 0 58%;
+  width: 58%;
   height: 100%;
   position: relative;
-  background-color: #0b1523;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
+  background-color: transparent !important;
+  background: transparent !important;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   padding: 48px;
   box-sizing: border-box;
   overflow: hidden;
@@ -1991,7 +1989,8 @@ input, select {
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  background-color: #f7fafc;
+  background-color: transparent !important;
+  background: transparent !important;
   padding: 92px 48px 32px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -3877,12 +3876,25 @@ input[type="checkbox"]:disabled {
 
 /* Steps Indicator */
 .sap-bulk-steps-bar {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  align-self: flex-start !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
   gap: 8px;
   padding: 6px 16px;
   background: #ffffff;
   border-bottom: 1px solid #f1f5f9;
+}
+
+.bulk-upload-panel {
+  align-self: flex-start !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.sap-bulk-flow-container {
+  align-items: flex-start !important;
 }
 
 .sap-bulk-step {

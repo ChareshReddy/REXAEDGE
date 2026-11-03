@@ -34,6 +34,7 @@ import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
 import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
+  BulkFlowContainer,
   BulkWorkflowSteps,
   BulkFileInfoBar,
   BulkJobProgressCard,
@@ -755,7 +756,7 @@ export default function BulkBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked: isExecuting })}
       />
 
-      <div className="fiori-body" style={{ width: '100%', margin: '0 auto', paddingBottom: 84 }}>
+      <BulkFlowContainer>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="copy" />
 
@@ -833,15 +834,23 @@ export default function BulkBomView({
 
               {/* Grid Table */}
               <div className="sap-bulk-grid-container sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Execution Results Table">
-                <table className="sap-table sap-bulk-table">
+                <table className="sap-table sap-bulk-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                  <colgroup>
+                    <col style={{ width: '4%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '30%' }} />
+                  </colgroup>
                   <thead>
-                    <tr>
-                      <th style={{ width: 36 }}>#</th>
-                      <th>Source BOM</th>
-                      <th>Target BOM</th>
-                      <th style={{ width: 80, textAlign: 'center' }}>Items</th>
-                      <th style={{ width: 100 }}>Status</th>
-                      <th>Diagnostic Message</th>
+                        <tr>
+                          <th style={{ width: '4%' }}>#</th>
+                          <th style={{ width: '24%' }}>Source BOM</th>
+                          <th style={{ width: '24%' }}>Target BOM</th>
+                          <th style={{ width: '6%', textAlign: 'center' }}>Items</th>
+                          <th style={{ width: '12%' }}>Status</th>
+                          <th style={{ width: '30%' }}>Diagnostic Message</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -933,7 +942,7 @@ export default function BulkBomView({
           </div>
         ) : (
           /* UPLOAD (STEP 1) OR PREVIEW (STEP 2) */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: parsedRows.length > 0 ? 16 : 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: parsedRows.length > 0 ? 16 : 24 }}>
             {parsedRows.length === 0 ? (
               /* Step 1: Upload Panel (Clean, 750px centered, no boxed card) */
               <BulkUploadPanel
@@ -970,20 +979,13 @@ export default function BulkBomView({
                   executionLabel="Copying BOMs in SAP"
                 />
 
-                {/* File Info Bar */}
-                <BulkFileInfoBar
-                  fileName={file?.name || ''}
-                  countText={`${parsedRows.length} BOM${parsedRows.length === 1 ? '' : 's'}`}
-                  isLocked={isExecuting || isValidating}
-                  onDownloadTemplate={handleDownloadTemplate}
-                  onChangeFile={resetAll}
-                />
+
 
                 {/* Error Alert */}
                 
 
                 {/* PRE-FLIGHT PREVIEW TABLE CARD */}
-                <div className="sap-card" style={{ padding: 20 }}>
+                <div className="sap-card" style={{ padding: 20, width: '100%', alignSelf: 'stretch', boxSizing: 'border-box' }}>
                   {/* Header & Controls */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
                     <div>
@@ -995,7 +997,33 @@ export default function BulkBomView({
                       </div>
                     </div>
 
-                    {/* Options */}
+                    {/* Right side controls: File Badge & Hierarchy Options */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                      {file?.name && (
+                        <span
+                          className="sap-file-badge"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '4px 12px',
+                            background: 'var(--sap-surface-subtle, #f1f5f9)',
+                            border: '1px solid var(--sap-border-subtle, #cbd5e1)',
+                            borderRadius: '6px',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: 'var(--sap-text-dark, #0f2744)'
+                          }}
+                          title={file.name}
+                        >
+                          <FileSpreadsheet size={15} color="var(--sap-primary, #0070f2)" style={{ flexShrink: 0 }} />
+                          <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </span>
+                        </span>
+                      )}
+
+                      {/* Options */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <label style={{ fontSize: '12px', color: 'var(--sap-text-body)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                         <input
@@ -1016,11 +1044,20 @@ export default function BulkBomView({
                         <span>Skip errors</span>
                       </label>
                     </div>
+                    </div>
                   </div>
 
                   {/* Grid Table */}
                   <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
-                    <table className="sap-bulk-table">
+                    <table className="sap-bulk-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+                      <colgroup>
+                        <col style={{ width: '4%' }} />
+                        <col style={{ width: '24%' }} />
+                        <col style={{ width: '24%' }} />
+                        <col style={{ width: '6%' }} />
+                        <col style={{ width: '12%' }} />
+                        <col style={{ width: '30%' }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           <th style={{ width: 36 }}>#</th>
@@ -1219,7 +1256,7 @@ export default function BulkBomView({
             )}
           </div>
         )}
-      </div>
+      </BulkFlowContainer>
     </div>
   );
 }
