@@ -661,24 +661,114 @@ export default function MaterialValueHelpModal({
                   </>
                 )}
               </colgroup>
-              <thead>
-                <tr style={{ background: '#FFF7ED', borderBottom: '1px solid #FFEDD5' }}>
-                  {isTabB ? (
-                    <>
-                      <th className="sap-f4-sticky-col" style={{ width: 160, minWidth: 160, textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Material</th>
-                      <th style={{ width: 80, minWidth: 80, textAlign: 'center', whiteSpace: 'nowrap' }}>AltBOM</th>
-                      <th style={{ width: 80, minWidth: 80, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="sap-f4-sticky-col" style={{ width: 150, minWidth: 150, textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Material</th>
-                      <th style={{ minWidth: 260, textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
-                      <th style={{ width: 75, minWidth: 75, textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
-                      <th style={{ width: 65, minWidth: 65, textAlign: 'center', whiteSpace: 'nowrap' }}>Language</th>
-                    </>
-                  )}
-                </tr>
-              </thead>
+             
+<thead>
+  <tr
+    style={{
+      background: '#FFF7ED',
+      borderBottom: '1px solid #FFEDD5'
+    }}
+  >
+    {isTabB ? (
+      <>
+        <th
+          className="sap-f4-sticky-col"
+          style={{
+            width: 160,
+            minWidth: 160,
+            textAlign: 'left',
+            whiteSpace: 'nowrap',
+            position: 'sticky',
+            left: 0,
+            top: 0,
+            zIndex: 4,
+            background: '#FFF7ED'
+          }}
+        >
+          Material
+        </th>
+
+        <th
+          style={{
+            width: 80,
+            minWidth: 80,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          AltBOM
+        </th>
+
+        <th
+          style={{
+            width: 80,
+            minWidth: 80,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Language
+        </th>
+      </>
+    ) : (
+      <>
+        <th
+          className="sap-f4-sticky-col"
+          style={{
+            width: 150,
+            minWidth: 150,
+            textAlign: 'left',
+            whiteSpace: 'nowrap',
+            position: 'sticky',
+            left: 0,
+            top: 0,
+            zIndex: 4,
+            background: '#FFF7ED'
+          }}
+        >
+          Material
+        </th>
+
+        <th
+          style={{
+            minWidth: 260,
+            textAlign: 'left',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Description
+        </th>
+
+        <th
+          style={{
+            width: 75,
+            minWidth: 75,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Type
+        </th>
+
+        <th
+          style={{
+            width: 65,
+            minWidth: 65,
+            textAlign: 'center',
+            verticalAlign: 'middle',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          Language
+        </th>
+      </>
+    )}
+  </tr>
+</thead>
+
               <tbody>
                 {materials.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
