@@ -417,6 +417,12 @@ try {
         `App [${s.label}] must contain expected text "${text}"`
       );
     }
+    if (s.label !== 'Unauthenticated App (Login view)') {
+      assert(
+        html.includes('sap-shell-header'),
+        `App [${s.label}] must render top bar (.sap-shell-header)`
+      );
+    }
     console.log(`Test ${testCount}: Full App Root [${s.label}] rendered cleanly with zero errors`);
   }
 

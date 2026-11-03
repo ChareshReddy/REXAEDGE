@@ -1280,19 +1280,13 @@ export default function BulkCreateBomView({
                     </table>
                   </div>
 
-                  {/* Sticky Summary & Action Controls Footer */}
+                  {/* Summary & Action Controls Footer - in-card, non-sticky */}
                 <div
-                  className="bulk-preview-sticky-footer"
+                  className="bulk-preview-sticky-footer sap-card-action-row"
                   style={{
-                    position: 'sticky',
-                    bottom: 0,
-                    zIndex: 10,
-                    background: 'var(--sap-card-bg, #ffffff)',
-                    borderTop: '1px solid var(--sap-border, #e2e8f0)',
-                    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.05)',
-                    padding: '14px 20px',
-                    margin: '20px -20px -20px -20px',
-                    borderRadius: '0 0 var(--radius-lg, 8px) var(--radius-lg, 8px)',
+                    borderTop: '1px solid var(--sap-border, #FED7AA)',
+                    paddingTop: 16,
+                    marginTop: 16,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',

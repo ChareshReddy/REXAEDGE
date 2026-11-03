@@ -8,19 +8,18 @@ import './layout.css';
  * - 1366px - 1600px: 32px side padding
  * - 1600px+: 40px side padding
  * - Max width: 1680px centered
- * - Automatically accounts for StickyActionBar with bottom padding
+ * - Standard 24px bottom padding (no extra reserved footer height)
  */
 export default function PageContainer({
   children,
   className = '',
   style = {},
-  hasStickyBar = false,
+  hasStickyBar = false, // Deprecated, kept for backward compatibility without adding class
   as: Component = 'div',
   ...rest
 }) {
   const containerClasses = [
     'sap-page-container',
-    hasStickyBar ? 'has-sticky-bar' : '',
     className
   ].filter(Boolean).join(' ');
 

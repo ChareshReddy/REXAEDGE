@@ -4,19 +4,31 @@
    ========================================================================== */
 
 :root {
-  /* 1. Theme Tokens aligned with RexaEdge master tokens */
-  --sap-workspace-bg: #FFFBFB;
-  --sap-panel-bg: #FFFFFF;
+  /* 1. Master Warm Theme Tokens */
+  --sap-topbar-bg: #FFFFFF;
+  --sap-page-header-bg: #FFF8F2;
+  --sap-page-bg: #FFFBF7;
+  --sap-card-bg: #FFF8F2;
+  --sap-card-nested-bg: #FFF1E3;
+  --sap-table-surface: #FEEBD2;
+  --sap-border: #FED7AA;
+  --sap-border-strong: #FDBA74;
+  --sap-input-bg: #FFFFFF;
+  --sap-hover-bg: #FFEDD5;
+  --sap-selected-bg: #FED7AA;
+
+  --sap-workspace-bg: var(--sap-page-bg, #FFFBF7);
+  --sap-panel-bg: var(--sap-card-bg, #FFF8F2);
   --sap-heading-gradient: none;
-  --sap-heading-bg-solid: #FFFFFF;
-  --sap-table-header-bg: #FFF7ED;
-  --sap-border-color: rgba(0, 0, 0, 0.08);
-  --sap-selected-row: #FFEDD5;
-  --sap-disabled-bg: #f8fafc;
+  --sap-heading-bg-solid: var(--sap-page-header-bg, #FFF8F2);
+  --sap-table-header-bg: var(--sap-table-surface, #FEEBD2);
+  --sap-border-color: var(--sap-border, #FED7AA);
+  --sap-selected-row: var(--sap-selected-bg, #FED7AA);
+  --sap-disabled-bg: var(--sap-card-nested-bg, #FFF1E3);
 
   /* Typography Colors */
-  --sap-text-primary: #1e293b;
-  --sap-text-secondary: #64748b;
+  --sap-text-primary: #0f2744;
+  --sap-text-secondary: #475569;
   --sap-destructive-accent: #1e293b;
 
   /* Button Actions - Orange Theme */
@@ -24,8 +36,8 @@
   --sap-primary-action-hover: #C2410C;
   --sap-primary-action-active: #9A3412;
   --sap-neutral-btn-bg: #FFFFFF;
-  --sap-neutral-btn-border: #cbd5e1;
-  --sap-neutral-btn-text: #334155;
+  --sap-neutral-btn-border: var(--sap-border-strong, #FDBA74);
+  --sap-neutral-btn-text: #0f2744;
   --sap-neutral-btn-hover: #FFF7ED;
   --sap-neutral-btn-active: #FFEDD5;
 
@@ -258,8 +270,8 @@ select.sap-form-input:focus,
 textarea.sap-form-input:focus,
 .sap-system-select:focus,
 .sap-form-input-wrapper input:focus {
-  border-color: #005A9E !important;
-  box-shadow: 0 0 0 1px #005A9E !important;
+  border-color: var(--sap-primary, #EA580C) !important;
+  box-shadow: 0 0 0 1px var(--sap-primary, #EA580C) !important;
   outline: none !important;
 }
 
@@ -289,7 +301,7 @@ textarea.sap-form-input:disabled,
   left: 9px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  color: #005A9E !important;
+  color: var(--sap-primary, #EA580C) !important;
   pointer-events: none !important;
   z-index: 2 !important;
 }
@@ -399,7 +411,7 @@ button.sap-f4-search-btn:focus-visible {
 
 .sap-input-icon-left,
 .sap-password-left-icon {
-  color: #005A9E !important;
+  color: var(--sap-primary, #EA580C) !important;
 }
 
 /* ==========================================================================
@@ -520,7 +532,7 @@ table.sap-data-table td {
   left: 0 !important;
   z-index: 1 !important;
   background-color: #ffffff !important;
-  box-shadow: 1px 0 0 #f1f5f9 !important;
+  box-shadow: 1px 0 0 var(--sap-card-nested-bg, #FFF1E3) !important;
 }
 
 .sap-f4-table tbody tr:nth-child(even) td:first-child,
@@ -603,7 +615,7 @@ table.sap-data-table td {
 .sap-button,
 button.sap-btn {
   background-color: var(--sap-neutral-btn-bg) !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid var(--sap-border, #FED7AA) !important;
   font-size: var(--sap-size-button) !important;
   font-family: var(--sap-font-family) !important;
   color: #334155 !important;
@@ -852,7 +864,7 @@ button.sap-btn:disabled,
 button.sap-btn-primary:disabled,
 .sap-btn-navy-login:disabled,
 button.sap-btn-navy-login:disabled {
-  background-color: #f1f5f9 !important;
+  background-color: var(--sap-card-nested-bg, #FFF1E3) !important;
   color: #94a3b8 !important;
   border-color: rgba(0, 0, 0, 0.08) !important;
   cursor: not-allowed !important;
@@ -888,12 +900,12 @@ button.sap-btn-navy-login:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-/* Page Header Band (Soft gradient orange-50 #FFF7ED to #FFFBFB, bottom border 1px orange-100 #FFEDD5) */
+/* Page Header Band (flat solid #FFF8F2, no gradient, bottom border 1px #FED7AA) */
 .fiori-ph {
-  background: linear-gradient(180deg, #FFF7ED 0%, #FFFBFB 100%) !important;
+  background: var(--sap-page-header-bg, #FFF8F2) !important;
   padding: 0 !important;
   margin: 0 !important;
-  border-bottom: 1px solid #FFEDD5 !important;
+  border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
   box-shadow: none !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1196,7 +1208,7 @@ button.fiori-tile.off .fiori-tile-desc {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: #0a6ed1;
+  color: var(--sap-primary, #EA580C);
   background-color: #f0f7ff;
   border: 1px solid rgba(10, 110, 209, 0.15);
   border-radius: 9999px;
@@ -1230,6 +1242,11 @@ button.fiori-tile.off .fiori-tile-desc {
 .sap-shell-header,
 header.sap-shell-header,
 header.sap-shell-header.sap-toolbar {
+  background: var(--sap-topbar-bg, #FFFFFF) !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
   padding-left: var(--page-gutter) !important;
   padding-right: var(--page-gutter) !important;
   box-sizing: border-box !important;
@@ -1439,7 +1456,7 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
   gap: 10px !important;
   align-items: flex-end !important;
   background-color: #ffffff !important;
-  border: 1px solid var(--sap-border-color, #e2e8f0) !important;
+  border: 1px solid var(--sap-border-color, var(--sap-border, #FED7AA)) !important;
   border-radius: 8px !important;
   padding: 12px 14px !important;
   box-sizing: border-box !important;
@@ -1528,13 +1545,13 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 
 .sap-admin-header-pill:hover {
   background: #faf5f5 !important;
-  border-color: #cbd5e1 !important;
+  border-color: var(--sap-border, #FED7AA) !important;
 }
 
 .sap-admin-header-pill.active {
-  background: var(--sap-primary, #0070f2) !important;
+  background: var(--sap-primary, var(--sap-primary, #EA580C)) !important;
   color: #ffffff !important;
-  border-color: var(--sap-primary, #0070f2) !important;
+  border-color: var(--sap-primary, var(--sap-primary, #EA580C)) !important;
   box-shadow: 0 1px 3px rgba(0, 112, 242, 0.25) !important;
 }
 

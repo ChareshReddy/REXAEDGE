@@ -17,7 +17,7 @@ import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
-import { PageContainer, StickyActionBar } from './layout';
+import { PageContainer } from './layout';
 
 export default function ValidateBomView({
   systemKey = 'DEV',
@@ -126,7 +126,7 @@ export default function ValidateBomView({
         breadcrumbs={getBreadcrumbTrail('validate_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack }, { isLocked: isLoading })}
       />
 
-      <PageContainer hasStickyBar={true}>
+      <PageContainer>
         <div style={{ marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
               {/* Validation Parameters Card */}
@@ -232,6 +232,38 @@ export default function ValidateBomView({
                       <div className="sap-field-error-msg"></div>
                     </div>
                   </div>
+
+                  {/* Form Action Row inside card */}
+                  <div className="sap-card-action-row">
+                    <button
+                      type="button"
+                      className="sap-btn sap-btn-secondary"
+                      onClick={handleReset}
+                      style={{ height: 32, padding: '0 16px', fontSize: 13 }}
+                    >
+                      <X size={14} />
+                      <span>Clear</span>
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="sap-btn sap-btn-primary"
+                      disabled={isLoading}
+                      style={{ height: 32, padding: '0 18px', fontSize: 13 }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="sap-spinner" style={{ width: 14, height: 14 }} />
+                          <span>Validating in SAP...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Search size={14} />
+                          <span>Validate in SAP</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </form>
               </div>
 
@@ -270,40 +302,6 @@ export default function ValidateBomView({
             </div>
           </div>
         </PageContainer>
-
-      {/* Sticky Action Bar */}
-      <StickyActionBar>
-        <div className="sap-sticky-actions-left">
-          <button
-            type="button"
-            className="sap-btn sap-btn-secondary"
-            onClick={handleReset}
-          >
-            <X size={14} />
-            <span>Clear</span>
-          </button>
-        </div>
-        <div className="sap-sticky-actions-right">
-          <button
-            type="submit"
-            form="validate-bom-form"
-            className="sap-btn sap-btn-primary"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="sap-spinner" style={{ width: 14, height: 14 }} />
-                <span>Validating in SAP...</span>
-              </>
-            ) : (
-              <>
-                <Search size={14} />
-                <span>Validate in SAP</span>
-              </>
-            )}
-          </button>
-        </div>
-      </StickyActionBar>
     </div>
   );
 }

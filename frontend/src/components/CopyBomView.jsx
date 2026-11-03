@@ -11,7 +11,7 @@ import {
   ArrowRight,
   X
 } from 'lucide-react';
-import { PageContainer, StickyActionBar } from './layout';
+import { PageContainer } from './layout';
 import CreateBomForm from './CreateBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
@@ -270,7 +270,7 @@ export default function CopyBomView({
         breadcrumbs={getBreadcrumbTrail('copy_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack })}
       />
 
-      <PageContainer hasStickyBar={!proposedAction && !executionResult}>
+      <PageContainer>
         <div style={{ marginTop: 20 }}>
           {/* Step 1: Form View (when no proposal is pending and not yet confirmed) */}
           {!proposedAction && !executionResult && (
@@ -309,7 +309,8 @@ export default function CopyBomView({
                   onCancel={onBack}
                   initialValues={lastSubmittedForm || (initialMaterial ? { sourceMaterial: initialMaterial, sourcePlant: initialPlant || '' } : {})}
                   hideHeader={true}
-                  hideFormActions={true}
+                  hideFormActions={false}
+                  isSubmitting={isSubmitting}
                   style={{ width: '100%' }}
                 />
               )}
@@ -472,33 +473,6 @@ export default function CopyBomView({
           )}
         </div>
       </PageContainer>
-
-      {/* Sticky Action Bar for Step 1 */}
-      {!proposedAction && !executionResult && !isSubmitting && (
-        <StickyActionBar>
-          <div className="sap-sticky-actions-left">
-            <button
-              type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={onBack}
-            >
-              <X size={14} />
-              <span>Cancel</span>
-            </button>
-          </div>
-          <div className="sap-sticky-actions-right">
-            <button
-              type="submit"
-              form="copy-bom-form"
-              className="sap-btn sap-btn-primary"
-              disabled={isSubmitting}
-            >
-              <span>Proceed</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </StickyActionBar>
-      )}
     </div>
   );
 }

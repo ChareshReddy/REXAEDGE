@@ -9,6 +9,7 @@ export default function DeleteBomForm({
   initialValues = {},
   hideHeader = false,
   hideFormActions = false,
+  isSubmitting = false,
   formId = 'delete-bom-form',
   onValuesChange,
   style = {}
@@ -201,22 +202,25 @@ export default function DeleteBomForm({
         </div>
 
         {!hideFormActions && (
-          <div className="sap-form-actions sap-toolbar" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+          <div className="sap-card-action-row">
             <button
               type="button"
-              className="sap-button sap-btn"
+              className="sap-btn sap-btn-secondary"
               onClick={onCancel}
+              style={{ height: 32, fontSize: 13, padding: '0 16px' }}
             >
-              <X size={13} />
+              <X size={14} />
               <span>Cancel</span>
             </button>
 
             <button
               type="submit"
-              className="sap-button sap-btn destructive sap-button-danger"
+              className="sap-btn destructive sap-button-danger"
+              disabled={isSubmitting}
+              style={{ height: 32, fontSize: 13, padding: '0 18px' }}
             >
               <span>Proceed to Confirmation</span>
-              <ArrowRight size={13} />
+              <ArrowRight size={14} />
             </button>
           </div>
         )}

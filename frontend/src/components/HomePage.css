@@ -8,7 +8,7 @@
   flex-direction: column;
   width: 100%;
   box-sizing: border-box;
-  background: var(--sap-bg, #fffbfb);
+  background: var(--sap-page-bg, #FFFBF7);
   color: #1e293b;
   font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   position: relative;
@@ -157,7 +157,7 @@
 
 .rexa-hero-section {
   position: relative;
-  background-color: #fffbfb;
+  background-color: var(--sap-page-bg, #FFFBF7);
   background-image: 
     radial-gradient(circle, rgba(234, 88, 12, 0.05) 1.2px, transparent 1.2px),
     linear-gradient(135deg, #fff7ed 0%, #fffbfb 100%);
@@ -295,7 +295,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   border: 1px solid #fdba74; /* orange-300 border */
   color: #c2410c; /* orange-700 text */
   font-size: 13.5px;
@@ -430,7 +430,7 @@
   overflow: hidden;
   border: 1px solid #fed7aa;
   box-shadow: 0 14px 34px -4px rgba(234, 88, 12, 0.12), 0 4px 12px rgba(15, 39, 68, 0.05);
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
@@ -462,7 +462,7 @@
    ========================================================================== */
 
 .rexa-about-section {
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   width: 100%;
   box-sizing: border-box;
   padding: clamp(8px, 1.2vh, 14px) 0;
@@ -487,7 +487,7 @@
 /* Unified Card with 3px orange gradient top accent line */
 .rexa-about-unified-card {
   position: relative;
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   border: 1px solid #ffedd5;
   border-radius: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -668,7 +668,7 @@
 
 /* Logo Tile in Column 2 (RexaEdge logo) with 1px orange-100 border */
 .rexa-about-logo-tile {
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   padding: 10px;
   box-sizing: border-box;
 }
@@ -685,7 +685,7 @@
    ========================================================================== */
 
 .rexa-footer {
-  background: #ffffff;
+  background: var(--sap-card-bg, #FFF8F2);
   color: #64748b;
   border-top: 1px solid #fed7aa;
   width: 100%;

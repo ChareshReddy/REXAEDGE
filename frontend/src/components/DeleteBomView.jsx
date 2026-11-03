@@ -14,7 +14,7 @@ import {
 import DeleteBomForm from './DeleteBomForm';
 import ConfirmationCard from './ConfirmationCard';
 import FioriPageHeader from './FioriPageHeader';
-import { PageContainer, StickyActionBar } from './layout';
+import { PageContainer } from './layout';
 import { sendChatMessage, confirmChatAction, cancelChatAction } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
@@ -181,7 +181,7 @@ export default function DeleteBomView({
         breadcrumbs={getBreadcrumbTrail('delete_bom', { onNavigateHome, onNavigateProducts, onNavigateBom: onNavigateBom || onBack, onBack }, { isLocked: isSubmitting || actionStatus === 'executing' })}
       />
 
-      <PageContainer hasStickyBar={!proposedAction && !executionResult}>
+      <PageContainer>
         <div style={{ marginTop: 20 }}>
           {/* Step 1: Form View */}
           {!proposedAction && !executionResult && (
@@ -220,7 +220,8 @@ export default function DeleteBomView({
                   onCancel={onBack}
                   initialValues={lastSubmittedForm || {}}
                   hideHeader={true}
-                  hideFormActions={true}
+                  hideFormActions={false}
+                  isSubmitting={isSubmitting}
                   style={{ width: '100%' }}
                 />
               )}
@@ -311,33 +312,6 @@ export default function DeleteBomView({
           )}
         </div>
       </PageContainer>
-
-      {/* Sticky Action Bar */}
-      {!proposedAction && !executionResult && !isSubmitting && (
-        <StickyActionBar>
-          <div className="sap-sticky-actions-left">
-            <button
-              type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={onBack}
-            >
-              <X size={14} />
-              <span>Cancel</span>
-            </button>
-          </div>
-          <div className="sap-sticky-actions-right">
-            <button
-              type="submit"
-              form="delete-bom-form"
-              className="sap-btn destructive sap-button-danger"
-              disabled={isSubmitting}
-            >
-              <span>Proceed to Confirmation</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </StickyActionBar>
-      )}
     </div>
   );
 }

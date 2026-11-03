@@ -86,7 +86,8 @@ const testFiles = [
   'test/bomExplorerLoading.test.js',
   'test/friendlyError.test.js',
   'test/homePageRedesign.test.js',
-  'test/popupHeaderColorFix.test.js'
+  'test/popupHeaderColorFix.test.js',
+  'test/inPageActionButtons.test.js'
 ];
 
 const env = {

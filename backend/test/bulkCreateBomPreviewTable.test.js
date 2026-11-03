@@ -565,16 +565,16 @@ try {
   console.log('✓ PASS: Files > 300 component rows paginate 50 BOMs per page with Previous/Next controls\n');
 
   // -------------------------------------------------------------------------
-  // Test 7: Sticky footer summary & action controls
+  // Test 7: In-card footer summary & action controls (non-sticky)
   // -------------------------------------------------------------------------
-  console.log('Test 7: Verify sticky footer summary and reachable Create button...');
-  assert(html12Rows.includes('bulk-preview-sticky-footer'), 'Preview card must render sticky footer');
-  assert(html12Rows.includes('position:sticky'), 'Footer must have position:sticky style');
-  assert(html12Rows.includes('Validation Summary:'), 'Sticky footer must render Validation Summary label');
-  assert(html12Rows.includes('Ready: 6'), 'Sticky footer must display Ready count');
-  assert(html12Rows.includes('Clear &amp; Upload Another') || html12Rows.includes('Clear & Upload Another'), 'Sticky footer must include Clear & Upload Another button');
-  assert(html12Rows.includes('Create BOMs (6)') || html12Rows.includes('Create 6 Ready BOM(s)'), 'Sticky footer must include accessible Create BOMs button');
-  console.log('✓ PASS: Sticky footer renders summary counts and accessible action buttons\n');
+  console.log('Test 7: Verify in-card footer summary and reachable Create button...');
+  assert(html12Rows.includes('bulk-preview-sticky-footer'), 'Preview card must render in-card footer');
+  assert(!html12Rows.includes('position:sticky') && !html12Rows.includes('position: sticky'), 'Footer must NOT be sticky');
+  assert(html12Rows.includes('Validation Summary:'), 'Footer must render Validation Summary label');
+  assert(html12Rows.includes('Ready: 6'), 'Footer must display Ready count');
+  assert(html12Rows.includes('Clear &amp; Upload Another') || html12Rows.includes('Clear & Upload Another'), 'Footer must include Clear & Upload Another button');
+  assert(html12Rows.includes('Create BOMs (6)') || html12Rows.includes('Create 6 Ready BOM(s)'), 'Footer must include accessible Create BOMs button');
+  console.log('✓ PASS: In-card footer renders summary counts and accessible action buttons\n');
 
   // -------------------------------------------------------------------------
   // Test 8: Payload preservation guard test (SAP write safety)

@@ -29,6 +29,7 @@ export default function CreateBomForm({
   initialValues = {},
   hideHeader = false,
   hideFormActions = false,
+  isSubmitting = false,
   formId = 'copy-bom-form',
   onValuesChange,
   style = {}
@@ -628,14 +629,14 @@ export default function CreateBomForm({
         </div>
 
         {!hideFormActions && (
-          <div className="sap-form-actions">
+          <div className="sap-card-action-row">
             <button
               type="button"
               className="sap-btn sap-btn-secondary"
               onClick={onCancel}
-              style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+              style={{ height: 32, fontSize: 13, padding: '0 16px' }}
             >
-              <X size={13} />
+              <X size={14} />
               <span>Cancel</span>
             </button>
 
@@ -643,10 +644,11 @@ export default function CreateBomForm({
               type="submit"
               className="sap-btn sap-btn-primary"
               title="Proceed to Copy BOM proposal"
-              style={{ height: 28, fontSize: '11.5px', padding: '0 12px' }}
+              disabled={isSubmitting}
+              style={{ height: 32, fontSize: 13, padding: '0 18px' }}
             >
               <span>Proceed</span>
-              <ArrowRight size={13} />
+              <ArrowRight size={14} />
             </button>
           </div>
         )}
