@@ -10,8 +10,7 @@ import {
   Settings,
   Layers,
   ShoppingCart,
-  LayoutGrid,
-  LogIn
+  LayoutGrid
 } from 'lucide-react';
 import { loginUser, warmupAuth } from '../services/api';
 import { useToast, NotificationPlacementProvider } from '../context/ToastContext';
