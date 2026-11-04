@@ -279,8 +279,8 @@ export default function BomUsageValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cancel (Esc)"
-            title="Cancel (Esc)"
+            aria-label="Cancel"
+            title="Cancel"
             className="sap-modal-close sap-modal-close-btn sap-f4-header-close"
             data-no-drag="true"
             style={{
@@ -691,7 +691,7 @@ export default function BomUsageValueHelpModal({
               }}
             >
               <X size={14} style={{ marginRight: 4 }} />
-              <span>Cancel (Esc)</span>
+              <span>Cancel</span>
             </button>
             <button
               type="button"
@@ -712,7 +712,7 @@ export default function BomUsageValueHelpModal({
               }}
             >
               <Check size={14} style={{ marginRight: 4 }} />
-              <span>Select (Enter)</span>
+              <span>Select</span>
             </button>
           </div>
         </div>
