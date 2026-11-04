@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ChevronLeft,
   ChevronDown,
+  ArrowLeft,
   Users,
   Server,
   KeyRound,
@@ -602,8 +603,8 @@ export default function AdminView({
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
       {/* Fiori Standard Redesigned Header (Breadcrumbs > Title > Subtitle > Tabs) */}
-      <div className="fiori-ph" style={{ padding: '0' }}>
-        <div className="sap-layout-header-inner">
+      <div className="fiori-bc-bar">
+        <div className="fiori-bc-bar-inner">
           <nav className="fiori-bc" aria-label="Breadcrumb">
             <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
               Home
@@ -611,9 +612,24 @@ export default function AdminView({
             <span className="fiori-bc-sep">›</span>
             <span className="fiori-bc-current">Enterprise Administration</span>
           </nav>
+        </div>
+      </div>
 
+      <div className="fiori-ph" style={{ padding: '0' }}>
+        <div className="sap-layout-header-inner">
           <div className="fiori-ph-title-row">
-            <h1 className="fiori-ph-title">System &amp; User Management</h1>
+            <div className="fiori-ph-title-group">
+              <button
+                type="button"
+                className="fiori-ph-orange-back"
+                onClick={onNavigateHome || onBack}
+                title="Back to Home"
+                aria-label="Back to Home"
+              >
+                <ArrowLeft size={20} color="#FFFFFF" strokeWidth={2.2} />
+              </button>
+              <h1 className="fiori-ph-title">System &amp; User Management</h1>
+            </div>
             <button
               type="button"
               className="sap-btn sap-btn-secondary"
@@ -626,7 +642,7 @@ export default function AdminView({
             </button>
           </div>
 
-          <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
+          <p className="fiori-ph-subtitle" style={{ marginLeft: '52px' }}>Manage users, SAP servers, access permissions and activity logs.</p>
 
           {/* Admin Navigation Tabs */}
           <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>

@@ -264,23 +264,7 @@ export default function BomUsageValueHelpModal({
             flexShrink: 0
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              className="sap-f4-header-badge"
-              style={{
-                background: 'var(--sap-popup-header-badge-bg, #EA580C)',
-                color: 'var(--sap-popup-header-badge-text, #ffffff)',
-                padding: '2px 8px',
-                borderRadius: 9999,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 0.5,
-                border: 'none',
-                lineHeight: 1.4
-              }}
-            >
-              F4
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <h3
               style={{
                 margin: 0,
@@ -663,7 +647,7 @@ export default function BomUsageValueHelpModal({
           style={{
             padding: '10px 16px',
             borderTop: '1px solid #FFEDD5',
-            background: '#FFF7ED',
+            background: 'var(--sap-modal-footer-bg, #FFF1E3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
