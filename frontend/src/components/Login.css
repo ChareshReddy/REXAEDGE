@@ -20,6 +20,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Force sans-serif font stack across the ENTIRE sign-in scope (strictly NO monospace) */
+.rexa-portal-viewport,
+.rexa-portal-viewport *,
+.rexa-card-outer,
+.rexa-card-outer *,
+.rexa-input-field,
+.rexa-field-label,
+.sap-btn-navy-login {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.rexa-input-field::placeholder {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
 /* Full-Screen Canva Template Background Image (Real DOM element guarantees rendering) */
 .rexa-portal-bg-img {
   position: absolute !important;
@@ -160,27 +175,31 @@
   justify-content: center !important;
   background: transparent !important;
   background-color: transparent !important;
-  padding: 30px 20px !important;
+  padding: 24px 20px !important;
   box-sizing: border-box !important;
   z-index: 2 !important;
 }
 
 /* ============================================================================
-   LARGE WHITE SIGN-IN CARD CONTAINER
+   PORTRAIT WHITE SIGN-IN CARD CONTAINER
+   - Height follows its content (no fixed heights)
+   - 36px padding top and bottom, centered vertically
+   - Width: about 440px wide at 1600px viewport, minimum 360px
+   - Outer border with soft light black shadow
    ============================================================================ */
 .rexa-card-outer {
   position: relative;
   z-index: 10;
   background: #FFFFFF;
-  border-radius: 26px;
+  border-radius: 24px;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   box-shadow:
-    0 22px 50px -10px rgba(0, 0, 0, 0.15),
-    0 8px 24px -4px rgba(0, 0, 0, 0.09),
-    0 1px 3px rgba(0, 0, 0, 0.06) !important;
-  width: clamp(340px, 30vw, 475px);
-  max-width: 480px;
-  padding: clamp(24px, 2.3vw, 38px) clamp(26px, 2.5vw, 42px);
+    0 20px 48px -8px rgba(0, 0, 0, 0.12),
+    0 8px 24px -4px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  width: clamp(360px, 27.5vw, 440px);
+  max-width: 440px;
+  padding: 36px 32px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -198,94 +217,127 @@
   }
 }
 
-/* Logo container placed above canvas */
+/* Logo container: 16px of space below the logo */
 .rexa-card-header-logo-wrap {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: clamp(10px, 1.0vw, 16px);
+  margin-bottom: 16px;
 }
 
-/* Logo: Approx 260px wide on 1920px desktop */
+/* Logo: Compact proportional display */
 .rexa-card-logo {
-  width: clamp(190px, 15vw, 260px);
+  width: clamp(170px, 13vw, 230px);
   height: auto;
   object-fit: contain;
   display: block;
 }
 
-/* Inner Form Canvas */
-.rexa-portal-card {
+/* Inner Form Canvas: Remove any inner box borders or shadows */
+.rexa-portal-card.sap-login-canvas {
   position: relative;
-  width: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
   display: flex;
   flex-direction: column;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
-/* Centered Welcome text: "Welcome to the RexaEdge" (approx 25–28px on 1920px) */
+/* "Welcome to the RexaEdge" text:
+   - 20px, weight 500, #1F2A44, centered
+   - 24px of space before the Sign In heading */
 .rexa-card-welcome {
   text-align: center;
-  margin-bottom: clamp(12px, 1.2vw, 20px);
+  margin-bottom: 24px;
 }
 
 .rexa-card-welcome-title {
-  font-size: clamp(17px, 1.45vw, 25px);
-  color: #172B4D !important;
+  font-size: 15px;
+  color: #1F2A44 !important;
   font-weight: 500;
   white-space: nowrap;
   letter-spacing: -0.01em;
   margin: 0;
+  line-height: 1.3;
 }
 
-/* Left-Aligned Sign-In Heading & Supporting Text */
+/* Left-Aligned Sign-In Heading & Subtitle Container:
+   - 24px space between subtitle and first label */
 .rexa-form-intro {
   text-align: left;
-  margin-bottom: clamp(14px, 1.3vw, 20px);
+  margin-bottom: 24px;
 }
 
-/* "Sign In" bold heading (approx 36–40px on 1920px) */
+/* "Sign In" heading:
+   - Single inline-flex row: 22px lock icon (#EB6301, stroke 2) + "Sign In" text
+   - 8px gap and vertical centering
+   - 28px, semibold (#1B2540) */
 .rexa-form-title {
-  font-size: clamp(24px, 2.0vw, 36px);
-  font-weight: 700;
-  color: #172B4D;
-  margin: 0 0 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(24px, 1.8vw, 28px);
+  font-weight: 600;
+  color: #1B2540;
+  margin: 0 0 6px 0;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
-/* Supporting text: "Access your SAP operations and automations" (approx 20–22px on 1920px) */
-.rexa-form-subtitle {
-  font-size: clamp(13px, 1.05vw, 18px);
-  color: #344054;
-  margin: 0;
-  line-height: 1.4;
+.rexa-heading-lock-icon {
+  flex-shrink: 0;
 }
 
-/* Form Layout */
+/* Subtitle: "Access your SAP operations and automations"
+   - 15px, #5B6475
+   - Sits directly below heading
+   - Aligned to same left edge as heading (icon's left edge), not indented */
+.rexa-form-subtitle {
+  font-size: 15px;
+  color: #5B6475;
+  margin: 0;
+  line-height: 1.4;
+  text-align: left;
+  padding: 0;
+}
+
+/* Sign-In Form */
 .rexa-signin-form {
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 1.1vw, 16px);
   width: 100%;
 }
 
+/* Field Group */
 .rexa-field-group {
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
-.rexa-sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
+/* Gap between email field and Password label */
+.rexa-field-group:first-of-type {
+  margin-bottom: 10px;
+}
+
+/* Visible Field Label:
+   - 13px, semibold, #1B2540
+   - 6px gap above field */
+.rexa-field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1B2540;
+  margin: 0 0 6px 0;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.3;
 }
 
 /* Input Wrapper & Floating Icons */
@@ -296,9 +348,12 @@
   width: 100%;
 }
 
+/* Leading icons: 18px at 14px from the left */
 .rexa-input-icon-left {
   position: absolute;
-  left: 16px;
+  left: 14px;
+  width: 18px;
+  height: 18px;
   color: #6B7280;
   display: flex;
   align-items: center;
@@ -309,28 +364,37 @@
 }
 
 .rexa-input-wrap:focus-within .rexa-input-icon-left {
-  color: #FF6A00;
+  color: #EB6301;
 }
 
-/* Standardized Input Styling matching reference */
+/* Field Box:
+   - Height 44px (minimum 42px), radius 10px, 1px border
+   - Left padding 42px (so nothing overlaps text)
+   - Typed text 14px (#1B2540), placeholder 14px (#6B7280)
+   - font: inherit so NO monospace is ever applied */
 .rexa-input-field {
   width: 100%;
-  height: clamp(46px, 3.6vw, 58px);
-  padding: 0 16px 0 50px;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 12px;
-  font-size: clamp(14px, 1.0vw, 16px);
+  height: 44px;
+  min-height: 42px;
+  padding: 0 14px 0 42px;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 400;
-  color: #172B4D;
+  color: #1B2540;
   background-color: #FFFFFF;
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  font-family: inherit !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .rexa-input-field::placeholder {
-  color: #9CA3AF;
+  color: #6B7280;
+  font-size: 14px;
   font-weight: 400;
+  font-family: inherit !important;
+  opacity: 1;
 }
 
 .rexa-input-field:hover:not(:disabled) {
@@ -338,81 +402,87 @@
 }
 
 .rexa-input-field:focus {
-  border-color: #FF6A00;
-  box-shadow: 0 0 0 3.5px rgba(255, 106, 0, 0.16);
+  border-color: #EB6301;
+  box-shadow: 0 0 0 3px rgba(235, 99, 1, 0.16);
   background-color: #FFFFFF;
 }
 
 .rexa-password-field {
-  padding-right: 50px;
+  padding-right: 42px;
 }
 
-/* Password Toggle Icon Button */
+/* Password Toggle Icon Button (18px at right) */
 .rexa-password-toggle {
   position: absolute;
-  right: 12px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #6B7280;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 6px;
   transition: color 0.18s ease, background-color 0.18s ease;
   z-index: 2;
 }
 
 .rexa-password-toggle:hover {
-  color: #172B4D;
+  color: #1B2540;
   background-color: #F3F4F6;
 }
 
 .rexa-password-toggle:focus-visible {
-  outline: 2px solid #FF6A00;
+  outline: 2px solid #EB6301;
   outline-offset: 1px;
 }
 
 /* ============================================================================
-   PROMINENT FULL-WIDTH BRIGHT ORANGE SIGN IN BUTTON
+   SIGN IN BUTTON
+   - 24px between password field and button
+   - 48px high, radius 10px, background #EB6301
+   - Arrow icon, loading state, font: inherit
    ============================================================================ */
 .sap-btn-navy-login {
   position: relative;
   width: 100%;
-  height: clamp(48px, 3.8vw, 62px);
-  margin-top: clamp(4px, 0.5vw, 8px);
+  height: 48px;
+  min-height: 44px;
+  margin-top: 24px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: #FF6A00 !important;
+  background: #EB6301 !important;
   color: #FFFFFF !important;
-  font-size: clamp(16px, 1.2vw, 19px);
+  font-size: 15px;
   font-weight: 600;
+  font-family: inherit !important;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(255, 106, 0, 0.32);
+  box-shadow: 0 4px 14px rgba(235, 99, 1, 0.32);
   transition: background-color 0.2s ease, transform 0.16s ease, box-shadow 0.2s ease;
   letter-spacing: -0.01em;
 }
 
 .sap-btn-navy-login:hover:not(:disabled) {
-  background: #E85D04 !important;
+  background: #D45500 !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(232, 93, 4, 0.42);
+  box-shadow: 0 6px 20px rgba(235, 99, 1, 0.42);
 }
 
 .sap-btn-navy-login:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(232, 93, 4, 0.25);
+  box-shadow: 0 2px 8px rgba(235, 99, 1, 0.25);
 }
 
 .sap-btn-navy-login:focus-visible {
-  outline: 3px solid rgba(255, 106, 0, 0.45);
+  outline: 3px solid rgba(235, 99, 1, 0.45);
   outline-offset: 2px;
 }
 
@@ -434,7 +504,7 @@
 /* Inline Spinner for Button Loading */
 .sap-spinner {
   display: inline-block;
-  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: #FFFFFF;
   animation: rexa-spin 0.7s linear infinite;
@@ -455,6 +525,7 @@
   border: 1px solid #FFE0B2;
   border-radius: 8px;
   padding: 8px 12px;
+  margin-top: 12px;
   animation: rexa-fade-in 0.25s ease;
 }
 
@@ -480,15 +551,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: #FEF2F2;
-  border: 1px solid #FCA5A5;
-  border-left: 3px solid #EF4444;
+  background-color: #FFF7ED;
+  border: 1px solid #FED7AA;
+  border-left: 3px solid #EA580C;
   border-radius: 8px;
   padding: 10px 14px;
-  color: #991B1B;
+  color: #9A3412;
   font-size: 13.5px;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
   animation: rexa-slide-down 0.22s ease forwards;
 }
@@ -506,7 +577,7 @@
 
 .sap-login-error-icon {
   flex-shrink: 0;
-  color: #EF4444;
+  color: #EA580C;
 }
 
 .sap-login-error-text {
@@ -518,7 +589,7 @@
   background: none;
   border: none;
   padding: 4px;
-  color: #991B1B;
+  color: #9A3412;
   cursor: pointer;
   border-radius: 4px;
   display: flex;
@@ -527,52 +598,59 @@
 }
 
 .sap-login-error-close:hover {
-  background-color: rgba(239, 68, 68, 0.12);
+  background-color: rgba(234, 88, 12, 0.12);
 }
 
 /* ============================================================================
-   RESPONSIVE DESIGN (Tablet & Mobile Fallbacks)
+   RESPONSIVE DESIGN
+   - Fits 1366x768 without page scroll
+   - Below 1024px: Full width up to 440px max, centered, same proportions
+   - Phones: keep input text at 16px so the browser doesn't auto-zoom
+   - Tested at 1920, 1600, 1366, 1024, 768 and 390px
    ============================================================================ */
-@media (max-width: 1024px) {
-  .rexa-portal-viewport {
-    flex-direction: column;
-    overflow-y: auto;
-    height: auto;
-    min-height: 100vh;
+@media (max-width: 1023px) {
+  .rexa-portal-viewport,
+  .sap-login-viewport {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    background-color: #FAF8F6 !important;
   }
 
-  .rexa-portal-left {
-    flex: 0 0 auto;
-    width: 100%;
-    padding: 40px 24px 24px;
+  .rexa-portal-left,
+  .sap-login-left-panel {
+    display: none !important;
   }
 
-  .rexa-portal-right {
-    flex: 0 0 auto;
-    width: 100%;
-    padding: 24px 20px 48px;
+  .rexa-portal-right,
+  .sap-login-right-panel {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 32px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .rexa-card-outer {
-    width: 100%;
-    max-width: 440px;
+    width: 100% !important;
+    max-width: 440px !important;
+    padding: 32px 24px !important;
   }
 }
 
-@media (max-width: 640px) {
-  .rexa-portal-tiles {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-
-  .rexa-glass-tile {
-    width: 100%;
-    height: 90px;
-  }
-
+@media (max-width: 480px) {
   .rexa-card-outer {
-    padding: 24px 20px;
-    border-radius: 20px;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 28px 18px !important;
+    border-radius: 18px !important;
+  }
+
+  /* On phones, keep input text at 16px so the mobile browser doesn't zoom */
+  .rexa-input-field {
+    font-size: 16px !important;
   }
 }

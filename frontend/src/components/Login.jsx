@@ -10,7 +10,8 @@ import {
   Settings,
   Layers,
   ShoppingCart,
-  LayoutGrid
+  LayoutGrid,
+  LogIn
 } from 'lucide-react';
 import { loginUser, warmupAuth } from '../services/api';
 import { useToast, NotificationPlacementProvider } from '../context/ToastContext';
@@ -221,7 +222,7 @@ export default function Login({ onLoginSuccess }) {
             </div>
           )}
 
-          {/* Unified White Sign-In Card */}
+          {/* Unified White Sign-In Card (Taller and narrower portrait proportions) */}
           <div className="rexa-card-outer">
             {/* Logo container placed above canvas */}
             <div className="sap-login-brand-center rexa-card-header-logo-wrap">
@@ -236,30 +237,33 @@ export default function Login({ onLoginSuccess }) {
             <div className="rexa-portal-card sap-login-canvas">
               {/* Centered Welcome text below logo: "Welcome to the RexaEdge" */}
               <div className="rexa-card-welcome sap-login-header-direct">
-                <h2 className="rexa-card-welcome-title">Welcome to the RexaEdge</h2>
+                <h2 className="rexa-card-welcome-title">Welcome to RexaEdge</h2>
                 {/* Hidden text required for automated testing suites */}
-                <div style={{ display: 'none' }} aria-hidden="true">
-                  <h6>Welcome to RexaEdge</h6>
-                  {/* <p> Sign in to continue</p> */}
-                </div>
+                {/* <div style={{ display: 'none' }} aria-hidden="true">
+                  <h2>Welcome to RexaEdge</h2>
+                  <p>Sign in to continue</p>
+                </div> */}
               </div>
 
-              {/* Left-Aligned Sign-In Heading & Supporting Text */}
+              {/* Left-Aligned Sign-In Heading & Subtitle */}
               <div className="rexa-form-intro">
-                <h5 className="rexa-form-title">🔒 Sign In</h5>
-                <p className="rexa-form-subtitle">Access your SAP operations</p>
+                <h3 className="rexa-form-title">
+                  <Lock size={22} color="#EB6301" strokeWidth={2} className="rexa-heading-lock-icon" aria-hidden="true" />
+                  <span>Sign In</span>
+                </h3>
+                <p className="rexa-form-subtitle">Access your SAP operations and automations</p>
               </div>
 
               {/* Sign-In Form */}
               <form onSubmit={handleSubmit} className="rexa-signin-form sap-login-body-direct">
-                {/* Username Field */}
+                {/* Email Address Field */}
                 <div className="rexa-field-group sap-form-group">
-                  <label htmlFor="sap-email" className="rexa-sr-only">
-                    Username
+                  <label htmlFor="sap-email" className="rexa-field-label">
+                    Email address
                   </label>
                   <div className="rexa-input-wrap sap-input-group">
                     <span className="rexa-input-icon-left sap-input-icon-left" aria-hidden="true">
-                      <User size={20} strokeWidth={1.8} />
+                      <User size={18} strokeWidth={1.8} />
                     </span>
                     <input
                       ref={usernameInputRef}
@@ -267,8 +271,8 @@ export default function Login({ onLoginSuccess }) {
                       name="username"
                       type="text"
                       className="rexa-input-field sap-input"
-                      placeholder="Username"
-                      aria-label="Username"
+                      placeholder="name@company.com"
+                      aria-label="Email address"
                       value={username}
                       onChange={handleEmailChange}
                       disabled={isLoading}
@@ -281,12 +285,12 @@ export default function Login({ onLoginSuccess }) {
 
                 {/* Password Field */}
                 <div className="rexa-field-group sap-form-group">
-                  <label htmlFor="sap-password" className="rexa-sr-only">
+                  <label htmlFor="sap-password" className="rexa-field-label">
                     Password
                   </label>
                   <div className="rexa-input-wrap">
                     <span className="rexa-input-icon-left sap-password-left-icon" aria-hidden="true">
-                      <Lock size={20} strokeWidth={1.8} />
+                      <Lock size={18} strokeWidth={1.8} />
                     </span>
                     <input
                       ref={passwordInputRef}
@@ -294,7 +298,7 @@ export default function Login({ onLoginSuccess }) {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       className="rexa-input-field rexa-password-field sap-input"
-                      placeholder="Password"
+                      placeholder="Enter your password"
                       aria-label="Password"
                       value={password}
                       onChange={handlePasswordChange}
@@ -311,7 +315,7 @@ export default function Login({ onLoginSuccess }) {
                       title={showPassword ? 'Hide password' : 'Show password'}
                       tabIndex={0}
                     >
-                      {showPassword ? <Eye size={19} /> : <EyeOff size={19} />}
+                      {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                     </button>
                   </div>
                 </div>
@@ -324,13 +328,13 @@ export default function Login({ onLoginSuccess }) {
                 >
                   {isLoading ? (
                     <>
-                      <span className="sap-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                      <span className="sap-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
                       <span>Signing in...</span>
                     </>
                   ) : (
                     <>
                       <span>Sign In</span>
-                      <ArrowRight size={20} className="rexa-btn-arrow" strokeWidth={2.5} />
+                      <ArrowRight size={18} className="rexa-btn-arrow" strokeWidth={2.5} />
                     </>
                   )}
                 </button>

@@ -871,8 +871,7 @@ export default function MaterialRestrictValueRangeModal({
             alignItems: 'center'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-            <span className="sap-f4-header-badge">F4</span>
+          <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
             <h3
               id="sap-restrict-range-title"
               style={{
