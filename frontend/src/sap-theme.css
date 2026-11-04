@@ -6,7 +6,7 @@
 :root {
   /* 1. Master Warm Theme Tokens */
   --sap-topbar-bg: #FFFFFF;
-  --sap-page-header-bg: #FFF8F2;
+  --sap-page-header-bg: #FFFBF7;
   --sap-page-bg: #FFFBF7;
   --sap-card-bg: #FFF8F2;
   --sap-card-nested-bg: #FFF1E3;
@@ -16,6 +16,7 @@
   --sap-input-bg: #FFFFFF;
   --sap-hover-bg: #FFEDD5;
   --sap-selected-bg: #FED7AA;
+  --sap-modal-footer-bg: #FFF1E3;
 
   --sap-workspace-bg: var(--sap-page-bg, #FFFBF7);
   --sap-panel-bg: var(--sap-card-bg, #FFF8F2);
@@ -1108,18 +1109,18 @@ button.sap-btn-danger:active:not(:disabled) {
   box-sizing: border-box;
 }
 
-/* Operation cards in Launchpad (Compact size: 280-320px wide, 120-140px high, 16px padding) */
+/* Operation cards in Launchpad (Compact size: 360px min, equal height, 18px padding) */
 button.fiori-op-card {
   background-color: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   border-radius: 12px !important;
-  padding: 16px !important;
+  padding: 18px !important;
   width: 100% !important;
-  min-width: 280px !important;
-  max-width: 320px !important;
-  height: 130px !important;
-  min-height: 120px !important;
-  max-height: 140px !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 130px !important;
+  max-height: none !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
@@ -1164,13 +1165,17 @@ button.fiori-tile:hover:not(.disabled):not(.off) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 40px !important;
-  height: 40px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
   border-radius: 8px !important;
   background-color: #FFEDD5 !important; /* orange-100 */
   border: 1px solid #FED7AA !important; /* orange-200 */
   color: #EA580C !important; /* orange-600 */
-  margin-bottom: 8px !important;
+  margin-bottom: 12px !important;
   flex-shrink: 0 !important;
   transition: all 150ms ease !important;
 }
@@ -1200,9 +1205,12 @@ button.fiori-tile:hover:not(.disabled):not(.off) {
 .fiori-op-desc {
   font-size: 13px !important;
   color: #64748b !important;
-  line-height: 1.35 !important;
+  line-height: 1.4 !important;
   margin: 0 !important;
-  white-space: nowrap !important;
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   width: 100% !important;
@@ -1314,6 +1322,7 @@ header.sap-shell-header.sap-toolbar {
   background-image: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
   border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
   padding-left: var(--page-gutter) !important;
   padding-right: var(--page-gutter) !important;
@@ -1405,7 +1414,7 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 
 .sap-modal-footer,
 .sap-f4-footer {
-  background-color: #FFF7ED !important; /* orange-50 */
+  background-color: var(--sap-modal-footer-bg, #FFF1E3) !important;
   border-top: 1px solid #FFEDD5 !important; /* orange-100 */
   padding: 10px 16px !important;
   display: flex !important;

@@ -281,23 +281,7 @@ export default function PlantValueHelpModal({
             justifyContent: 'space-between'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-            <span
-              className="sap-f4-header-badge"
-              style={{
-                background: 'var(--sap-popup-header-badge-bg, #EA580C)',
-                color: 'var(--sap-popup-header-badge-text, #ffffff)',
-                padding: '2px 8px',
-                borderRadius: 9999,
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 0.5,
-                border: 'none',
-                lineHeight: 1.4
-              }}
-            >
-              F4
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
             <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-popup-header-title, #0f2744)' }}>
               {modalTitle}
             </h3>
@@ -545,7 +529,7 @@ export default function PlantValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: '#FFF7ED' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: 'var(--sap-modal-footer-bg, #FFF1E3)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredPlants[selectedIndex] ? (
               <span title={`${filteredPlants[selectedIndex].werks} - ${filteredPlants[selectedIndex].name1 || ''}`}>

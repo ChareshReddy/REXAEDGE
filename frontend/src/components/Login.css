@@ -289,6 +289,8 @@
   color: #475569;
   margin: 0;
   line-height: 1.4;
+  text-align: left;
+  padding: 0;
 }
 
 /* Form and Fields (Directly in card, no inner box) */
@@ -384,7 +386,7 @@
 
 .login-page .lg-pwd-toggle {
   position: absolute;
-  right: 12px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -427,6 +429,7 @@
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
   font-weight: 600;
+  font-family: inherit !important;
   border: none;
   border-radius: 10px;
   cursor: pointer;

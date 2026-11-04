@@ -152,6 +152,9 @@
   /* Focus Ring */
   --sap-focus-ring: 0 0 0 2px #EA580C;
 
+  /* Modal Footer Design Token */
+  --sap-modal-footer-bg: #FFF1E3;
+
   /* Popup / Modal Header Design Tokens */
   --sap-popup-header-bg: #FFEDD5;
   --sap-popup-header-border: #FED7AA;
@@ -234,7 +237,7 @@ input, select {
   box-sizing: border-box;
   position: relative;
   z-index: 1000;
-  box-shadow: var(--sap-shadow-sm, 0 1px 2px rgba(234, 88, 12, 0.04));
+  box-shadow: none !important;
   border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
   gap: 16px;
   font-family: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
@@ -1261,6 +1264,7 @@ select:-webkit-autofill:focus {
   gap: 3px;
   padding: 1px 7px;
   border-radius: var(--radius-full);
+  flex-shrink: 0;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -5780,7 +5784,9 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
 .fiori-op-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
   gap: 16px;
+  align-items: stretch;
   justify-content: start;
   width: 100%;
 }
@@ -5791,12 +5797,13 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
   border-radius: var(--radius-xl, 12px);
   box-shadow: var(--sap-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04));
   width: 100%;
-  min-width: 280px;
+  min-width: 0;
   max-width: 320px;
-  height: 130px;
-  min-height: 120px;
-  max-height: 140px;
-  padding: 16px !important;
+  max-width: none !important;
+  height: 100%;
+  min-height: 130px;
+  max-height: none;
+  padding: 18px !important;
   text-align: left;
   font-family: inherit;
   color: var(--sap-text, #1e293b);
@@ -5837,15 +5844,20 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
   transform: none;
 }
 
-/* Rounded Square Icon Badge at TOP of card (40px compact) */
+/* Rounded Square Icon Badge at TOP of card (44px compact) */
 .fiori-op-icon-badge {
   width: 40px !important;
-  height: 40px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
   border-radius: 8px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 12px !important;
   flex-shrink: 0 !important;
   background-color: #FFEDD5 !important; /* orange-100 */
   border: 1px solid #FED7AA !important; /* orange-200 */
@@ -5882,9 +5894,12 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
 .fiori-op-desc {
   font-size: 13px !important;
   color: #64748b !important;
-  line-height: 1.35 !important;
+  line-height: 1.4 !important;
   margin: 0 !important;
-  white-space: nowrap !important;
+  white-space: normal !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   width: 100% !important;
@@ -6258,8 +6273,9 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 270px;
-  max-width: calc(100vw - 16px);
+  width: max-content;
+  min-width: 270px;
+  max-width: min(320px, calc(100vw - 16px));
   box-sizing: border-box;
   background: #ffffff !important;
   border: 1px solid var(--sap-border, #FED7AA) !important;
@@ -6283,9 +6299,14 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
 }
 
 .sap-user-dropdown-header {
-  padding: 14px 16px;
+  padding: 12px 16px;
   background: #ffffff !important;
   border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
 }
 
 .sap-user-dropdown-name {
@@ -6296,15 +6317,16 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
 }
 
 .sap-user-dropdown-email {
-  font-size: 12px;
-  color: var(--sap-text-muted, #64748b);
+  font-size: 14px;
+  color: var(--sap-text-muted, #475569);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.4;
   display: block;
-  max-width: 100%;
-  margin-top: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 0;
 }
 
 .sap-user-dropdown-items {
@@ -6865,7 +6887,8 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-f4-footer {
   padding: 10px 20px;
-  background: #FFF7ED !important;
+  background: #FFF7ED;
+  background: var(--sap-modal-footer-bg, #FFF1E3) !important;
   border-top: 1px solid #FFEDD5 !important;
   display: flex;
   align-items: center;
@@ -7190,7 +7213,7 @@ input::-webkit-credentials-auto-fill-button {
   justify-content: flex-start;
   gap: 20px;
   padding: 10px 22px;
-  background: var(--sap-card-nested-bg, #FFF1E3);
+  background: transparent;
   border-top: 1px solid var(--sap-border, #FED7AA);
 }
 
@@ -7237,7 +7260,7 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-restrict-footer {
-  background: #ffffff;
+  background: var(--sap-modal-footer-bg, #FFF1E3);
 }
 
 .sap-restrict-btn-continue {
@@ -7864,4 +7887,102 @@ input::-webkit-credentials-auto-fill-button {
   border-color: #F59E0B !important; /* Amber-500 */
   background-color: #FFFBEB !important; /* Amber-50 */
   box-shadow: 0 0 0 1px #F59E0B !important;
+}
+
+/* ============================================================================
+   BREADCRUMB BAR (FULL-WIDTH WHITE #FFFFFF, 48PX HIGH) & ORANGE BACK BUTTON
+   ============================================================================ */
+.fiori-bc-bar {
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  position: relative;
+  z-index: 40;
+}
+
+.fiori-bc-bar-inner {
+  width: 100% !important;
+  height: 100% !important;
+  padding-left: var(--page-gutter) !important;
+  padding-right: var(--page-gutter) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+
+.fiori-bc-bar-inner::-webkit-scrollbar {
+  display: none !important;
+}
+
+.fiori-bc-bar-inner .fiori-bc {
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.fiori-ph-title-group {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-shrink: 0;
+}
+
+.fiori-ph-orange-back,
+button.fiori-ph-orange-back,
+a.fiori-ph-orange-back {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  border-radius: 8px !important;
+  background-color: #EB6301 !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  flex-shrink: 0 !important;
+  transition: background-color 150ms ease !important;
+}
+
+.fiori-ph-orange-back:hover,
+button.fiori-ph-orange-back:hover,
+a.fiori-ph-orange-back:hover {
+  background-color: #D95A00 !important;
+  color: #FFFFFF !important;
+}
+
+.fiori-ph-orange-back:active,
+button.fiori-ph-orange-back:active,
+a.fiori-ph-orange-back:active {
+  background-color: #C45000 !important;
+  color: #FFFFFF !important;
+}
+
+.fiori-ph-orange-back:focus-visible,
+button.fiori-ph-orange-back:focus-visible,
+a.fiori-ph-orange-back:focus-visible {
+  outline: 2px solid #EB6301 !important;
+  outline-offset: 2px !important;
 }

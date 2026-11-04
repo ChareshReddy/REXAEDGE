@@ -270,7 +270,7 @@ export default function Modal({
                   gap: 8,
                   justifyContent: 'flex-end',
                   padding: '12px 20px',
-                  background: '#FFF7ED',
+                  background: 'var(--sap-modal-footer-bg, #FFF1E3)',
                   borderTop: '1px solid #FFEDD5',
                   borderBottomLeftRadius: 'inherit',
                   borderBottomRightRadius: 'inherit',

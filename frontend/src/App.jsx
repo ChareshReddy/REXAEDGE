@@ -811,15 +811,18 @@ function AppContent({
             {isUserMenuOpen && (
               <div className="sap-user-dropdown-menu" role="menu">
                 <div className="sap-user-dropdown-header">
-                  <div>
-                    <span className={`sap-role-badge ${user.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`} style={{ fontSize: 11 }}>
-                      {user.role === 'admin' && <ShieldCheck size={12} />}
-                      {user.role === 'admin' ? 'Admin' : 'User'}
-                    </span>
-                  </div>
-                  <div className="sap-user-dropdown-email" title={user.email} style={{ marginTop: 6 }}>
+                  <div className="sap-user-dropdown-email" title={user.email}>
                     {user.email}
                   </div>
+                  {user.role ? (
+                    <span
+                      className={`sap-role-badge ${String(user.role).toLowerCase() === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`}
+                      style={{ flexShrink: 0, fontSize: 11 }}
+                    >
+                      {String(user.role).toLowerCase() === 'admin' && <ShieldCheck size={12} />}
+                      {String(user.role).toLowerCase() === 'admin' ? 'Admin' : (user.role === 'user' ? 'User' : user.role)}
+                    </span>
+                  ) : null}
                 </div>
 
                 {/* Multi-Session Capability Preserved */}
