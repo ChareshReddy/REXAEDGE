@@ -61,7 +61,10 @@
   --sap-border-width: 1px;
   --sap-table-header-height: 32px;
   --sap-table-row-height: 28px;
+  --sap-table-row-pad-y: 6px;
+  --sap-table-row-pad-x: 8px;
   --sap-table-cell-padding: 8px;
+  --sap-table-row-separator: rgba(253, 186, 116, 0.45);
 
   /* Global variable bridge for legacy tokens */
   --sap-bg: var(--sap-workspace-bg);
@@ -270,8 +273,8 @@ select.sap-form-input:focus,
 textarea.sap-form-input:focus,
 .sap-system-select:focus,
 .sap-form-input-wrapper input:focus {
-  border-color: var(--sap-primary, #EA580C) !important;
-  box-shadow: 0 0 0 1px var(--sap-primary, #EA580C) !important;
+  border-color: #EA580C !important;
+  box-shadow: 0 0 0 1px #EA580C !important;
   outline: none !important;
 }
 
@@ -301,7 +304,7 @@ textarea.sap-form-input:disabled,
   left: 9px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  color: var(--sap-primary, #EA580C) !important;
+  color: #EA580C !important;
   pointer-events: none !important;
   z-index: 2 !important;
 }
@@ -411,7 +414,7 @@ button.sap-f4-search-btn:focus-visible {
 
 .sap-input-icon-left,
 .sap-password-left-icon {
-  color: var(--sap-primary, #EA580C) !important;
+  color: #EA580C !important;
 }
 
 /* ==========================================================================
@@ -462,23 +465,81 @@ table.sap-data-table th {
   box-sizing: border-box;
 }
 
+/* Shared table body cells: breathing space (6px top & bottom), thin row separator, vertically centered */
 .sap-table td,
-.sap-f4-table td,
 .sap-bulk-table td,
 .sap-admin-compact-table td,
 table.sap-data-table td {
   background-color: var(--sap-panel-bg) !important;
-  height: var(--sap-table-row-height) !important;
+  height: auto !important;
+  min-height: var(--sap-table-row-height, 28px);
   font-size: var(--sap-size-table) !important;
   font-family: var(--sap-font-mono) !important;
   color: var(--sap-text-primary) !important;
-  border: var(--sap-border-width) solid var(--sap-border-color) !important;
-  padding: 0 var(--sap-table-cell-padding) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--sap-table-row-separator, rgba(253, 186, 116, 0.45)) !important;
+  padding: var(--sap-table-row-pad-y, 6px) var(--sap-table-row-pad-x, 8px) !important;
   vertical-align: middle !important;
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   box-sizing: border-box;
+}
+
+/* No extra border on the last body row */
+.sap-table tbody tr:last-child td,
+.sap-bulk-table tbody tr:last-child td,
+.sap-admin-compact-table tbody tr:last-child td,
+table.sap-data-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* F4 value help result tables: 40px selectable row height with 8px padding and hover orange-50 */
+.sap-f4-table td {
+  background-color: var(--sap-panel-bg) !important;
+  height: 40px !important;
+  font-size: var(--sap-size-table) !important;
+  font-family: var(--sap-font-mono) !important;
+  color: var(--sap-text-primary) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--sap-table-row-separator, rgba(253, 186, 116, 0.45)) !important;
+  padding: 8px var(--sap-table-row-pad-x, 8px) !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  box-sizing: border-box;
+}
+
+.sap-f4-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Center all child elements vertically in table cells (inputs, F4 wrappers, buttons, badges) */
+.sap-table td > *,
+.sap-bulk-table td > *,
+.sap-admin-compact-table td > *,
+table.sap-data-table td > * {
+  vertical-align: middle;
+}
+
+.sap-table td .sap-value-help-wrapper,
+.sap-bulk-table td .sap-value-help-wrapper,
+.sap-admin-compact-table td .sap-value-help-wrapper {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+/* Focused input ring within 6px cell padding - no overlap with neighboring rows */
+.sap-table td input:focus,
+.sap-table td select:focus,
+.sap-table td textarea:focus,
+.sap-bulk-table td input:focus,
+.sap-bulk-table td select:focus,
+.sap-admin-compact-table td input:focus,
+.sap-admin-compact-table td select:focus {
+  border-color: #EA580C !important;
+  box-shadow: 0 0 0 1.5px #EA580C !important;
+  outline: none !important;
 }
 
 /* Selected row styling: orange-100 with orange-700 text */
@@ -532,7 +593,14 @@ table.sap-data-table td {
   left: 0 !important;
   z-index: 1 !important;
   background-color: #ffffff !important;
+  border: none !important;
+  border-bottom: 1px solid var(--sap-table-row-separator, rgba(253, 186, 116, 0.45)) !important;
   box-shadow: 1px 0 0 var(--sap-card-nested-bg, #FFF1E3) !important;
+}
+
+.sap-f4-table tbody tr:last-child td:first-child,
+.sap-f4-table tbody tr:last-child .sap-f4-sticky-col {
+  border-bottom: none !important;
 }
 
 .sap-f4-table tbody tr:nth-child(even) td:first-child,
@@ -1208,7 +1276,7 @@ button.fiori-tile.off .fiori-tile-desc {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--sap-primary, #EA580C);
+  color: #EA580C;
   background-color: #f0f7ff;
   border: 1px solid rgba(10, 110, 209, 0.15);
   border-radius: 9999px;
@@ -1499,15 +1567,18 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 }
 
 .sap-admin-compact-table td {
-  height: 36px !important;
-  padding: 0 6px !important;
+  height: auto !important;
+  min-height: 36px;
+  padding: var(--sap-table-row-pad-y, 6px) var(--sap-table-row-pad-x, 8px) !important;
   font-family: var(--sap-font-family, sans-serif) !important;
   font-size: 12px !important;
+  border: none !important;
+  border-bottom: 1px solid var(--sap-table-row-separator, rgba(253, 186, 116, 0.45)) !important;
 }
 
 .sap-admin-compact-table tr:has(button) td,
 .sap-admin-compact-table td:has(button) {
-  height: 40px !important;
+  height: auto !important;
 }
 
 /* Allowed red exception: Failed status badge */
@@ -1549,9 +1620,9 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 }
 
 .sap-admin-header-pill.active {
-  background: var(--sap-primary, var(--sap-primary, #EA580C)) !important;
+  background: var(--sap-primary, #EA580C) !important;
   color: #ffffff !important;
-  border-color: var(--sap-primary, var(--sap-primary, #EA580C)) !important;
+  border-color: var(--sap-primary, #EA580C) !important;
   box-shadow: 0 1px 3px rgba(0, 112, 242, 0.25) !important;
 }
 
