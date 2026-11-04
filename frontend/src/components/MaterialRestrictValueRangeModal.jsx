@@ -1147,7 +1147,7 @@ export default function MaterialRestrictValueRangeModal({
               {isSearching ? (
                 <Loader2 size={14} className="sap-spin" style={{ marginRight: 6 }} />
               ) : (
-                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#ffffff' }} />
+                <Check size={14}  strokeWidth={2.5} style={{ marginRight: 6, color: '#6c6868' }} />
               )}
               Continue
             </button>

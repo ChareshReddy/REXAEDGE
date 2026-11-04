@@ -424,7 +424,23 @@ export default function MaterialValueHelpModal({
             justifyContent: 'space-between'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
+            <span
+              className="sap-f4-header-badge"
+              style={{
+                background: 'var(--sap-popup-header-badge-bg, #EA580C)',
+                color: 'var(--sap-popup-header-badge-text, #ffffff)',
+                padding: '2px 8px',
+                borderRadius: 9999,
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 0.5,
+                border: 'none',
+                lineHeight: 1.4
+              }}
+            >
+              F4
+            </span>
             <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--sap-size-section-header)', fontWeight: 700, color: 'var(--sap-popup-header-title, #0f2744)' }}>
               {modalTitle}
             </h3>
@@ -433,8 +449,8 @@ export default function MaterialValueHelpModal({
             type="button"
             onClick={onClose}
             className="sap-f4-header-close sap-modal-close-btn sap-button"
-            title="Cancel (Esc)"
-            aria-label="Cancel (Esc)"
+            title="Cancel"
+            aria-label="Cancel"
             data-no-drag="true"
             style={{
               width: 36,
@@ -645,114 +661,24 @@ export default function MaterialValueHelpModal({
                   </>
                 )}
               </colgroup>
-             
-<thead>
-  <tr
-    style={{
-      background: '#FFF7ED',
-      borderBottom: '1px solid #FFEDD5'
-    }}
-  >
-    {isTabB ? (
-      <>
-        <th
-          className="sap-f4-sticky-col"
-          style={{
-            width: 160,
-            minWidth: 160,
-            textAlign: 'left',
-            whiteSpace: 'nowrap',
-            position: 'sticky',
-            left: 0,
-            top: 0,
-            zIndex: 4,
-            background: '#FFF7ED'
-          }}
-        >
-          Material
-        </th>
-
-        <th
-          style={{
-            width: 80,
-            minWidth: 80,
-            textAlign: 'center',
-            verticalAlign: 'middle',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          AltBOM
-        </th>
-
-        <th
-          style={{
-            width: 80,
-            minWidth: 80,
-            textAlign: 'center',
-            verticalAlign: 'middle',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Language
-        </th>
-      </>
-    ) : (
-      <>
-        <th
-          className="sap-f4-sticky-col"
-          style={{
-            width: 150,
-            minWidth: 150,
-            textAlign: 'left',
-            whiteSpace: 'nowrap',
-            position: 'sticky',
-            left: 0,
-            top: 0,
-            zIndex: 4,
-            background: '#FFF7ED'
-          }}
-        >
-          Material
-        </th>
-
-        <th
-          style={{
-            minWidth: 260,
-            textAlign: 'left',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Description
-        </th>
-
-        <th
-          style={{
-            width: 75,
-            minWidth: 75,
-            textAlign: 'center',
-            verticalAlign: 'middle',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Type
-        </th>
-
-        <th
-          style={{
-            width: 65,
-            minWidth: 65,
-            textAlign: 'center',
-            verticalAlign: 'middle',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Language
-        </th>
-      </>
-    )}
-  </tr>
-</thead>
-
+              <thead>
+                <tr style={{ background: '#FFF7ED', borderBottom: '1px solid #FFEDD5' }}>
+                  {isTabB ? (
+                    <>
+                      <th className="sap-f4-sticky-col" style={{ width: 160, minWidth: 160, textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Material</th>
+                      <th style={{ width: 80, minWidth: 80, textAlign: 'center', whiteSpace: 'nowrap' }}>AltBOM</th>
+                      <th style={{ width: 80, minWidth: 80, textAlign: 'center',verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Language</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="sap-f4-sticky-col" style={{ width: 150, minWidth: 150, textAlign: 'left', whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Material</th>
+                      <th style={{ minWidth: 260, textAlign: 'left', whiteSpace: 'nowrap' }}>Description</th>
+                      <th style={{ width: 75, minWidth: 75, textAlign: 'center', whiteSpace: 'nowrap' }}>Type</th>
+                      <th style={{ width: 65, minWidth: 65, textAlign: 'center',verticalAlign: 'middle', whiteSpace: 'nowrap' }}>Language</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
               <tbody>
                 {materials.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
@@ -879,7 +805,7 @@ export default function MaterialValueHelpModal({
         </div>
 
         {/* Footer: Selection Summary & Action Buttons */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: 'var(--sap-modal-footer-bg, #FFF1E3)' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: '#FFF7ED' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && materials[selectedIndex] ? (
               <span title={`${materials[selectedIndex].matnr}${isTabB && materials[selectedIndex].stlal ? ` Alt ${materials[selectedIndex].stlal}` : ''}${materials[selectedIndex].maktx ? ` - ${materials[selectedIndex].maktx}` : ''}`}>
