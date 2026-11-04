@@ -49,6 +49,9 @@ export function useDraggableModal({ isOpen, dialogRef, defaultTopRatio = 0.12 })
 
   // Drag start handler (attach to dialog header)
   const handlePointerDown = useCallback((e) => {
+    // Disable dragging on mobile screens (< 640px) to act as a responsive sheet
+    if (typeof window !== 'undefined' && window.innerWidth < 640) return;
+
     // Only drag with primary mouse button / touch
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
@@ -132,8 +135,21 @@ export function useDraggableModal({ isOpen, dialogRef, defaultTopRatio = 0.12 })
     };
   }, [isDragging, dialogRef]);
 
-  // Calculated modal dialog style
-  const dialogStyle = {
+  // Calculated modal dialog style (full-screen sheet on mobile < 640px)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const dialogStyle = isMobile ? {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100vw',
+    height: '100dvh',
+    maxHeight: '100dvh',
+    transform: 'none',
+    margin: 0,
+    borderRadius: 0
+  } : {
     position: 'fixed',
     top: position ? `${position.y}px` : `${Math.round(defaultTopRatio * 100)}vh`,
     left: position ? `${position.x}px` : '50%',

@@ -126,7 +126,7 @@ export default function Tooltip({
     return () => clearTimeout(timeoutRef.current);
   }, []);
 
-  // Attach strictly mouse enter & leave (NO focus or typing triggers)
+  // Attach mouse enter/leave, focus/blur, and touch triggers so hover-only info is reachable by tap or focus
   let triggerElement = null;
   if (React.isValidElement(children)) {
     const childProps = children.props || {};
@@ -145,14 +145,30 @@ export default function Tooltip({
       onMouseLeave: (e) => {
         hideTooltip();
         childProps.onMouseLeave?.(e);
+      },
+      onFocus: (e) => {
+        showTooltip();
+        childProps.onFocus?.(e);
+      },
+      onBlur: (e) => {
+        hideTooltip();
+        childProps.onBlur?.(e);
+      },
+      onTouchStart: (e) => {
+        showTooltip();
+        childProps.onTouchStart?.(e);
       }
     });
   } else {
     triggerElement = (
       <span
         ref={triggerRef}
+        tabIndex={0}
         onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
+        onTouchStart={showTooltip}
         style={{ display: 'inline-flex', alignItems: 'center' }}
       >
         {children}

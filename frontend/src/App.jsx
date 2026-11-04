@@ -382,9 +382,16 @@ function AppContent({
     // Unauthenticated user attempting to access protected route
     if (!user) {
       if (currentPath !== '/signin') {
-        const returnTarget = currentPath !== '/' ? currentPath : '/home';
-        if (router?.navigate) {
-          router.navigate(`/signin?returnTo=${encodeURIComponent(returnTarget)}`, { replace: true });
+        if (currentPath === '/' || currentPath === '/home') {
+          // Clean root/home landing: directly navigate to /signin without returnTo noise
+          if (router?.navigate) {
+            router.navigate('/signin', { replace: true });
+          }
+        } else {
+          // Deep protected route: preserve return target for post-login redirection
+          if (router?.navigate) {
+            router.navigate(`/signin?returnTo=${encodeURIComponent(currentPath)}`, { replace: true });
+          }
         }
       }
       return;

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test:responsive": "node ../scratch/cdp_smoke_test.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

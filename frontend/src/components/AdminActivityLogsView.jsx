@@ -696,10 +696,9 @@ export default function AdminActivityLogsView({
              AUDIT LOGS TABLE
              ============================================================ */
           <table
-            className="sap-table sap-admin-compact-table"
+            className="sap-table sap-admin-compact-table sap-admin-table-cards-mobile"
             style={{
               width: '100%',
-              tableLayout: 'fixed',
               borderCollapse: 'collapse',
               boxSizing: 'border-box'
             }}
@@ -938,10 +937,9 @@ export default function AdminActivityLogsView({
              ERROR LOGS TABLE
              ============================================================ */
           <table
-            className="sap-table sap-admin-compact-table"
+            className="sap-table sap-admin-compact-table sap-admin-table-cards-mobile"
             style={{
               width: '100%',
-              tableLayout: 'fixed',
               borderCollapse: 'collapse',
               boxSizing: 'border-box'
             }}

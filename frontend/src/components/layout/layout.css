@@ -61,6 +61,8 @@
 
 .sap-page-viewport {
   min-height: calc(100vh - 48px);
+  min-height: calc(100dvh - 48px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
   flex-direction: column;
   background: var(--sap-bg, #f4f6f8);
@@ -226,7 +228,7 @@
 /* Products Grid (min 320px, equal height) */
 .fiori-tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) !important;
   gap: 20px !important;
   width: 100%;
 }
@@ -247,7 +249,7 @@
 .fiori-op-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)) !important;
   gap: 16px !important;
   align-items: stretch !important;
   justify-content: start !important;

@@ -527,30 +527,53 @@
 /* ============================================================================
    RESPONSIVE DESIGN (TABLET & MOBILE FALLBACKS)
    ============================================================================ */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .login-page.rexa-portal-viewport {
     flex-direction: column;
     overflow-y: auto;
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
+    background: #0f172a;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .login-page .rexa-portal-bg-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    object-position: center 20%;
+    opacity: 0.8;
   }
 
   .login-page .rexa-portal-left {
     flex: 0 0 auto;
     width: 100%;
-    padding: 40px 24px 24px;
+    padding: 32px 20px 20px;
+    z-index: 2;
   }
 
   .login-page .rexa-portal-right {
-    flex: 0 0 auto;
+    flex: 1 0 auto;
     width: 100%;
-    padding: 24px 20px 48px;
+    padding: 24px 16px 48px;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
   }
 
   .login-page .lg-card {
     width: 100%;
-    max-width: 440px;
-    padding: 28px 24px;
+    max-width: 420px;
+    padding: 28px 20px;
+  }
+
+  .login-page .lg-input {
+    font-size: 16px !important;
   }
 }
 

@@ -721,7 +721,7 @@ export default function AdminView({
 
             {/* Users Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Users Table">
-              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <table className="sap-table sap-admin-compact-table sap-admin-table-cards-mobile" style={{ width: '100%' }}>
                 <colgroup>
                   <col style={{ width: 250 }} />
                   <col style={{ width: 110 }} />
@@ -747,7 +747,7 @@ export default function AdminView({
                       );
                       return (
                         <tr key={u.id}>
-                          <td>
+                          <td data-label="Email address">
                             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                               <div style={{
                                 width: 24,
@@ -767,13 +767,13 @@ export default function AdminView({
                               <span style={{ fontWeight: 500, color: 'var(--sap-text-dark)', whiteSpace: 'nowrap' }} title={u.email}>{u.email}</span>
                             </div>
                           </td>
-                          <td>
+                          <td data-label="Role">
                             <span className={`sap-role-badge ${u.role === 'admin' ? 'sap-role-badge-admin' : 'sap-role-badge-user'}`}>
                               {u.role === 'admin' && <ShieldCheck size={11} />}
                               {u.role === 'admin' ? 'Admin' : 'User'}
                             </span>
                           </td>
-                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
+                          <td data-label="Created date" style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
                             {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                           </td>
                           <td>
@@ -882,7 +882,7 @@ export default function AdminView({
 
             {/* Servers Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
-              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <table className="sap-table sap-admin-compact-table sap-admin-table-cards-mobile" style={{ width: '100%' }}>
                 <colgroup>
                   <col style={{ width: 150 }} />
                   <col style={{ width: 120 }} />
@@ -908,13 +908,13 @@ export default function AdminView({
                     filteredServers.map((s) => (
                       <React.Fragment key={s.id}>
                         <tr>
-                        <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
+                        <td data-label="Server name" style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
                             <span>{s.name}</span>
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Environment">
                           <span className={`sap-env-badge ${
                             s.environment === 'PROD'
                               ? 'sap-env-badge-prod'
@@ -926,13 +926,13 @@ export default function AdminView({
                           }`}>
                             {formatEnvironment(s.environment)}</span>
                         </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
+                        <td data-label="Host / gateway" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
                           {s.ashost || 'N/A'}
                         </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
+                        <td data-label="Sys / client" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
                           Sys {s.sysnr || s.sys_number || '00'} | Client {s.client || '100'}
                         </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
+                        <td data-label="Username" style={{ whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--sap-text-dark)' }}>
                               {s.sap_username || <span style={{ color: 'var(--sap-text-subtle)', fontStyle: 'italic' }}>No User</span>}
@@ -1066,7 +1066,7 @@ export default function AdminView({
 
             {/* Permissions Table - Fixed Layout with Explicit Content-Based Widths */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%' }}>
-              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <table className="sap-table sap-admin-compact-table sap-admin-table-cards-mobile" style={{ width: '100%' }}>
                 <colgroup>
                   <col style={{ width: 210 }} />
                   <col style={{ width: 150 }} />

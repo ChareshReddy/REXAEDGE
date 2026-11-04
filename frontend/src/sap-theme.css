@@ -92,6 +92,29 @@
   --sap-popup-header-close-color: #C2410C;
   --sap-popup-header-close-hover-bg: #FED7AA;
   --sap-popup-header-close-active-bg: #FDBA74;
+
+  /* Standardized Responsive Breakpoint Tokens (Mobile-First) */
+  --bp-xs: 480px;
+  --bp-sm: 768px;
+  --bp-md: 1024px;
+  --bp-lg: 1280px;
+
+  /* Standardized Unified Z-Index Scale */
+  --z-base: 1;
+  --z-card: 10;
+  --z-sticky: 100;
+  --z-header: 500;
+  --z-dropdown: 1000;
+  --z-modal-backdrop: 2000;
+  --z-modal: 2050;
+  --z-toast: 3000;
+  --z-tooltip: 4000;
+
+  /* Safe Area Inset Fallbacks */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 @media (max-width: 768px) {
@@ -108,6 +131,91 @@ html, body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Dynamic Viewport Height & Safe Area Support */
+.sap-app-root,
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
+}
+
+/* Ensure flex and grid children can shrink properly and never force overflow */
+.sap-page-container,
+.fiori-body,
+.sap-structured-form-card,
+.fiori-ph,
+.sap-layout-header,
+.sap-form-group,
+.sap-form-input-wrapper {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Responsive media containment */
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Universal text wrapping to prevent emails, material numbers & tokens pushing layouts */
+.sap-table td,
+.sap-table th,
+.sap-user-dropdown-email,
+.sap-badge,
+.sap-chip,
+.fiori-ph-subtitle,
+.sap-layout-subtitle {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* Minimum 16px input font size below 768px to prevent iOS auto-zoom */
+@media (max-width: 767px) {
+  :root {
+    --sap-size-input: 16px !important;
+  }
+  input,
+  select,
+  textarea,
+  .sap-input,
+  .sap-form-input,
+  .sap-system-select,
+  .lg-input,
+  .sap-search-input,
+  .sap-table-search-input {
+    font-size: 16px !important;
+  }
+}
+
+/* Minimum 44x44px touch targets on touch devices */
+@media (pointer: coarse), (max-width: 767px) {
+  .sap-user-avatar-btn,
+  .sap-modal-close-btn,
+  .lg-pwd-toggle,
+  .sap-f4-trigger-btn {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .sap-app-root,
