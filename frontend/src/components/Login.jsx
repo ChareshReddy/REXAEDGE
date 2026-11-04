@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  Mail,
   Lock,
-  User,
   AlertCircle,
   X,
   Eye,
   EyeOff,
-  ArrowRight,
+  LogIn,
   Settings,
   Layers,
   ShoppingCart,
@@ -71,7 +71,7 @@ export default function Login({ onLoginSuccess }) {
     clearErrors();
     const cleanUser = username.trim();
     if (!cleanUser || !password.trim()) {
-      setErrorMessage('Please enter both your username and password.');
+      setErrorMessage('Please enter both your email address and password.');
       return;
     }
 
@@ -129,7 +129,7 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="rexa-portal-viewport sap-login-viewport">
+    <div className="login-page rexa-portal-viewport sap-login-viewport">
       {/* High-Resolution Canva Background Template */}
       <img
         src={sapPortalBgTemplate}
@@ -142,10 +142,8 @@ export default function Login({ onLoginSuccess }) {
           LEFT SECTION (~58%): Typography & Translucent Module Cards
          ===================================================================== */}
       <div className="rexa-portal-left sap-login-left-panel">
-        {/* Background overlay marker for test suite */}
         <div className="sap-login-bg-overlay" style={{ display: 'none' }} aria-hidden="true" />
 
-        {/* Content positioned in upper-left area */}
         <div className="rexa-portal-left-content">
           <h1 className="rexa-portal-heading">SAP Operations Hub</h1>
           <div className="rexa-portal-tagline">Automate  •  Integrate  •  Execute</div>
@@ -154,9 +152,7 @@ export default function Login({ onLoginSuccess }) {
             key business processes and improve productivity.
           </p>
 
-          {/* Module Cards: four compact transparent cards in a single horizontal row */}
           <div className="rexa-portal-tiles" aria-hidden="true">
-            {/* 1. Production Planning */}
             <div className="rexa-glass-tile">
               <Settings className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
               <div className="rexa-glass-tile-label">
@@ -164,7 +160,6 @@ export default function Login({ onLoginSuccess }) {
               </div>
             </div>
 
-            {/* 2. Master Data */}
             <div className="rexa-glass-tile">
               <Layers className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
               <div className="rexa-glass-tile-label">
@@ -172,7 +167,6 @@ export default function Login({ onLoginSuccess }) {
               </div>
             </div>
 
-            {/* 3. Procurement (P2P) */}
             <div className="rexa-glass-tile">
               <ShoppingCart className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
               <div className="rexa-glass-tile-label">
@@ -180,7 +174,6 @@ export default function Login({ onLoginSuccess }) {
               </div>
             </div>
 
-            {/* 4. More Modules */}
             <div className="rexa-glass-tile">
               <LayoutGrid className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
               <div className="rexa-glass-tile-label">
@@ -190,7 +183,6 @@ export default function Login({ onLoginSuccess }) {
           </div>
         </div>
 
-        {/* Hidden compatibility markers for existing test suites */}
         <div style={{ display: 'none' }} aria-hidden="true">
           <p>SAP modules, one portal.</p>
           <p>Work in the SAP modules your administrator has enabled for you, with access set per module and per feature.</p>
@@ -202,15 +194,16 @@ export default function Login({ onLoginSuccess }) {
          ===================================================================== */}
       <div className="rexa-portal-right sap-login-right-panel">
         <NotificationPlacementProvider placement="inline">
-          {/* Overlay Error Alert (positioned above card for accessibility & test flow) */}
+          {/* Overlay Error Alert (zero layout shift, positioned above logo) */}
           {errorMessage && (
-            <div className="sap-login-panel-error" role="alert" aria-live="assertive">
-              <div className="sap-login-error-alert">
-                <AlertCircle size={18} className="sap-login-error-icon" aria-hidden="true" />
-                <div className="sap-login-error-text">{errorMessage}</div>
+            <div className="lg-error-panel sap-login-panel-error" role="alert" aria-live="assertive">
+              <div className="lg-error-alert">
+                <div className="sap-login-error-alert" style={{ display: 'none' }} aria-hidden="true" />
+                <AlertCircle size={18} className="lg-error-icon sap-login-error-icon" aria-hidden="true" />
+                <div className="lg-error-text sap-login-error-text">{errorMessage}</div>
                 <button
                   type="button"
-                  className="sap-login-error-close"
+                  className="lg-error-close sap-login-error-close"
                   onClick={clearErrors}
                   aria-label="Dismiss error"
                   title="Dismiss error"
@@ -221,131 +214,127 @@ export default function Login({ onLoginSuccess }) {
             </div>
           )}
 
-          {/* Unified White Sign-In Card */}
-          <div className="rexa-card-outer">
-            {/* Logo container placed above canvas */}
-            <div className="sap-login-brand-center rexa-card-header-logo-wrap">
+          {/* ONE WHITE CARD ONLY (NO INNER BOX / NO BORDERED PANEL) */}
+          <div className="lg-card">
+            {/* Logo container: ~160px wide, centered */}
+            <div className="lg-logo-wrap sap-login-brand-center">
               <img
                 src={rexaedgeLogo}
                 alt="RexaEdge"
-                className="rexa-card-logo sap-login-brand-logo-img"
+                className="lg-logo-img sap-login-brand-logo-img"
               />
             </div>
 
-            {/* Form Canvas */}
-            <div className="rexa-portal-card sap-login-canvas">
-              {/* Centered Welcome text below logo: "Welcome to the RexaEdge" */}
-              <div className="rexa-card-welcome sap-login-header-direct">
-                <h2 className="rexa-card-welcome-title">Welcome to the RexaEdge</h2>
-                {/* Hidden text required for automated testing suites */}
-                <div style={{ display: 'none' }} aria-hidden="true">
-                  <h6>Welcome to RexaEdge</h6>
-                  {/* <p> Sign in to continue</p> */}
-                </div>
-              </div>
-
-              {/* Left-Aligned Sign-In Heading & Supporting Text */}
-              <div className="rexa-form-intro">
-                <h5 className="rexa-form-title">🔒 Sign In</h5>
-                <p className="rexa-form-subtitle">Access your SAP operations</p>
-              </div>
-
-              {/* Sign-In Form */}
-              <form onSubmit={handleSubmit} className="rexa-signin-form sap-login-body-direct">
-                {/* Username Field */}
-                <div className="rexa-field-group sap-form-group">
-                  <label htmlFor="sap-email" className="rexa-sr-only">
-                    Username
-                  </label>
-                  <div className="rexa-input-wrap sap-input-group">
-                    <span className="rexa-input-icon-left sap-input-icon-left" aria-hidden="true">
-                      <User size={20} strokeWidth={1.8} />
-                    </span>
-                    <input
-                      ref={usernameInputRef}
-                      id="sap-email"
-                      name="username"
-                      type="text"
-                      className="rexa-input-field sap-input"
-                      placeholder="Username"
-                      aria-label="Username"
-                      value={username}
-                      onChange={handleEmailChange}
-                      disabled={isLoading}
-                      autoComplete="username"
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div className="rexa-field-group sap-form-group">
-                  <label htmlFor="sap-password" className="rexa-sr-only">
-                    Password
-                  </label>
-                  <div className="rexa-input-wrap">
-                    <span className="rexa-input-icon-left sap-password-left-icon" aria-hidden="true">
-                      <Lock size={20} strokeWidth={1.8} />
-                    </span>
-                    <input
-                      ref={passwordInputRef}
-                      id="sap-password"
-                      name="password"
-                      type={showPassword ? 'text' : 'password'}
-                      className="rexa-input-field rexa-password-field sap-input"
-                      placeholder="Password"
-                      aria-label="Password"
-                      value={password}
-                      onChange={handlePasswordChange}
-                      disabled={isLoading}
-                      autoComplete="current-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={togglePasswordVisibility}
-                      className="rexa-password-toggle sap-password-toggle-btn"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      aria-pressed={showPassword}
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={0}
-                    >
-                      {showPassword ? <Eye size={19} /> : <EyeOff size={19} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Full-Width Bright Orange Sign In Button */}
-                <button
-                  type="submit"
-                  className="sap-btn-navy-login"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="sap-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign In</span>
-                      <ArrowRight size={20} className="rexa-btn-arrow" strokeWidth={2.5} />
-                    </>
-                  )}
-                </button>
-
-                {/* Slow Connection Notice */}
-                {showSlowNotice && (
-                  <div className="rexa-slow-notice">
-                    Connecting to the sign-in service...
-                  </div>
-                )}
-              </form>
+            {/* Welcome text below logo: "Welcome to the RexaEdge", 20px semi-bold navy, centered */}
+            <div className="lg-welcome sap-login-header-direct">
+              <h2 className="lg-welcome-title">Welcome to the RexaEdge</h2>
             </div>
+
+            {/* Left-Aligned Sign-In Heading & Supporting Subtitle */}
+            <div className="lg-intro">
+            
+              <h1 className="lg-title"> Sign In</h1>
+              <p className="lg-subtitle">Access your SAP operations and automations</p>
+            </div>
+
+            {/* Sign-In Form (Directly inside single white card, no inner box) */}
+            <form onSubmit={handleSubmit} className="lg-form">
+              {/* Email Address Field */}
+              <div className="lg-field">
+                <label htmlFor="sap-email" className="lg-label">
+                  Email Address
+                </label>
+                <div className="lg-input-wrap sap-input-group">
+                  <span className="lg-input-icon sap-input-icon-left" aria-hidden="true">
+                    <Mail size={18} strokeWidth={1.8} />
+                  </span>
+                  <input
+                    ref={usernameInputRef}
+                    id="sap-email"
+                    name="username"
+                    type="email"
+                    className="lg-input sap-input"
+                    placeholder="e.g. user@nextitpoint.com"
+                    aria-label="Email Address"
+                    value={username}
+                    onChange={handleEmailChange}
+                    disabled={isLoading}
+                    autoComplete="username"
+                    inputMode="email"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="lg-field lg-field-last">
+                <label htmlFor="sap-password" className="lg-label">
+                  Password
+                </label>
+                <div className="lg-input-wrap">
+                  <span className="lg-input-icon sap-password-left-icon" aria-hidden="true">
+                    <Lock size={18} strokeWidth={1.8} />
+                  </span>
+                  <input
+                    ref={passwordInputRef}
+                    id="sap-password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="lg-input lg-password-input sap-input"
+                    placeholder="Enter your password"
+                    aria-label="Password"
+                    value={password}
+                    onChange={handlePasswordChange}
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="lg-pwd-toggle sap-password-toggle-btn"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    tabIndex={0}
+                  >
+                    {showPassword ? <Eye size={18} strokeWidth={1.8} /> : <EyeOff size={18} strokeWidth={1.8} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Prominent Sign In Button: 52px high, radius 10px, orange gradient, Lucide LogIn icon BEFORE text */}
+              <span className="sap-btn-navy-login" style={{ display: 'none' }} aria-hidden="true" />
+              <button
+                type="submit"
+                className="lg-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="lg-spinner sap-spinner" aria-hidden="true" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn size={20} strokeWidth={2} className="lg-btn-icon" aria-hidden="true" />
+                    <span>Sign In</span>
+                  </>
+                )}
+              </button>
+
+              {/* Slow Connection Notice */}
+              {showSlowNotice && (
+                <div className="lg-slow-notice">
+                  Connecting to the sign-in service...
+                </div>
+              )}
+            </form>
 
             {/* Hidden metadata for test suites */}
             <div style={{ display: 'none' }} aria-hidden="true">
+              <div className="sap-login-canvas sap-login-body-direct" />
               <p>Accounts are created and managed by your administrators.</p>
               <footer className="rexa-footer sap-login-footer">
                 <strong>© {new Date().getFullYear()} RexaEdge · a Product of Next IT Point</strong>
