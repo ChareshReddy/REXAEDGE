@@ -69,6 +69,9 @@
   --sap-table-selected-bg: var(--sap-selected-bg, #FED7AA);
   --sap-table-border: var(--sap-border, #FED7AA);
   --sap-disabled-bg: var(--sap-card-nested-bg, #FFF1E3);
+  --sap-table-row-pad-y: 6px;
+  --sap-table-row-pad-x: 8px;
+  --sap-table-row-separator: rgba(253, 186, 116, 0.45);
 
   /* Typography / Text Colors (WCAG AA contrast: Navy headings, slate-600 secondary) */
   --sap-text: #0f2744;
@@ -1171,10 +1174,14 @@ select:-webkit-autofill:focus {
 }
 
 .sap-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--sap-border-subtle);
+  padding: var(--sap-table-row-pad-y, 6px) var(--sap-table-row-pad-x, 8px);
+  border-bottom: 1px solid var(--sap-table-row-separator, rgba(253, 186, 116, 0.45));
   color: #1e293b;
   vertical-align: middle;
+}
+
+.sap-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .sap-table tbody tr:hover {
