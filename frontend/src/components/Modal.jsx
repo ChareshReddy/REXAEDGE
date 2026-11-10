@@ -51,21 +51,28 @@ export default function Modal({
     // Prevent scrolling on the page behind the modal with no layout shift
     const unlock = lockScroll();
 
-    // Move initial focus into modal
+    // Move initial focus into modal (prioritizing form fields over header buttons)
     const focusTimer = setTimeout(() => {
       if (!modalCardRef.current) return;
-      const autoFocusEl = modalCardRef.current.querySelector('[autofocus]');
+      const autoFocusEl = modalCardRef.current.querySelector('[autofocus], [data-autofocus]');
       if (autoFocusEl) {
         autoFocusEl.focus();
+        return;
+      }
+      const firstField = modalCardRef.current.querySelector(
+        '.sap-modal-body input:not([disabled]):not([type="hidden"]), .sap-modal-body select:not([disabled]), .sap-modal-body textarea:not([disabled])'
+      );
+      if (firstField) {
+        firstField.focus();
+        return;
+      }
+      const focusable = modalCardRef.current.querySelectorAll(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        focusable[0].focus();
       } else {
-        const focusable = modalCardRef.current.querySelectorAll(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusable.length > 0) {
-          focusable[0].focus();
-        } else {
-          modalCardRef.current.focus();
-        }
+        modalCardRef.current.focus();
       }
     }, 40);
 
@@ -176,7 +183,7 @@ export default function Modal({
               headerContent
             ) : title ? (
               <div
-                className="sap-modal-header"
+                className="sap-modal-header rx-modal-header"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -185,37 +192,34 @@ export default function Modal({
                   minHeight: 'var(--popup-header-height, 60px)',
                   maxHeight: 'var(--popup-header-height, 60px)',
                   boxSizing: 'border-box',
-                  padding: '0 18px',
-                  background: 'var(--sap-popup-header-bg, #EEF4F9)',
-                  color: 'var(--sap-popup-header-title, #00204E)',
+                  padding: '0 20px',
+                  background: 'var(--color-blue-100, #DCE8F1)',
+                  color: 'var(--color-navy-900, #00204E)',
                   borderTopLeftRadius: 'inherit',
                   borderTopRightRadius: 'inherit',
-                  borderBottom: '1px solid var(--sap-popup-header-border, #D9E2EC)',
+                  borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
                   flexShrink: 0
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {Icon && (
-                    iconBadgeBg ? (
-                      <div
-                        className="sap-bulk-icon-badge"
-                        style={{
-                          backgroundColor: '#D9E2EC',
-                          color: '#05396B',
-                          borderColor: '#B3CDE0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: 28,
-                          height: 28,
-                          borderRadius: 4
-                        }}
-                      >
-                        <Icon size={16} color="#05396B" />
-                      </div>
-                    ) : (
-                      <Icon size={18} color="#05396B" style={{ flexShrink: 0 }} />
-                    )
+                    <div
+                      className="sap-bulk-icon-badge"
+                      style={{
+                        backgroundColor: 'var(--color-blue-200, #D9E2EC)',
+                        color: 'var(--color-blue-600, #02579A)',
+                        border: '1px solid var(--color-blue-300, #B3CDE0)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 'var(--radius-md, 6px)',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Icon size={18} />
+                    </div>
                   )}
                   <div>
                     <h3
@@ -224,7 +228,7 @@ export default function Modal({
                         fontSize: 18,
                         fontWeight: 700,
                         margin: 0,
-                        color: 'var(--sap-popup-header-title, #00204E)',
+                        color: 'var(--color-navy-900, #00204E)',
                         lineHeight: 1.2
                       }}
                     >
@@ -251,7 +255,14 @@ export default function Modal({
                       height: 36,
                       minWidth: 36,
                       minHeight: 36,
-                      padding: 0
+                      padding: 0,
+                      outline: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 'var(--radius-sm, 4px)',
+                      border: 'none',
+                      background: 'transparent'
                     }}
                     title={isLoading ? 'Operation in progress' : 'Cancel (Esc)'}
                     aria-label="Cancel (Esc)"

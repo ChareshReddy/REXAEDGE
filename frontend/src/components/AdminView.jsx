@@ -44,6 +44,8 @@ import { useToast } from '../context/ToastContext';
 import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
 import AdminActivityLogsView from './AdminActivityLogsView';
+import { FormSection } from './ui/form-layout';
+import { FieldWrapper } from './ui/FieldWrapper';
 import { formatEnvironment } from '../utils/textFormatters';
 import { useRouter } from '../context/RouterContext';
 import { ROUTE_IDS } from '../config/routes';
@@ -1522,304 +1524,320 @@ export default function AdminView({
         title={editingServerId ? 'Edit SAP Server' : 'Add SAP Server'}
         icon={Server}
         isLoading={serverSubmitting}
-        maxWidth={560}
-        style={{ maxHeight: '90vh' }}
+        maxWidth={780}
+        width="min(780px, 95vw)"
+        padding="16px 20px"
+        style={{ maxHeight: 'min(980px, 94vh)' }}
+        footer={
+          <>
+            <button
+              type="button"
+              className="rx-btn rx-btn-secondary"
+              onClick={() => setIsServerModalOpen(false)}
+              disabled={serverSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="sap-server-form"
+              className="rx-btn rx-btn-primary min-w-[120px]"
+              disabled={serverSubmitting}
+            >
+              {serverSubmitting ? 'Saving...' : editingServerId ? 'Update Server' : 'Add Server'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSaveServer}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Server Display Name</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="e.g. Relaxo S4A Sandbox"
-                    value={serverFormData.name}
-                    onChange={(e) => setServerFormData({ ...serverFormData, name: e.target.value })}
-                    required
-                    autoFocus
-                  />
-                </div>
+        <form id="sap-server-form" onSubmit={handleSaveServer} className="rx-server-modal-form flex flex-col gap-4">
+          {serverModalError && (
+            <div className="rx-field-error text-xs p-3 rounded-[var(--radius-md)] bg-[var(--color-danger-bg)] border border-[var(--color-danger-border)] text-[var(--color-danger)] flex items-center gap-2" role="alert">
+              <AlertTriangle size={15} className="shrink-0" />
+              <span>{serverModalError}</span>
+            </div>
+          )}
 
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Environment</label>
-                  <select
-                    className="sap-input"
-                    value={serverFormData.environment}
-                    onChange={(e) => setServerFormData({ ...serverFormData, environment: e.target.value })}
-                  >
-                    <option value="SANDBOX">Sandbox</option>
-                    <option value="DEV">Dev (Development)</option>
-                    <option value="QA">Qa (Quality/Staging)</option>
-                    <option value="PROD">Prod (Production)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="sap-form-group">
-                <label className="sap-form-label">Application Host (ashost / IP / DNS)</label>
+          {/* Section 1: Server */}
+          <FormSection title="Server" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-4">
+              <FieldWrapper
+                label="Server Display Name"
+                htmlFor="server-name"
+                required
+                error={(serverSubmitted || serverFormTouched.name) ? serverFormErrors.name || null : null}
+              >
                 <input
+                  id="server-name"
                   type="text"
-                  className="sap-input"
+                  data-autofocus="true"
+                  className={`rx-input ${((serverSubmitted || serverFormTouched.name) && serverFormErrors.name) ? 'rx-input-error' : ''}`}
+                  placeholder="e.g. Relaxo S4A Sandbox"
+                  value={serverFormData.name}
+                  onChange={(e) => setServerFormData({ ...serverFormData, name: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Environment"
+                htmlFor="server-env"
+              >
+                <select
+                  id="server-env"
+                  className="rx-select"
+                  value={serverFormData.environment}
+                  onChange={(e) => setServerFormData({ ...serverFormData, environment: e.target.value })}
+                >
+                  <option value="SANDBOX">Sandbox</option>
+                  <option value="DEV">Dev (Development)</option>
+                  <option value="QA">Qa (Quality/Staging)</option>
+                  <option value="PROD">Prod (Production)</option>
+                </select>
+              </FieldWrapper>
+            </div>
+          </FormSection>
+
+          {/* Section 2: Connection */}
+          <FormSection title="Connection" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldWrapper
+                label="Application Host"
+                htmlFor="server-ashost"
+                required
+                error={(serverSubmitted || serverFormTouched.ashost) ? serverFormErrors.ashost || null : null}
+              >
+                <input
+                  id="server-ashost"
+                  type="text"
+                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.ashost) && serverFormErrors.ashost) ? 'rx-input-error' : ''}`}
                   placeholder="e.g. 192.168.12.241 or sapdev.corp.net"
                   value={serverFormData.ashost}
                   onChange={(e) => setServerFormData({ ...serverFormData, ashost: e.target.value })}
                   required
                 />
-              </div>
+              </FieldWrapper>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Sysnr (Instance)</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="09"
-                    value={serverFormData.sysnr}
-                    onChange={(e) => setServerFormData({ ...serverFormData, sysnr: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Client</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="500"
-                    value={serverFormData.client}
-                    onChange={(e) => setServerFormData({ ...serverFormData, client: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Language</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="EN"
-                    value={serverFormData.lang}
-                    onChange={(e) => setServerFormData({ ...serverFormData, lang: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 12 }}>
-                <div className="sap-form-group">
-                  <label className="sap-form-label">SAP Router (Optional)</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="/H/103.206.249.51/H/"
-                    value={serverFormData.router}
-                    onChange={(e) => setServerFormData({ ...serverFormData, router: e.target.value })}
-                  />
-                </div>
-
-                <div className="sap-form-group">
-                  <label className="sap-form-label">Gateway Serv</label>
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="3309"
-                    value={serverFormData.gwserv}
-                    onChange={(e) => setServerFormData({ ...serverFormData, gwserv: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* SAP RFC Credentials Card */}
-              <div style={{
-                marginTop: 12,
-                marginBottom: 16,
-                padding: '12px 14px',
-                background: 'var(--sap-surface-subtle)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--sap-border-subtle)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                    SAP RFC Credentials
-                  </label>
-                  {editingServerId && (
-                    <span style={{ fontSize: 11, color: 'var(--sap-text-subtle)' }}>
-                      Leave password empty to keep existing password
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label">SAP Username</label>
-                    <input
-                      type="text"
-                      className="sap-input"
-                      placeholder="e.g. RFC_USER"
-                      value={serverFormData.sap_username}
-                      onChange={(e) => setServerFormData({ ...serverFormData, sap_username: e.target.value })}
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label">
-                      SAP Password {editingServerId ? '(Leave blank to keep current)' : ''}
-                    </label>
-                    <PasswordInput
-                      placeholder={editingServerId ? '••••••••  (Unchanged)' : 'Enter RFC password'}
-                      value={serverFormData.sap_password}
-                      onChange={(e) => setServerFormData({ ...serverFormData, sap_password: e.target.value })}
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Connection Limits Section */}
-              <div style={{
-                marginTop: 12,
-                marginBottom: 16,
-                padding: '12px 14px',
-                background: 'var(--sap-surface-subtle)',
-                borderRadius: 'var(--radius-lg, 8px)',
-                border: '1px solid var(--sap-border-subtle)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                    Connection limits
-                  </label>
-                  <span style={{ fontSize: 11, color: 'var(--sap-text-subtle)' }}>
-                    Applied live without restart
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label" htmlFor="server-max-conn">Max connections (1–20)</label>
-                    <input
-                      id="server-max-conn"
-                      type="number"
-                      min={1}
-                      max={20}
-                      className={`sap-input ${((serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections) ? 'sap-input-error' : ''}`}
-                      value={serverFormData.max_connections}
-                      onChange={(e) => handleServerFieldChange('max_connections', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                      onBlur={() => handleServerFieldBlur('max_connections')}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
-                      Ask your SAP Basis team for the allowed parallel connections.
-                    </div>
-                    {(serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections && (
-                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
-                        {serverFormErrors.max_connections}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label" htmlFor="server-user-limit">Per-user limit</label>
-                    <input
-                      id="server-user-limit"
-                      type="number"
-                      min={1}
-                      max={serverFormData.max_connections || 20}
-                      className={`sap-input ${((serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit) ? 'sap-input-error' : ''}`}
-                      value={serverFormData.per_user_limit}
-                      onChange={(e) => handleServerFieldChange('per_user_limit', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                      onBlur={() => handleServerFieldBlur('per_user_limit')}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
-                      Prevents one user&apos;s bulk run from starving others.
-                    </div>
-                    {(serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit && (
-                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
-                        {serverFormErrors.per_user_limit}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label" htmlFor="server-queue-timeout">Queue wait timeout (seconds, 5–120)</label>
-                    <input
-                      id="server-queue-timeout"
-                      type="number"
-                      min={5}
-                      max={120}
-                      className={`sap-input ${((serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds) ? 'sap-input-error' : ''}`}
-                      value={serverFormData.queue_timeout_seconds}
-                      onChange={(e) => handleServerFieldChange('queue_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                      onBlur={() => handleServerFieldBlur('queue_timeout_seconds')}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
-                      How long a request waits in queue before failing fast.
-                    </div>
-                    {(serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds && (
-                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
-                        {serverFormErrors.queue_timeout_seconds}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
-                    <label className="sap-form-label" htmlFor="server-call-timeout">SAP call timeout (seconds, 10–300)</label>
-                    <input
-                      id="server-call-timeout"
-                      type="number"
-                      min={10}
-                      max={300}
-                      className={`sap-input ${((serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds) ? 'sap-input-error' : ''}`}
-                      value={serverFormData.rfc_call_timeout_seconds}
-                      onChange={(e) => handleServerFieldChange('rfc_call_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                      onBlur={() => handleServerFieldBlur('rfc_call_timeout_seconds')}
-                    />
-                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
-                      Abort slow RFC calls to avoid hanging the app.
-                    </div>
-                    {(serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds && (
-                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
-                        {serverFormErrors.rfc_call_timeout_seconds}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, marginBottom: 16 }}>
+              <FieldWrapper
+                label="SAP Router"
+                htmlFor="server-router"
+              >
                 <input
-                  type="checkbox"
-                  id="server-active-check"
-                  checked={serverFormData.is_active}
-                  onChange={(e) => setServerFormData({ ...serverFormData, is_active: e.target.checked })}
-                  style={{ width: 16, height: 16 }}
+                  id="server-router"
+                  type="text"
+                  className="rx-input rx-input-mono"
+                  placeholder="/H/103.206.249.51/H/"
+                  value={serverFormData.router}
+                  onChange={(e) => setServerFormData({ ...serverFormData, router: e.target.value })}
                 />
-                <label htmlFor="server-active-check" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
-                  Server is active and available for connections
-                </label>
-              </div>
+              </FieldWrapper>
+            </div>
 
-              <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={() => setIsServerModalOpen(false)}
-                  disabled={serverSubmitting}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="sap-button primary"
-                  disabled={serverSubmitting}
-                  style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
-                >
-                  {serverSubmitting ? 'Saving...' : editingServerId ? 'Update Server' : 'Add Server'}
-                </button>
-              </div>
-            </form>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <FieldWrapper
+                label="Sysnr (Instance)"
+                htmlFor="server-sysnr"
+                required
+                error={(serverSubmitted || serverFormTouched.sysnr) ? serverFormErrors.sysnr || null : null}
+              >
+                <input
+                  id="server-sysnr"
+                  type="text"
+                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.sysnr) && serverFormErrors.sysnr) ? 'rx-input-error' : ''}`}
+                  placeholder="09"
+                  value={serverFormData.sysnr}
+                  onChange={(e) => setServerFormData({ ...serverFormData, sysnr: e.target.value })}
+                  required
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Client"
+                htmlFor="server-client"
+                required
+                error={(serverSubmitted || serverFormTouched.client) ? serverFormErrors.client || null : null}
+              >
+                <input
+                  id="server-client"
+                  type="text"
+                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.client) && serverFormErrors.client) ? 'rx-input-error' : ''}`}
+                  placeholder="500"
+                  value={serverFormData.client}
+                  onChange={(e) => setServerFormData({ ...serverFormData, client: e.target.value })}
+                  required
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Language"
+                htmlFor="server-lang"
+              >
+                <input
+                  id="server-lang"
+                  type="text"
+                  className="rx-input rx-input-mono"
+                  placeholder="EN"
+                  value={serverFormData.lang}
+                  onChange={(e) => setServerFormData({ ...serverFormData, lang: e.target.value })}
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Gateway Service"
+                htmlFor="server-gwserv"
+              >
+                <input
+                  id="server-gwserv"
+                  type="text"
+                  className="rx-input rx-input-mono"
+                  placeholder="3309"
+                  value={serverFormData.gwserv}
+                  onChange={(e) => setServerFormData({ ...serverFormData, gwserv: e.target.value })}
+                />
+              </FieldWrapper>
+            </div>
+          </FormSection>
+
+          {/* Section 3: Credentials */}
+          <FormSection title="Credentials" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldWrapper
+                label="SAP Username"
+                htmlFor="server-username"
+                required
+                error={(serverSubmitted || serverFormTouched.sap_username) ? serverFormErrors.sap_username || null : null}
+              >
+                <input
+                  id="server-username"
+                  type="text"
+                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.sap_username) && serverFormErrors.sap_username) ? 'rx-input-error' : ''}`}
+                  placeholder="e.g. RFC_USER"
+                  value={serverFormData.sap_username}
+                  onChange={(e) => setServerFormData({ ...serverFormData, sap_username: e.target.value })}
+                  autoComplete="off"
+                  required
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="SAP Password"
+                htmlFor="server-password"
+                required={!editingServerId}
+                hint={editingServerId ? "Leave blank to keep the current password" : null}
+                error={(serverSubmitted || serverFormTouched.sap_password) ? serverFormErrors.sap_password || null : null}
+              >
+                <PasswordInput
+                  id="server-password"
+                  placeholder={editingServerId ? "Unchanged" : "Enter RFC password"}
+                  value={serverFormData.sap_password}
+                  onChange={(e) => setServerFormData({ ...serverFormData, sap_password: e.target.value })}
+                  autoComplete="new-password"
+                  required={!editingServerId}
+                  className="rx-input rx-input-mono"
+                  inputStyle={{ height: 'var(--size-form-input-height, 40px)' }}
+                />
+              </FieldWrapper>
+            </div>
+          </FormSection>
+
+          {/* Section 4: Connection limits */}
+          <FormSection
+            title="Connection limits"
+            badge={<span className="text-xs text-[var(--color-text-secondary)] font-normal">Applied live without restart</span>}
+            className="rx-server-modal-section"
+            bodyClassName="p-4 flex flex-col gap-4"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldWrapper
+                label="Max connections"
+                htmlFor="server-max-conn"
+                hint="1 to 20. Allowed parallel connections."
+                error={(serverSubmitted || serverFormTouched.max_connections) ? serverFormErrors.max_connections || null : null}
+              >
+                <input
+                  id="server-max-conn"
+                  type="number"
+                  min={1}
+                  max={20}
+                  className={`rx-input ${((serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections) ? 'rx-input-error' : ''}`}
+                  value={serverFormData.max_connections}
+                  onChange={(e) => handleServerFieldChange('max_connections', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onBlur={() => handleServerFieldBlur('max_connections')}
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="Per-user limit"
+                htmlFor="server-user-limit"
+                hint="1 to max connections. Prevents starvation."
+                error={(serverSubmitted || serverFormTouched.per_user_limit) ? serverFormErrors.per_user_limit || null : null}
+              >
+                <input
+                  id="server-user-limit"
+                  type="number"
+                  min={1}
+                  max={serverFormData.max_connections || 20}
+                  className={`rx-input ${((serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit) ? 'rx-input-error' : ''}`}
+                  value={serverFormData.per_user_limit}
+                  onChange={(e) => handleServerFieldChange('per_user_limit', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onBlur={() => handleServerFieldBlur('per_user_limit')}
+                />
+              </FieldWrapper>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FieldWrapper
+                label="Queue wait timeout (seconds)"
+                htmlFor="server-queue-timeout"
+                hint="5 to 120 seconds. Wait before fast fail."
+                error={(serverSubmitted || serverFormTouched.queue_timeout_seconds) ? serverFormErrors.queue_timeout_seconds || null : null}
+              >
+                <input
+                  id="server-queue-timeout"
+                  type="number"
+                  min={5}
+                  max={120}
+                  className={`rx-input ${((serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds) ? 'rx-input-error' : ''}`}
+                  value={serverFormData.queue_timeout_seconds}
+                  onChange={(e) => handleServerFieldChange('queue_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onBlur={() => handleServerFieldBlur('queue_timeout_seconds')}
+                />
+              </FieldWrapper>
+
+              <FieldWrapper
+                label="SAP call timeout (seconds)"
+                htmlFor="server-call-timeout"
+                hint="10 to 300 seconds. Abort slow calls."
+                error={(serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) ? serverFormErrors.rfc_call_timeout_seconds || null : null}
+              >
+                <input
+                  id="server-call-timeout"
+                  type="number"
+                  min={10}
+                  max={300}
+                  className={`rx-input ${((serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds) ? 'rx-input-error' : ''}`}
+                  value={serverFormData.rfc_call_timeout_seconds}
+                  onChange={(e) => handleServerFieldChange('rfc_call_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onBlur={() => handleServerFieldBlur('rfc_call_timeout_seconds')}
+                />
+              </FieldWrapper>
+            </div>
+          </FormSection>
+
+          {/* Active Checkbox */}
+          <div className="flex items-center gap-2.5 px-1 pt-1 pb-1">
+            <input
+              type="checkbox"
+              id="server-active-check"
+              checked={serverFormData.is_active}
+              onChange={(e) => setServerFormData({ ...serverFormData, is_active: e.target.checked })}
+              className="rx-checkbox h-4 w-4 rounded cursor-pointer accent-[var(--color-blue-600)]"
+            />
+            <label htmlFor="server-active-check" className="text-[13px] font-medium text-[var(--color-navy-900)] cursor-pointer select-none">
+              Server is active and available for connections
+            </label>
+          </div>
+        </form>
       </Modal>
 
       {/* =========================================================================

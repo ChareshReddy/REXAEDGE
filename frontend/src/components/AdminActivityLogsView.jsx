@@ -758,7 +758,7 @@ export default function AdminActivityLogsView({
               marginTop: 4,
               fontSize: 12,
               fontWeight: 500,
-              color: 'var(--color-danger, #dc2626)'
+              color: 'var(--color-danger)'
             }}
           >
             <AlertCircle size={14} />

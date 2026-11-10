@@ -858,7 +858,7 @@ export default function BulkBomView({
       <FioriPageHeader
         title="Copy Bulk BOM"
         extraTitleContent={<SingleBulkSwitch operation="copy" mode="bulk" />}
-        subtitle="Upload a spreadsheet to copy multiple BOMs across plants with automatic alternative numbers."
+        subtitle="Upload a excel file to copy multiple BOMs across plants."
         onBack={onBack}
         backTitle={isExecuting ? 'Operation in progress' : 'Back to Copy BOM'}
         isLocked={isExecuting}
