@@ -28,7 +28,6 @@ import {
 import Tooltip from './Tooltip';
 import Notification from './Notification';
 import { useToast } from '../context/ToastContext';
-import { SearchInput } from './ui/search-input';
 import { FormSection } from './ui/form-layout';
 import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv, getAvailableServers } from '../services/api';
 import { useRouter } from '../context/RouterContext';
@@ -356,7 +355,6 @@ export default function AdminActivityLogsView({
     setServerFilter('');
     setStatusFilter('');
     setHttpStatusFilter('');
-    setSearchQuery('');
     setPage(1);
   };
 
@@ -551,7 +549,7 @@ export default function AdminActivityLogsView({
       {/* Filter Bar */}
       <div className="sap-logs-filter-bar rx-card" style={{ padding: "var(--space-20) var(--space-24)", marginBottom: "var(--space-16)", backgroundColor: "var(--color-surface, #FFFFFF)", border: "1px solid var(--color-border, #D9E2EC)", borderRadius: "var(--radius-lg, 12px)" }}>
         {/* Date Range Preset */}
-        <div className="sap-logs-filter-item">
+        <div className="sap-logs-filter-item sap-logs-filter-item-date">
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             Date Range
           </label>
@@ -564,6 +562,7 @@ export default function AdminActivityLogsView({
             className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
           >
             <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
             <option value="custom">Custom Date Range</option>
@@ -574,23 +573,23 @@ export default function AdminActivityLogsView({
         {/* Custom Start & End Date if datePreset === 'custom' */}
         {datePreset === 'custom' && (
           <>
-            <div className="sap-logs-filter-item">
+            <div className="sap-logs-filter-item sap-logs-filter-item-date">
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 Start Date
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={customStartDate}
                 onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
                 className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
               />
             </div>
-            <div className="sap-logs-filter-item">
+            <div className="sap-logs-filter-item sap-logs-filter-item-date">
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 End Date
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={customEndDate}
                 onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
                 className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
@@ -719,19 +718,6 @@ export default function AdminActivityLogsView({
           </div>
         )}
 
-        {/* Text Search */}
-        <div className="sap-logs-filter-search">
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
-            Search Text
-          </label>
-          <SearchInput
-            placeholder={activeSubTab === 'audit' ? 'Search target, message...' : 'Search ref, message, route...'}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-            onClear={() => { setSearchQuery(''); setPage(1); }}
-          />
-        </div>
-
         {/* Reset Button */}
         <div className="sap-logs-filter-reset" style={{ display: 'flex', alignItems: 'flex-end' }}>
           <button
@@ -757,6 +743,28 @@ export default function AdminActivityLogsView({
             <span>Reset</span>
           </button>
         </div>
+
+        {/* Inline Custom Date Error */}
+        {datePreset === 'custom' && customDateError && (
+          <div
+            className="sap-logs-date-error"
+            role="alert"
+            style={{
+              flexBasis: '100%',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 4,
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--color-danger, #dc2626)'
+            }}
+          >
+            <AlertCircle size={14} />
+            <span>{customDateError}</span>
+          </div>
+        )}
       </div>
 
       {/* Main Table Card with Full-Bleed Tinted Header Band */}
@@ -799,12 +807,12 @@ export default function AdminActivityLogsView({
           >
             <colgroup>
               <col style={{ width: '18%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, borderBottom: '1px solid var(--color-border)' }}>
               <tr>
@@ -983,12 +991,13 @@ export default function AdminActivityLogsView({
                         )}
                       </td>
                       <td
-                        className="rx-audit-col-standard"
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+                        className="rx-audit-col-standard rx-audit-col-status"
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'visible', textOverflow: 'clip' }}
                         title={statusDisplay}
                       >
                         {item.status === 'success' ? (
                           <span
+                            className="rx-status-badge-success"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1007,7 +1016,7 @@ export default function AdminActivityLogsView({
                           </span>
                         ) : (
                           <span
-                            className="sap-badge-failed"
+                            className="rx-status-badge-failed sap-badge-failed"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -1030,27 +1039,28 @@ export default function AdminActivityLogsView({
                       >
                         {durationDisplay}
                       </td>
-                      <td className="rx-audit-col-standard" style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                      <td className="rx-audit-col-standard rx-audit-col-actions" style={{ padding: '0 2px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'clip' }}>
                         <button
                           type="button"
                           onClick={() => handleOpenDetail(item)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 4,
-                            padding: '4px 8px',
+                            gap: 2,
+                            padding: '2px 4px',
                             borderRadius: 4,
                             border: '1px solid #d1d5db',
                             backgroundColor: '#ffffff',
                             cursor: 'pointer',
                             fontSize: 11,
+                            lineHeight: 1.2,
                             color: '#02579A',
                             margin: '0 auto'
                           }}
                           title="View log details"
                           aria-label="View log details"
                         >
-                          <Eye size={12} />
+                          <Eye size={11} />
                           <span>Detail</span>
                         </button>
                       </td>

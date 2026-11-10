@@ -187,6 +187,36 @@ export const mockAdminLogs = [
     ip: '127.0.0.1',
     message: 'F4 value lookup cache invalidated after schema update',
     details: { cleared_keys: 14 }
+  },
+  {
+    id: 'log-audit-5',
+    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    user_email: 'security.auditor@rexaedge.com',
+    action: 'admin.permission_grant',
+    target: 'srv-1',
+    server_id: 'srv-1',
+    server_name: 'SAP DEV 01',
+    status: 'success',
+    duration_ms: 65,
+    request_id: 'req_sec_grant_05',
+    ip: '10.0.2.20',
+    message: 'Granted BOM creation permission to user-1',
+    details: { permission: 'bom_create' }
+  },
+  {
+    id: 'log-audit-6',
+    created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    user_email: 'admin@rexaedge.com',
+    action: 'admin.user_create',
+    target: 'user-new@rexaedge.com',
+    server_id: null,
+    server_name: null,
+    status: 'success',
+    duration_ms: 150,
+    request_id: 'req_user_add_06',
+    ip: '192.168.1.100',
+    message: 'Created new user account',
+    details: { user_email: 'user-new@rexaedge.com' }
   }
 ];
 
@@ -398,7 +428,44 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       return respondJson({ success: true, data: matched });
     }
     if (url.includes('/api/admin/logs') || url.includes('/api/logs')) {
-      return respondJson({ success: true, data: mockAdminLogs, logs: mockAdminLogs, count: mockAdminLogs.length, total: mockAdminLogs.length });
+      const parsedUrl = new URL(url, 'http://localhost');
+      const startDateParam = parsedUrl.searchParams.get('startDate');
+      const endDateParam = parsedUrl.searchParams.get('endDate');
+      const statusParam = parsedUrl.searchParams.get('status');
+      const serverIdParam = parsedUrl.searchParams.get('serverId');
+      const userEmailParam = parsedUrl.searchParams.get('userEmail');
+      const actionParam = parsedUrl.searchParams.get('action');
+
+      let filtered = [...mockAdminLogs];
+
+      if (startDateParam) {
+        const start = new Date(startDateParam).getTime();
+        filtered = filtered.filter((l) => new Date(l.created_at).getTime() >= start);
+      }
+      if (endDateParam) {
+        const end = new Date(endDateParam).getTime();
+        filtered = filtered.filter((l) => new Date(l.created_at).getTime() <= end);
+      }
+      if (statusParam) {
+        filtered = filtered.filter((l) => l.status === statusParam);
+      }
+      if (serverIdParam) {
+        filtered = filtered.filter((l) => l.server_id === serverIdParam);
+      }
+      if (userEmailParam) {
+        filtered = filtered.filter((l) => l.user_email?.toLowerCase().includes(userEmailParam.toLowerCase()));
+      }
+      if (actionParam) {
+        filtered = filtered.filter((l) => l.action === actionParam);
+      }
+
+      return respondJson({
+        success: true,
+        data: filtered,
+        logs: filtered,
+        count: filtered.length,
+        total: filtered.length
+      });
     }
 
     // 19. BOM Explorer / read / display

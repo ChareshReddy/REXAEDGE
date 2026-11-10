@@ -1597,7 +1597,7 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 .sap-logs-filter-bar {
   display: flex !important;
   flex-wrap: wrap !important;
-  gap: 10px !important;
+  gap: 12px !important;
   align-items: flex-end !important;
   background-color: var(--color-surface, #ffffff) !important;
   border: 1px solid var(--color-border, #D9E2EC) !important;
@@ -1607,13 +1607,13 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 }
 
 .sap-logs-filter-item {
-  flex: 1 1 130px;
-  min-width: 120px;
+  flex: 1 1 150px;
+  min-width: 140px;
 }
 
-.sap-logs-filter-search {
-  flex: 2 1 180px;
-  min-width: 160px;
+.sap-logs-filter-item-date {
+  flex: 1.2 1 175px;
+  min-width: 175px;
 }
 
 .sap-logs-filter-reset {
@@ -1622,17 +1622,29 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
 
 @media (min-width: 1366px) {
   .sap-logs-filter-bar {
-    flex-wrap: nowrap !important;
-    gap: 8px !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
   }
   .sap-logs-filter-item {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
+    flex: 1 1 150px !important;
+    min-width: 140px !important;
   }
-  .sap-logs-filter-search {
-    flex: 1.5 1 0 !important;
-    min-width: 0 !important;
+  .sap-logs-filter-item-date {
+    flex: 1.2 1 175px !important;
+    min-width: 175px !important;
   }
+}
+
+.rx-audit-table td.rx-audit-col-status,
+.rx-audit-table th.rx-audit-th-status {
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.rx-audit-table td.rx-audit-col-actions,
+.rx-audit-table td:last-child {
+  overflow: hidden !important;
+  text-overflow: clip !important;
 }
 
 /* Admin compact table font, row height, and padding standards */
