@@ -1008,51 +1008,68 @@ table.rx-audit-table {
   box-sizing: border-box;
 }
 
+/* All header cells share the same standard blue-200 background */
+.rx-audit-table th,
+table.rx-audit-table th,
 .rx-audit-table th.rx-audit-th-highlight,
-table.rx-audit-table th.rx-audit-th-highlight {
-  background-color: var(--color-blue-100, #DCE8F1) !important;
-  color: var(--color-blue-700, #034375) !important;
-  font-weight: var(--font-weight-semibold, 600) !important;
-}
-
+table.rx-audit-table th.rx-audit-th-highlight,
 .rx-audit-table th.rx-audit-th-standard,
 table.rx-audit-table th.rx-audit-th-standard {
-  background-color: var(--color-blue-50, #EEF4F9) !important;
-  color: var(--color-text-main, #1e293b) !important;
+  background-color: var(--color-blue-200, #B3CDE0) !important;
+  color: var(--color-navy-900, #00204E) !important;
   font-weight: var(--font-weight-semibold, 600) !important;
+  font-size: var(--font-size-12, 12px) !important;
+  border-bottom: 1px solid var(--color-border, #D9E2EC) !important;
+  vertical-align: middle !important;
+  box-sizing: border-box;
 }
 
-.rx-audit-table td.rx-audit-col-divider,
-.rx-audit-table th.rx-audit-th-divider,
-table.rx-audit-table td.rx-audit-col-divider,
-table.rx-audit-table th.rx-audit-th-divider {
-  border-right: 1px solid var(--color-border-input, #C7D4E1) !important;
-}
-
+/* Body cells inherit tr background for full-row zebra striping and highlights */
+.rx-audit-table td,
+table.rx-audit-table td,
 .rx-audit-table td.rx-audit-col-highlight,
-table.rx-audit-table td.rx-audit-col-highlight {
-  background-color: var(--color-blue-50, #EEF4F9) !important;
-  font-weight: var(--font-weight-medium, 500) !important;
-  font-variant-numeric: tabular-nums !important;
-  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
+table.rx-audit-table td.rx-audit-col-highlight,
+.rx-audit-table td.rx-audit-col-standard,
+table.rx-audit-table td.rx-audit-col-standard {
+  background-color: transparent !important;
+  color: var(--color-text, #0F2742);
+  font-size: var(--font-size-12, 12px);
+  vertical-align: middle !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  box-sizing: border-box;
 }
 
-.rx-audit-table tbody tr:hover td.rx-audit-col-highlight {
-  background-color: var(--color-blue-100, #DCE8F1) !important;
-}
-
+/* Row hover highlight spans full row evenly */
+.rx-audit-table tbody tr:hover td,
+.rx-audit-table tbody tr:hover td.rx-audit-col-highlight,
 .rx-audit-table tbody tr:hover td.rx-audit-col-standard {
   background-color: var(--color-blue-50, #EEF4F9) !important;
 }
 
-.rx-audit-table tbody tr.selected td.rx-audit-col-highlight {
-  background-color: var(--color-blue-200, #B3CDE0) !important;
-}
-
+/* Selected row highlight spans full row evenly */
+.rx-audit-table tbody tr.selected td,
+.rx-audit-table tbody tr.selected td.rx-audit-col-highlight,
 .rx-audit-table tbody tr.selected td.rx-audit-col-standard {
   background-color: var(--color-blue-100, #DCE8F1) !important;
+}
+
+/* Timestamp column never truncates */
+.rx-audit-table td.rx-audit-col-timestamp,
+table.rx-audit-table td.rx-audit-col-timestamp,
+.rx-table td.rx-audit-col-timestamp {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+/* Actions column alignment centered */
+.rx-audit-table th.actions-column,
+.rx-audit-table td.actions-column,
+.rx-audit-table th.rx-audit-th-actions,
+.rx-audit-table td.rx-audit-col-actions {
+  text-align: center !important;
 }
 
 .rx-audit-server-badge {

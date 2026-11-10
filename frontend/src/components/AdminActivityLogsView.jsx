@@ -781,7 +781,7 @@ export default function AdminActivityLogsView({
         aria-label={`${activeSubTab === 'audit' ? 'Audit' : 'Error'} Logs Table`}
         style={{
           width: '100%',
-          overflowX: 'hidden',
+          overflowX: 'auto',
           overflowY: 'auto',
           height: 'calc(100vh - 350px)',
           minHeight: 400,
@@ -800,53 +800,54 @@ export default function AdminActivityLogsView({
             className="sap-table rx-audit-table"
             style={{
               width: '100%',
+              minWidth: 1040,
               tableLayout: 'fixed',
               borderCollapse: 'collapse',
               boxSizing: 'border-box'
             }}
           >
             <colgroup>
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '20%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '7%' }} />
+              <col style={{ width: 205, minWidth: 205 }} />
+              <col style={{ width: 'auto', minWidth: 160 }} />
+              <col style={{ width: 200, minWidth: 200 }} />
+              <col style={{ width: 160, minWidth: 160 }} />
+              <col style={{ width: 110, minWidth: 110 }} />
+              <col style={{ width: 90, minWidth: 90 }} />
+              <col style={{ width: 110, minWidth: 110 }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 3, borderBottom: '1px solid var(--color-border)' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--color-blue-200)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
-                <th className="rx-audit-th-highlight" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 12px', height: 40 }}>
                   <Tooltip text="Timestamp when action occurred">
                     <span style={{ fontSize: 12 }}>Timestamp</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-highlight" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 12px', height: 40 }}>
                   <Tooltip text="User email who performed action">
                     <span style={{ fontSize: 12 }}>User</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-highlight rx-audit-th-divider" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 10px', height: 40 }}>
                   <Tooltip text="Action type in feature.action format">
                     <span style={{ fontSize: 12 }}>Action</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 10px', height: 40 }}>
                   <Tooltip text="Target SAP Server">
                     <span style={{ fontSize: 12 }}>Server</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 8px', height: 40 }}>
                   <Tooltip text="Execution outcome">
                     <span style={{ fontSize: 12 }}>Status</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
+                <th style={{ padding: '0 10px', height: 40, textAlign: 'right' }}>
                   <Tooltip text="Duration of request in milliseconds">
                     <span style={{ fontSize: 12 }}>Duration</span>
                   </Tooltip>
                 </th>
-                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38, textAlign: 'center' }}>
+                <th className="actions-column" style={{ padding: '0 8px', height: 40, textAlign: 'center' }}>
                   <Tooltip text="Inspect full details">
                     <span style={{ fontSize: 12 }}>Actions</span>
                   </Tooltip>
@@ -905,11 +906,12 @@ export default function AdminActivityLogsView({
                       }}
                     >
                       <td
-                        className="rx-audit-col-highlight"
+                        className="rx-audit-col-timestamp"
                         style={{
-                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-                          padding: '0 8px',
+                          padding: '8px 12px',
                           whiteSpace: 'nowrap',
+                          overflow: 'visible',
+                          textOverflow: 'clip',
                           color: 'var(--color-text-main, #0f172a)',
                           verticalAlign: 'middle',
                           fontFamily: 'var(--font-sans, sans-serif)',
@@ -920,10 +922,8 @@ export default function AdminActivityLogsView({
                         {formattedTime}
                       </td>
                       <td
-                        className="rx-audit-col-highlight"
                         style={{
-                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-                          padding: '0 8px',
+                          padding: '8px 12px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -934,13 +934,13 @@ export default function AdminActivityLogsView({
                         }}
                         title={userDisplay}
                       >
-                        {userDisplay}
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }} title={userDisplay}>
+                          {userDisplay}
+                        </div>
                       </td>
                       <td
-                        className="rx-audit-col-highlight rx-audit-col-divider"
                         style={{
-                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-                          padding: '0 8px',
+                          padding: '8px 10px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -969,9 +969,8 @@ export default function AdminActivityLogsView({
                         </span>
                       </td>
                       <td
-                        className="rx-audit-col-standard"
                         style={{
-                          padding: '0 8px',
+                          padding: '8px 10px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -980,19 +979,18 @@ export default function AdminActivityLogsView({
                         title={serverInfo.text}
                       >
                         {serverInfo.type ? (
-                          <span style={{ whiteSpace: 'nowrap' }}>
-                            <span style={{ fontWeight: 400, color: 'var(--color-text-main, #0f172a)' }}>{serverInfo.name}</span>{' '}
-                            <span className="rx-audit-server-badge">({serverInfo.type})</span>
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={serverInfo.text}>
+                            <span style={{ fontWeight: 400, color: 'var(--color-text-main, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverInfo.name}</span>{' '}
+                            <span className="rx-audit-server-badge" style={{ flexShrink: 0 }}>({serverInfo.type})</span>
+                          </div>
                         ) : (
-                          <span style={{ fontWeight: 400, color: serverInfo.hasServer ? 'var(--color-text-main, #0f172a)' : 'var(--color-text-muted, #64748b)', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 400, color: serverInfo.hasServer ? 'var(--color-text-main, #0f172a)' : 'var(--color-text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={serverInfo.text}>
                             {serverInfo.text}
-                          </span>
+                          </div>
                         )}
                       </td>
                       <td
-                        className="rx-audit-col-standard rx-audit-col-status"
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'visible', textOverflow: 'clip' }}
+                        style={{ padding: '8px 8px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
                         title={statusDisplay}
                       >
                         {item.status === 'success' ? (
@@ -1033,36 +1031,37 @@ export default function AdminActivityLogsView({
                         )}
                       </td>
                       <td
-                        className="rx-audit-col-standard"
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', color: '#64748b', verticalAlign: 'middle' }}
+                        style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: '#64748b', verticalAlign: 'middle', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
                         title={durationDisplay}
                       >
                         {durationDisplay}
                       </td>
-                      <td className="rx-audit-col-standard rx-audit-col-actions" style={{ padding: '0 2px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'clip' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetail(item)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            padding: '2px 4px',
-                            borderRadius: 4,
-                            border: '1px solid #d1d5db',
-                            backgroundColor: '#ffffff',
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            lineHeight: 1.2,
-                            color: '#02579A',
-                            margin: '0 auto'
-                          }}
-                          title="View log details"
-                          aria-label="View log details"
-                        >
-                          <Eye size={11} />
-                          <span>Detail</span>
-                        </button>
+                      <td className="actions-column" style={{ padding: '8px 8px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetail(item)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              border: '1px solid var(--color-border-input, #C7D4E1)',
+                              backgroundColor: '#ffffff',
+                              cursor: 'pointer',
+                              fontSize: 11,
+                              color: 'var(--color-navy-800, #05396B)',
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Inspect full details"
+                            aria-label="Inspect full details"
+                          >
+                            <Eye size={12} />
+                            <span>Detail</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1078,20 +1077,21 @@ export default function AdminActivityLogsView({
             className="sap-table sap-admin-compact-table"
             style={{
               width: '100%',
+              minWidth: 1080,
               tableLayout: 'fixed',
               borderCollapse: 'collapse',
               boxSizing: 'border-box'
             }}
           >
             <colgroup>
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '8%' }} />
+              <col style={{ width: 200, minWidth: 200 }} />
+              <col style={{ width: 110, minWidth: 110 }} />
+              <col style={{ width: 85, minWidth: 85 }} />
+              <col style={{ width: 170, minWidth: 170 }} />
+              <col style={{ width: 80, minWidth: 80 }} />
+              <col style={{ width: 240, minWidth: 240 }} />
+              <col style={{ width: 160, minWidth: 160 }} />
+              <col style={{ width: 100, minWidth: 100 }} />
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--color-blue-200)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
@@ -1130,7 +1130,7 @@ export default function AdminActivityLogsView({
                     <span style={{ fontWeight: 600, fontSize: 12 }}>User</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36, textAlign: 'center' }}>
+                <th className="actions-column" style={{ padding: '0 8px', height: 36, textAlign: 'center' }}>
                   <Tooltip text="Inspect full error details and stack trace">
                     <span style={{ fontWeight: 600, fontSize: 12 }}>Actions</span>
                   </Tooltip>
@@ -1187,7 +1187,8 @@ export default function AdminActivityLogsView({
                       }}
                     >
                       <td
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}
+                        className="rx-audit-col-timestamp"
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', color: '#334155' }}
                         title={formattedTime}
                       >
                         {formattedTime}
@@ -1267,29 +1268,32 @@ export default function AdminActivityLogsView({
                       >
                         {userDisplay}
                       </td>
-                      <td style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetail(item)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '4px 8px',
-                            borderRadius: 4,
-                            border: '1px solid #d1d5db',
-                            backgroundColor: '#ffffff',
-                            cursor: 'pointer',
-                            fontSize: 11,
-                            color: 'var(--color-amber-800, #b45309)',
-                            margin: '0 auto'
-                          }}
-                          title="View full error details"
-                          aria-label="View full error details"
-                        >
-                          <Eye size={12} />
-                          <span>Detail</span>
-                        </button>
+                      <td className="actions-column" style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDetail(item)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 4,
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              border: '1px solid #d1d5db',
+                              backgroundColor: '#ffffff',
+                              cursor: 'pointer',
+                              fontSize: 11,
+                              color: 'var(--color-amber-800, #b45309)',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="View full error details"
+                            aria-label="View full error details"
+                          >
+                            <Eye size={12} />
+                            <span>Detail</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

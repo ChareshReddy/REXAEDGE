@@ -460,7 +460,7 @@ export function validateFieldValue(entityKey, columnName, value) {
     if (!/^[A-Za-z]{2}$/.test(strVal)) {
       return {
         valid: false,
-        error: `${col.label} must be a 2-letter ISO country code (e.g., US, IN, DE). Received: "${value}"`
+        error: `${col.label} must be a 2-letter ISO country code (Ex. US, IN, DE). Received: "${value}"`
       };
     }
     return { valid: true, normalizedValue: strVal.toUpperCase() };

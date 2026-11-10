@@ -36,19 +36,26 @@ export function DataTable({
       <Table className="rx-table w-full">
         <TableHeader>
           <TableRow className="rx-table-header-row bg-[var(--color-blue-200)] hover:bg-[var(--color-blue-200)]">
-            {columns.map((col, idx) => (
-              <TableHead
-                key={col.key || idx}
-                className="rx-table-th font-semibold text-[var(--color-navy-900)] border-b border-[var(--color-border)] h-[var(--size-table-header-height,40px)]"
-                style={{
-                  width: col.width || 'auto',
-                  minWidth: col.minWidth || 'auto',
-                  textAlign: col.align || 'left'
-                }}
-              >
-                {col.title}
-              </TableHead>
-            ))}
+            {columns.map((col, idx) => {
+              const isActions = col.key === 'actions' || col.id === 'actions' || String(col.title || '').trim().toLowerCase() === 'actions';
+              const align = col.align || (isActions ? 'center' : 'left');
+              return (
+                <TableHead
+                  key={col.key || idx}
+                  className={cn(
+                    "rx-table-th font-semibold text-[var(--color-navy-900)] border-b border-[var(--color-border)] h-[var(--size-table-header-height,40px)]",
+                    (isActions || align === 'center') && "actions-column text-center"
+                  )}
+                  style={{
+                    width: col.width || 'auto',
+                    minWidth: col.minWidth || 'auto',
+                    textAlign: align
+                  }}
+                >
+                  {col.title}
+                </TableHead>
+              );
+            })}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -88,18 +95,23 @@ export function DataTable({
                   onClick={() => onRowSelect && onRowSelect(row, rowKey)}
                   style={{ cursor: onRowSelect ? 'pointer' : 'default' }}
                 >
-                  {columns.map((col, cIdx) => (
-                    <TableCell
-                      key={col.key || cIdx}
-                      className={cn(
-                        'rx-table-td p-[6px]',
-                        col.isMono && 'rx-table-mono font-mono text-xs'
-                      )}
-                      style={{ textAlign: col.align || 'left' }}
-                    >
-                      {col.render ? col.render(row[col.key], row, rIdx) : row[col.key]}
-                    </TableCell>
-                  ))}
+                  {columns.map((col, cIdx) => {
+                    const isActions = col.key === 'actions' || col.id === 'actions' || String(col.title || '').trim().toLowerCase() === 'actions';
+                    const align = col.align || (isActions ? 'center' : 'left');
+                    return (
+                      <TableCell
+                        key={col.key || cIdx}
+                        className={cn(
+                          'rx-table-td p-[6px]',
+                          col.isMono && 'rx-table-mono font-mono text-xs',
+                          (isActions || align === 'center') && 'actions-column text-center'
+                        )}
+                        style={{ textAlign: align }}
+                      >
+                        {col.render ? col.render(row[col.key], row, rIdx) : row[col.key]}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               );
             })

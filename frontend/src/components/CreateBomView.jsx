@@ -906,7 +906,7 @@ export default function CreateBomView({
                     <tr className="bg-[var(--color-blue-200)] border-b border-[var(--color-border)] min-h-[56px] h-[56px] sticky top-0 z-10">
                       <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
-                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Itm no.</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Item no.</span>
                         </Tooltip>
                       </th>
                       <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Component, required">
