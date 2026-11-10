@@ -939,10 +939,7 @@ function AppContent({
             {isUserMenuOpen && (
               <div className="sap-user-dropdown-menu" role="menu">
                 <div className="sap-user-dropdown-header">
-                  <div className="sap-user-dropdown-name" style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-navy-900)' }}>
-                    {formatDisplayName(user.name || (user.email ? user.email.split('@')[0] : 'User'))}
-                  </div>
-                  <div className="sap-user-dropdown-email" title={user.email}>
+                  <div className="sap-user-dropdown-email" title={user.email} style={{ fontWeight: 500, color: 'var(--color-navy-900)' }}>
                     {user.email}
                   </div>
                   {user.role ? (
