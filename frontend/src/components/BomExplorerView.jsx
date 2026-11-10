@@ -24,9 +24,14 @@ import { useToast } from '../context/ToastContext';
 import activityTracker from '../services/activityTracker';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
+import { FormSection, FormGrid, FormActions } from './ui/form-layout';
+import { FieldWrapper } from './ui/FieldWrapper';
+import { Input, SearchInput } from './ui/input';
+import { Badge } from './ui/badge';
 import TableLoadingState from './TableLoadingState';
 import { extractErrorInfo } from '../utils/friendlyError';
 import { PageContainer } from './layout';
+import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
 
 /**
  * Trims leading zeros only on purely numeric material numbers.
@@ -57,7 +62,7 @@ export function formatAlternativeLabel(alt) {
 }
 
 /**
- * Formats alternative number for loading sentence (e.g. "02" -> "2").
+ * Formats alternative number for loading sentence (Ex. "02" -> "2").
  */
 export function formatAltNumber(alt) {
   if (alt === undefined || alt === null || alt === '') return '1';
@@ -83,6 +88,33 @@ export default function BomExplorerView({
     bomUsage: '1',
     alternativeBom: ''
   });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const userInteractedRef = React.useRef({});
+
+  const handleUserInteraction = (field) => {
+    userInteractedRef.current[field] = true;
+  };
+
+  useEffect(() => {
+    setFieldErrors({});
+    setTouched({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+  }, [systemKey]);
+
+  const handleBlur = (field, ruleKey, isRequired) => {
+    if (!userInteractedRef.current[field]) return;
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = searchParams[field];
+    const res = validateField(ruleKey, val, isRequired);
+    if (!res.valid) {
+      setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
+    } else {
+      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingType, setLoadingType] = useState(null); // 'search' | 'mode' | 'alternative' | null
@@ -117,10 +149,27 @@ export default function BomExplorerView({
 
   const handleSearch = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    setIsSubmitted(true);
+    setTouched({ material: true, plant: true, bomUsage: true, alternativeBom: true });
     if (isLoading) return;
 
-    if (!searchParams.material.trim() || !searchParams.plant.trim()) {
-      setErrorMessage('Please enter both Material and Plant to inspect the BOM.');
+    const errors = {};
+    const matRes = validateField('material', searchParams.material, true);
+    if (!matRes.valid) errors.material = matRes.error;
+    const plantRes = validateField('plant', searchParams.plant, true);
+    if (!plantRes.valid) errors.plant = plantRes.error;
+    const usageRes = validateField('bomUsage', searchParams.bomUsage, false);
+    if (!usageRes.valid) errors.bomUsage = usageRes.error;
+    const altRes = validateField('alternativeBom', searchParams.alternativeBom, false);
+    if (!altRes.valid) errors.alternativeBom = altRes.error;
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      if (!searchParams.material.trim() || !searchParams.plant.trim()) {
+        setErrorMessage('Please enter both Material and Plant to inspect the BOM.');
+      } else {
+        setErrorMessage(matRes.error || plantRes.error || usageRes.error || altRes.error);
+      }
       return;
     }
 
@@ -436,168 +485,152 @@ export default function BomExplorerView({
       <PageContainer>
         <div style={{ marginTop: 20 }}>
           {/* Small Compact Search Card */}
-          <div className="sap-structured-form-card sap-full-width" style={{ width: '100%', margin: '0 auto 16px' }}>
+          <FormSection
+            title="BOM Explorer Parameters"
+            description="Material and plant specification for BOM explosion"
+            className="mb-4"
+          >
             <form onSubmit={handleSearch}>
-              <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', padding: '16px 20px', gap: '14px 18px' }}>
-            <div className="sap-form-group">
-              <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                Material Number <span className="sap-required-star" style={{ color: 'var(--sap-error)' }}>*</span>
-              </label>
-              <div className="sap-form-input-wrapper">
-                <Layers size={13} className="input-icon" />
-                <ValueHelpInput
-                  kind="material"
-                  plant={searchParams.plant}
-                  placeholder="e.g. 100001"
-                  value={searchParams.material}
-                  onChange={(e) => setSearchParams((prev) => ({ ...prev, material: e.target.value }))}
-                  onSelect={(val, full) => {
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      material: val,
-                      ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
-                      ...(full?.werks && !prev.plant ? { plant: full.werks } : {})
-                    }));
-                  }}
-                  style={{ paddingLeft: 30 }}
-                  aria-label="Display BOM Material"
-                />
-              </div>
-            </div>
+              <FormGrid cols={4}>
+                <FieldWrapper
+                  label="Material Number"
+                  htmlFor="expMaterial"
+                  required
+                  error={(touched.material || isSubmitted) ? fieldErrors.material || null : null}
+                >
+                  <ValueHelpInput
+                    id="expMaterial"
+                    kind="material"
+                    plant={searchParams.plant}
+                    placeholder="Ex. A1BH0214C or 100001"
+                    maxLength={FIELD_RULES.material.maxLength}
+                    value={searchParams.material}
+                    onChange={(e) => {
+                      setSearchParams((prev) => ({ ...prev, material: e.target.value }));
+                      if (fieldErrors.material) setFieldErrors((prev) => ({ ...prev, material: false }));
+                    }}
+                    onBlur={() => handleBlur('material', 'material', true)}
+                    onSelect={(val, full) => {
+                      setSearchParams((prev) => ({
+                        ...prev,
+                        material: val,
+                        ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
+                        ...(full?.werks && !prev.plant ? { plant: full.werks } : {})
+                      }));
+                      if (fieldErrors.material) setFieldErrors((prev) => ({ ...prev, material: false }));
+                    }}
+                    hasError={Boolean((touched.material || isSubmitted) && fieldErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
+                    aria-label="Display BOM Material"
+                  />
+                </FieldWrapper>
 
-            <div className="sap-form-group">
-              <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                Plant Code <span className="sap-required-star" style={{ color: 'var(--sap-error)' }}>*</span>
-              </label>
-              <div className="sap-form-input-wrapper">
-                <Factory size={13} className="input-icon" />
-                <ValueHelpInput
-                  kind="plant"
-                  material={searchParams.material}
-                  placeholder="e.g. 1000"
-                  maxLength={4}
-                  value={searchParams.plant}
-                  onChange={(e) => setSearchParams((prev) => ({ ...prev, plant: e.target.value }))}
-                  style={{ paddingLeft: 30 }}
-                  aria-label="Display BOM Plant"
-                />
-              </div>
-            </div>
+                <FieldWrapper
+                  label="Plant Code"
+                  htmlFor="expPlant"
+                  required
+                  error={(touched.plant || isSubmitted) ? fieldErrors.plant || null : null}
+                >
+                  <ValueHelpInput
+                    id="expPlant"
+                    kind="plant"
+                    material={searchParams.material}
+                    placeholder="Ex. 1010 or 1000"
+                    maxLength={FIELD_RULES.plant.maxLength}
+                    value={searchParams.plant}
+                    onChange={(e) => {
+                      setSearchParams((prev) => ({ ...prev, plant: e.target.value }));
+                      if (fieldErrors.plant) setFieldErrors((prev) => ({ ...prev, plant: false }));
+                    }}
+                    onBlur={() => handleBlur('plant', 'plant', true)}
+                    hasError={Boolean((touched.plant || isSubmitted) && fieldErrors.plant)} onPointerDown={() => handleUserInteraction('plant')} onKeyDown={() => handleUserInteraction('plant')}
+                    aria-label="Display BOM Plant"
+                  />
+                </FieldWrapper>
 
-            <div className="sap-form-group">
-              <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                BOM Usage
-              </label>
-              <div className="sap-form-input-wrapper">
-                <Hash size={13} className="input-icon" />
-                <ValueHelpInput
-                  kind="bomUsage"
-                  placeholder="1 (Production)"
-                  maxLength={1}
-                  value={searchParams.bomUsage}
-                  onChange={(e) => setSearchParams((prev) => ({ ...prev, bomUsage: e.target.value }))}
-                  style={{ paddingLeft: 30 }}
-                  aria-label="Display BOM Usage"
-                />
-              </div>
-            </div>
+                <FieldWrapper
+                  label="BOM Usage"
+                  htmlFor="expUsage"
+                  error={(touched.bomUsage || isSubmitted) ? fieldErrors.bomUsage || null : null}
+                >
+                  <ValueHelpInput
+                    id="expUsage"
+                    kind="bomUsage"
+                    placeholder="1 (Production)"
+                    maxLength={FIELD_RULES.bomUsage.maxLength}
+                    value={searchParams.bomUsage}
+                    onChange={(e) => setSearchParams((prev) => ({ ...prev, bomUsage: e.target.value }))}
+                    onBlur={() => handleBlur('bomUsage', 'bomUsage', false)}
+                    hasError={Boolean((touched.bomUsage || isSubmitted) && fieldErrors.bomUsage)} onPointerDown={() => handleUserInteraction('bomUsage')} onKeyDown={() => handleUserInteraction('bomUsage')}
+                    aria-label="Display BOM Usage"
+                  />
+                </FieldWrapper>
 
-            <div className="sap-form-group">
-              <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                Alternative BOM
-              </label>
-              <div className="sap-form-input-wrapper">
-                <Hash size={13} className="input-icon" />
-                <input
-                  type="text"
-                  className="sap-form-input"
-                  placeholder="e.g. 01 (optional)"
-                  value={searchParams.alternativeBom}
-                  onChange={(e) => setSearchParams((prev) => ({ ...prev, alternativeBom: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
+                <FieldWrapper
+                  label="Alternative BOM"
+                  htmlFor="expAlternativeBom"
+                  error={(touched.alternativeBom || isSubmitted) ? fieldErrors.alternativeBom || null : null}
+                >
+                  <Input
+                    id="expAlternativeBom"
+                    type="text"
+                    placeholder="Ex. 01 (optional)"
+                    maxLength={FIELD_RULES.alternativeBom.maxLength}
+                    value={searchParams.alternativeBom}
+                    onChange={(e) => setSearchParams((prev) => ({ ...prev, alternativeBom: e.target.value }))}
+                    onBlur={() => handleBlur('alternativeBom', 'alternativeBom', false)}
+                    hasError={Boolean((touched.alternativeBom || isSubmitted) && fieldErrors.alternativeBom)} onPointerDown={() => handleUserInteraction('alternativeBom')} onKeyDown={() => handleUserInteraction('alternativeBom')}
+                    isMono
+                  />
+                </FieldWrapper>
+              </FormGrid>
 
-          <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderTop: '1px solid var(--sap-border-color)', background: 'var(--sap-workspace-bg)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                type="button"
-                className={`sap-btn ${viewMode === 'items' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
-                onClick={() => handleModeClick('items')}
-                disabled={isLoading}
-                style={{
-                  height: 32,
-                  fontSize: 12,
-                  padding: '0 14px',
-                  fontWeight: 600,
-                  background: viewMode === 'items' ? 'var(--sap-primary, #EA580C)' : '#ffffff',
-                  color: viewMode === 'items' ? '#ffffff' : 'var(--sap-text-primary, #0f172a)',
-                  border: `1px solid ${viewMode === 'items' ? 'var(--sap-primary, #EA580C)' : 'var(--sap-border-color, #e2d8d8)'}`,
-                  borderRadius: 'var(--sap-radius-sm, 6px)',
-                  boxShadow: viewMode === 'items' ? '0 1px 2px rgba(234, 88, 12, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.03)',
-                  opacity: isLoading ? 0.7 : 1,
-                  cursor: isLoading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <span>Single Level Items</span>
-              </button>
-              <button
-                type="button"
-                className={`sap-btn ${viewMode === 'hierarchy' ? 'sap-btn-primary' : 'sap-btn-secondary'}`}
-                onClick={() => handleModeClick('hierarchy')}
-                disabled={isLoading}
-                style={{
-                  height: 32,
-                  fontSize: 12,
-                  padding: '0 14px',
-                  fontWeight: 600,
-                  background: viewMode === 'hierarchy' ? 'var(--sap-primary, #EA580C)' : '#ffffff',
-                  color: viewMode === 'hierarchy' ? '#ffffff' : 'var(--sap-text-primary, #0f172a)',
-                  border: `1px solid ${viewMode === 'hierarchy' ? 'var(--sap-primary, #EA580C)' : 'var(--sap-border-color, #e2d8d8)'}`,
-                  borderRadius: 'var(--sap-radius-sm, 6px)',
-                  boxShadow: viewMode === 'hierarchy' ? '0 1px 2px rgba(234, 88, 12, 0.25)' : '0 1px 2px rgba(0, 0, 0, 0.03)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  opacity: isLoading ? 0.7 : 1,
-                  cursor: isLoading ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <FolderTree size={13} />
-                <span>Multi-Level Hierarchy</span>
-              </button>
-            </div>
+              <FormActions
+                className="mt-4 pt-3 border-t border-[var(--color-border-subtle)]"
+                left={
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className={`rx-btn rx-btn-sm ${viewMode === 'items' ? 'rx-btn-primary' : 'rx-btn-secondary'}`}
+                      onClick={() => handleModeClick('items')}
+                      disabled={isLoading}
+                    >
+                      <span>Single Level Items</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`rx-btn rx-btn-sm ${viewMode === 'hierarchy' ? 'rx-btn-primary' : 'rx-btn-secondary'}`}
+                      onClick={() => handleModeClick('hierarchy')}
+                      disabled={isLoading}
+                    >
+                      <FolderTree size={14} />
+                      <span>Multi-Level Hierarchy</span>
+                    </button>
+                  </div>
+                }
+                right={
+                  <button
+                    type="submit"
+                    className="rx-btn rx-btn-primary"
+                    disabled={isLoading}
+                  >
+                    {isLoading && loadingType === 'search' ? (
+                      <>
+                        <RefreshCw size={15} className="sap-spin" />
+                        <span>Loading BOM...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search size={15} />
+                        <span>Display BOM</span>
+                      </>
+                    )}
+                  </button>
+                }
+              />
+            </form>
+          </FormSection>
 
-            <button
-              type="submit"
-              className="sap-button primary"
-              disabled={isLoading}
-              style={{
-                height: 30,
-                fontSize: 'var(--sap-size-button)',
-                padding: '0 16px',
-                opacity: isLoading ? 0.7 : 1,
-                cursor: isLoading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {isLoading && loadingType === 'search' ? (
-                <>
-                  <span className="sap-spinner" style={{ width: 12, height: 12 }} />
-                  <span>Loading BOM...</span>
-                </>
-              ) : (
-                <>
-                  <Search size={14} />
-                  <span>Display BOM</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Loading state for full search */}
+          {/* Loading state for full search */}
       {isLoading && loadingType === 'search' && (
         <div style={{ width: '100%', margin: '0 auto 20px' }}>
           <TableLoadingState message={loadingMessage || 'Loading BOM...'} minHeight={380} />
@@ -627,7 +660,7 @@ export default function BomExplorerView({
                         value={String(currentAlternative).padStart(2, '0')}
                         onChange={(e) => handleSwitchAlternative(e.target.value)}
                         disabled={isLoading}
-                        className="sap-form-input sap-input"
+                        className="rx-select"
                         style={{
                           height: 30,
                           fontSize: '12px',
@@ -639,7 +672,7 @@ export default function BomExplorerView({
                           borderRadius: 'var(--sap-radius-sm, 6px)',
                           cursor: isLoading ? 'not-allowed' : 'pointer',
                           fontWeight: 600,
-                          color: 'var(--sap-primary, #EA580C)',
+                          color: 'var(--sap-primary, #02579A)',
                           border: '1px solid var(--sap-border-color, #e2d8d8)',
                           background: isLoading ? 'var(--sap-field-disabled-bg, #f8fafc)' : '#ffffff',
                           opacity: isLoading ? 0.7 : 1,
@@ -683,28 +716,23 @@ export default function BomExplorerView({
               <TableLoadingState message={loadingMessage} minHeight={380} />
             ) : (
               /* Components Table with In-Table Filter */
-              <div className="sap-table-card" style={{ height: 'auto', flex: 'none', marginBottom: 20 }}>
-            <div className="sap-table-toolbar" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--sap-border-subtle)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Layers size={16} color="var(--sap-primary)" />
-                <h4 style={{ fontSize: '14px', fontWeight: 600 }}>Components List</h4>
-                <span className="sap-badge sap-badge-neutral">{filteredComponents.length} items</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none', display: 'flex', alignItems: 'center', zIndex: 2 }}>
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Filter components..."
-                  className="sap-form-input sap-table-search-input"
-                  style={{ width: 220, height: 32, fontSize: '12px', paddingLeft: 34, paddingRight: 10 }}
-                  value={filterText}
-                  onChange={(e) => setFilterText(e.target.value)}
-                />
-              </div>
-            </div>
-
+              <FormSection
+                title="Components List"
+                description={`Showing ${filteredComponents.length} component item${filteredComponents.length === 1 ? '' : 's'}`}
+                badge={<span className="sap-badge sap-badge-neutral">{filteredComponents.length} items</span>}
+                actions={
+                  <SearchInput
+                    placeholder="Filter components..."
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    onClear={() => setFilterText('')}
+                    isTable
+                    wrapperStyle={{ width: 220 }}
+                  />
+                }
+                className="sap-table-card mb-5"
+                style={{ height: 'auto', flex: 'none' }}
+              >
             <div className="sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="BOM Components Table">
               {filteredComponents.length > 0 ? (
                 <table className="sap-table">
@@ -781,15 +809,15 @@ export default function BomExplorerView({
                               </span>
                             </td>
                           )}
-                          <td>{item.itemNo || item.item || item.POSNR || (idx + 1) * 10}</td>
+                          <td className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontWeight: 'var(--font-weight-code, 500)' }}>{item.itemNo || item.item || item.POSNR || (idx + 1) * 10}</td>
                           <td>
                             <div style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: indentLevel * 20 }}>
                               {indentLevel > 0 && (
-                                <span style={{ color: 'var(--sap-text-muted)', marginRight: 6, fontFamily: 'monospace', fontWeight: 600 }}>
+                                <span style={{ color: 'var(--sap-text-muted)', marginRight: 6, fontFamily: 'monospace', fontWeight: 400 }}>
                                   └──
                                 </span>
                               )}
-                              <strong>{displayMat}</strong>
+                              <span className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontWeight: 'var(--font-weight-code, 500)' }}>{displayMat}</span>
                             </div>
                           </td>
                           <td
@@ -847,7 +875,7 @@ export default function BomExplorerView({
                 </button>
               )}
             </div>
-          </div>
+          </FormSection>
         )}
       </div>
     );

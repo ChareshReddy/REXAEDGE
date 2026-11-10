@@ -295,7 +295,7 @@ async function runTests() {
   assert.strictEqual(blankWith01.componentCount, 1);
   console.log('   ✓ Blank alternative automatically selects 01 when 01 exists');
 
-  // (b) Blank alternative with single alternative (e.g. only 03 exists)
+  // (b) Blank alternative with single alternative (Ex. only 03 exists)
   const singleAltClient = {
     call: async (fm, params) => {
       if (params.QUERY_TABLE === 'MAST') {

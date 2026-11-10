@@ -1,3 +1,4 @@
+import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -174,6 +175,7 @@ export default function DeleteBomView({
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
         title="Delete BOM"
+        extraTitleContent={<SingleBulkSwitch operation="delete" mode="single" />}
         subtitle="Safely delete specific BOM alternatives in SAP with confirmation."
         onBack={onBack}
         backTitle="Back to Bill of Materials"

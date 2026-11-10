@@ -7,6 +7,7 @@ import {
   setSelectedSapSessionId
 } from '../services/sapGuiClient.js';
 import { pingRfcServer } from '../services/sapRfcClient.js';
+import { getServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { extractToken, requireAuth, requireServerAccess, requireAppPermission } from '../middleware/auth.js';
 import { sendFriendlyError, toFriendlyError } from '../utils/friendlyError.js';
@@ -168,7 +169,7 @@ router.post('/sessions/select', requireAuth, requireAppPermission('bom.*'), asyn
       });
     }
 
-    setSelectedSapSessionId(matched.id, matched.user);
+    setSelectedSapSessionId(matched.id, matched.user, req.user?.id);
     const health = await checkSapSessionHealth();
 
     return res.status(200).json({
@@ -244,25 +245,28 @@ router.get('/session-status', requireAuth, requireAppPermission('bom.*'), async 
         });
       }
 
-      const ping = await pingRfcServer(targetServer);
+      const health = getServerHealth(targetServer.id);
+      const isUp = health.status !== HEALTH_STATE.DOWN && health.circuit_breaker !== BREAKER_STATE.OPEN;
       const serverSystem = targetServer.environment || targetServer.name || 'DEV';
       const serverClient = targetServer.client || '100';
       const serverUser = targetServer.sap_username || '';
       const sessionId = `RFC_${targetServer.id}`;
 
       return res.status(200).json({
-        connected: ping.success,
+        connected: isUp,
         mode: 'RFC',
-        status: ping.success ? 'AVAILABLE' : 'SERVER_UNAVAILABLE',
-        code: ping.success ? 'AVAILABLE' : (ping.code || 'SAP_SERVER_UNAVAILABLE'),
+        status: isUp ? 'AVAILABLE' : 'SERVER_UNAVAILABLE',
+        code: isUp ? 'AVAILABLE' : (health.last_error ? 'SAP_SERVER_UNAVAILABLE' : 'SERVER_UNAVAILABLE'),
         system: serverSystem,
         client: serverClient,
         user: serverUser,
         selectedUser: serverUser,
-        message: ping.success ? `SAP RFC Online (${ping.latencyMs}ms)` : ping.message,
-        latencyMs: ping.latencyMs,
+        message: isUp ? `SAP RFC Online (${health.latency_ms || 2}ms)` : (health.last_error || 'SAP server is not reachable right now. Please try again shortly.'),
+        latencyMs: health.latency_ms,
+        health: health.status,
+        circuit_breaker: health.circuit_breaker,
         selectedSessionId: sessionId,
-        sessions: ping.success
+        sessions: isUp
           ? [
               {
                 id: sessionId,

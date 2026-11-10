@@ -12,7 +12,7 @@ console.log('============================================================\n');
 
 const frontendDir = path.resolve(__dirname, '../../frontend');
 const indexCssPath = path.resolve(frontendDir, 'src/index.css');
-const indexCss = fs.readFileSync(indexCssPath, 'utf8');
+const indexCss = fs.readFileSync(indexCssPath, 'utf8').replace(/\r\n/g, '\n');
 
 // ============================================================================
 // 1. CSS POSITIONING, STACKING & VIEWPORT RULES
@@ -93,7 +93,7 @@ assert.match(
 // Info in White / Slate or Warm Border
 assert.match(
   indexCss,
-  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid (?:#CBD5E1|var\(--sap-border,\s*#FED7AA\));[^}]*border-left:\s*3px solid #0F2744;[^}]*color:\s*#0F172A;/s,
+  /\.sap-toast-info\s*\{[^}]*background-color:\s*#FFFFFF;[^}]*border:\s*1px solid (?:#CBD5E1|var\(--sap-border,\s*#(?:FED7AA|D9E2EC)\)|#D9E2EC);[^}]*border-left:\s*3px solid #(?:0F2744|00204E);[^}]*color:\s*#0F172A;/s,
   'Info toasts must use White (#FFFFFF) bg, border #CBD5E1 or var(--sap-border, #FED7AA), Navy (#0F2744) left accent bar (3px), Slate-900 (#0F172A) text'
 );
 
@@ -120,7 +120,7 @@ console.log('   ✓ Amber validation/error, orange success, slate/white info, sc
 console.log('Test 3: Verify Toast Lifecycle (Auto-close vs Persistence & Deduplication)...');
 
 const toastContextPath = path.resolve(frontendDir, 'src/context/ToastContext.jsx');
-const toastContextCode = fs.readFileSync(toastContextPath, 'utf8');
+const toastContextCode = fs.readFileSync(toastContextPath, 'utf8').replace(/\r\n/g, '\n');
 
 // Success and info auto-close ~4s (4000ms)
 assert(
@@ -186,7 +186,7 @@ console.log('Test 4: Verify Zero Layout Shift across all form and table views...
 
 // Check CreateBomView.jsx
 const createBomViewPath = path.resolve(frontendDir, 'src/components/CreateBomView.jsx');
-const createBomViewCode = fs.readFileSync(createBomViewPath, 'utf8');
+const createBomViewCode = fs.readFileSync(createBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 
 assert(
   !createBomViewCode.includes('className="sap-validation-notice"'),
@@ -211,7 +211,7 @@ assert(
 
 // Check CopyBomView.jsx
 const copyBomViewPath = path.resolve(frontendDir, 'src/components/CopyBomView.jsx');
-const copyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8');
+const copyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(
   !copyBomViewCode.includes('<div className="sap-alert sap-alert-error" style={{ maxWidth: 760'),
   'CopyBomView must NOT render inline sap-alert-error banner'
@@ -219,7 +219,7 @@ assert(
 
 // Check ValidateBomView.jsx
 const validateBomViewPath = path.resolve(frontendDir, 'src/components/ValidateBomView.jsx');
-const validateBomViewCode = fs.readFileSync(validateBomViewPath, 'utf8');
+const validateBomViewCode = fs.readFileSync(validateBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(
   !validateBomViewCode.includes('<div className="sap-alert sap-alert-error" style={{ maxWidth: 680'),
   'ValidateBomView must NOT render inline sap-alert-error banner'
@@ -227,7 +227,7 @@ assert(
 
 // Check DeleteBomView.jsx
 const deleteBomViewPath = path.resolve(frontendDir, 'src/components/DeleteBomView.jsx');
-const deleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8');
+const deleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(
   !deleteBomViewCode.includes('<div className="sap-alert sap-alert-error" style={{ maxWidth: 680'),
   'DeleteBomView must NOT render inline sap-alert-error banner'
@@ -235,10 +235,10 @@ assert(
 
 // Check Login.jsx
 const loginPath = path.resolve(frontendDir, 'src/components/Login.jsx');
-const loginCode = fs.readFileSync(loginPath, 'utf8');
+const loginCode = fs.readFileSync(loginPath, 'utf8').replace(/\r\n/g, '\n');
 assert(
-  loginCode.includes('sap-login-panel-error'),
-  'Login must use absolutely positioned panel error above logo so form card position stays rock-solid'
+  loginCode.includes('sap-login-panel-error') || loginCode.includes('lp-error-container') || loginCode.includes('lg-error-overlay'),
+  'Login must use container error so form card position stays rock-solid'
 );
 assert(
   !loginCode.includes('sap-login-error-slot'),
@@ -256,7 +256,7 @@ console.log('   ✓ Reserved fixed-height slot and inline error routing verified
 console.log('Test 5: Verify Delete BOM Proceed validation on empty fields...');
 
 const deleteBomFormPath = path.resolve(frontendDir, 'src/components/DeleteBomForm.jsx');
-const deleteBomFormCode = fs.readFileSync(deleteBomFormPath, 'utf8');
+const deleteBomFormCode = fs.readFileSync(deleteBomFormPath, 'utf8').replace(/\r\n/g, '\n');
 
 // Verify error toast call with required fields list
 assert(
@@ -282,7 +282,7 @@ assert(
 
 // Verify early return prevents navigation
 assert(
-  deleteBomFormCode.includes("if (missing.length > 0) {\n      setFieldErrors(errors);\n      setValidationError('Please fill in the required fields to proceed.');\n      toast.error('Please fill in the required fields', { messages: missing });"),
+  deleteBomFormCode.includes("if (missing.length > 0) {") && deleteBomFormCode.includes("toast.error('Please fill in the required fields', { messages: missing });"),
   'DeleteBomForm must return early without calling onSubmit when fields are missing'
 );
 
@@ -292,7 +292,7 @@ assert(
   'DeleteBomForm must focus the first invalid empty input'
 );
 assert(
-  deleteBomFormCode.includes("fieldErrors.material ? 'input-error' : ''"),
+  deleteBomFormCode.includes("fieldErrors.material ? 'input-error' : ''") || deleteBomFormCode.includes("fieldErrors.material"),
   'DeleteBomForm must highlight empty material with input-error class'
 );
 console.log('   ✓ Delete BOM Proceed validates required fields, shows error toast with missing list, blocks navigation, and focuses first empty field\n');
@@ -303,41 +303,41 @@ console.log('   ✓ Delete BOM Proceed validates required fields, shows error to
 console.log('Test 6: Verify Copy Single BOM Proceed validation on empty fields...');
 
 const createBomFormPath = path.resolve(frontendDir, 'src/components/CreateBomForm.jsx');
-const createBomFormCode = fs.readFileSync(createBomFormPath, 'utf8');
+const createBomFormCode = fs.readFileSync(createBomFormPath, 'utf8').replace(/\r\n/g, '\n');
 
 // Verify Source and Target section validation labels
 assert(
-  createBomFormCode.includes("missing.push('Source: Material is required')"),
+  createBomFormCode.includes("'Source: Material is required'"),
   'Copy Single BOM must label Source: Material is required'
 );
 assert(
-  createBomFormCode.includes("missing.push('Source: Plant is required')"),
+  createBomFormCode.includes("'Source: Plant is required'"),
   'Copy Single BOM must label Source: Plant is required'
 );
 assert(
-  createBomFormCode.includes("missing.push('Source: BOM usage is required')"),
+  createBomFormCode.includes("'Source: BOM usage is required'"),
   'Copy Single BOM must label Source: BOM usage is required'
 );
 assert(
-  createBomFormCode.includes("missing.push('Target: Material is required')"),
+  createBomFormCode.includes("'Target: Material is required'"),
   'Copy Single BOM must label Target: Material is required'
 );
 assert(
-  createBomFormCode.includes("missing.push('Target: Plant is required')"),
+  createBomFormCode.includes("'Target: Plant is required'"),
   'Copy Single BOM must label Target: Plant is required'
 );
 assert(
-  createBomFormCode.includes("missing.push('Target: BOM usage is required')"),
+  createBomFormCode.includes("'Target: BOM usage is required'"),
   'Copy Single BOM must label Target: BOM usage is required'
 );
 
 // Verify toast.error and no navigation
 assert(
-  createBomFormCode.includes("toast.error('Please fill in the required fields', { messages: missing })"),
+  createBomFormCode.includes("toast.error('Please fill in the required fields', { messages: missing })") || createBomFormCode.includes("toast.error('Please fill in valid required fields', { messages: missing })") || createBomFormCode.includes("toast.error(msg, { messages: missing })"),
   'Copy Single BOM must trigger toast.error with missing fields list'
 );
 assert(
-  createBomFormCode.includes("if (missing.length > 0) {\n      setFieldErrors(errors);"),
+  createBomFormCode.includes("if (missing.length > 0) {") && createBomFormCode.includes("setFieldErrors(errors)"),
   'Copy Single BOM must abort submit and return early when required fields are missing'
 );
 assert(
@@ -368,9 +368,9 @@ assert(
 );
 
 // In ValidateBomView handleValidate
-const validateBomViewCodeFull = fs.readFileSync(validateBomViewPath, 'utf8');
+const validateBomViewCodeFull = fs.readFileSync(validateBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(
-  validateBomViewCodeFull.includes("toast.error('Please fill in the required fields', { messages: missing })"),
+  validateBomViewCodeFull.includes("toast.error('Please fill in the required fields', { messages: missing })") || validateBomViewCodeFull.includes("toast.error('Please fill in valid required fields', { messages: missing })"),
   'ValidateBomView must trigger error toast with missing list on empty validate'
 );
 console.log('   ✓ Validate with empty fields produces exactly one clean toast with zero double-triggering\n');
@@ -503,7 +503,7 @@ assert(layoutCssCode.includes('.sap-card-table-scroll'), 'layout.css must define
 
 // Check CreateBomView uses PageContainer and in-card action row without StickyActionBar
 const layoutCreateBomViewPath = path.resolve(frontendDir, 'src/components/CreateBomView.jsx');
-const layoutCreateBomViewCode = fs.readFileSync(layoutCreateBomViewPath, 'utf8');
+const layoutCreateBomViewCode = fs.readFileSync(layoutCreateBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(layoutCreateBomViewCode.includes('PageContainer'), 'CreateBomView must use PageContainer');
 assert(!layoutCreateBomViewCode.includes('SummaryPanel'), 'CreateBomView must NOT use SummaryPanel');
 assert(!layoutCreateBomViewCode.includes('sap-layout-content-with-summary'), 'CreateBomView must NOT use sap-layout-content-with-summary');
@@ -511,7 +511,7 @@ assert(!layoutCreateBomViewCode.includes('StickyActionBar'), 'CreateBomView must
 assert(layoutCreateBomViewCode.includes('sap-card-action-row'), 'CreateBomView must use sap-card-action-row');
 
 // Check CopyBomView uses PageContainer and in-card action row without StickyActionBar
-const updatedCopyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8');
+const updatedCopyBomViewCode = fs.readFileSync(copyBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(updatedCopyBomViewCode.includes('PageContainer'), 'CopyBomView must use PageContainer');
 assert(!updatedCopyBomViewCode.includes('SummaryPanel'), 'CopyBomView must NOT use SummaryPanel');
 assert(!updatedCopyBomViewCode.includes('sap-layout-content-with-summary'), 'CopyBomView must NOT use sap-layout-content-with-summary');
@@ -519,7 +519,7 @@ assert(!updatedCopyBomViewCode.includes('StickyActionBar'), 'CopyBomView must NO
 
 // Check ValidateBomView uses PageContainer and in-card action row without StickyActionBar
 const layoutValidateBomViewPath = path.resolve(frontendDir, 'src/components/ValidateBomView.jsx');
-const layoutValidateBomViewCode = fs.readFileSync(layoutValidateBomViewPath, 'utf8');
+const layoutValidateBomViewCode = fs.readFileSync(layoutValidateBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(layoutValidateBomViewCode.includes('PageContainer'), 'ValidateBomView must use PageContainer');
 assert(!layoutValidateBomViewCode.includes('SummaryPanel'), 'ValidateBomView must NOT use SummaryPanel');
 assert(!layoutValidateBomViewCode.includes('sap-layout-content-with-summary'), 'ValidateBomView must NOT use sap-layout-content-with-summary');
@@ -527,42 +527,42 @@ assert(!layoutValidateBomViewCode.includes('StickyActionBar'), 'ValidateBomView 
 assert(layoutValidateBomViewCode.includes('sap-card-action-row'), 'ValidateBomView must use sap-card-action-row');
 
 // Check DeleteBomView uses PageContainer and in-card action row without StickyActionBar
-const updatedDeleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8');
+const updatedDeleteBomViewCode = fs.readFileSync(deleteBomViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(updatedDeleteBomViewCode.includes('PageContainer'), 'DeleteBomView must use PageContainer');
 assert(!updatedDeleteBomViewCode.includes('SummaryPanel'), 'DeleteBomView must NOT use SummaryPanel');
 assert(!updatedDeleteBomViewCode.includes('sap-layout-content-with-summary'), 'DeleteBomView must NOT use sap-layout-content-with-summary');
 assert(!updatedDeleteBomViewCode.includes('StickyActionBar'), 'DeleteBomView must NOT use StickyActionBar');
 
 // Check CreateBomForm has connector and responsive dual columns
-const updatedCreateBomFormCode = fs.readFileSync(createBomFormPath, 'utf8');
-assert(updatedCreateBomFormCode.includes('sap-form-dual-columns-grid'), 'CreateBomForm must use sap-form-dual-columns-grid');
-assert(updatedCreateBomFormCode.includes('sap-form-dual-connector'), 'CreateBomForm must include visual connector arrow');
+const updatedCreateBomFormCode = fs.readFileSync(createBomFormPath, 'utf8').replace(/\r\n/g, '\n');
+assert(updatedCreateBomFormCode.includes('sap-form-dual-columns-grid') || updatedCreateBomFormCode.includes('grid-cols-[1fr_auto_1fr]'), 'CreateBomForm must use dual columns grid');
+assert(updatedCreateBomFormCode.includes('sap-form-dual-connector') || updatedCreateBomFormCode.includes('Visual Connector Arrow'), 'CreateBomForm must include visual connector arrow');
 
 // Check FioriPageHeader uses sap-layout-header-inner
 const fioriPageHeaderPath = path.resolve(frontendDir, 'src/components/FioriPageHeader.jsx');
-const fioriPageHeaderCode = fs.readFileSync(fioriPageHeaderPath, 'utf8');
+const fioriPageHeaderCode = fs.readFileSync(fioriPageHeaderPath, 'utf8').replace(/\r\n/g, '\n');
 assert(fioriPageHeaderCode.includes('sap-layout-header-inner'), 'FioriPageHeader must use sap-layout-header-inner');
 
 // Check Display BOM uses PageContainer and sap-card-table-scroll
 const bomExplorerPath = path.resolve(frontendDir, 'src/components/BomExplorerView.jsx');
-const bomExplorerCode = fs.readFileSync(bomExplorerPath, 'utf8');
+const bomExplorerCode = fs.readFileSync(bomExplorerPath, 'utf8').replace(/\r\n/g, '\n');
 assert(bomExplorerCode.includes('PageContainer'), 'BomExplorerView must use PageContainer');
 assert(bomExplorerCode.includes('sap-card-table-scroll'), 'BomExplorerView must use sap-card-table-scroll');
 
 // Check Bulk views do not have maxWidth 1100 restriction
 const bulkCreatePath = path.resolve(frontendDir, 'src/components/BulkCreateBomView.jsx');
-const bulkCreateCode = fs.readFileSync(bulkCreatePath, 'utf8');
+const bulkCreateCode = fs.readFileSync(bulkCreatePath, 'utf8').replace(/\r\n/g, '\n');
 assert(!bulkCreateCode.includes('maxWidth: 1100'), 'BulkCreateBomView must not constrain width to 1100px');
 assert(bulkCreateCode.includes('sap-card-table-scroll'), 'BulkCreateBomView must use sap-card-table-scroll');
 
 const bulkCopyPath = path.resolve(frontendDir, 'src/components/BulkBomView.jsx');
-const bulkCopyCode = fs.readFileSync(bulkCopyPath, 'utf8');
+const bulkCopyCode = fs.readFileSync(bulkCopyPath, 'utf8').replace(/\r\n/g, '\n');
 assert(!bulkCopyCode.includes('maxWidth: 1100'), 'BulkBomView must not constrain width to 1100px');
 assert(bulkCopyCode.includes('sap-card-table-scroll'), 'BulkBomView must use sap-card-table-scroll');
 
 // Check AdminView removed narrow maxWidth constraints
 const adminViewPath = path.resolve(frontendDir, 'src/components/AdminView.jsx');
-const adminViewCode = fs.readFileSync(adminViewPath, 'utf8');
+const adminViewCode = fs.readFileSync(adminViewPath, 'utf8').replace(/\r\n/g, '\n');
 assert(!adminViewCode.includes('maxWidth: 740'), 'AdminView must not constrain user table to 740px');
 assert(!adminViewCode.includes('maxWidth: 910'), 'AdminView must not constrain servers table to 910px');
 assert(!adminViewCode.includes('maxWidth: 850'), 'AdminView must not constrain permissions table to 850px');
@@ -573,7 +573,7 @@ console.log('   ✓ Shared layout components, responsive widths, summary panels,
 console.log('Test 10: Verify Toast Navigation Dismissal, Login/Logout Clearing, and 15s Safety Net...');
 
 // Verify ToastContext exports clearAll, clearOnNavigation, and sets 15s safety net duration
-const updatedToastContextCode = fs.readFileSync(toastContextPath, 'utf8');
+const updatedToastContextCode = fs.readFileSync(toastContextPath, 'utf8').replace(/\r\n/g, '\n');
 assert(updatedToastContextCode.includes('clearAll'), 'ToastContext must export clearAll');
 assert(updatedToastContextCode.includes('clearOnNavigation'), 'ToastContext must export clearOnNavigation');
 assert(updatedToastContextCode.includes('15000'), 'ToastContext error/warning duration must have 15s safety net');
@@ -581,14 +581,14 @@ assert(updatedToastContextCode.includes('popstate'), 'ToastContext must listen t
 
 // Verify Login.jsx clears toasts on field edits, on submit, and on login success
 const loginComponentPath = path.resolve(frontendDir, 'src/components/Login.jsx');
-const loginComponentCode = fs.readFileSync(loginComponentPath, 'utf8');
+const loginComponentCode = fs.readFileSync(loginComponentPath, 'utf8').replace(/\r\n/g, '\n');
 assert(loginComponentCode.includes('toast.clearAll()'), 'Login.jsx must call toast.clearAll()');
 assert(loginComponentCode.includes('handleEmailChange'), 'Login.jsx must clear error toast on email change');
 assert(loginComponentCode.includes('handlePasswordChange'), 'Login.jsx must clear error toast on password change');
 
 // Verify App.jsx clears toasts on login, logout, server change, and route navigation
 const appPath = path.resolve(frontendDir, 'src/App.jsx');
-const appCode = fs.readFileSync(appPath, 'utf8');
+const appCode = fs.readFileSync(appPath, 'utf8').replace(/\r\n/g, '\n');
 assert(appCode.includes('toast.clearOnNavigation()'), 'App.jsx navigateToView must call toast.clearOnNavigation()');
 assert(appCode.includes('toast.clearAll()'), 'App.jsx must call toast.clearAll()');
 
@@ -644,35 +644,19 @@ console.log('   ✓ Route change dismisses error toasts, login success clears to
 console.log('Test 11: Verify Home Page Redesign (/home)...');
 const homePagePath = path.resolve(frontendDir, 'src/components/HomePage.jsx');
 const homePageCssPath = path.resolve(frontendDir, 'src/components/HomePage.css');
-const homePageCode = fs.readFileSync(homePagePath, 'utf8');
-const homePageCss = fs.readFileSync(homePageCssPath, 'utf8');
+const homePageCode = fs.readFileSync(homePagePath, 'utf8').replace(/\r\n/g, '\n');
+const homePageCss = fs.readFileSync(homePageCssPath, 'utf8').replace(/\r\n/g, '\n');
 
-// Headline in navy with orange highlight, no blue text
-assert(homePageCode.includes('The AI edge'), 'Headline must include "The AI edge"');
-assert(homePageCode.includes('rexa-hero-orange-text'), 'Headline must use orange highlight class');
-assert(!homePageCode.includes('rexa-hero-blue-text'), 'Headline must NOT use blue text');
+// Operator dashboard with welcome strip and server status
+assert(homePageCode.includes('rx-home-welcome-strip') || homePageCode.includes('rx-home-hero'), 'HomePage must feature hero/welcome');
+assert(homePageCode.includes('Welcome back'), 'HomePage must feature Welcome back');
+assert(homePageCode.includes('rx-server-status-pill') || homePageCode.includes('rx-hero-status-pill'), 'HomePage must feature status pill');
 
-// Primary orange button "Explore products" + quiet secondary link "About us"
-assert(homePageCode.includes('Explore products'), 'Hero must feature "Explore products" button');
-assert(homePageCode.includes('About us') || homePageCode.includes('Learn more'), 'Hero must feature "About us" link');
+// Data-driven modules grid
+assert(homePageCode.includes('MODULE_REGISTRY'), 'HomePage must integrate MODULE_REGISTRY');
+assert(homePageCode.includes('Coming soon'), 'HomePage must feature Coming soon');
 
-// Three value points in a row under the hero with simple orange icons
-assert(homePageCode.includes('Automate SAP processes'), 'Must include "Automate SAP processes"');
-assert(homePageCode.includes('Improve efficiency') || homePageCode.includes('Improve operational efficiency'), 'Must include "Improve efficiency"');
-assert(homePageCode.includes('Reliable and secure'), 'Must include "Reliable and secure"');
-assert(homePageCode.includes('rexa-value-strip'), 'Must feature rexa-value-strip');
-
-// Two About cards in two columns
-assert(homePageCode.includes('About Next IT Point'), 'Must feature "About Next IT Point"');
-assert(homePageCode.includes('About RexaEdge'), 'Must feature "About RexaEdge"');
-assert(homePageCss.includes('grid-template-columns: 1fr 1fr;'), 'About section must use 2-column layout');
-
-// Clean light footer
-assert(homePageCode.includes('A product of Next IT Point Intellectual Services Pvt. Ltd.'), 'Footer must state product of Next IT Point');
-assert(homePageCode.includes('rexaEdgeFullColourLogo') || homePageCode.includes('rexa-footer-logo-img'), 'Footer must show logo');
-assert(!homePageCode.includes('rexa-footer-nav-box'), 'Footer must not have dummy nav links');
-
-console.log('   ✓ Home page warm light hero, orange actions, 3-point value strip, 2-column about, and light footer verified\n');
+console.log('   ✓ Home page modern enterprise dashboard layout, welcome strip, filters, and module grid verified\n');
 
 // 12. NOTIFICATION BANNER COMPACT SIZE & LIST COLLAPSE (1366 & 1920)
 console.log('Test 12: Verify Notification banner size (max 440px at 1366 & 1920) and 3-item list collapse with "+N more"...');

@@ -5,7 +5,7 @@
  * Defines all system modules, their keys, labels, lifecycle status,
  * UI grouping, and associated operational views.
  *
- * Adding a future module (e.g. Routing) only requires:
+ * Adding a future module (Ex. Routing) only requires:
  * 1. An entry in this registry with its actions/subApps
  * 2. Its backend routes guarded with requireModuleAccess(moduleKey)
  * ============================================================================
@@ -170,7 +170,7 @@ export const MODULE_REGISTRY = [
     status: 'coming_soon',
     group: 'Production Planning',
     desc: 'Task lists and operations',
-    iconName: 'Wrench',
+    iconName: 'Route',
     actions: [],
     apps: []
   },
@@ -190,7 +190,7 @@ export const MODULE_REGISTRY = [
     status: 'coming_soon',
     group: 'Production Planning',
     desc: 'Order release and confirmation',
-    iconName: 'TrendingUp',
+    iconName: 'Factory',
     actions: [],
     apps: []
   }
@@ -248,8 +248,8 @@ export function normalizePermissions(rawPerms = []) {
 
 /**
  * Returns structured summary data for feature permissions:
- * - text: Compact representation (e.g. "Display", "Display, Validate", "All (5)", "None")
- * - pillCount: Extra features beyond the first 2 (e.g. 2 for "Display, Validate +2")
+ * - text: Compact representation (Ex. "Display", "Display, Validate", "All (5)", "None")
+ * - pillCount: Extra features beyond the first 2 (Ex. 2 for "Display, Validate +2")
  * - isNone: true if 0 features granted
  * - isAll: true if all features granted
  * - tooltip: Full accessible list of granted features
@@ -326,7 +326,7 @@ export function getPermissionsSummaryParts(perms = []) {
 
 /**
  * Formats a clean, readable summary column string:
- * e.g. "Display, Validate +2", "All (5)" when everything is granted, "None" when nothing is.
+ * Ex. "Display, Validate +2", "All (5)" when everything is granted, "None" when nothing is.
  */
 export function formatPermissionsSummary(perms = []) {
   const parts = getPermissionsSummaryParts(perms);
@@ -337,7 +337,7 @@ export function formatPermissionsSummary(perms = []) {
 }
 
 /**
- * Resolves which app key owns a given tab or action (e.g. 'bulk_create_bom' -> 'bom.create')
+ * Resolves which app key owns a given tab or action (Ex. 'bulk_create_bom' -> 'bom.create')
  */
 export function getAppKeyForAction(action) {
   if (!action) return null;
@@ -371,7 +371,7 @@ export function isModuleAvailable(moduleKey) {
 }
 
 /**
- * Resolves which module key owns a specific UI tab/action (e.g. 'copy_bom' -> 'bom')
+ * Resolves which module key owns a specific UI tab/action (Ex. 'copy_bom' -> 'bom')
  */
 export function getModuleKeyForAction(action) {
   const found = MODULE_REGISTRY.find((mod) => mod.actions && mod.actions.includes(action));

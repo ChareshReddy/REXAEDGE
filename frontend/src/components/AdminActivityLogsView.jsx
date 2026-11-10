@@ -28,31 +28,35 @@ import {
 import Tooltip from './Tooltip';
 import Notification from './Notification';
 import { useToast } from '../context/ToastContext';
-import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv } from '../services/api';
+import { FormSection } from './ui/form-layout';
+import { getAuditLogs, getErrorLogs, getLogDetail, exportLogsCsv, getAvailableServers } from '../services/api';
 import { useRouter } from '../context/RouterContext';
 import { ROUTE_IDS } from '../config/routes';
+import { formatEnvironment } from '../utils/textFormatters';
 
 /**
- * Formats ISO date string to readable local date and time.
+ * Formats ISO date string to DD Mon YYYY, HH:mm:ss in viewer's local time zone.
+ * Consistent 24-hour format matching /^\d{2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}:\d{2}$/
  */
-function formatDateTime(isoString) {
+export function formatAuditTimestamp(isoString) {
   if (!isoString) return '—';
   try {
     const d = new Date(isoString);
     if (isNaN(d.getTime())) return String(isoString);
-    return d.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${day} ${month} ${year}, ${hours}:${minutes}:${seconds}`;
   } catch (_) {
     return String(isoString);
   }
 }
+
+const formatDateTime = formatAuditTimestamp;
 
 /**
  * Helper to download Blob as a file with given name.
@@ -80,6 +84,11 @@ function getDateRangeValues(preset) {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     return { startDate: start.toISOString(), endDate: now.toISOString() };
   }
+  if (preset === 'yesterday') {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+    return { startDate: start.toISOString(), endDate: end.toISOString() };
+  }
   if (preset === '7d') {
     const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     return { startDate: start.toISOString(), endDate: now.toISOString() };
@@ -89,6 +98,28 @@ function getDateRangeValues(preset) {
     return { startDate: start.toISOString(), endDate: now.toISOString() };
   }
   return { startDate: '', endDate: '' };
+}
+
+/**
+ * Returns local day start at 00:00:00.000 converted to ISO string.
+ */
+export function getLocalDayStartIso(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const d = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return d.toISOString();
+}
+
+/**
+ * Returns local day end inclusive to 23:59:59.999 converted to ISO string.
+ */
+export function getLocalDayEndIso(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  if (!year || !month || !day) return '';
+  const d = new Date(year, month - 1, day, 23, 59, 59, 999);
+  return d.toISOString();
 }
 
 export default function AdminActivityLogsView({
@@ -102,8 +133,55 @@ export default function AdminActivityLogsView({
   const [localActiveSubTab, setLocalActiveSubTab] = useState(initialSubTab);
   const activeSubTab = routerContext?.route?.adminSubTab || localActiveSubTab;
 
+  // Server metadata resolution (supports both prop and lazy-loading)
+  const [internalServers, setInternalServers] = useState([]);
+
+  useEffect(() => {
+    if (availableServers && availableServers.length > 0) return;
+    getAvailableServers()
+      .then((srvs) => {
+        if (Array.isArray(srvs) && srvs.length > 0) {
+          setInternalServers(srvs);
+        }
+      })
+      .catch(() => {});
+  }, [availableServers]);
+
+  const activeServerList = useMemo(() => {
+    return availableServers && availableServers.length > 0 ? availableServers : internalServers;
+  }, [availableServers, internalServers]);
+
+  const formatServerDisplay = useCallback((logItem) => {
+    const storedName = logItem?.server_name || logItem?.server_id;
+    if (!storedName) {
+      return { text: '-', name: '-', type: null, hasServer: false };
+    }
+    const matched = activeServerList.find(
+      (s) =>
+        (logItem?.server_id && s.id === logItem.server_id) ||
+        (logItem?.server_name && (s.name === logItem.server_name || s.system_name === logItem.server_name))
+    );
+    const rawEnv = matched?.environment || logItem?.server_environment || logItem?.environment;
+    if (rawEnv) {
+      const formattedType = formatEnvironment(rawEnv);
+      const displayName = logItem?.server_name || matched?.name || storedName;
+      return {
+        text: `${displayName} (${formattedType})`,
+        name: displayName,
+        type: formattedType,
+        hasServer: true
+      };
+    }
+    return {
+      text: storedName,
+      name: storedName,
+      type: null,
+      hasServer: true
+    };
+  }, [activeServerList]);
+
   // Filter States
-  const [datePreset, setDatePreset] = useState('today'); // 'today' | '7d' | '30d' | 'custom' | 'all'
+  const [datePreset, setDatePreset] = useState('today'); // 'today' | 'yesterday' | '7d' | '30d' | 'custom' | 'all'
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [userEmailFilter, setUserEmailFilter] = useState('');
@@ -112,7 +190,16 @@ export default function AdminActivityLogsView({
   const [serverFilter, setServerFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [httpStatusFilter, setHttpStatusFilter] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // Validate custom date range: end date must not be before start date
+  const customDateError = useMemo(() => {
+    if (datePreset === 'custom' && customStartDate && customEndDate) {
+      if (customEndDate < customStartDate) {
+        return 'End date cannot be before start date';
+      }
+    }
+    return '';
+  }, [datePreset, customStartDate, customEndDate]);
 
   // Pagination States
   const [page, setPage] = useState(1);
@@ -158,8 +245,10 @@ export default function AdminActivityLogsView({
     };
 
     if (datePreset === 'custom') {
-      if (customStartDate) params.startDate = new Date(customStartDate).toISOString();
-      if (customEndDate) params.endDate = new Date(customEndDate).toISOString();
+      if (customStartDate && customEndDate && !customDateError) {
+        params.startDate = getLocalDayStartIso(customStartDate);
+        params.endDate = getLocalDayEndIso(customEndDate);
+      }
     } else if (datePreset !== 'all') {
       const { startDate, endDate } = getDateRangeValues(datePreset);
       if (startDate) params.startDate = startDate;
@@ -168,7 +257,6 @@ export default function AdminActivityLogsView({
 
     if (userEmailFilter.trim()) params.userEmail = userEmailFilter.trim();
     if (serverFilter) params.serverId = serverFilter;
-    if (searchQuery.trim()) params.q = searchQuery.trim();
 
     if (activeSubTab === 'audit') {
       if (actionFilter) params.action = actionFilter;
@@ -186,17 +274,22 @@ export default function AdminActivityLogsView({
     datePreset,
     customStartDate,
     customEndDate,
+    customDateError,
     userEmailFilter,
     actionFilter,
     sourceFilter,
     serverFilter,
     statusFilter,
-    httpStatusFilter,
-    searchQuery
+    httpStatusFilter
   ]);
 
   // Load logs
   const loadLogs = useCallback(async () => {
+    if (datePreset === 'custom') {
+      if (customDateError) return;
+      if (!customStartDate || !customEndDate) return;
+    }
+
     setIsLoading(true);
     setErrorMsg('');
     try {
@@ -224,7 +317,7 @@ export default function AdminActivityLogsView({
     } finally {
       setIsLoading(false);
     }
-  }, [activeSubTab, activeParams]);
+  }, [activeSubTab, activeParams, datePreset, customStartDate, customEndDate, customDateError]);
 
   useEffect(() => {
     loadLogs();
@@ -262,7 +355,6 @@ export default function AdminActivityLogsView({
     setServerFilter('');
     setStatusFilter('');
     setHttpStatusFilter('');
-    setSearchQuery('');
     setPage(1);
   };
 
@@ -327,12 +419,12 @@ export default function AdminActivityLogsView({
               gap: 6,
               padding: '6px 2px 8px',
               border: 'none',
-              borderBottom: activeSubTab === 'audit' ? '2px solid #EA580C' : '2px solid transparent',
+              borderBottom: activeSubTab === 'audit' ? '2px solid #02579A' : '2px solid transparent',
               borderRadius: 0,
               fontSize: '13px',
               fontWeight: 600,
               backgroundColor: 'transparent',
-              color: activeSubTab === 'audit' ? '#EA580C' : '#64748b',
+              color: activeSubTab === 'audit' ? '#02579A' : '#64748b',
               cursor: 'pointer'
             }}
           >
@@ -349,12 +441,12 @@ export default function AdminActivityLogsView({
               gap: 6,
               padding: '6px 2px 8px',
               border: 'none',
-              borderBottom: activeSubTab === 'errors' ? '2px solid #EA580C' : '2px solid transparent',
+              borderBottom: activeSubTab === 'errors' ? '2px solid #02579A' : '2px solid transparent',
               borderRadius: 0,
               fontSize: '13px',
               fontWeight: 600,
               backgroundColor: 'transparent',
-              color: activeSubTab === 'errors' ? '#EA580C' : '#64748b',
+              color: activeSubTab === 'errors' ? '#02579A' : '#64748b',
               cursor: 'pointer'
             }}
           >
@@ -380,7 +472,7 @@ export default function AdminActivityLogsView({
               fontWeight: 600,
               borderRadius: 6,
               border: 'none',
-              backgroundColor: 'var(--sap-btn-primary-bg, #EA580C)',
+              backgroundColor: 'var(--sap-btn-primary-bg, #02579A)',
               color: '#ffffff',
               cursor: (isExporting || isNotConfigured || totalCount === 0) ? 'not-allowed' : 'pointer',
               opacity: (isExporting || isNotConfigured || totalCount === 0) ? 0.6 : 1
@@ -455,9 +547,9 @@ export default function AdminActivityLogsView({
       )}
 
       {/* Filter Bar */}
-      <div className="sap-logs-filter-bar">
+      <div className="sap-logs-filter-bar rx-card" style={{ padding: "var(--space-20) var(--space-24)", marginBottom: "var(--space-16)", backgroundColor: "var(--color-surface, #FFFFFF)", border: "1px solid var(--color-border, #D9E2EC)", borderRadius: "var(--radius-lg, 12px)" }}>
         {/* Date Range Preset */}
-        <div className="sap-logs-filter-item">
+        <div className="sap-logs-filter-item sap-logs-filter-item-date">
           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
             Date Range
           </label>
@@ -467,9 +559,10 @@ export default function AdminActivityLogsView({
               setDatePreset(e.target.value);
               setPage(1);
             }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
           >
             <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
             <option value="7d">Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
             <option value="custom">Custom Date Range</option>
@@ -480,26 +573,26 @@ export default function AdminActivityLogsView({
         {/* Custom Start & End Date if datePreset === 'custom' */}
         {datePreset === 'custom' && (
           <>
-            <div className="sap-logs-filter-item">
+            <div className="sap-logs-filter-item sap-logs-filter-item-date">
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 Start Date
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={customStartDate}
                 onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
+                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
               />
             </div>
-            <div className="sap-logs-filter-item">
+            <div className="sap-logs-filter-item sap-logs-filter-item-date">
               <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
                 End Date
               </label>
               <input
-                type="datetime-local"
+                type="date"
                 value={customEndDate}
                 onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
+                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
               />
             </div>
           </>
@@ -515,7 +608,7 @@ export default function AdminActivityLogsView({
             placeholder="Filter by user..."
             value={userEmailFilter}
             onChange={(e) => { setUserEmailFilter(e.target.value); setPage(1); }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', boxSizing: 'border-box' }}
+            className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
           />
         </div>
 
@@ -528,7 +621,7 @@ export default function AdminActivityLogsView({
             <select
               value={actionFilter}
               onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
             >
               <option value="">All Actions</option>
               <option value="auth.login">auth.login</option>
@@ -558,7 +651,7 @@ export default function AdminActivityLogsView({
             <select
               value={sourceFilter}
               onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
             >
               <option value="">All Sources</option>
               <option value="backend">backend</option>
@@ -576,12 +669,12 @@ export default function AdminActivityLogsView({
           <select
             value={serverFilter}
             onChange={(e) => { setServerFilter(e.target.value); setPage(1); }}
-            style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
           >
             <option value="">All Servers</option>
-            {availableServers.map((s) => (
+            {activeServerList.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name || s.system_name || s.id}
+                {s.name || s.system_name || s.id}{s.environment ? ` (${formatEnvironment(s.environment)})` : ''}
               </option>
             ))}
           </select>
@@ -596,7 +689,7 @@ export default function AdminActivityLogsView({
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
             >
               <option value="">All Status</option>
               <option value="success">Success</option>
@@ -611,7 +704,7 @@ export default function AdminActivityLogsView({
             <select
               value={httpStatusFilter}
               onChange={(e) => { setHttpStatusFilter(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', padding: '0 8px', backgroundColor: '#ffffff', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
             >
               <option value="">All Status Codes</option>
               <option value="400">400 (Bad Request)</option>
@@ -624,25 +717,6 @@ export default function AdminActivityLogsView({
             </select>
           </div>
         )}
-
-        {/* Text Search */}
-        <div className="sap-logs-filter-search">
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
-            Search Text
-          </label>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }}>
-              <Search size={13} />
-            </span>
-            <input
-              type="text"
-              placeholder={activeSubTab === 'audit' ? 'Search target, message...' : 'Search ref, message, route...'}
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              style={{ width: '100%', height: 32, fontSize: 12, borderRadius: 6, border: '1px solid #d1d5db', paddingLeft: 28, paddingRight: 8, boxSizing: 'border-box' }}
-            />
-          </div>
-        </div>
 
         {/* Reset Button */}
         <div className="sap-logs-filter-reset" style={{ display: 'flex', alignItems: 'flex-end' }}>
@@ -669,11 +743,39 @@ export default function AdminActivityLogsView({
             <span>Reset</span>
           </button>
         </div>
+
+        {/* Inline Custom Date Error */}
+        {datePreset === 'custom' && customDateError && (
+          <div
+            className="sap-logs-date-error"
+            role="alert"
+            style={{
+              flexBasis: '100%',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 4,
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--color-danger, #dc2626)'
+            }}
+          >
+            <AlertCircle size={14} />
+            <span>{customDateError}</span>
+          </div>
+        )}
       </div>
 
-      {/* Main Table Container with Sticky Header */}
-      <div
-        className="sap-admin-table-scroll sap-table-container"
+      {/* Main Table Card with Full-Bleed Tinted Header Band */}
+      <FormSection
+        title={activeSubTab === 'audit' ? 'Audit Trail Records' : 'Error Log Records'}
+        description={activeSubTab === 'audit' ? 'Chronological record of user actions and system events' : 'Detailed system exception and failure log'}
+        badge={<span className="sap-badge sap-badge-neutral">{totalCount} records</span>}
+        className="w-full mt-4"
+      >
+        <div
+          className="sap-admin-table-scroll sap-table-container"
         tabIndex={0}
         role="region"
         aria-label={`${activeSubTab === 'audit' ? 'Audit' : 'Error'} Logs Table`}
@@ -683,7 +785,6 @@ export default function AdminActivityLogsView({
           overflowY: 'auto',
           height: 'calc(100vh - 350px)',
           minHeight: 400,
-          scrollbarGutter: 'stable',
           backgroundColor: '#ffffff',
           borderRadius: 8,
           border: '1px solid var(--color-border, #e2e8f0)',
@@ -696,7 +797,7 @@ export default function AdminActivityLogsView({
              AUDIT LOGS TABLE
              ============================================================ */
           <table
-            className="sap-table sap-admin-compact-table"
+            className="sap-table rx-audit-table"
             style={{
               width: '100%',
               tableLayout: 'fixed',
@@ -705,55 +806,49 @@ export default function AdminActivityLogsView({
             }}
           >
             <colgroup>
-              <col style={{ width: '14%' }} />
               <col style={{ width: '18%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '17%' }} />
+              <col style={{ width: '20%' }} />
+              <col style={{ width: '24%' }} />
               <col style={{ width: '14%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '8%' }} />
-              <col style={{ width: '8%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 3, borderBottom: '1px solid var(--color-border)' }}>
               <tr>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-highlight" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="Timestamp when action occurred">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Timestamp</span>
+                    <span style={{ fontSize: 12 }}>Timestamp</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-highlight" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="User email who performed action">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>User</span>
+                    <span style={{ fontSize: 12 }}>User</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-highlight rx-audit-th-divider" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="Action type in feature.action format">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Action</span>
+                    <span style={{ fontSize: 12 }}>Action</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
-                  <Tooltip text="Target entity or identifier">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Target</span>
-                  </Tooltip>
-                </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="Target SAP Server">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Server</span>
+                    <span style={{ fontSize: 12 }}>Server</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="Execution outcome">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Status</span>
+                    <span style={{ fontSize: 12 }}>Status</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36 }}>
+                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38 }}>
                   <Tooltip text="Duration of request in milliseconds">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Duration</span>
+                    <span style={{ fontSize: 12 }}>Duration</span>
                   </Tooltip>
                 </th>
-                <th style={{ padding: '0 8px', height: 36, textAlign: 'center' }}>
+                <th className="rx-audit-th-standard" style={{ padding: '0 10px', height: 38, textAlign: 'center' }}>
                   <Tooltip text="Inspect full details">
-                    <span style={{ fontWeight: 600, fontSize: 12 }}>Actions</span>
+                    <span style={{ fontSize: 12 }}>Actions</span>
                   </Tooltip>
                 </th>
               </tr>
@@ -761,14 +856,14 @@ export default function AdminActivityLogsView({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
                     <RefreshCw size={20} className="sap-spin" style={{ margin: '0 auto 8px' }} />
                     <div style={{ fontSize: 13 }}>Loading audit logs...</div>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
                     <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                       No audit logs found matching your filters.
                     </div>
@@ -778,7 +873,7 @@ export default function AdminActivityLogsView({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#C2410C',
+                        color: '#05396B',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -790,39 +885,67 @@ export default function AdminActivityLogsView({
                 </tr>
               ) : (
                 logs.map((item, idx) => {
-                  const formattedTime = formatDateTime(item.created_at);
+                  const formattedTime = formatAuditTimestamp(item.created_at);
                   const userDisplay = item.user_email || item.user_id || 'SYSTEM';
                   const actionDisplay = item.action || '—';
-                  const targetDisplay = item.target || '—';
-                  const serverDisplay = item.server_name || item.server_id || '—';
+                  const serverInfo = formatServerDisplay(item);
                   const statusDisplay = item.status === 'success' ? 'Success' : (item.status || 'Failed');
                   const durationDisplay = item.duration_ms !== null && item.duration_ms !== undefined ? `${item.duration_ms} ms` : '—';
+                  const isSelected = selectedLog?.id === item.id;
 
                   return (
                     <tr
                       key={item.id}
+                      className={isSelected ? 'selected' : ''}
                       style={{
                         backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
                         borderBottom: '1px solid #f1f5f9',
-                        fontSize: 12
+                        fontSize: 12,
+                        height: 38
                       }}
                     >
                       <td
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}
+                        className="rx-audit-col-highlight"
+                        style={{
+                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+                          padding: '0 8px',
+                          whiteSpace: 'nowrap',
+                          color: 'var(--color-text-main, #0f172a)',
+                          verticalAlign: 'middle',
+                          fontFamily: 'var(--font-sans, sans-serif)',
+                          fontVariantNumeric: 'tabular-nums'
+                        }}
                         title={formattedTime}
                       >
                         {formattedTime}
                       </td>
                       <td
-                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        className="rx-audit-col-highlight"
+                        style={{
+                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+                          padding: '0 8px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          color: 'var(--color-text-main, #0f172a)',
+                          verticalAlign: 'middle',
+                          fontFamily: 'var(--font-sans, sans-serif)',
+                          fontVariantNumeric: 'tabular-nums'
+                        }}
                         title={userDisplay}
                       >
-                        <span style={{ fontWeight: 500, color: '#1e293b' }}>
-                          {userDisplay}
-                        </span>
+                        {userDisplay}
                       </td>
                       <td
-                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        className="rx-audit-col-highlight rx-audit-col-divider"
+                        style={{
+                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+                          padding: '0 8px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          verticalAlign: 'middle'
+                        }}
                         title={actionDisplay}
                       >
                         <span
@@ -836,9 +959,9 @@ export default function AdminActivityLogsView({
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 600,
-                            backgroundColor: '#f1f5f9',
-                            color: '#0f172a',
-                            border: '1px solid #e2e8f0',
+                            backgroundColor: '#ffffff',
+                            color: 'var(--color-blue-700, #034375)',
+                            border: '1px solid var(--color-border-input, #C7D4E1)',
                             fontFamily: 'var(--sap-font-mono, monospace)'
                           }}
                         >
@@ -846,23 +969,35 @@ export default function AdminActivityLogsView({
                         </span>
                       </td>
                       <td
-                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        title={targetDisplay}
+                        className="rx-audit-col-standard"
+                        style={{
+                          padding: '0 8px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          verticalAlign: 'middle'
+                        }}
+                        title={serverInfo.text}
                       >
-                        {targetDisplay}
+                        {serverInfo.type ? (
+                          <span style={{ whiteSpace: 'nowrap' }}>
+                            <span style={{ fontWeight: 400, color: 'var(--color-text-main, #0f172a)' }}>{serverInfo.name}</span>{' '}
+                            <span className="rx-audit-server-badge">({serverInfo.type})</span>
+                          </span>
+                        ) : (
+                          <span style={{ fontWeight: 400, color: serverInfo.hasServer ? 'var(--color-text-main, #0f172a)' : 'var(--color-text-muted, #64748b)', whiteSpace: 'nowrap' }}>
+                            {serverInfo.text}
+                          </span>
+                        )}
                       </td>
                       <td
-                        style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        title={serverDisplay}
-                      >
-                        {serverDisplay}
-                      </td>
-                      <td
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                        className="rx-audit-col-standard rx-audit-col-status"
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'visible', textOverflow: 'clip' }}
                         title={statusDisplay}
                       >
                         {item.status === 'success' ? (
                           <span
+                            className="rx-status-badge-success"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -881,7 +1016,7 @@ export default function AdminActivityLogsView({
                           </span>
                         ) : (
                           <span
-                            className="sap-badge-failed"
+                            className="rx-status-badge-failed sap-badge-failed"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -898,32 +1033,34 @@ export default function AdminActivityLogsView({
                         )}
                       </td>
                       <td
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}
+                        className="rx-audit-col-standard"
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', color: '#64748b', verticalAlign: 'middle' }}
                         title={durationDisplay}
                       >
                         {durationDisplay}
                       </td>
-                      <td style={{ padding: '0 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td className="rx-audit-col-standard rx-audit-col-actions" style={{ padding: '0 2px', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle', overflow: 'hidden', textOverflow: 'clip' }}>
                         <button
                           type="button"
                           onClick={() => handleOpenDetail(item)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 4,
-                            padding: '4px 8px',
+                            gap: 2,
+                            padding: '2px 4px',
                             borderRadius: 4,
                             border: '1px solid #d1d5db',
                             backgroundColor: '#ffffff',
                             cursor: 'pointer',
                             fontSize: 11,
-                            color: '#C2410C',
+                            lineHeight: 1.2,
+                            color: '#02579A',
                             margin: '0 auto'
                           }}
                           title="View log details"
                           aria-label="View log details"
                         >
-                          <Eye size={12} />
+                          <Eye size={11} />
                           <span>Detail</span>
                         </button>
                       </td>
@@ -956,7 +1093,7 @@ export default function AdminActivityLogsView({
               <col style={{ width: '13%' }} />
               <col style={{ width: '8%' }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--color-blue-200)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Timestamp when error occurred">
@@ -1020,7 +1157,7 @@ export default function AdminActivityLogsView({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#C2410C',
+                        color: '#05396B',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -1060,7 +1197,7 @@ export default function AdminActivityLogsView({
                         title={errorRefDisplay}
                       >
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
-                          <code style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
+                          <code style={{ fontWeight: 'var(--font-weight-code, 500)', color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
                             {errorRefDisplay}
                           </code>
                           {item.error_ref && (
@@ -1177,8 +1314,14 @@ export default function AdminActivityLogsView({
         }}
       >
         <div>
-          Showing <strong>{totalCount > 0 ? (page - 1) * pageSize + 1 : 0}</strong> to{' '}
-          <strong>{totalCount > 0 ? Math.min(page * pageSize, totalCount) : 0}</strong> of <strong>{totalCount}</strong> entries
+          {totalCount === 0 ? (
+            <span>No entries</span>
+          ) : (
+            <>
+              Showing <strong>{(page - 1) * pageSize + 1}</strong> to{' '}
+              <strong>{Math.min(page * pageSize, totalCount)}</strong> of <strong>{totalCount}</strong> entries
+            </>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -1249,6 +1392,7 @@ export default function AdminActivityLogsView({
           </div>
         </div>
       </div>
+      </FormSection>
 
       {/* ============================================================
           RIGHT-SIDE DETAIL DRAWER
@@ -1353,7 +1497,7 @@ export default function AdminActivityLogsView({
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Logged At</div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
-                    {formatDateTime(selectedLog.created_at)}
+                    {formatAuditTimestamp(selectedLog.created_at)}
                   </div>
                 </div>
               </div>
@@ -1370,7 +1514,21 @@ export default function AdminActivityLogsView({
                 <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Server</div>
                   <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
-                    {selectedLog.server_name || selectedLog.server_id || '—'}
+                    {formatServerDisplay(selectedLog).text}
+                  </div>
+                </div>
+
+                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Action</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-blue-700, #034375)', fontFamily: 'var(--sap-font-mono, monospace)', wordBreak: 'break-all' }}>
+                    {selectedLog.action || '—'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Target</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', wordBreak: 'break-all' }}>
+                    {selectedLog.target || '—'}
                   </div>
                 </div>
 
@@ -1504,7 +1662,7 @@ export default function AdminActivityLogsView({
                               background: 'none',
                               border: 'none',
                               fontSize: 11,
-                              color: '#C2410C',
+                              color: '#05396B',
                               cursor: 'pointer'
                             }}
                           >
@@ -1546,7 +1704,7 @@ export default function AdminActivityLogsView({
                               background: 'none',
                               border: 'none',
                               fontSize: 11,
-                              color: '#C2410C',
+                              color: '#05396B',
                               cursor: 'pointer'
                             }}
                           >
@@ -1576,16 +1734,37 @@ export default function AdminActivityLogsView({
                   </div>
                 </details>
               )}
+            </div>
 
-              {/* User Agent */}
-              {selectedLog.user_agent && (
-                <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>User Agent</div>
-                  <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                    {selectedLog.user_agent}
-                  </div>
-                </div>
-              )}
+            {/* Drawer Footer */}
+            <div
+              style={{
+                padding: '12px 20px',
+                borderTop: '1px solid var(--color-border, #e2e8f0)',
+                backgroundColor: '#f8fafc',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedLog(null)}
+                className="sap-btn sap-btn-secondary"
+                style={{
+                  height: 32,
+                  padding: '0 16px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  borderRadius: 6,
+                  border: '1px solid #d1d5db',
+                  backgroundColor: '#ffffff',
+                  color: '#334155',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

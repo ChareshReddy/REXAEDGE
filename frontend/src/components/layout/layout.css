@@ -55,7 +55,7 @@
   background-image: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
+  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
   box-shadow: none !important;
 }
 
@@ -71,8 +71,8 @@
 /* PageHeader wrapper */
 .sap-layout-header,
 .fiori-ph {
-  background: var(--sap-page-header-bg, #FFF8F2) !important;
-  border-bottom: 1px solid var(--sap-border, #FED7AA) !important;
+  background: var(--sap-page-header-bg, #FFFFFF) !important;
+  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
   box-shadow: none !important;
   width: 100%;
   position: relative;
@@ -149,7 +149,7 @@
   gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--sap-border, #FED7AA);
+  border-top: 1px solid var(--sap-border, #D9E2EC);
   background: transparent;
   width: 100%;
   box-sizing: border-box;
@@ -182,9 +182,9 @@
 .sap-card-table-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--sap-table-surface, #FEEBD2);
+  background: var(--sap-table-surface, var(--color-blue-50, #EEF4F9));
   z-index: 10;
-  box-shadow: 0 1px 0 var(--sap-border, #FED7AA);
+  box-shadow: 0 1px 0 var(--sap-border, #D9E2EC);
 }
 
 /* Empty state row for tables */
@@ -247,26 +247,84 @@
 .fiori-op-grid {
   display: grid !important;
   grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
-  gap: 16px !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 300px)) !important;
+  gap: 20px !important;
   align-items: stretch !important;
   justify-content: start !important;
   width: 100% !important;
 }
 
 .fiori-op-card {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: none !important;
-  height: 100% !important;
-  min-height: 130px !important;
+  width: 300px !important;
+  min-width: 260px !important;
+  max-width: 320px !important;
+  height: 210px !important;
+  min-height: 190px !important;
   max-height: none !important;
-  padding: 18px !important;
+  padding: 20px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #D9E2EC !important;
+  border-radius: 16px !important;
+  box-shadow: 0 1px 2px rgba(0, 32, 78, 0.06) !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
   justify-content: flex-start !important;
   box-sizing: border-box !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease, background-color 150ms ease !important;
+}
+
+.fiori-op-card:hover:not(:disabled):not(.disabled) {
+  border-color: #B3CDE0 !important;
+  box-shadow: 0 8px 24px rgba(0, 32, 78, 0.12) !important;
+  transform: translateY(-2px) !important;
+  background-color: #FFFFFF !important;
+}
+
+.fiori-op-card:hover:not(:disabled):not(.disabled) .fiori-op-icon-badge,
+.fiori-op-card:focus-visible .fiori-op-icon-badge,
+.fiori-op-card:active:not(:disabled):not(.disabled) .fiori-op-icon-badge {
+  background-color: var(--color-blue-100, #DCE8F1) !important;
+  border-color: var(--color-blue-400, #6699B8) !important;
+  color: var(--color-blue-600, #02579A) !important;
+}
+
+.fiori-op-card:hover:not(:disabled):not(.disabled) .fiori-op-icon-badge svg,
+.fiori-op-card:focus-visible .fiori-op-icon-badge svg,
+.fiori-op-card:active:not(:disabled):not(.disabled) .fiori-op-icon-badge svg {
+  stroke: var(--color-blue-600, #02579A) !important;
+  color: var(--color-blue-600, #02579A) !important;
+}
+
+.fiori-op-card:active:not(:disabled):not(.disabled) {
+  transform: translateY(0) !important;
+}
+
+.fiori-op-card:focus-visible {
+  outline: 2px solid #02579A !important;
+  outline-offset: 2px !important;
+}
+
+@media (max-width: 600px) {
+  .fiori-op-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .fiori-op-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fiori-op-card,
+  .fiori-op-card:hover,
+  .fiori-op-card:active {
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* Unconstrained form containers inside PageContainer */
@@ -308,7 +366,7 @@
 .sap-form-dual-connector-line {
   flex: 1;
   width: 1px;
-  background: var(--sap-border, #FED7AA);
+  background: var(--sap-border, #D9E2EC);
 }
 
 .sap-form-dual-connector-badge {
@@ -316,12 +374,12 @@
   height: 32px;
   border-radius: 50%;
   background: #ffffff;
-  border: 1px solid var(--sap-border-strong, #FDBA74);
-  box-shadow: 0 1px 2px rgba(234, 88, 12, 0.08);
+  border: 1px solid var(--sap-border-strong, #B3CDE0);
+  box-shadow: 0 1px 2px rgba(2, 87, 154, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #C2410C;
+  color: #05396B;
   flex-shrink: 0;
 }
 
@@ -329,11 +387,11 @@
 .sap-table-container-full {
   width: 100%;
   max-width: 100%;
-  background: var(--sap-card-bg, #FFF8F2);
-  border: 1px solid var(--sap-border, #FED7AA);
+  background: var(--sap-card-bg, #FFFFFF);
+  border: 1px solid var(--sap-border, #D9E2EC);
   border-radius: var(--radius-xl, 12px);
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(234, 88, 12, 0.04);
+  box-shadow: 0 1px 3px rgba(2, 87, 154, 0.04);
 }
 
 .sap-admin-table-scroll {
@@ -352,7 +410,168 @@
 .sap-admin-table-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--sap-table-surface, #FEEBD2);
+  background: var(--sap-table-surface, var(--color-blue-50, #EEF4F9));
   z-index: 10;
-  box-shadow: 0 1px 0 var(--sap-border, #FED7AA);
+  box-shadow: 0 1px 0 var(--sap-border, #D9E2EC);
+}
+
+
+/* Rexa Modern App Shell Body & Top Bar Search */
+.rx-app-shell-body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  height: calc(100vh - var(--size-topbar-height, 64px));
+  height: calc(100dvh - var(--size-topbar-height, 64px));
+  max-height: calc(100vh - var(--size-topbar-height, 64px));
+  max-height: calc(100dvh - var(--size-topbar-height, 64px));
+  width: 100%;
+  overflow: hidden;
+  background: var(--color-page-bg, #F5F8FB);
+}
+
+.rx-topbar-search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  background: var(--color-blue-50, #EEF4F9);
+  border: 1px solid var(--color-border, #D9E2EC);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--color-text-secondary, #4A5F77);
+  font-size: var(--font-size-xs, 12px);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--duration-fast, 150ms) ease;
+}
+
+.rx-topbar-search-btn:hover {
+  background: var(--color-blue-100, #DCE8F1);
+  border-color: var(--color-blue-200, #B3CDE0);
+  color: var(--color-blue-600, #02579A);
+}
+
+.rx-topbar-search-kbd {
+  font-size: 10px;
+  font-family: inherit;
+  background: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--color-border, #D9E2EC);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--color-text-muted, #7A8CA3);
+}
+
+
+/* Responsive Topbar Hamburger & Sidebar Mobile Drawer */
+.sap-shell-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rx-topbar-sidebar-toggle {
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border, #D9E2EC);
+  background-color: transparent;
+  color: var(--color-navy-900, #00204E);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 150ms ease);
+}
+
+.rx-topbar-sidebar-toggle:hover {
+  background-color: var(--color-blue-50, #EEF4F9);
+}
+
+@media (max-width: 899.98px) {
+  .rx-topbar-sidebar-toggle {
+    display: inline-flex !important;
+  }
+
+  .rx-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 85vw !important;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal, 200ms ease) !important;
+    z-index: 1002 !important;
+    box-shadow: 0 20px 48px rgba(0, 32, 78, 0.25) !important;
+  }
+
+  .rx-sidebar.rx-sidebar-mobile-open {
+    transform: translateX(0) !important;
+  }
+}
+
+/* Rexa Single | Bulk Switch */
+.rx-single-bulk-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background-color: var(--color-blue-50, #EEF4F9);
+  border: 1px solid var(--color-border, #D9E2EC);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.rx-switch-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  color: var(--color-navy-900, #00204E);
+  font-weight: 500;
+  font-size: var(--font-size-13, 13px);
+  font-family: var(--font-sans);
+  box-shadow: none;
+  transition: all var(--transition-fast, 150ms ease);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.rx-switch-btn:hover:not(:disabled):not(.active) {
+  background-color: var(--color-blue-100, #DCE8F1);
+}
+
+.rx-switch-btn.active {
+  background-color: var(--color-blue-600, #02579A);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 32, 78, 0.05));
+}
+
+.rx-switch-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Rexa Component Items & Enterprise Table Headers */
+.sap-table thead th,
+.sap-table thead th * {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.sap-table thead th {
+  line-height: 1.25 !important;
+  vertical-align: middle !important;
+  min-height: 56px;
+  box-sizing: border-box;
 }

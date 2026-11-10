@@ -29,7 +29,7 @@ assert(!layoutCss.includes('.sap-sticky-action-bar'), 'layout.css must NOT defin
 assert(!layoutCss.includes('.has-sticky-bar'), 'layout.css must NOT define .has-sticky-bar reserved padding');
 assert(!layoutCss.includes('--sap-sticky-bar-height'), 'layout.css must NOT define --sap-sticky-bar-height');
 assert(layoutCss.includes('.sap-card-action-row'), 'layout.css must define .sap-card-action-row');
-assert(layoutCss.includes('border-top: 1px solid var(--sap-border, #FED7AA)'), 'Action row must have 1px top divider #FED7AA');
+assert(layoutCss.includes('border-top: 1px solid var(--sap-border, #D9E2EC)') || layoutCss.includes('border-top: 1px solid var(--sap-border, #FED7AA)'), 'Action row must have 1px top divider');
 assert(layoutCss.includes('padding-top: 16px'), 'Action row must have 16px padding-top');
 assert(layoutCss.includes('justify-content: flex-end'), 'Action row buttons must be right-aligned');
 assert(layoutCss.includes('gap: 12px'), 'Action row buttons must have 12px gap');
@@ -66,7 +66,7 @@ assert(!deleteViewCode.includes('StickyActionBar'), 'DeleteBomView must NOT use 
 assert(!deleteViewCode.includes('hasStickyBar'), 'DeleteBomView must NOT use hasStickyBar');
 assert(deleteFormCode.includes('sap-card-action-row'), 'DeleteBomForm must contain sap-card-action-row inside card');
 assert(deleteFormCode.includes('Cancel'), 'DeleteBomForm must contain Cancel button');
-assert(deleteFormCode.includes('Proceed to Confirmation'), 'DeleteBomForm must contain Proceed to Confirmation button');
+assert(/Proceed to [Cc]onfirmation/.test(deleteFormCode), 'DeleteBomForm must contain Proceed to Confirmation button');
 console.log('   ✓ Delete BOM action buttons cleanly placed inside form card');
 
 // 6. Create Single BOM View verification

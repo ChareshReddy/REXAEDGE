@@ -1,3 +1,4 @@
+import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -263,6 +264,7 @@ export default function CopyBomView({
       {/* Full-width Fiori Horizon Header */}
       <FioriPageHeader
         title="Copy Single BOM"
+        extraTitleContent={<SingleBulkSwitch operation="copy" mode="single" />}
         subtitle="Copy a BOM to another plant, with automatic alternative numbers and sub-assemblies."
         onBack={onBack}
         backTitle="Back to Copy BOM"
@@ -344,7 +346,7 @@ export default function CopyBomView({
                 className="sap-result-success-card"
                 style={
                   hasDifferences
-                    ? { borderColor: 'var(--sap-warning-border, #fed7aa)', backgroundColor: '#ffffff' }
+                    ? { borderColor: 'var(--sap-warning-border, #D9E2EC)', backgroundColor: '#ffffff' }
                     : {}
                 }
               >
@@ -363,7 +365,7 @@ export default function CopyBomView({
                         className="sap-result-success-title"
                         style={{
                           margin: 0,
-                          color: hasDifferences ? 'var(--sap-warning-text, #9a3412)' : 'var(--sap-success-text, #166534)'
+                          color: hasDifferences ? 'var(--sap-warning-text, #00204E)' : 'var(--sap-success-text, #166534)'
                         }}
                       >
                         {hasDifferences
@@ -403,10 +405,10 @@ export default function CopyBomView({
                       padding: '12px 16px',
                       borderRadius: 6,
                       backgroundColor: '#fffbeb',
-                      border: '1px solid #fed7aa'
+                      border: '1px solid #D9E2EC'
                     }}
                   >
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#9a3412', marginBottom: 6 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#00204E', marginBottom: 6 }}>
                       Discrepancies from source BOM ({differences.length}):
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark, #1e293b)', lineHeight: 1.5 }}>

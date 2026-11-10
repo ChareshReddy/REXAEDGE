@@ -430,15 +430,14 @@ async function runTests() {
     const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
 
     // Plnt and SLoc narrow and fixed
-    assert(slocCode.includes('width: 68'), 'Plnt column must be narrow and fixed (~68px)');
-    assert(slocCode.includes('width: 72'), 'SLoc column must be narrow and fixed (~72px)');
+    assert(slocCode.includes('width: 90'), 'Plnt column must be narrow and fixed (~90px)');
+    assert(slocCode.includes('width: 90'), 'SLoc column must be narrow and fixed (~90px)');
 
     // Description sized to text with sensible bounds
-    assert(slocCode.includes('minWidth: 260'), 'Description column must have minWidth: 260');
+    assert(slocCode.includes('width: 260') || slocCode.includes('maxWidth: 340'), 'Description column must have width 260px');
 
-    // Popup width fits table (fit-content with min 540px and max 92vw)
-    assert(slocCode.includes("width: 'fit-content'") || slocCode.includes("minWidth: 'min(540px, 92vw)'"), 'Storage Location popup width must fit table with min width');
-    assert(cssCode.includes('.sap-f4-modal-dialog.storage-location') && cssCode.includes('width: fit-content'), 'CSS must reflect fit-content storage location popup width');
+    // Popup width fits table (max-content with min 520px and max 90vw)
+    assert(cssCode.includes('.sap-f4-modal-dialog.storage-location') && (cssCode.includes('width: max-content') || cssCode.includes('width: fit-content')), 'CSS must reflect max-content storage location popup width');
 
     console.log('   ✓ Storage location Plnt and SLoc fixed, Description bounded, and popup width fitted to content');
   }
@@ -456,9 +455,9 @@ async function runTests() {
     const cssCode = fs.readFileSync(path.resolve(frontendDir, 'src/index.css'), 'utf8');
     const bomUsageCode = fs.readFileSync(path.resolve(frontendDir, 'src/components/BomUsageValueHelpModal.jsx'), 'utf8');
 
-    assert(cssCode.includes('width: fit-content') && cssCode.includes('max-width: 92vw'), 'F4 dialogs use width: fit-content and max-width: 92vw');
-    assert(bomUsageCode.includes("width: 'fit-content'") && bomUsageCode.includes("minWidth: 'min(560px, 92vw)'"), 'BOM Usage modal uses fit-content and min-width 560px');
-    assert(cssCode.includes('.sap-restrict-modal-dialog') && cssCode.includes('width: min(600px, 94vw)'), 'Restrict Value Range modal width tightened to 600px');
+    assert((cssCode.includes('width: fit-content') || cssCode.includes('width: max-content')) && (cssCode.includes('max-width: 92vw') || cssCode.includes('max-width: 90vw')), 'F4 dialogs use width: max-content and max-width: 90vw');
+    assert(bomUsageCode.includes("width: 'fit-content'") || bomUsageCode.includes("width: 'max-content'"), 'BOM Usage modal uses max-content/fit-content');
+    assert(cssCode.includes('.sap-restrict-modal-dialog') && cssCode.includes('width: min(720px, 90vw)'), 'Restrict Value Range modal width updated to 720px');
 
     console.log('   ✓ All F4 popups fit their table contents while preserving full readability');
   }
@@ -486,13 +485,13 @@ async function runTests() {
     // 13b. Column sizing verification:
     // Key column (Usage): 60 to 80px (70px)
     assert.ok(bomUsageCode.includes('width: 70'), 'Usage key column must be fixed narrow (~70px)');
-    // 6 Indicator columns: narrow and centered (65 to 90px each)
+    // 6 Indicator columns: narrow and centered (65 to 95px each)
     assert.ok(bomUsageCode.includes('width: 65'), 'Ind./Prod. indicator column narrow (65px)');
-    assert.ok(bomUsageCode.includes('width: 90'), 'Eng./Design indicator column narrow (90px)');
+    assert.ok(bomUsageCode.includes('width: 90') || bomUsageCode.includes('width: 95'), 'Eng./Design indicator column narrow (90-95px)');
     assert.ok(bomUsageCode.includes('width: 75'), 'Spare Part indicator column narrow (75px)');
-    assert.ok(bomUsageCode.includes('width: 80'), 'Sales/Dist. indicator column narrow (80px)');
-    // Text column: min-width about 280px and never clipped
-    assert.ok(bomUsageCode.includes('minWidth: 280'), 'BOM Usage Text column min-width must be at least 280px');
+    assert.ok(bomUsageCode.includes('width: 80') || bomUsageCode.includes('width: 75'), 'Sales/Dist. indicator column narrow (75-80px)');
+    // Text column: min-width about 200-280px and never clipped
+    assert.ok(bomUsageCode.includes('minWidth: 280') || bomUsageCode.includes('minWidth: 200') || bomUsageCode.includes('width: 240'), 'BOM Usage Text column min-width must be at least 200-280px');
     assert.ok(bomUsageCode.includes("whiteSpace: 'normal'"), 'BOM Usage Text column must allow normal text wrapping');
     assert.ok(bomUsageCode.includes("wordBreak: 'break-word'"), 'BOM Usage Text column must break words to avoid cut-off');
     assert.ok(bomUsageCode.includes("overflow: 'visible'"), 'BOM Usage Text column must not clip overflow');

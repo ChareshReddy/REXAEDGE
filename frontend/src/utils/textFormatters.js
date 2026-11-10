@@ -22,3 +22,16 @@ export function toSentenceCase(str) {
   if (trimmed.length <= 1) return trimmed.toUpperCase();
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }
+
+/**
+ * Capitalizes the first letter of each word in a user's display name.
+ * Ex. "admin" -> "Admin", "john doe" -> "John Doe"
+ */
+export function formatDisplayName(name) {
+  if (!name || typeof name !== 'string') return '';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}

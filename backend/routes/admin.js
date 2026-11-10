@@ -8,6 +8,10 @@ import { getRfcConnectionParams } from '../services/sapRfcClient.js';
 import { decryptPassword } from '../utils/crypto.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { ALL_BOM_APPS } from '../config/modules.js';
+import { getAllPoolStats, getPoolStats, updatePoolConfig, removePool } from '../services/sapConnectionPool.js';
+import { f4CacheService } from '../services/f4CacheService.js';
+import { getServerHealth } from '../services/serverHealthService.js';
+import { bomJobRepository } from '../services/bomJobRepository.js';
 
 const router = express.Router();
 
@@ -216,12 +220,96 @@ router.post('/users/:id/password', async (req, res) => {
  * Lists all configured SAP servers with connection parameters.
  */
 /**
+ * Validates connection limit settings for SAP servers
+ * Ranges:
+ * - max_connections: 1-20 (integer, default 3)
+ * - per_user_limit: 1 to max_connections (integer, default 2)
+ * - queue_timeout_ms (or seconds * 1000): 5,000 - 120,000 ms (5 - 120 seconds, default 20000)
+ * - rfc_call_timeout_ms (or seconds * 1000): 10,000 - 300,000 ms (10 - 300 seconds, default 45000)
+ */
+export function validateServerLimits(input = {}, existing = {}) {
+  let maxConn = input.max_connections !== undefined
+    ? Number(input.max_connections)
+    : (existing.max_connections !== undefined ? Number(existing.max_connections) : 3);
+
+  let userLimit = input.per_user_limit !== undefined
+    ? Number(input.per_user_limit)
+    : (existing.per_user_limit !== undefined ? Number(existing.per_user_limit) : 2);
+
+  // Queue timeout: accept seconds or ms
+  let queueMs = input.queue_timeout_ms !== undefined
+    ? Number(input.queue_timeout_ms)
+    : (input.queue_timeout_seconds !== undefined
+      ? Number(input.queue_timeout_seconds) * 1000
+      : (existing.queue_timeout_ms !== undefined ? Number(existing.queue_timeout_ms) : 20000));
+
+  // Call timeout: accept seconds or ms
+  let callMs = input.rfc_call_timeout_ms !== undefined
+    ? Number(input.rfc_call_timeout_ms)
+    : (input.rfc_call_timeout_seconds !== undefined
+      ? Number(input.rfc_call_timeout_seconds) * 1000
+      : (existing.rfc_call_timeout_ms !== undefined ? Number(existing.rfc_call_timeout_ms) : 45000));
+
+  if (!Number.isInteger(maxConn) || maxConn < 1 || maxConn > 20) {
+    return { valid: false, error: 'Max connections must be an integer between 1 and 20.' };
+  }
+
+  if (!Number.isInteger(userLimit) || userLimit < 1) {
+    return { valid: false, error: 'Per-user limit must be an integer of at least 1.' };
+  }
+
+  if (userLimit > maxConn) {
+    return { valid: false, error: 'Per-user limit cannot exceed max connections.' };
+  }
+
+  const queueSec = queueMs / 1000;
+  if (isNaN(queueMs) || queueSec < 5 || queueSec > 120) {
+    return { valid: false, error: 'Queue wait timeout must be between 5 and 120 seconds.' };
+  }
+
+  const callSec = callMs / 1000;
+  if (isNaN(callMs) || callSec < 10 || callSec > 300) {
+    return { valid: false, error: 'SAP call timeout must be between 10 and 300 seconds.' };
+  }
+
+  return {
+    valid: true,
+    max_connections: maxConn,
+    per_user_limit: userLimit,
+    queue_timeout_ms: Math.round(queueMs),
+    rfc_call_timeout_ms: Math.round(callMs)
+  };
+}
+
+/**
  * GET /api/admin/servers
- * Lists all configured SAP servers with connection parameters.
+ * Lists all configured SAP servers with connection parameters and live status metrics.
  */
 router.get('/servers', async (req, res) => {
   try {
-    const servers = await supabaseService.listServers({ includeSensitive: true, role: req.user.role });
+    const rawServers = await supabaseService.listServers({ includeSensitive: true, role: req.user.role });
+    const poolStatsMap = getAllPoolStats().servers || {};
+
+    const servers = rawServers.map((s) => {
+      const health = getServerHealth(s.id);
+      const pStats = poolStatsMap[s.id] || null;
+
+      return {
+        ...s,
+        max_connections: s.max_connections || 3,
+        per_user_limit: s.per_user_limit || 2,
+        queue_timeout_ms: s.queue_timeout_ms || 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms || 45000,
+        health_status: health.status,
+        circuit_breaker: health.circuit_breaker,
+        last_checked: health.last_checked,
+        last_error: health.last_error,
+        active_connections: pStats ? pStats.activeConnections : 0,
+        idle_connections: pStats ? pStats.idleConnections : 0,
+        queued_calls: pStats ? (pStats.queued?.total || 0) : 0
+      };
+    });
+
     return res.status(200).json({ success: true, servers });
   } catch (err) {
     console.error('[Admin] Error listing servers:', err.message);
@@ -270,6 +358,11 @@ router.post('/servers', async (req, res) => {
     return res.status(400).json({ error: `Environment must be one of: ${validEnvs.join(', ')}.` });
   }
 
+  const limitsRes = validateServerLimits(req.body);
+  if (!limitsRes.valid) {
+    return res.status(400).json({ error: limitsRes.error });
+  }
+
   try {
     const server = await supabaseService.createServer({
       name: String(name).trim(),
@@ -281,6 +374,11 @@ router.post('/servers', async (req, res) => {
       router: sapRouter,
       gwserv,
       modules,
+      max_connections: limitsRes.max_connections,
+      per_user_limit: limitsRes.per_user_limit,
+      queue_timeout_ms: limitsRes.queue_timeout_ms,
+      rfc_call_timeout_ms: limitsRes.rfc_call_timeout_ms,
+      is_active: req.body?.is_active !== undefined ? Boolean(req.body.is_active) : true,
       sap_username: sap_username ? String(sap_username).trim() : null,
       sap_password: sap_password ? String(sap_password).trim() : null,
       createdBy: req.user.id
@@ -343,6 +441,11 @@ router.put('/servers/:id', async (req, res) => {
     return res.status(400).json({ error: 'Server ID is required.' });
   }
 
+  const existing = await supabaseService.getServerById(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Server not found.' });
+  }
+
   if (req.body?.environment !== undefined) {
     const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
     const env = String(req.body.environment).toUpperCase();
@@ -352,15 +455,35 @@ router.put('/servers/:id', async (req, res) => {
     req.body.environment = env;
   }
 
+  const limitsRes = validateServerLimits(req.body, existing);
+  if (!limitsRes.valid) {
+    return res.status(400).json({ error: limitsRes.error });
+  }
+
   try {
-    const updated = await supabaseService.updateServer(id, {
+    const updatePayload = {
       ...req.body,
+      max_connections: limitsRes.max_connections,
+      per_user_limit: limitsRes.per_user_limit,
+      queue_timeout_ms: limitsRes.queue_timeout_ms,
+      rfc_call_timeout_ms: limitsRes.rfc_call_timeout_ms,
       updatedBy: req.user.id
-    });
+    };
+
+    const updated = await supabaseService.updateServer(id, updatePayload);
 
     if (!updated) {
       return res.status(404).json({ error: 'Server not found.' });
     }
+
+    // Apply new limits & active status live to connection pool without server restart
+    updatePoolConfig(id, {
+      max_connections: updated.max_connections,
+      per_user_limit: updated.per_user_limit,
+      queue_timeout_ms: updated.queue_timeout_ms,
+      rfc_call_timeout_ms: updated.rfc_call_timeout_ms,
+      is_active: updated.is_active
+    });
 
     // Safe audit logging: NEVER log passwords
     const safeAuditValues = { ...req.body };
@@ -419,11 +542,22 @@ router.delete('/servers/:id', async (req, res) => {
   }
 
   try {
+    // Block deleting a server if bulk jobs are currently running on it
+    const runningJobs = await bomJobRepository.countRunningJobsForServer(id);
+    if (runningJobs > 0) {
+      return res.status(409).json({
+        error: `Cannot delete server while ${runningJobs} bulk job(s) are running on it. Please wait for the jobs to finish or cancel them first.`
+      });
+    }
+
     const deleted = await supabaseService.deleteServer(id);
 
     if (!deleted) {
       return res.status(404).json({ error: 'Server not found.' });
     }
+
+    // Clean up any in-memory RFC connection pool
+    await removePool(id);
 
     auditLogger.logAction({
       user: req.user.email,
@@ -581,6 +715,43 @@ router.delete('/permissions/:id', async (req, res) => {
   } catch (err) {
     console.error('[Admin] Error revoking permission:', err.message);
     return res.status(500).json({ error: 'Failed to revoke permission.' });
+  }
+});
+
+/**
+ * GET /api/admin/pool-stats
+ * Retrieves real-time connection pool metrics for all configured SAP servers.
+ */
+router.get('/pool-stats', (req, res) => {
+  try {
+    const stats = getAllPoolStats();
+    const f4Cache = f4CacheService.getStats();
+    return res.status(200).json({ success: true, stats, f4_cache: f4Cache });
+  } catch (err) {
+    console.error('[Admin] Error retrieving pool stats:', err.message);
+    return res.status(500).json({ error: 'Failed to retrieve connection pool stats.' });
+  }
+});
+
+/**
+ * POST /api/admin/cache/clear
+ * Clears F4 / value-help cache globally or for a specific serverId.
+ */
+router.post('/cache/clear', (req, res) => {
+  try {
+    const serverId = req.body?.serverId || req.query?.serverId || null;
+    f4CacheService.clear(serverId);
+    return res.status(200).json({
+      success: true,
+      message: serverId
+        ? `F4 cache cleared for server ${serverId}`
+        : 'All F4 caches cleared successfully',
+      serverId,
+      stats: f4CacheService.getStats()
+    });
+  } catch (err) {
+    console.error('[Admin] Error clearing F4 cache:', err.message);
+    return res.status(500).json({ error: 'Failed to clear cache.' });
   }
 });
 

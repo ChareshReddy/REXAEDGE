@@ -97,9 +97,9 @@ const { default: BulkBomView } = await import(pathToFileURL(bulkCopyViewOut).hre
 // 3. Test Initial State (Before Upload)
 console.log('3. Testing Initial State (Upload File Step)...');
 const htmlInitial = renderToStaticMarkup(React.createElement(BulkCreateBomView, { systemKey: 'DEV' }));
-assert(htmlInitial.includes('Upload Spreadsheet'), 'Upload panel must be visible initially');
-assert(htmlInitial.includes('Download Template'), 'Download template button must be visible');
-assert(htmlInitial.includes('Upload file'), 'Workflow step 1 must be present');
+assert(htmlInitial.toLowerCase().includes('upload spreadsheet'), 'Upload panel must be visible initially');
+assert(htmlInitial.toLowerCase().includes('download template'), 'Download template button must be visible');
+assert(htmlInitial.includes('Upload spreadsheet') || htmlInitial.includes('Upload file'), 'Workflow step 1 must be present');
 assert(htmlInitial.includes('active'), 'Step 1 must be active initially');
 console.log('   ✓ Step 1 active, upload box displayed, no premature SAP calls');
 
@@ -162,7 +162,7 @@ console.log('   ✓ Validated preview renders in place with Ready badges and ena
 // 5. Test Bulk Copy BOM (BulkBomView) Shared Consistency
 console.log('5. Testing Bulk Copy BOM Visual & Step Consistency...');
 const htmlCopyInitial = renderToStaticMarkup(React.createElement(BulkBomView, { systemKey: 'DEV' }));
-assert(htmlCopyInitial.includes('Upload file'), 'Bulk Copy must have 3-step indicator');
+assert(htmlCopyInitial.includes('Upload spreadsheet') || htmlCopyInitial.includes('Upload file'), 'Bulk Copy must have 3-step indicator');
 assert(htmlCopyInitial.includes('Validate data'), 'Bulk Copy step 2 wording matches');
 assert(htmlCopyInitial.includes('Copy BOMs'), 'Bulk Copy step 3 wording matches');
 console.log('   ✓ Both screens share identical step indicators and visual workflow');

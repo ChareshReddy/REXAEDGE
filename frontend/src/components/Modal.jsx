@@ -159,9 +159,9 @@ export default function Modal({
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          border: '1px solid #FDBA74',
+          border: '1px solid #B3CDE0',
           borderRadius: 8,
-          boxShadow: '0 16px 36px rgba(234, 88, 12, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)',
+          boxShadow: '0 16px 36px rgba(2, 87, 154, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)',
           background: '#ffffff',
           ...style
         }}
@@ -181,12 +181,16 @@ export default function Modal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '12px 18px',
-                  background: 'var(--sap-popup-header-bg, #FFEDD5)',
-                  color: 'var(--sap-popup-header-title, #0f2744)',
+                  height: 'var(--popup-header-height, 60px)',
+                  minHeight: 'var(--popup-header-height, 60px)',
+                  maxHeight: 'var(--popup-header-height, 60px)',
+                  boxSizing: 'border-box',
+                  padding: '0 18px',
+                  background: 'var(--sap-popup-header-bg, #EEF4F9)',
+                  color: 'var(--sap-popup-header-title, #00204E)',
                   borderTopLeftRadius: 'inherit',
                   borderTopRightRadius: 'inherit',
-                  borderBottom: '1px solid var(--sap-popup-header-border, #FED7AA)',
+                  borderBottom: '1px solid var(--sap-popup-header-border, #D9E2EC)',
                   flexShrink: 0
                 }}
               >
@@ -196,9 +200,9 @@ export default function Modal({
                       <div
                         className="sap-bulk-icon-badge"
                         style={{
-                          backgroundColor: '#FED7AA',
-                          color: '#C2410C',
-                          borderColor: '#FDBA74',
+                          backgroundColor: '#D9E2EC',
+                          color: '#05396B',
+                          borderColor: '#B3CDE0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -207,20 +211,21 @@ export default function Modal({
                           borderRadius: 4
                         }}
                       >
-                        <Icon size={16} color="#C2410C" />
+                        <Icon size={16} color="#05396B" />
                       </div>
                     ) : (
-                      <Icon size={18} color="#C2410C" style={{ flexShrink: 0 }} />
+                      <Icon size={18} color="#05396B" style={{ flexShrink: 0 }} />
                     )
                   )}
                   <div>
                     <h3
                       id={titleId}
                       style={{
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: 700,
                         margin: 0,
-                        color: 'var(--sap-popup-header-title, #0f2744)'
+                        color: 'var(--sap-popup-header-title, #00204E)',
+                        lineHeight: 1.2
                       }}
                     >
                       {title}
@@ -270,8 +275,8 @@ export default function Modal({
                   gap: 8,
                   justifyContent: 'flex-end',
                   padding: '12px 20px',
-                  background: 'var(--sap-modal-footer-bg, #FFF1E3)',
-                  borderTop: '1px solid #FFEDD5',
+                  background: 'var(--sap-modal-footer-bg, #EEF4F9)',
+                  borderTop: '1px solid #EEF4F9',
                   borderBottomLeftRadius: 'inherit',
                   borderBottomRightRadius: 'inherit',
                   flexShrink: 0

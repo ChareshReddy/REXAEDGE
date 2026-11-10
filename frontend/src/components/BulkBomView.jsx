@@ -1,3 +1,4 @@
+import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect } from 'react';
@@ -11,6 +12,7 @@ import {
   XCircle,
   Play,
   RefreshCw,
+  Search,
   ArrowRight,
   ShieldCheck,
   FileCheck,
@@ -29,6 +31,8 @@ import {
   getPlants
 } from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
+import { SearchInput } from './ui/search-input';
+import { FormSection } from './ui/form-layout';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
@@ -38,7 +42,8 @@ import {
   BulkWorkflowSteps,
   BulkFileInfoBar,
   BulkJobProgressCard,
-  COPY_BULK_COLUMNS
+  COPY_BULK_COLUMNS,
+  BulkStatTiles
 } from './BulkBomShared';
 
 /**
@@ -137,6 +142,8 @@ export default function BulkBomView({
   const [isExecuting, setIsExecuting] = useState(false);
   const [skipErrors, setSkipErrors] = useState(true);
   const [copyHierarchy, setCopyHierarchy] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [executionReport, setExecutionReport] = useState(initialExecutionReport);
   const [activeStep, setActiveStep] = useState(
     initialExecutionReport ? 3 : (initialParsedRows.length > 0 || initialIsValidating) ? 2 : 1
@@ -199,10 +206,27 @@ export default function BulkBomView({
     };
   }, []);
 
+  const updateJobUrl = (jobId) => {
+    try {
+      if (jobId) {
+        sessionStorage.setItem('rexa_copy_bulk_job_id', jobId);
+        const url = new URL(window.location.href);
+        url.searchParams.set('jobId', jobId);
+        window.history.replaceState({}, '', url);
+      } else {
+        sessionStorage.removeItem('rexa_copy_bulk_job_id');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('jobId');
+        window.history.replaceState({}, '', url);
+      }
+    } catch (_) {}
+  };
+
   const startJobPolling = (jobId, type) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     setActiveJobId(jobId);
     setActiveJobType(type);
+    updateJobUrl(jobId);
 
     pollIntervalRef.current = setInterval(async () => {
       try {
@@ -235,6 +259,7 @@ export default function BulkBomView({
           pollIntervalRef.current = null;
           setActiveJobId(null);
           setIsCancelling(false);
+          updateJobUrl(null);
 
           if (type === 'copy_validate') {
             setIsValidating(false);
@@ -317,7 +342,7 @@ export default function BulkBomView({
       } catch (err) {
         console.warn('Job polling warning:', err.message);
       }
-    }, 2000);
+    }, 3000);
   };
 
   // Reconnect on mount if an active job is already in flight
@@ -325,6 +350,40 @@ export default function BulkBomView({
     let isMounted = true;
     const checkActiveJob = async () => {
       try {
+        let savedJobId = null;
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          savedJobId = urlParams.get('jobId') || sessionStorage.getItem('rexa_copy_bulk_job_id');
+        } catch (_) {}
+
+        if (savedJobId) {
+          const jobRes = await getBomJob(savedJobId);
+          if (isMounted && jobRes && jobRes.success && jobRes.job) {
+            const job = jobRes.job;
+            const isFinished = [
+              'COMPLETED',
+              'COMPLETED_WITH_ERRORS',
+              'CANCELLED',
+              'STOPPED_ON_CONNECTION_DROP',
+              'FAILED',
+              'INTERRUPTED'
+            ].includes(job.status);
+
+            if (!isFinished) {
+              if (job.type === 'copy_validate') {
+                setIsValidating(true);
+                startJobPolling(job.jobId, 'copy_validate');
+                return;
+              } else if (job.type === 'copy_bulk') {
+                setIsExecuting(true);
+                setActiveStep(3);
+                startJobPolling(job.jobId, 'copy_bulk');
+                return;
+              }
+            }
+          }
+        }
+
         const res = await getActiveBomJob();
         if (!isMounted || !res.success || !res.hasActiveJob || !res.job) return;
         const job = res.job;
@@ -362,6 +421,7 @@ export default function BulkBomView({
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
+    updateJobUrl(null);
     setFile(null);
     setParsedRows([]);
     setParseError('');
@@ -373,6 +433,39 @@ export default function BulkBomView({
     setExecutionReport(null);
     setActiveStep(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRetryFailedRows = async () => {
+    const failedRows = parsedRows.filter((r) => r.status === 'ERROR' || r.status === 'FAILED');
+    if (failedRows.length === 0) return;
+
+    setParsedRows(failedRows);
+    setExecutionReport(null);
+    setIsExecuting(true);
+    setActiveStep(3);
+    setJobProgress({
+      current: 0,
+      total: failedRows.length,
+      percent: 0,
+      successCount: 0,
+      failedCount: 0,
+      notProcessedCount: 0
+    });
+
+    try {
+      const res = await startBomJob({
+        type: 'copy_bulk',
+        items: failedRows,
+        copyHierarchy: true,
+        skipErrors: true
+      });
+      if (res.success && res.jobId) {
+        startJobPolling(res.jobId, 'copy_bulk');
+      }
+    } catch (err) {
+      toast.error(err.message || 'Failed to retry failed rows');
+      setIsExecuting(false);
+    }
   };
 
   const processFile = (fileObj) => {
@@ -521,19 +614,19 @@ export default function BulkBomView({
           'Column Name': 'Source Plant',
           'Required / Optional': 'Required',
           'Default Value': 'None',
-          'Description': 'Plant code where the source BOM is located (e.g. 1012)'
+          'Description': 'Plant code where the source BOM is located (Ex. 1012)'
         },
         {
           'Column Name': 'Target Plant',
           'Required / Optional': 'Required',
           'Default Value': 'None',
-          'Description': 'Plant code where the new BOM will be copied (e.g. 1001)'
+          'Description': 'Plant code where the new BOM will be copied (Ex. 1001)'
         },
         {
           'Column Name': 'Target Alternative',
           'Required / Optional': 'Required',
           'Default Value': 'None',
-          'Description': 'Target alternative number (e.g. 02, 12)'
+          'Description': 'Target alternative number (Ex. 02, 12)'
         },
         {
           'Column Name': 'Source BOM Usage',
@@ -739,6 +832,22 @@ export default function BulkBomView({
     XLSX.writeFile(wb, `SAP_BOM_Batch_Copy_Report_${timestamp}.xlsx`);
   };
 
+  const filteredRows = parsedRows.filter((row) => {
+    if (statusFilter === 'valid' && row.status !== 'VALID' && row.status !== 'SUCCESS') return false;
+    if (statusFilter === 'errors' && row.status !== 'ERROR' && row.status !== 'FAILED') return false;
+    if (statusFilter === 'warnings' && row.status !== 'WARNING') return false;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      const matchSrc = (row.sourceMaterial || '').toLowerCase().includes(term);
+      const matchTgt = (row.targetMaterial || '').toLowerCase().includes(term);
+      const matchSrcPlant = (row.sourcePlant || '').toLowerCase().includes(term);
+      const matchTgtPlant = (row.targetPlant || '').toLowerCase().includes(term);
+      if (!matchSrc && !matchTgt && !matchSrcPlant && !matchTgtPlant) return false;
+    }
+    return true;
+  });
+
   const validCount = parsedRows.filter((r) => r.status === 'VALID' || r.status === 'SUCCESS').length;
   const warningCount = parsedRows.filter((r) => r.status === 'WARNING').length;
   const errorCount = parsedRows.filter((r) => r.status === 'ERROR' || r.status === 'FAILED').length;
@@ -748,6 +857,7 @@ export default function BulkBomView({
       {/* Full-Width SAP Fiori Horizon Page Header */}
       <FioriPageHeader
         title="Copy Bulk BOM"
+        extraTitleContent={<SingleBulkSwitch operation="copy" mode="bulk" />}
         subtitle="Upload a spreadsheet to copy multiple BOMs across plants with automatic alternative numbers."
         onBack={onBack}
         backTitle={isExecuting ? 'Operation in progress' : 'Back to Copy BOM'}
@@ -811,26 +921,35 @@ export default function BulkBomView({
             )}
 
             {/* Results Table Card */}
-            <div className="sap-card" style={{ padding: 20 }}>
-              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <h3 className="sap-section-header" style={{ margin: 0 }}>
-                    Execution Results
-                  </h3>
-                  <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
-                    Execution report for {parsedRows.length} BOM(s)
-                  </div>
+            <FormSection
+              title="Execution Results"
+              description={`Execution report for ${parsedRows.length} BOM(s)`}
+              actions={
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {(executionReport.failedCount > 0 || parsedRows.some((r) => r.status === 'ERROR' || r.status === 'FAILED')) && (
+                    <button
+                      type="button"
+                      className="sap-button sap-btn sap-btn-secondary"
+                      onClick={handleRetryFailedRows}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+                    >
+                      <RefreshCw size={14} />
+                      <span>Retry Failed Rows</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="sap-button sap-btn sap-btn-secondary"
+                    onClick={handleExportResults}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+                  >
+                    <Download size={14} />
+                    <span>Export Report (.xlsx)</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="sap-button sap-btn sap-btn-secondary"
-                  onClick={handleExportResults}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
-                >
-                  <Download size={14} />
-                  <span>Export Report (.xlsx)</span>
-                </button>
-              </div>
+              }
+              className="mb-6"
+            >
 
               {/* Grid Table */}
               <div className="sap-bulk-grid-container sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Execution Results Table">
@@ -854,7 +973,7 @@ export default function BulkBomView({
                     </tr>
                   </thead>
                   <tbody>
-                    {parsedRows.map((row, idx) => {
+                    {filteredRows.map((row, idx) => {
                       const isRowValid = row.status === 'VALID' || row.status === 'SUCCESS';
                       const isRowWarn = row.status === 'WARNING';
                       const isRowError = row.status === 'ERROR' || row.status === 'FAILED';
@@ -925,7 +1044,7 @@ export default function BulkBomView({
                   type="button"
                   className="sap-button primary"
                   onClick={onBack}
-                  style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
+                  style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
                 >
                   Return to Launchpad
                 </button>
@@ -933,35 +1052,44 @@ export default function BulkBomView({
                   type="button"
                   className="sap-button"
                   onClick={resetAll}
-                  style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
+                  style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
                 >
                   Upload Another File
                 </button>
               </div>
-            </div>
+            </FormSection>
           </div>
         ) : (
           /* UPLOAD (STEP 1) OR PREVIEW (STEP 2) */
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: parsedRows.length > 0 ? 16 : 24 }}>
-            {parsedRows.length === 0 ? (
-              /* Step 1: Upload Panel (Clean, 750px centered, no boxed card) */
+            {activeStep === 1 || parsedRows.length === 0 ? (
+              /* Step 1: Upload Panel */
               <BulkUploadPanel
                 title="Upload Spreadsheet"
                 helperText="Upload a spreadsheet to copy multiple Bills of Materials in SAP."
                 acceptedFormats=".xlsx, .xls, .csv"
                 supportedFormatsText="Supports .xlsx, .xls, and .csv with Source & Target BOM columns"
                 fileName={file?.name || ''}
+                file={file}
                 onFile={processFile}
                 loading={isValidating}
                 loadingText="Validating your data in SAP..."
                 disabled={isExecuting || isValidating}
                 templateAction={{
-                  label: 'Download Template',
+                  label: 'Download template',
                   onClick: handleDownloadTemplate,
                   disabled: isExecuting
                 }}
+                columns={COPY_BULK_COLUMNS}
+                rowLimitText="Maximum 500 BOM copy rows per batch."
+                tipText="Source BOMs must exist in SAP. Target alternative should be numeric (Ex. 02, 12)."
                 error={parseError}
                 onClear={resetAll}
+                onContinue={() => {
+                  if (parsedRows.length > 0) {
+                    setActiveStep(2);
+                  }
+                }}
               />
             ) : (
               /* Step 2: Validation Preview */
@@ -979,26 +1107,92 @@ export default function BulkBomView({
                   executionLabel="Copying BOMs in SAP"
                 />
 
+                {/* Summary Stat Tiles */}
+                <BulkStatTiles
+                  total={parsedRows.length}
+                  valid={validCount}
+                  errors={errorCount}
+                  warnings={warningCount}
+                  totalLabel="Total BOMs"
+                  validLabel="Valid"
+                  errorsLabel="Errors"
+                  warningsLabel="Warnings"
+                  activeFilter={statusFilter}
+                  onFilterChange={(filter) => setStatusFilter(filter)}
+                  style={{ marginBottom: 16 }}
+                />
+
 
 
                 {/* Error Alert */}
                 
 
                 {/* PRE-FLIGHT PREVIEW TABLE CARD */}
-                <div className="sap-card" style={{ padding: 20, width: '100%', alignSelf: 'stretch', boxSizing: 'border-box' }}>
+                <FormSection
+                  title="Data Preview"
+                  description={`${parsedRows.length} BOM(s) found across spreadsheet`}
+                  tintedHeader
+                  className="w-full"
+                >
                   {/* Header & Controls */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
-                        Data Preview
-                      </h3>
-                      <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
-                        {parsedRows.length} BOM(s) found across spreadsheet
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      {/* Search Bar */}
+                      <SearchInput
+                        placeholder="Search material or plant..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onClear={() => setSearchTerm('')}
+                        isTable
+                        wrapperStyle={{ width: 220 }}
+                      />
+
+                      {/* Filter Pills */}
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px',
+                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+                          borderRadius: 'var(--radius-md, 8px)',
+                          border: '1px solid var(--color-border, #D9E2EC)'
+                        }}
+                      >
+                        {[
+                          { id: 'all', label: `All (${parsedRows.length})` },
+                          { id: 'valid', label: `Valid (${validCount})` },
+                          { id: 'errors', label: `Errors (${errorCount})` }
+                        ].map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => setStatusFilter(f.id)}
+                            style={{
+                              height: 26,
+                              padding: '0 8px',
+                              borderRadius: 'var(--radius-sm, 6px)',
+                              border: 'none',
+                              fontSize: '11.5px',
+                              fontWeight: statusFilter === f.id ? 600 : 500,
+                              backgroundColor: statusFilter === f.id ? 'var(--color-surface, #FFFFFF)' : 'transparent',
+                              color: statusFilter === f.id ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
+                              boxShadow: statusFilter === f.id ? 'var(--shadow-sm)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all var(--transition-fast, 150ms ease)'
+                            }}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
 
                     {/* Right side controls: File Badge & Hierarchy Options */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                        Showing {filteredRows.length} of {parsedRows.length}
+                      </span>
+
                       {file?.name && (
                         <span
                           className="sap-file-badge"
@@ -1006,44 +1200,44 @@ export default function BulkBomView({
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 6,
-                            padding: '4px 12px',
-                            background: 'var(--sap-surface-subtle, #f1f5f9)',
-                            border: '1px solid var(--sap-border-subtle, #cbd5e1)',
-                            borderRadius: '6px',
-                            fontSize: 12.5,
+                            padding: '4px 10px',
+                            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
+                            border: '1px solid var(--color-border, #D9E2EC)',
+                            borderRadius: 'var(--radius-sm, 6px)',
+                            fontSize: '12px',
                             fontWeight: 600,
-                            color: 'var(--sap-text-dark, #0f2744)'
+                            color: 'var(--color-navy-900, #00204E)'
                           }}
                           title={file.name}
                         >
-                          <FileSpreadsheet size={15} color="var(--sap-primary, #0070f2)" style={{ flexShrink: 0 }} />
-                          <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
+                          <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {file.name}
                           </span>
                         </span>
                       )}
 
                       {/* Options */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <label style={{ fontSize: '12px', color: 'var(--sap-text-body)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={copyHierarchy}
-                          onChange={(e) => setCopyHierarchy(e.target.checked)}
-                          disabled={isExecuting}
-                        />
-                        <span>Copy Full Hierarchy</span>
-                      </label>
-                      <label style={{ fontSize: '12px', color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={skipErrors}
-                          onChange={(e) => setSkipErrors(e.target.checked)}
-                          disabled={isExecuting}
-                        />
-                        <span>Skip errors</span>
-                      </label>
-                    </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <label style={{ fontSize: '12px', color: 'var(--color-text, #0F2742)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={copyHierarchy}
+                            onChange={(e) => setCopyHierarchy(e.target.checked)}
+                            disabled={isExecuting}
+                          />
+                          <span>Copy Full Hierarchy</span>
+                        </label>
+                        <label style={{ fontSize: '12px', color: 'var(--color-text-secondary, #4A5F77)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={skipErrors}
+                            onChange={(e) => setSkipErrors(e.target.checked)}
+                            disabled={isExecuting}
+                          />
+                          <span>Skip errors</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
 
@@ -1058,8 +1252,8 @@ export default function BulkBomView({
                         <col style={{ width: '12%' }} />
                         <col style={{ width: '30%' }} />
                       </colgroup>
-                      <thead>
-                        <tr>
+                      <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                        <tr style={{ backgroundColor: 'var(--color-blue-200)' }}>
                           <th style={{ width: 36 }}>#</th>
                           <th>Source BOM</th>
                           <th>Target BOM</th>
@@ -1141,7 +1335,7 @@ export default function BulkBomView({
                   <div
                     className="bulk-preview-sticky-footer sap-card-action-row"
                     style={{
-                      borderTop: '1px solid var(--sap-border, #FED7AA)',
+                      borderTop: '1px solid var(--sap-border, #D9E2EC)',
                       paddingTop: 16,
                       marginTop: 16,
                       display: 'flex',
@@ -1184,7 +1378,7 @@ export default function BulkBomView({
                         className="sap-button"
                         disabled={isExecuting || isValidating}
                         onClick={resetAll}
-                        style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
+                        style={{ height: 'var(--size-button-height, 40px)', padding: '0 18px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
                       >
                         Clear & Upload Another
                       </button>
@@ -1195,12 +1389,13 @@ export default function BulkBomView({
                         onClick={handleValidateWithSap}
                         disabled={isValidating || isExecuting || parsedRows.length === 0}
                         style={{
-                          height: 30,
+                          height: 'var(--size-button-height, 40px)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          padding: '0 18px',
-                          fontSize: 'var(--sap-size-button)'
+                          padding: '0 20px',
+                          fontSize: 'var(--font-size-13, 13px)',
+                          borderRadius: 'var(--radius-md, 8px)'
                         }}
                       >
                         {isValidating ? (
@@ -1222,12 +1417,14 @@ export default function BulkBomView({
                         disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
                         onClick={handleExecuteBatchCopy}
                         style={{
-                          height: 30,
+                          height: 'var(--size-button-height, 40px)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
                           padding: '0 24px',
-                          fontSize: 'var(--sap-size-button)'
+                          fontSize: 'var(--font-size-13, 13px)',
+                          borderRadius: 'var(--radius-md, 8px)',
+                          fontWeight: 600
                         }}
                       >
                         {isExecuting ? (
@@ -1245,7 +1442,7 @@ export default function BulkBomView({
                       </button>
                     </div>
                   </div>
-                </div>
+                </FormSection>
               </>
             )}
           </div>

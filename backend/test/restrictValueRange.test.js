@@ -117,7 +117,7 @@ async function runTests() {
     console.log('   ✓ Exactly 34 SAP options verified in exact image 2 order');
 
     // 3. Unavailable tab handling
-    console.log('\n3. Testing unavailable tab handling (e.g. Tab K, O, X, D)...');
+    console.log('\n3. Testing unavailable tab handling (Ex. Tab K, O, X, D)...');
     const unavailRes = await searchMaterialsByOption({ tab: 'K', fields: {} });
     if (unavailRes.available !== false || !unavailRes.error) {
       throw new Error(`Expected unavailable response, got: ${JSON.stringify(unavailRes)}`);

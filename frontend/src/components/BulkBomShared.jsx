@@ -8,30 +8,34 @@ import {
   Loader2
 } from 'lucide-react';
 import { getBomJob, cancelBomJob } from '../services/api';
+import BulkLayout, { BulkWorkflowSteps as ModernBulkWorkflowSteps } from './bulk/BulkLayout';
+import BulkUploadCard from './bulk/BulkUploadCard';
+import BulkStatTiles from './bulk/BulkStatTiles';
+
+export { BulkLayout, BulkUploadCard, BulkStatTiles };
 
 /**
- * Shared layout wrapper for both bulk flows (Bulk Copy BOM and Bulk Create BOM).
+ * Shared layout wrapper for bulk flows.
  * Ensures a single shared container width aligned with page breadcrumbs and title,
- * fills available width with max-width 1920px, left-aligned with no auto-centering.
+ * fills available width with max-width 1440px, centered with margin: 0 auto.
  */
 export function BulkFlowContainer({ children, className = '', style = {} }) {
   return (
     <div
-      className={`fiori-body sap-bulk-flow-container ${className}`.trim()}
+      className={`rx-bulk-flow-container sap-bulk-flow-container ${className}`.trim()}
       style={{
         width: '100%',
-        maxWidth: 1920,
-        marginLeft: 0,
-        marginRight: 'auto',
+        maxWidth: 1440,
+        margin: '0 auto',
         boxSizing: 'border-box',
         paddingLeft: 'var(--page-gutter, 32px)',
         paddingRight: 'var(--page-gutter, 32px)',
         paddingTop: 20,
-        paddingBottom: 84,
+        paddingBottom: 64,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'flex-start',
-        gap: 16,
+        alignItems: 'stretch',
+        gap: 20,
         ...style
       }}
     >
@@ -39,7 +43,6 @@ export function BulkFlowContainer({ children, className = '', style = {} }) {
     </div>
   );
 }
-
 
 /**
  * Standard column specifications for Bulk Upload helper chips
@@ -74,12 +77,12 @@ export const CREATE_BULK_COLUMNS = [
 export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns:', style = {} }) {
   if (!columns || columns.length === 0) return null;
   return (
-    <div className="sap-bulk-columns-guide" style={{ marginTop: 14, ...style }}>
+    <div className="rx-bulk-columns-guide sap-bulk-columns-guide" style={{ marginTop: 14, ...style }}>
       <div
         style={{
-          fontSize: 12,
+          fontSize: 'var(--font-size-12, 12px)',
           fontWeight: 600,
-          color: 'var(--sap-text-muted, #64748b)',
+          color: 'var(--color-text-secondary, #4A5F77)',
           marginBottom: 8,
           display: 'flex',
           alignItems: 'center',
@@ -87,7 +90,7 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
         }}
       >
         <span>{title}</span>
-        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--sap-text-subtle, #94a3b8)' }}>
+        <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted, #7A8CA3)' }}>
           (* required)
         </span>
       </div>
@@ -100,19 +103,19 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: 11.5,
+              fontSize: '11.5px',
               padding: '3px 9px',
               borderRadius: 'var(--radius-full, 9999px)',
-              background: col.required ? 'var(--sap-badge-bg, rgba(0, 112, 242, 0.08))' : 'var(--sap-surface-subtle, #f1f5f9)',
-              color: col.required ? 'var(--sap-primary, #0070f2)' : 'var(--sap-text-muted, #475569)',
-              border: col.required ? '1px solid rgba(0, 112, 242, 0.25)' : '1px solid var(--sap-border-subtle, #e2e8f0)',
+              backgroundColor: col.required ? 'var(--color-blue-50, #EEF4F9)' : 'var(--color-surface-subtle, #F8FAFC)',
+              color: col.required ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
+              border: col.required ? '1px solid var(--color-blue-200, #B3CDE0)' : '1px solid var(--color-border, #D9E2EC)',
               fontWeight: col.required ? 600 : 500
             }}
           >
-            {col.required && <span style={{ color: 'var(--sap-error-text, #b45309)', fontWeight: 700 }}>*</span>}
+            {col.required && <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 700 }}>*</span>}
             <span>{col.label}</span>
             {col.default && (
-              <span style={{ fontSize: 10.5, color: 'var(--sap-text-subtle, #64748b)', opacity: 0.85 }}>
+              <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted, #7A8CA3)', opacity: 0.85 }}>
                 (def: {col.default})
               </span>
             )}
@@ -124,162 +127,22 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
 }
 
 /**
- * 1. Shared 3-Step Workflow Indicator
- * Step 1: Upload file
- * Step 2: Validate data
- * Step 3: Create BOMs (for create) / Copy BOMs (for copy)
+ * Shared 3-Step Workflow Indicator
+ * Full content width, connected by lines, filled blue-600 active step, never black.
  */
 export function BulkWorkflowSteps({ activeStep = 1, style = {}, mode = 'create', type }) {
-  const isCopy = (mode === 'copy' || type === 'copy');
-  const step3Label = isCopy ? 'Copy BOMs' : 'Create BOMs';
-
   return (
-    <div
-      className="sap-bulk-steps-bar"
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        width: 'fit-content',
-        maxWidth: '100%',
-        height: 44,
-        minHeight: 44,
-        margin: '0 0 16px 0',
-        marginLeft: 0,
-        marginRight: 'auto',
-        alignSelf: 'flex-start',
-        padding: '0 16px',
-        gap: 12,
-        background: '#ffffff',
-        border: '1px solid var(--sap-border, #e2e8f0)',
-        borderRadius: 'var(--radius-lg, 8px)',
-        boxSizing: 'border-box',
-        ...style
-      }}
-    >
-      <div
-        className={`sap-bulk-step ${activeStep === 1 ? 'active' : activeStep > 1 ? 'complete' : 'upcoming'}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
-      >
-        <span
-          className="step-num"
-          style={{
-            width: 24,
-            height: 24,
-            minWidth: 24,
-            minHeight: 24,
-            borderRadius: '50%',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 700,
-            background: activeStep === 1 ? '#111827' : activeStep > 1 ? 'var(--sap-primary, #0a6ed1)' : 'var(--sap-surface-empty, #f1f5f9)',
-            color: activeStep >= 1 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
-            boxSizing: 'border-box'
-          }}
-        >
-          {activeStep > 1 ? <Check size={14} /> : 1}
-        </span>
-        <span
-          className="step-label"
-          style={{
-            fontSize: 14,
-            fontWeight: activeStep === 1 ? 700 : activeStep > 1 ? 600 : 500,
-            color: activeStep >= 1 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Upload file
-        </span>
-      </div>
-
-      <div className="step-arrow" style={{ color: 'var(--sap-border, #cbd5e1)', display: 'flex', alignItems: 'center' }}>
-        <ArrowRight size={14} />
-      </div>
-
-      <div
-        className={`sap-bulk-step ${activeStep === 2 ? 'active' : activeStep > 2 ? 'complete' : 'upcoming'}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
-      >
-        <span
-          className="step-num"
-          style={{
-            width: 24,
-            height: 24,
-            minWidth: 24,
-            minHeight: 24,
-            borderRadius: '50%',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 700,
-            background: activeStep === 2 ? '#111827' : activeStep > 2 ? 'var(--sap-primary, #0a6ed1)' : 'var(--sap-surface-empty, #f1f5f9)',
-            color: activeStep >= 2 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
-            boxSizing: 'border-box'
-          }}
-        >
-          {activeStep > 2 ? <Check size={14} /> : 2}
-        </span>
-        <span
-          className="step-label"
-          style={{
-            fontSize: 14,
-            fontWeight: activeStep === 2 ? 700 : activeStep > 2 ? 600 : 500,
-            color: activeStep >= 2 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          Validate data
-        </span>
-      </div>
-
-      <div className="step-arrow" style={{ color: 'var(--sap-border, #cbd5e1)', display: 'flex', alignItems: 'center' }}>
-        <ArrowRight size={14} />
-      </div>
-
-      <div
-        className={`sap-bulk-step ${activeStep === 3 ? 'active' : 'upcoming'}`}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
-      >
-        <span
-          className="step-num"
-          style={{
-            width: 24,
-            height: 24,
-            minWidth: 24,
-            minHeight: 24,
-            borderRadius: '50%',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 700,
-            background: activeStep === 3 ? '#111827' : 'var(--sap-surface-empty, #f1f5f9)',
-            color: activeStep >= 3 ? '#ffffff' : 'var(--sap-text-muted, #94a3b8)',
-            boxSizing: 'border-box'
-          }}
-        >
-          3
-        </span>
-        <span
-          className="step-label"
-          style={{
-            fontSize: 14,
-            fontWeight: activeStep === 3 ? 700 : 500,
-            color: activeStep >= 3 ? 'var(--sap-text-dark, #0f2744)' : 'var(--sap-text-muted, #64748b)',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          {step3Label}
-        </span>
-      </div>
-    </div>
+    <ModernBulkWorkflowSteps
+      activeStep={activeStep}
+      mode={mode}
+      type={type}
+      style={style}
+    />
   );
 }
 
 /**
- * 2. Shared Slim File Info Bar (shown after upload, replacing big upload box)
+ * Shared Slim File Info Bar (shown in Step 2 preview)
  */
 export function BulkFileInfoBar({
   fileName = '',
@@ -291,7 +154,7 @@ export function BulkFileInfoBar({
 }) {
   return (
     <div
-      className="sap-bulk-file-info-bar"
+      className="rx-bulk-file-info-bar sap-bulk-file-info-bar"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -299,20 +162,20 @@ export function BulkFileInfoBar({
         width: '100%',
         alignSelf: 'stretch',
         boxSizing: 'border-box',
-        padding: '10px 14px',
-        background: 'var(--sap-surface-subtle, #f8fafc)',
-        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-        borderRadius: 'var(--radius-lg, 8px)',
-        fontSize: 13,
+        padding: '10px 16px',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        border: '1px solid var(--color-border, #D9E2EC)',
+        borderRadius: 'var(--radius-md, 8px)',
+        fontSize: 'var(--font-size-13, 13px)',
         ...style
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}>
-        <FileSpreadsheet size={16} color="var(--sap-primary, #0070f2)" style={{ flexShrink: 0 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, overflow: 'hidden' }}>
+        <FileSpreadsheet size={16} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
         <span
           style={{
             fontWeight: 600,
-            color: 'var(--sap-text-dark, #1e293b)',
+            color: 'var(--color-navy-900, #00204E)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -323,8 +186,8 @@ export function BulkFileInfoBar({
         </span>
         {countText && (
           <>
-            <span style={{ color: 'var(--sap-text-muted, #64748b)' }}>·</span>
-            <span style={{ color: 'var(--sap-text-muted, #64748b)', whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--color-text-muted, #7A8CA3)' }}>·</span>
+            <span style={{ color: 'var(--color-text-secondary, #4A5F77)', whiteSpace: 'nowrap' }}>
               {countText}
             </span>
           </>
@@ -335,7 +198,7 @@ export function BulkFileInfoBar({
         {onDownloadTemplate && (
           <button
             type="button"
-            className="sap-btn sap-btn-ghost sap-btn-sm"
+            className="rx-btn rx-btn-secondary rx-btn-sm"
             onClick={onDownloadTemplate}
             disabled={isLocked}
             title="Download Template"
@@ -343,10 +206,10 @@ export function BulkFileInfoBar({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 12,
-              padding: '4px 10px',
-              cursor: isLocked ? 'not-allowed' : 'pointer',
-              opacity: isLocked ? 0.6 : 1
+              fontSize: 'var(--font-size-12, 12px)',
+              height: 'var(--size-button-sm-height, 32px)',
+              padding: '0 12px',
+              borderRadius: 'var(--radius-md, 8px)'
             }}
           >
             <Download size={13} />
@@ -357,15 +220,17 @@ export function BulkFileInfoBar({
         {!isLocked && onChangeFile && (
           <button
             type="button"
-            className="sap-btn sap-btn-ghost sap-btn-sm"
+            className="rx-btn rx-btn-secondary rx-btn-sm"
             onClick={onChangeFile}
             title="Change File"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 12,
-              padding: '4px 10px'
+              fontSize: 'var(--font-size-12, 12px)',
+              height: 'var(--size-button-sm-height, 32px)',
+              padding: '0 12px',
+              borderRadius: 'var(--radius-md, 8px)'
             }}
           >
             <RefreshCw size={13} />
@@ -378,7 +243,7 @@ export function BulkFileInfoBar({
 }
 
 /**
- * 3. Shared Active Job Progress Card
+ * Shared Active Job Progress Card
  */
 export function BulkJobProgressCard({
   isValidating = false,
@@ -400,15 +265,19 @@ export function BulkJobProgressCard({
 
   return (
     <div
-      className="sap-card"
+      className="rx-card rx-bulk-progress-card sap-card"
       style={{
         padding: '16px 20px',
         marginBottom: 16,
         width: '100%',
         alignSelf: 'stretch',
         boxSizing: 'border-box',
-        borderLeft: '4px solid var(--sap-primary, #0070f2)',
-        background: '#f8fafc',
+        borderLeft: '4px solid var(--color-blue-600, #02579A)',
+        borderTop: '1px solid var(--color-border, #D9E2EC)',
+        borderRight: '1px solid var(--color-border, #D9E2EC)',
+        borderBottom: '1px solid var(--color-border, #D9E2EC)',
+        borderRadius: 'var(--radius-lg, 12px)',
+        backgroundColor: 'var(--color-surface, #FFFFFF)',
         ...style
       }}
     >
@@ -417,14 +286,14 @@ export function BulkJobProgressCard({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 10,
+          marginBottom: 12,
           flexWrap: 'wrap',
           gap: 10
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Loader2 size={18} className="sap-spin" style={{ color: 'var(--sap-primary, #0070f2)' }} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--sap-text-dark)' }}>
+          <Loader2 size={18} className="sap-spin" style={{ color: 'var(--color-blue-600, #02579A)' }} />
+          <span style={{ fontWeight: 600, fontSize: 'var(--font-size-14, 14px)', color: 'var(--color-navy-900, #00204E)' }}>
             {titleText}
           </span>
         </div>
@@ -433,13 +302,11 @@ export function BulkJobProgressCard({
             type="button"
             onClick={onCancelJob}
             disabled={isCancelling}
-            className="sap-btn"
+            className="rx-btn rx-btn-secondary rx-btn-sm"
             style={{
-              borderColor: 'var(--sap-border, rgba(0, 0, 0, 0.12))',
-              color: 'var(--sap-text, #1e293b)',
-              background: '#fff',
-              fontSize: 12,
-              padding: '4px 12px'
+              height: 'var(--size-button-sm-height, 32px)',
+              padding: '0 12px',
+              borderRadius: 'var(--radius-md, 8px)'
             }}
           >
             {isCancelling ? 'Stopping after current BOM...' : 'Cancel'}
@@ -452,17 +319,17 @@ export function BulkJobProgressCard({
         style={{
           width: '100%',
           height: 8,
-          background: '#e2e8f0',
+          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
           borderRadius: 4,
           overflow: 'hidden',
-          marginBottom: 8
+          marginBottom: 10
         }}
       >
         <div
           style={{
             width: `${Math.max(2, jobProgress.percent || 0)}%`,
             height: '100%',
-            background: 'var(--sap-primary, #0070f2)',
+            backgroundColor: 'var(--color-blue-600, #02579A)',
             transition: 'width 0.3s ease'
           }}
         />
@@ -474,8 +341,8 @@ export function BulkJobProgressCard({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: 12,
-          color: 'var(--sap-text-muted)',
+          fontSize: 'var(--font-size-12, 12px)',
+          color: 'var(--color-text-secondary, #4A5F77)',
           flexWrap: 'wrap',
           gap: 8
         }}
@@ -489,22 +356,22 @@ export function BulkJobProgressCard({
         </span>
         <div style={{ display: 'flex', gap: 12 }}>
           {jobProgress.successCount > 0 && (
-            <span style={{ color: '#16a34a', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-success, #15803D)', fontWeight: 600 }}>
               {isValidating ? 'Ready' : 'Created'}: {jobProgress.successCount}
             </span>
           )}
           {jobProgress.failedCount > 0 && (
-            <span style={{ color: 'var(--sap-error-text, #b45309)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 600 }}>
               Failed: {jobProgress.failedCount}
             </span>
           )}
           {jobProgress.skippedCount > 0 && (
-            <span style={{ color: '#ca8a04', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-warning, #B45309)', fontWeight: 600 }}>
               Skipped: {jobProgress.skippedCount}
             </span>
           )}
           {jobProgress.notProcessedCount > 0 && (
-            <span style={{ color: '#f97316', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-blue-600, #02579A)', fontWeight: 600 }}>
               Not Processed: {jobProgress.notProcessedCount}
             </span>
           )}
@@ -515,7 +382,7 @@ export function BulkJobProgressCard({
 }
 
 /**
- * 4. Shared Background Job Polling Hook
+ * Shared Background Job Polling Hook
  */
 export function useBulkBomJobPolling() {
   const [activeJobId, setActiveJobId] = useState(null);
@@ -614,7 +481,7 @@ export function useBulkBomJobPolling() {
         } catch (err) {
           console.warn('Job polling warning:', err.message);
         }
-      }, 2000);
+      }, 3000);
     },
     [clearPolling]
   );

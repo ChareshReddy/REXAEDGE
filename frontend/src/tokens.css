@@ -1,0 +1,233 @@
+/* ============================================================================
+   REXAEDGE DESIGN SYSTEM — TOKENS ("BEAUTIFUL BLUES" ENTERPRISE PALETTE)
+   Single source of truth for colors, typography, sizing, radii, shadows, motion
+   ============================================================================ */
+
+:root {
+  /* ==========================================================================
+     1. COLOR PALETTE: BEAUTIFUL BLUES
+     ========================================================================== */
+  --color-navy-900: #00204E;       /* Headings, dark surfaces, brand core */
+  --color-navy-800: #05396B;       /* Dark hover/pressed states */
+  --color-blue-700: #034375;       /* Deep blue accents, pill text */
+  --color-blue-600: #02579A;       /* Primary buttons, links, active states */
+  --color-blue-400: #6699B8;       /* Secondary icons, supporting accents */
+  --color-blue-200: #B3CDE0;       /* Focus rings, selected card borders */
+  --color-blue-100: #DCE8F1;       /* Selected table rows, soft badges */
+  --color-blue-50: #EEF4F9;        /* Table headers, hover rows, subtle panels */
+
+  /* Neutral Page Surfaces & Structural Borders */
+  --color-page-bg: #F5F8FB;        /* Clean light-gray/blue page canvas */
+  --color-surface: #FFFFFF;        /* Card, dialog, and panel surface */
+  --color-surface-subtle: #F8FAFC; /* Secondary neutral surfaces */
+  --color-coming-soon-bg: rgba(238, 244, 249, 0.4); /* Coming soon card surface */
+  --hero-bg-gradient: linear-gradient(135deg, var(--color-navy-900) 0%, var(--color-navy-800) 50%, var(--color-blue-600) 100%);
+  --hero-pill-bg: rgba(255, 255, 255, 0.16);
+  --hero-pill-border: rgba(255, 255, 255, 0.28);
+  --hero-status-dot-online: #34D399;
+  --hero-status-dot-offline: #F87171;
+  --color-border: #D9E2EC;         /* Standard structural borders */
+  --color-border-subtle: #E2E8F0;  /* Delicate row/subdivision borders */
+  --color-border-hover: #B3CDE0;   /* Interactive border hover */
+  --color-border-input: #C7D4E1;       /* Neutral blue-grey input border (stronger than structural border) */
+  --color-border-input-hover: #98B5CE; /* Input border hover (darkens one step) */
+  --focus-ring-soft: 0 0 0 3px rgba(2, 87, 154, 0.18); /* 3px soft blue focus ring */
+
+  /* Text & Foreground */
+  --color-text: #0F2742;           /* Primary data and UI typography */
+  --color-text-secondary: #4A5F77; /* Secondary labels, subtitles, hints */
+  --color-text-muted: #7A8CA3;     /* Placeholder and disabled text */
+  --color-text-inverse: #FFFFFF;   /* Text on navy/blue solid backgrounds */
+
+  /* Status Tokens (Accessible WCAG AA pairs) */
+  --color-success: #15803D;
+  --color-success-bg: #ECFDF3;
+  --color-success-border: #A6F4C5;
+
+  --color-warning: #B45309;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  --color-info: #02579A;
+  --color-info-bg: #EEF4F9;
+  --color-info-border: #B3CDE0;
+
+  --color-danger: #B42318;         /* Danger red reserved for errors & destructive actions only */
+  --color-danger-bg: #FEF3F2;
+  --color-danger-border: #FECDCA;
+
+  /* ==========================================================================
+     2. TYPOGRAPHY
+     ========================================================================== */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+  /* Typographic Scale */
+  --font-size-12: 12px;
+  --font-size-13: 13px;
+  --font-size-14: 14px;
+  --font-size-16: 16px;
+  --font-size-18: 18px;
+  --font-size-20: 20px;
+  --font-size-24: 24px;
+  --font-size-28: 28px;
+  --font-size-30: 30px;
+  --font-size-36: 36px;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.5;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-code: 500;
+
+  /* ==========================================================================
+     3. SPACING SCALE (4/8 multiples)
+     ========================================================================== */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-14: 14px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  /* ==========================================================================
+     4. RADII
+     ========================================================================== */
+  --radius-sm: 6px;    /* Table cell controls, small tags */
+  --radius-md: 8px;    /* Standard inputs, standard buttons */
+  --radius-lg: 12px;   /* Cards, content panels */
+  --radius-xl: 16px;   /* Modals, dialogs */
+  --radius-full: 9999px; /* Badges, pill indicators, avatars */
+
+  /* ==========================================================================
+     5. SHADOWS (Subtle navy-tinted)
+     ========================================================================== */
+  --shadow-sm: 0 1px 2px rgba(0, 32, 78, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 32, 78, 0.08);
+  --shadow-lg: 0 12px 28px rgba(0, 32, 78, 0.12);
+  --shadow-modal: 0 20px 48px rgba(0, 32, 78, 0.18);
+  --shadow-card-hover: 0 8px 24px rgba(2, 87, 154, 0.12);
+
+  /* ==========================================================================
+     6. COMPONENT SIZES (Optimized for 125% Windows scaling & touch coarse fallback)
+     ========================================================================== */
+  --size-form-input-height: 40px;
+  --size-table-input-height: 32px;
+  --size-popup-input-height: 34px;
+  --popup-header-height: 60px;
+  --size-popup-header-height: 60px;
+  --size-table-row-height: 44px;
+  --size-table-header-height: 40px;
+  --size-button-height: 40px;
+  --size-button-sm-height: 32px;
+  --size-f4-form-button: 28px;
+  --size-f4-table-button: 24px;
+  --size-topbar-height: 64px;
+  --size-sidebar-width-expanded: 240px;
+  --size-sidebar-width-collapsed: 72px;
+  --size-hero-min-height: 120px;
+  --input-icon-pad: 40px;
+  --input-clear-pad: 36px;
+
+  /* ==========================================================================
+     7. FOCUS & MOTION
+     ========================================================================== */
+  --focus-ring-color: #02579A;
+  --focus-ring-offset: 2px;
+  --focus-ring: 2px solid var(--focus-ring-color);
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 250ms ease;
+
+  /* ==========================================================================
+     8. BACKWARD COMPATIBILITY BRIDGES (Aliasing to Beautiful Blues tokens)
+     ========================================================================== */
+  --sap-primary: var(--color-blue-600);
+  --sap-primary-hover: var(--color-navy-800);
+  --sap-surface-card: var(--color-surface);
+  --sap-page-bg: var(--color-page-bg);
+  --sap-border-color: var(--color-border);
+  --sap-border: var(--color-border);
+  --sap-text: var(--color-text);
+  --sap-text-secondary: var(--color-text-secondary);
+  --sap-text-muted: var(--color-text-muted);
+  --sap-navy: var(--color-navy-900);
+  --sap-card-bg: var(--color-surface);
+  --sap-table-header-bg: var(--color-blue-50);
+  --sap-table-header-border: var(--color-border);
+  --sap-table-row-hover: var(--color-blue-50);
+  --sap-table-row-selected: var(--color-blue-100);
+  --sap-popup-header-bg: var(--color-blue-50);
+  --sap-popup-header-border: var(--color-border);
+  --sap-popup-header-title: var(--color-navy-900);
+  --sap-popup-header-badge-bg: var(--color-blue-600);
+  --sap-popup-header-badge-text: #ffffff;
+  --sap-topbar-bg: var(--color-surface);
+  --page-gutter: 32px;
+
+  /* ==========================================================================
+     9. SHADCN/UI TOKEN BRIDGE (Mapped to RexaEdge Beautiful Blues tokens)
+     ========================================================================== */
+  --background: var(--color-page-bg);
+  --foreground: var(--color-text);
+
+  --card: var(--color-surface);
+  --card-foreground: var(--color-text);
+
+  --popover: var(--color-surface);
+  --popover-foreground: var(--color-text);
+
+  --primary: var(--color-blue-600);
+  --primary-foreground: var(--color-text-inverse);
+
+  --secondary: var(--color-blue-50);
+  --secondary-foreground: var(--color-navy-900);
+
+  --muted: var(--color-surface-subtle);
+  --muted-foreground: var(--color-text-secondary);
+
+  --accent: var(--color-blue-50);
+  --accent-foreground: var(--color-navy-900);
+
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-text-inverse);
+
+  --border: var(--color-border);
+  --input: var(--color-border-input);
+  --ring: var(--focus-ring-color);
+  --radius: var(--radius-md);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --page-gutter: 16px;
+  }
+}
+
+@media (pointer: coarse) {
+  :root {
+    --size-button-sm-height: 44px;
+    --size-f4-table-button: 44px;
+    --size-f4-form-button: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0.01ms !important;
+    --transition-normal: 0.01ms !important;
+    --transition-slow: 0.01ms !important;
+  }
+}

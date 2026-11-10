@@ -19,7 +19,7 @@ export function cleanDiagnosticMessage(raw, fallbackLevel = 0, fallbackParent = 
   let level = fallbackLevel;
   let parentMat = fallbackParent;
 
-  // Extract level and BOM parent if present, e.g. "(BOM of B1BH0214C, level 1)"
+  // Extract level and BOM parent if present, Ex. "(BOM of B1BH0214C, level 1)"
   const bomOfMatch = str.match(/\(BOM of ([^,\)]+),\s*level\s*(\d+)\)/i);
   if (bomOfMatch) {
     parentMat = bomOfMatch[1].trim();

@@ -36,6 +36,8 @@ dist
 build/
 frontend/dist/
 frontend/build/
+.vite/
+frontend/.vite/
 
 # Logs & SAP RFC Traces
 logs/
@@ -64,3 +66,12 @@ scratch_investigation_results.json
 .temp/
 supabase/.temp/
 .temp_preview_test_build/
+
+# Playwright Test Artifacts
+playwright-report/
+frontend/playwright-report/
+test-results/
+frontend/test-results/
+screenshots/
+frontend/screenshots/
+frontend/.temp_routed_views_test/

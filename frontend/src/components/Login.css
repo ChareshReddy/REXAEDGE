@@ -1,331 +1,427 @@
 /* ============================================================================
-   REXAEDGE SAP APPLICATION PORTAL SIGN-IN STYLESHEET
-   Strictly scoped under .login-page root container
+   REXAEDGE ENTERPRISE LOGIN PAGE STYLES (BEAUTIFUL BLUES PALETTE)
+   Strictly scoped under .login-page root.
+   All class selectors prefixed with .lg- (zero bare element selectors).
+   Zero important flags used. All shared tokens respected.
    ============================================================================ */
 
-/* Stage / Viewport Container */
 .login-page {
-  container-type: inline-size;
-}
+  --lg-canvas-bg: var(--color-page-bg, #F5F8FB);
+  --lg-navy-900: var(--color-navy-900, #00204E);
+  --lg-navy-800: var(--color-navy-800, #05396B);
+  --lg-blue-600: var(--color-blue-600, #02579A);
+  --lg-blue-200: var(--color-blue-200, #B3CDE0);
+  --lg-blue-50: var(--color-blue-50, #EEF4F9);
+  --lg-border: var(--color-border, #D9E2EC);
+  --lg-text: var(--color-text, #0F2742);
+  --lg-text-secondary: var(--color-text-secondary, #4A5F77);
+  --lg-text-muted: var(--color-text-muted, #7A8CA3);
 
-.login-page.rexa-portal-viewport {
-  position: relative;
   width: 100vw;
   height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
   overflow: hidden;
   display: flex;
-  background-color: #71330F;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--lg-canvas-bg);
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  color: var(--lg-text);
+  box-sizing: border-box;
 }
 
-/* Full-Screen Canva Template Background Image */
-.login-page .rexa-portal-bg-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  z-index: 1;
-  pointer-events: none;
-  user-select: none;
-}
-
-/* ============================================================================
-   LEFT SECTION (~58% width): Typography & Translucent Module Cards
-   ============================================================================ */
-.login-page .rexa-portal-left {
-  flex: 0 0 58%;
-  width: 58%;
+/* ----------------------------------------------------------------------------
+   1. LEFT BRAND PANEL (55%)
+   ---------------------------------------------------------------------------- */
+.login-page .lg-brand-panel {
+  flex: 0 0 55%;
+  width: 55%;
   height: 100%;
   position: relative;
-  overflow: hidden;
+  background: linear-gradient(135deg, var(--lg-navy-900) 0%, var(--lg-navy-800) 50%, var(--lg-blue-600) 100%);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
+  padding: 44px 56px;
   box-sizing: border-box;
-  padding-left: clamp(40px, 6.2vw, 110px);
-  padding-top: clamp(48px, 6.8vw, 105px);
-  padding-right: clamp(24px, 3.2vw, 54px);
-  z-index: 2;
-  background: transparent;
+  color: #FFFFFF;
+  overflow: hidden;
 }
 
-.login-page .rexa-portal-left-content {
+/* Soft Radial Glows for Modern Enterprise Depth */
+.login-page .lg-radial-glow-1 {
+  position: absolute;
+  top: -10%;
+  left: 10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(65, 146, 217, 0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.login-page .lg-radial-glow-2 {
+  position: absolute;
+  bottom: -15%;
+  right: -5%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(2, 87, 154, 0.25) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+/* Faint Geometric Pattern Overlay (SVG, 5% opacity) */
+.login-page .lg-geometric-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1;
+}
+
+.login-page .lg-brand-top {
   position: relative;
-  z-index: 4;
-  max-width: 680px;
-  color: #FFFFFF;
+  z-index: 2;
 }
 
-.login-page .rexa-portal-heading {
-  font-size: clamp(32px, 3.2vw, 56px);
-  font-weight: 700;
+.login-page .lg-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #FFFFFF;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 16px rgba(0, 32, 78, 0.2);
+  margin-bottom: 24px;
+}
+
+.login-page .lg-logo-img {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+
+.login-page .lg-brand-content {
+  position: relative;
+  z-index: 2;
+  max-width: 540px;
+}
+
+.login-page .lg-headline {
+  font-size: 44px;
+  font-weight: 600;
   color: #FFFFFF;
+  margin: 0 0 10px 0;
   line-height: 1.15;
-  margin: 0 0 clamp(8px, 0.8vw, 14px) 0;
-  letter-spacing: -0.025em;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.02em;
+  animation: lg-fade-up 0.5s ease-out both;
 }
 
-.login-page .rexa-portal-tagline {
-  font-size: clamp(17px, 1.7vw, 30px);
+.login-page .lg-tagline {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--lg-blue-200);
+  margin: 0 0 12px 0;
+  line-height: 1.3;
+  animation: lg-fade-up 0.5s ease-out 0.1s both;
+}
+
+.login-page .lg-description {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  margin: 0 0 24px 0;
+  animation: lg-fade-up 0.5s ease-out 0.15s both;
+}
+
+/* Compact Feature Chips Row */
+.login-page .lg-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 32px;
+  animation: lg-fade-up 0.5s ease-out 0.2s both;
+}
+
+.login-page .lg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 13px;
   font-weight: 500;
   color: #FFFFFF;
-  line-height: 1.25;
-  margin: 0 0 clamp(12px, 1.2vw, 20px) 0;
-  letter-spacing: -0.01em;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
 }
 
-.login-page .rexa-portal-desc {
-  font-size: clamp(13px, 1.2vw, 21px);
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.94);
-  line-height: 1.5;
-  max-width: 600px;
-  margin: 0 0 clamp(24px, 2.5vw, 42px) 0;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-}
-
-.login-page .rexa-portal-tiles {
-  display: flex;
-  gap: clamp(8px, 1.1vw, 16px);
-  align-items: stretch;
-  flex-wrap: nowrap;
-}
-
-.login-page .rexa-glass-tile {
-  flex: 0 0 auto;
-  width: clamp(84px, 6.8vw, 114px);
-  height: clamp(96px, 7.8vw, 128px);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(30, 10, 2, 0.28);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 10px 6px;
-  box-sizing: border-box;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  user-select: none;
-  pointer-events: none;
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-
-.login-page .rexa-glass-tile-icon {
-  color: #FF8A00;
-  margin-bottom: clamp(6px, 0.6vw, 10px);
+.login-page .lg-chip-icon {
+  color: var(--lg-blue-200);
   flex-shrink: 0;
 }
 
-.login-page .rexa-glass-tile-label {
-  font-size: clamp(10.5px, 0.8vw, 13px);
-  font-weight: 600;
-  color: #FFFFFF;
-  line-height: 1.25;
-  margin: 0;
-  text-align: center;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+/* CSS/SVG Product Preview Card */
+.login-page .lg-preview-container {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: 170px;
+  margin-top: 8px;
+  animation: lg-float-in 0.6s ease-out 0.25s both;
 }
 
-/* ============================================================================
-   RIGHT SECTION (~42% width): Stage Alignment
-   ============================================================================ */
-.login-page .rexa-portal-right {
-  flex: 0 0 42%;
-  width: 42%;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
+.login-page .lg-preview-card-back {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: -10px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  padding: 18px 20px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  transform: rotate(2deg);
+  z-index: 1;
+}
+
+.login-page .lg-preview-mock-row {
+  display: flex;
+  gap: 12px;
   align-items: center;
-  justify-content: center;
-  background: transparent;
-  padding: 30px 20px;
+}
+
+.login-page .lg-preview-mock-cell {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.login-page .lg-preview-mock-cell.lg-cell-lg { width: 50%; }
+.login-page .lg-preview-mock-cell.lg-cell-md { width: 30%; }
+.login-page .lg-preview-mock-cell.lg-cell-sm { width: 20%; }
+
+.login-page .lg-preview-card-front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  backdrop-filter: blur(14px);
+  padding: 16px 20px;
   box-sizing: border-box;
+  box-shadow: 0 16px 36px rgba(0, 20, 50, 0.35);
   z-index: 2;
 }
 
-/* ============================================================================
-   AMBER ERROR MESSAGE OVERLAY (ABOVE LOGO, ZERO LAYOUT SHIFT)
-   ============================================================================ */
-.login-page .lg-error-panel {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
+.login-page .lg-preview-header {
   display: flex;
-  justify-content: center;
-  width: 100%;
-  max-width: 440px;
-  padding: 0 16px;
-  box-sizing: border-box;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 
-.login-page .lg-error-alert {
+.login-page .lg-preview-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #FFFFFF;
+}
+
+.login-page .lg-preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #34D399;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.login-page .lg-preview-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.login-page .lg-preview-progress-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #38BDF8, #34D399);
+}
+
+.login-page .lg-preview-steps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.login-page .lg-preview-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.login-page .lg-preview-step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.login-page .lg-preview-step-dot.lg-step-done {
+  background: #34D399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+}
+
+.login-page .lg-brand-footer {
+  position: relative;
+  z-index: 2;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ----------------------------------------------------------------------------
+   2. RIGHT FORM AREA & CARD (45%)
+   ---------------------------------------------------------------------------- */
+.login-page .lg-form-panel {
+  flex: 0 0 45%;
+  width: 45%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  box-sizing: border-box;
+  background-color: var(--lg-canvas-bg);
+  overflow-y: auto;
+}
+
+.login-page .lg-card-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Floating Error & Connection Overlay: Zero Layout Shift on Card (0px) */
+.login-page .lg-error-overlay {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: #FFFBEB;
-  border: 1px solid #FCD34D;
-  border-left: 3px solid #F59E0B;
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: #78350F;
-  font-size: 13.5px;
-  width: 100%;
-  box-shadow: 0 4px 14px rgba(180, 83, 9, 0.12);
-  animation: lg-slide-down 0.22s ease forwards;
+  padding: 12px 14px;
+  background-color: var(--color-danger-bg, #FEF3F2);
+  border: 1px solid var(--color-danger-border, #FECDCA);
+  border-radius: var(--radius-md, 8px);
+  color: var(--color-danger, #B42318);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(180, 35, 24, 0.1);
+  animation: lg-fade-down 0.2s ease-out;
+  z-index: 10;
+}
+
+.login-page .lg-error-overlay.lg-slow-notice {
+  background-color: var(--lg-blue-50);
+  border-color: var(--lg-blue-200);
+  color: var(--lg-blue-600);
+  box-shadow: 0 4px 14px rgba(2, 87, 154, 0.1);
 }
 
 .login-page .lg-error-icon {
   flex-shrink: 0;
-  color: #F59E0B;
 }
 
 .login-page .lg-error-text {
   flex: 1;
-  line-height: 1.35;
 }
 
-.login-page .lg-error-close {
-  background: none;
-  border: none;
-  padding: 4px;
-  color: #78350F;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s ease;
-}
-
-.login-page .lg-error-close:hover {
-  background-color: rgba(245, 158, 11, 0.15);
-}
-
-/* ============================================================================
-   ONE WHITE CARD ONLY (NO INNER BOX / NO BORDERED PANEL)
-   ============================================================================ */
+/* Centered Form Card */
 .login-page .lg-card {
-  position: relative;
-  z-index: 10;
-  background: #FFFFFF;
-  border-radius: 1.7cqw;
-  border: 1px solid #FED7AA;
-  box-shadow: 0 20px 60px rgba(194, 65, 12, 0.15);
-  width: clamp(420px, 30vw, 500px);
-  padding: 32px 36px;
+  width: 100%;
+  background-color: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--lg-border);
+  border-top: 3px solid var(--lg-blue-600);
+  border-radius: var(--radius-xl, 16px);
+  box-shadow: 0 12px 36px rgba(0, 32, 78, 0.08);
+  padding: 40px 40px 36px;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  animation: lg-card-rise 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: lg-fade-up 0.4s ease-out;
 }
 
-/* Logo container & image (10px gap to welcome) */
-.login-page .lg-logo-wrap {
-  position: relative;
+.login-page .lg-card-header {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.login-page .lg-icon-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--lg-blue-50);
+  color: var(--lg-blue-600);
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.login-page .lg-logo-img {
-  width: 160px;
-  height: auto;
-  object-fit: contain;
-  display: block;
-}
-
-/* "Welcome to the RexaEdge" heading (16px gap to "Sign In") */
-.login-page .lg-welcome {
-  text-align: center;
+  justify-content: center;
   margin-bottom: 16px;
 }
 
-.login-page .lg-welcome-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #0F2744;
-  margin: 0;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  text-align: center;
-}
-
-/* "Sign In" heading & supporting subtitle */
-.login-page .lg-intro {
-  text-align: left;
-  margin-bottom: 20px;
-}
-
-.login-page .lg-title {
+.login-page .lg-card-title {
   font-size: 28px;
-  font-weight: 700;
-  color: #0F2744;
-  margin: 0 0 4px 0;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  color: var(--lg-navy-900);
+  margin: 0 0 6px 0;
+  line-height: 1.25;
 }
 
-.login-page .lg-subtitle {
-  font-size: 15px;
-  font-weight: 400;
-  color: #475569;
+.login-page .lg-card-subtitle {
+  font-size: 14px;
+  color: var(--lg-text-secondary);
   margin: 0;
   line-height: 1.4;
-  text-align: left;
-  padding: 0;
 }
 
-/* Form and Fields (Directly in card, no inner box) */
+/* Form & Input Groups */
 .login-page .lg-form {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  gap: 18px;
 }
 
-/* Between email field and Password label: 14px */
-.login-page .lg-field {
+.login-page .lg-field-group {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  margin-bottom: 14px;
-}
-
-/* Between password field and Sign In button: 20px */
-.login-page .lg-field-last {
-  margin-bottom: 20px;
-}
-
-/* Label to field: 6px */
-.login-page .lg-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0F2744;
-  margin: 0 0 6px 0;
-  display: block;
+  gap: 6px;
   text-align: left;
+}
+
+.login-page .lg-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lg-navy-900);
+  cursor: pointer;
 }
 
 .login-page .lg-input-wrap {
@@ -337,164 +433,137 @@
 
 .login-page .lg-input-icon {
   position: absolute;
-  left: 16px;
-  color: #94A3B8;
+  left: 14px;
+  color: var(--lg-text-muted);
+  pointer-events: none;
   display: flex;
   align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 2;
-  transition: color 0.18s ease;
-}
-
-.login-page .lg-input-wrap:focus-within .lg-input-icon {
-  color: #EA580C;
+  z-index: 1;
 }
 
 .login-page .lg-input {
   width: 100%;
-  height: 52px;
-  padding: 0 16px 0 46px;
-  border: 1px solid #FDBA74;
+  height: 44px;
+  padding: 0 14px 0 44px;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 14px;
+  color: var(--lg-text);
+  background-color: var(--color-surface, #FFFFFF);
+  border: 1px solid var(--lg-border);
   border-radius: 10px;
-  background-color: #FFFFFF;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  color: #0F2744;
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
 }
 
-.login-page .lg-input::placeholder {
-  color: #94A3B8;
-  font-weight: 400;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+.login-page .lg-input:hover:not(:disabled) {
+  border-color: var(--color-border-hover, #B3CDE0);
+}
+
+.login-page .lg-input.lg-input-password {
+  padding-right: 44px;
 }
 
 .login-page .lg-input:focus {
-  outline: none;
-  border-color: #EA580C;
-  box-shadow: 0 0 0 2px #EA580C, 0 0 12px rgba(234, 88, 12, 0.25);
-  background-color: #FFFFFF;
+  border-color: var(--lg-blue-600);
+  box-shadow: 0 0 0 3px rgba(2, 87, 154, 0.15);
 }
 
-.login-page .lg-password-input {
-  padding-right: 48px;
+.login-page .lg-input:disabled {
+  background-color: var(--lg-canvas-bg);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
-.login-page .lg-pwd-toggle {
+.login-page .lg-toggle-eye {
   position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
+  right: 8px;
+  background: transparent;
   border: none;
+  color: var(--lg-text-secondary);
+  cursor: pointer;
   padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748B;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: color 0.18s ease, background-color 0.18s ease;
-  z-index: 2;
+  border-radius: var(--radius-sm, 6px);
+  transition: color var(--transition-fast, 150ms ease);
 }
 
-.login-page .lg-pwd-toggle:hover {
-  color: #0F2744;
-  background-color: #F1F5F9;
+.login-page .lg-toggle-eye:hover {
+  color: var(--lg-blue-600);
 }
 
-.login-page .lg-pwd-toggle:focus-visible {
-  outline: 2px solid #EA580C;
-  outline-offset: 1px;
-}
-
-/* ============================================================================
-   SIGN IN BUTTON (52px high, radius 10px, orange gradient #F97316 to #EA580C)
-   ============================================================================ */
-.login-page .lg-btn {
-  position: relative;
-  width: 100%;
-  height: 52px;
-  margin-top: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
-  color: #FFFFFF;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-  font-family: inherit !important;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
-  transition: background 0.2s ease, transform 0.16s ease, box-shadow 0.2s ease;
-  letter-spacing: -0.01em;
-}
-
-.login-page .lg-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(194, 65, 12, 0.45);
-}
-
-.login-page .lg-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.25);
-}
-
-.login-page .lg-btn:focus-visible {
-  outline: 2px solid #EA580C;
+.login-page .lg-toggle-eye:focus-visible {
+  outline: 2px solid var(--lg-blue-600);
   outline-offset: 2px;
 }
 
-.login-page .lg-btn:disabled {
+/* Full-width 44px Sign In Button */
+.login-page .lg-submit-btn {
+  height: 44px;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--lg-blue-600);
+  border: 1px solid var(--lg-blue-600);
+  border-radius: 10px;
+  color: #FFFFFF;
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(2, 87, 154, 0.25);
+  transition: background-color var(--transition-fast, 150ms ease), border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease);
+}
+
+.login-page .lg-submit-btn:hover:not(:disabled) {
+  background-color: var(--lg-navy-800);
+  border-color: var(--lg-navy-800);
+  box-shadow: 0 4px 12px rgba(0, 32, 78, 0.2);
+}
+
+.login-page .lg-submit-btn:active:not(:disabled) {
+  background-color: var(--lg-navy-900);
+  border-color: var(--lg-navy-900);
+}
+
+.login-page .lg-submit-btn:focus-visible {
+  outline: 2px solid var(--lg-blue-600);
+  outline-offset: 2px;
+}
+
+.login-page .lg-submit-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+}
+
+.login-page .lg-btn-text {
+  line-height: 1;
 }
 
 .login-page .lg-btn-icon {
   flex-shrink: 0;
 }
 
-.login-page .lg-spinner {
-  display: inline-block;
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 50%;
-  border-top-color: #FFFFFF;
-  animation: lg-spin 0.7s linear infinite;
-}
-
-/* Slow Connection Notice */
-.login-page .lg-slow-notice {
+.login-page .lg-footer-copy {
+  font-size: 12px;
+  color: var(--lg-text-muted);
+  margin-top: 20px;
   text-align: center;
-  font-size: 13px;
-  color: #8C4300;
-  background-color: #FFF4E5;
-  border: 1px solid #FFE0B2;
-  border-radius: 8px;
-  padding: 8px 12px;
-  margin-top: 14px;
-  animation: lg-fade-in 0.25s ease;
 }
 
-/* ============================================================================
-   ANIMATIONS
-   ============================================================================ */
-@keyframes lg-card-rise {
+.login-page .lg-spinner {
+  animation: lg-spin 0.8s linear infinite;
+}
+
+/* Animations */
+@keyframes lg-fade-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -502,18 +571,7 @@
   }
 }
 
-@keyframes lg-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes lg-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes lg-slide-down {
+@keyframes lg-fade-down {
   from {
     opacity: 0;
     transform: translateY(-8px);
@@ -524,50 +582,98 @@
   }
 }
 
-/* ============================================================================
-   RESPONSIVE DESIGN (TABLET & MOBILE FALLBACKS)
-   ============================================================================ */
-@media (max-width: 1024px) {
-  .login-page.rexa-portal-viewport {
-    flex-direction: column;
-    overflow-y: auto;
-    height: auto;
-    min-height: 100vh;
+@keyframes lg-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
   }
-
-  .login-page .rexa-portal-left {
-    flex: 0 0 auto;
-    width: 100%;
-    padding: 40px 24px 24px;
-  }
-
-  .login-page .rexa-portal-right {
-    flex: 0 0 auto;
-    width: 100%;
-    padding: 24px 20px 48px;
-  }
-
-  .login-page .lg-card {
-    width: 100%;
-    max-width: 440px;
-    padding: 28px 24px;
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-@media (max-width: 640px) {
-  .login-page .rexa-portal-tiles {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+@keyframes lg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Prefers-reduced-motion: All Animations Disabled */
+@media (prefers-reduced-motion: reduce) {
+  .login-page .lg-headline,
+  .login-page .lg-tagline,
+  .login-page .lg-description,
+  .login-page .lg-chips-row,
+  .login-page .lg-preview-container,
+  .login-page .lg-error-overlay,
+  .login-page .lg-card {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   3. RESPONSIVE DESIGN
+   ---------------------------------------------------------------------------- */
+
+/* Height-constrained displays (Ex. 1366x768, 1280x720): Hide decorative preview */
+@media (max-height: 800px) and (min-width: 901px) {
+  .login-page .lg-preview-container {
+    display: none;
   }
 
-  .login-page .rexa-glass-tile {
-    width: 100%;
-    height: 90px;
+  .login-page .lg-brand-panel {
+    padding: 36px 48px;
   }
 
   .login-page .lg-card {
-    padding: 24px 18px;
-    border-radius: 16px;
+    padding: 32px 36px 28px;
+  }
+}
+
+/* Mobile & Tablet (< 900px): Compact Navy Header Band */
+@media (max-width: 900px) {
+  .login-page {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .login-page .lg-brand-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto;
+    padding: 20px 24px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .login-page .lg-logo-badge {
+    margin-bottom: 8px;
+    padding: 6px 14px;
+  }
+
+  .login-page .lg-logo-img {
+    height: 28px;
+  }
+
+  .login-page .lg-brand-content,
+  .login-page .lg-brand-footer {
+    display: none;
+  }
+
+  .login-page .lg-form-panel {
+    flex: 1 0 auto;
+    width: 100%;
+    padding: 28px 16px;
+  }
+
+  .login-page .lg-card-wrapper {
+    max-width: 100%;
+  }
+
+  .login-page .lg-card {
+    padding: 28px 20px 24px;
+    border-radius: var(--radius-lg, 12px);
   }
 }

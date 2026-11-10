@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getStorageLocations } from '../services/storageLocationService.js';
+import { f4CacheService } from '../services/f4CacheService.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
@@ -38,13 +39,23 @@ router.get('/', storageLocationRateLimiter, async (req, res) => {
 
   try {
     const { plant, q, refresh } = req.query || {};
+    const serverId = req.selectedServer?.id || 'default';
 
-    const result = await getStorageLocations({
-      server: req.selectedServer,
-      plant,
-      q,
-      refresh,
-      signal: abortController.signal
+    if (refresh === 'true' || refresh === true) {
+      f4CacheService.clear(serverId);
+    }
+
+    const result = await f4CacheService.fetchWithCache({
+      serverId,
+      lookupType: 'storageLocations',
+      query: `${plant || ''}:${q || ''}`,
+      fetchFn: () => getStorageLocations({
+        server: req.selectedServer,
+        plant,
+        q,
+        refresh,
+        signal: abortController.signal
+      })
     });
 
     return res.status(200).json(result);

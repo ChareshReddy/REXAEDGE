@@ -42,8 +42,8 @@ export default function TableLoadingState({
       <Loader2
         size={32}
         className="sap-spin"
-        color="#EA580C"
-        style={{ color: '#EA580C', flexShrink: 0 }}
+        color="#02579A"
+        style={{ color: '#02579A', flexShrink: 0 }}
       />
       <span
         style={{

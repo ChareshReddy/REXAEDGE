@@ -79,7 +79,7 @@ export default function ChatBox({
     adjustTextareaHeight();
   }, [inputMessage, adjustTextareaHeight]);
 
-  // Adjust height on window resize (e.g. mobile orientation change)
+  // Adjust height on window resize (Ex. mobile orientation change)
   useEffect(() => {
     const handleWindowResize = () => adjustTextareaHeight();
     window.addEventListener('resize', handleWindowResize);

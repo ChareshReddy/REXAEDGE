@@ -8,6 +8,7 @@ import F4PopupOverlay from './F4PopupOverlay';
 import TableLoadingState from './TableLoadingState';
 import F4ErrorState from './F4ErrorState';
 import { extractErrorInfo } from '../utils/friendlyError';
+import { SearchInput } from './ui/search-input';
 
 export default function PlantValueHelpModal({
   isOpen,
@@ -263,9 +264,9 @@ export default function PlantValueHelpModal({
         className="sap-f4-modal-dialog plant"
         style={{
           ...dialogStyle,
-          width: 'fit-content',
-          minWidth: 'min(560px, 92vw)',
-          maxWidth: '92vw',
+          width: 'max-content',
+          minWidth: '560px',
+          maxWidth: '90vw',
           outline: 'none',
           maxHeight: '82vh'
         }}
@@ -282,7 +283,7 @@ export default function PlantValueHelpModal({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--sap-popup-header-title, #0f2744)' }}>
+            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18, 18px)', fontWeight: 700, color: 'var(--sap-popup-header-title, #00204E)', lineHeight: 1.2 }}>
               {modalTitle}
             </h3>
           </div>
@@ -316,55 +317,21 @@ export default function PlantValueHelpModal({
             className="sap-f4-search-row"
             style={{ display: 'flex', gap: 8, alignItems: 'center' }}
           >
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
-              <Search
-                size={14}
-                color="var(--sap-text-secondary)"
-                style={{ position: 'absolute', left: 8, pointerEvents: 'none' }}
-              />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSelectedIndex(0);
-                }}
-                className="sap-input"
-                placeholder="Search plant code, name, or city… (e.g. 1001 or Delhi)"
-                style={{
-                  width: '100%',
-                  height: 30,
-                  padding: '0 28px 0 28px',
-                  fontSize: 'var(--sap-size-input)',
-                  boxSizing: 'border-box'
-                }}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedIndex(0);
-                    searchInputRef.current?.focus();
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: 6,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--sap-text-secondary)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: 2
-                  }}
-                  title="Clear search"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              isPopup
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedIndex(0);
+              }}
+              onClear={() => {
+                setSearchTerm('');
+                setSelectedIndex(0);
+              }}
+              placeholder="Search plant code, name, or city… (Ex. 1001 or Delhi)"
+              wrapperStyle={{ flex: 1 }}
+            />
 
             <button
               type="submit"
@@ -424,23 +391,23 @@ export default function PlantValueHelpModal({
               </p>
             </div>
           ) : (
-            <table className="sap-table sap-f4-table" style={{ width: '100%', tableLayout: 'auto', borderCollapse: 'collapse' }}>
+            <table className="sap-f4-table" style={{ width: 'max-content', minWidth: '100%', tableLayout: 'auto', borderCollapse: 'collapse' }}>
               <colgroup>
-                <col style={{ width: 75, minWidth: 75 }} />
-                <col style={{ width: 230, minWidth: 200 }} />
-                <col style={{ minWidth: 180 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 280, maxWidth: 280 }} />
+                <col style={{ width: 220, maxWidth: 220 }} />
               </colgroup>
               <thead>
-                <tr style={{ background: '#FFF7ED', borderBottom: '1px solid #FFEDD5' }}>
-                  <th className="sap-f4-sticky-col" style={{ width: 75, minWidth: 75, whiteSpace: 'nowrap', position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#FFF7ED' }}>Plnt</th>
-                  <th style={{ width: 230, minWidth: 200, whiteSpace: 'nowrap' }}>Name 1</th>
-                  <th style={{ whiteSpace: 'nowrap', minWidth: 180 }}>City / Location</th>
+                <tr style={{ background: '#EEF4F9', borderBottom: '1px solid #EEF4F9' }}>
+                  <th className="sap-f4-sticky-col sap-col-left" style={{ width: 90, minWidth: 90, position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#EEF4F9' }}>Plnt</th>
+                  <th className="sap-col-left" style={{ width: 280, maxWidth: 280 }}>Name 1</th>
+                  <th className="sap-col-left" style={{ width: 220, maxWidth: 220 }}>City / Location</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPlants.map((p, idx) => {
                   const isSelected = idx === selectedIndex;
-                  const rowBg = isSelected ? '#FFEDD5' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
+                  const rowBg = isSelected ? '#EEF4F9' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
                   return (
                     <tr
                       key={`${p.werks}-${idx}`}
@@ -460,13 +427,12 @@ export default function PlantValueHelpModal({
                       onDoubleClick={() => onSelect(p.werks, p)}
                     >
                       <td
-                        className="sap-f4-sticky-col"
+                        className="sap-f4-sticky-col sap-col-code sap-col-left"
                         style={{
-                          width: 75,
-                          minWidth: 75,
-                          fontFamily: 'monospace',
-                          fontWeight: 700,
-                          color: isSelected ? '#C2410C' : '#0a6ed1',
+                          width: 90,
+                          fontFamily: 'var(--sap-font-mono)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
+                          color: isSelected ? 'var(--color-navy-900, #00204E)' : 'var(--color-blue-600, #02579A)',
                           position: 'sticky',
                           left: 0,
                           zIndex: 1,
@@ -493,25 +459,32 @@ export default function PlantValueHelpModal({
                         )}
                       </td>
                       <td
+                        className="sap-f4-col-text sap-col-left"
                         title={p.name1 || ''}
                         style={{
-                          width: 230,
-                          minWidth: 200,
-                          color: '#1e293b',
-                          fontWeight: 500,
+                          width: 280,
+                          maxWidth: 280,
+                          color: 'var(--color-text, #0F2742)',
+                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
+                          overflow: 'visible',
+                          textOverflow: 'clip',
                           lineHeight: 1.4
                         }}
                       >
                         {p.name1 || '-'}
                       </td>
                       <td
-                        className="sap-f4-col-text"
+                        className="sap-f4-col-text sap-col-left"
                         title={p.ort01 || ''}
                         style={{
-                          minWidth: 180,
-                          color: '#64748b',
+                          width: 220,
+                          maxWidth: 220,
+                          color: 'var(--color-text-secondary, #4A5F77)',
+                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
                           overflow: 'visible',
@@ -529,7 +502,7 @@ export default function PlantValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #FFEDD5', background: 'var(--sap-modal-footer-bg, #FFF1E3)' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid #EEF4F9', background: 'var(--sap-modal-footer-bg, #EEF4F9)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredPlants[selectedIndex] ? (
               <span title={`${filteredPlants[selectedIndex].werks} - ${filteredPlants[selectedIndex].name1 || ''}`}>

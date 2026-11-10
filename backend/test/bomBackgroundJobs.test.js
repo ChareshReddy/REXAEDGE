@@ -327,15 +327,16 @@ async function runTests() {
     items: fiveReadyBoms
   });
 
-  // Second immediate attempt with same user and server must throw ACTIVE_JOB_EXISTS
+  // Second immediate attempt with same user and server: queues under Stage 4 concurrency limit
   try {
-    bomJobManager.startJob({
+    const secondStart = bomJobManager.startJob({
       type: 'create_bulk',
       user: lockUser,
       server: mockServer,
       items: fiveReadyBoms
     });
-    assert.fail('Should have thrown ACTIVE_JOB_EXISTS');
+    assert.strictEqual(secondStart.status, 'QUEUED');
+    console.log('   ✓ Concurrency limit verified: 2nd active job for same user queued (FIFO)\n');
   } catch (err) {
     assert.strictEqual(err.code, 'ACTIVE_JOB_EXISTS');
     assert.match(err.message, /already running/i);

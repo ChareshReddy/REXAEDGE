@@ -13,6 +13,7 @@ import {
   verifyCopiedBomHierarchy,
   pingRfcServer
 } from '../services/sapRfcClient.js';
+import { getServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
 import { validateSourceBom as validateSourceBomGui } from '../services/sapGuiClient.js';
 import { parseBomSpreadsheet } from '../services/bomSpreadsheetParser.js';
 import {
@@ -26,6 +27,7 @@ import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
+import { bomLockService } from '../services/bomLockService.js';
 
 const router = express.Router();
 
@@ -39,11 +41,38 @@ router.use(requireModuleAccess(MODULE_KEYS.BOM));
  */
 router.get('/ping', requireAppPermission('bom.*'), async (req, res) => {
   try {
-    const pingResult = await pingRfcServer(req.selectedServer || {});
-    if (!pingResult.success) {
-      return res.status(500).json(pingResult);
+    const server = req.selectedServer || {};
+    const hasCreds = Boolean(
+      server.sap_username &&
+      (server.sap_password || server.sap_password_encrypted)
+    );
+    if (!hasCreds) {
+      return res.status(500).json({
+        success: false,
+        code: 'NO_CREDENTIALS',
+        message: `No SAP credentials configured for this server ("${server.name || server.id}"). An administrator must configure SAP credentials in the Admin Servers panel.`
+      });
     }
-    return res.status(200).json(pingResult);
+
+    const serverId = server.id;
+    const health = getServerHealth(serverId);
+    const isUp = health.status !== HEALTH_STATE.DOWN && health.circuit_breaker !== BREAKER_STATE.OPEN;
+    if (!isUp) {
+      return res.status(503).json({
+        success: false,
+        code: 'SERVER_UNAVAILABLE',
+        message: health.last_error || 'SAP server is not reachable right now. Please try again shortly.',
+        health: health.status,
+        circuit_breaker: health.circuit_breaker
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      mode: 'RFC',
+      latencyMs: health.latency_ms || 2,
+      health: health.status,
+      circuit_breaker: health.circuit_breaker
+    });
   } catch (err) {
     return sendFriendlyError(res, req, err, { source: 'sap' });
   }
@@ -105,6 +134,9 @@ router.post('/validate-source', requireAppPermission(['bom.validate', 'bom.copy'
 
     return res.status(200).json(result);
   } catch (err) {
+    if (err.code === 'SERVER_BUSY') {
+      return sendFriendlyError(res, req, err, { source: 'sap' });
+    }
     console.error('[bom.js] validate-source error:', err.message);
     recordRouteAudit(req, {
       action: 'bom.validate',
@@ -169,15 +201,28 @@ router.post('/read', requireAppPermission('bom.display'), async (req, res) => {
  */
 router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
   try {
-    const { material, plant, bomUsage, alternativeBom, validFrom, components } = req.body || {};
-    const result = await rfcCreateBom({
+    const { material, plant, bomUsage = '1', alternativeBom = '01', validFrom, components } = req.body || {};
+    const serverId = req.selectedServer?.id || 'default';
+    const userId = req.user?.id || req.user?.email || 'anonymous';
+
+    const result = await bomLockService.withLock({
+      serverId,
       material,
       plant,
       bomUsage,
-      alternativeBom,
-      validFrom,
-      components,
-      server: req.selectedServer
+      alternative: alternativeBom,
+      userId
+    }, async () => {
+      return await rfcCreateBom({
+        material,
+        plant,
+        bomUsage,
+        alternativeBom,
+        validFrom,
+        components,
+        server: req.selectedServer,
+        user: req.user
+      });
     });
 
     recordRouteAudit(req, {
@@ -267,24 +312,38 @@ router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
       sourcePlant,
       targetMaterial,
       targetPlant,
-      bomUsage,
+      bomUsage = '1',
       alternativeBom,
-      sourceAlternative,
-      targetAlternative,
+      sourceAlternative = '1',
+      targetAlternative = '01',
       copyHierarchy = true
     } = req.body || {};
 
-    const result = await rfcCopyBom({
-      sourceMaterial,
-      sourcePlant,
-      targetMaterial,
-      targetPlant,
+    const serverId = req.selectedServer?.id || 'default';
+    const userId = req.user?.id || req.user?.email || 'anonymous';
+    const effTargetAlt = targetAlternative || alternativeBom || '01';
+
+    const result = await bomLockService.withLock({
+      serverId,
+      material: targetMaterial,
+      plant: targetPlant,
       bomUsage,
-      alternativeBom,
-      sourceAlternative,
-      targetAlternative,
-      copyHierarchy,
-      server: req.selectedServer
+      alternative: effTargetAlt,
+      userId
+    }, async () => {
+      return await rfcCopyBom({
+        sourceMaterial,
+        sourcePlant,
+        targetMaterial,
+        targetPlant,
+        bomUsage,
+        alternativeBom,
+        sourceAlternative,
+        targetAlternative: effTargetAlt,
+        copyHierarchy,
+        server: req.selectedServer,
+        user: req.user
+      });
     });
 
     recordRouteAudit(req, {
@@ -387,13 +446,26 @@ router.post('/verify-copy', requireAppPermission('bom.copy'), async (req, res) =
  */
 router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
   try {
-    const { material, plant, bomUsage, alternativeBom } = req.body || {};
-    const result = await rfcDeleteBom({
+    const { material, plant, bomUsage = '1', alternativeBom = '1' } = req.body || {};
+    const serverId = req.selectedServer?.id || 'default';
+    const userId = req.user?.id || req.user?.email || 'anonymous';
+
+    const result = await bomLockService.withLock({
+      serverId,
       material,
       plant,
       bomUsage,
-      alternativeBom,
-      server: req.selectedServer
+      alternative: alternativeBom,
+      userId
+    }, async () => {
+      return await rfcDeleteBom({
+        material,
+        plant,
+        bomUsage,
+        alternativeBom,
+        server: req.selectedServer,
+        user: req.user
+      });
     });
 
     recordRouteAudit(req, {
@@ -435,7 +507,7 @@ router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
  * POST /api/bom/batch-validate
  * Validates an array of BOM copy requests against SAP on permitted server.
  */
-router.post('/batch-validate', requireAppPermission('bom.copy'), async (req, res) => {
+router.post('/batch-validate', requireAppPermission(['bom.validate', 'bom.copy']), async (req, res) => {
   try {
     const { items = [], copyHierarchy = true } = req.body || {};
     if (items.length > MAX_BOMS) {
@@ -652,7 +724,7 @@ function checkProdConfirmation(req, res) {
  * POST /api/bom/create-preflight
  * Runs pre-flight validation on either uploaded spreadsheet or structured BOM payload.
  */
-router.post('/create-preflight', requireAppPermission('bom.create'), async (req, res) => {
+router.post('/create-preflight', requireAppPermission(['bom.validate', 'bom.create']), async (req, res) => {
   try {
     let bomsToValidate = [];
     let parseInfo = null;
@@ -725,11 +797,23 @@ router.post('/create-single', requireAppPermission('bom.create'), async (req, re
     if (!bom) {
       return res.status(400).json({ success: false, message: 'BOM data is required.' });
     }
-    const result = await createBomFromData({
-      bom,
-      server: req.selectedServer,
-      user: req.user,
-      source: 'single'
+    const serverId = req.selectedServer?.id || 'default';
+    const userId = req.user?.id || req.user?.email || 'anonymous';
+
+    const result = await bomLockService.withLock({
+      serverId,
+      material: bom.material,
+      plant: bom.plant,
+      bomUsage: bom.bomUsage || '1',
+      alternative: bom.alternativeBom || '01',
+      userId
+    }, async () => {
+      return await createBomFromData({
+        bom,
+        server: req.selectedServer,
+        user: req.user,
+        source: 'single'
+      });
     });
 
     const target = bom ? `${bom.material}/${bom.plant}` : 'unknown';
@@ -1016,7 +1100,8 @@ router.post('/jobs/start', requireAppPermission((req) => {
   const type = String(req.body?.type || '').toLowerCase();
   if (type.startsWith('copy')) return 'bom.copy';
   if (type.startsWith('create')) return 'bom.create';
-  return ['bom.create', 'bom.copy'];
+  if (type.startsWith('validate')) return 'bom.validate';
+  return ['bom.create', 'bom.copy', 'bom.validate'];
 }), async (req, res, next) => {
   const { type } = req.body || {};
   const isWriteAction = type === 'create_bulk' || type === 'copy_bulk';
@@ -1088,7 +1173,7 @@ router.post('/jobs/start', requireAppPermission((req) => {
  * GET /api/bom/jobs/active
  * Checks if the current user has an active job running on the selected server.
  */
-router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
+router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), (req, res) => {
   try {
     const active = bomJobManager.getActiveJob(req.user?.id || req.user?.email, req.selectedServer);
     return res.status(200).json({
@@ -1105,9 +1190,9 @@ router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy']), (re
  * GET /api/bom/jobs/:jobId
  * Returns the status, progress counters, current BOM, and per-BOM results.
  */
-router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
+router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), async (req, res) => {
   try {
-    const job = bomJobManager.getJob(req.params.jobId, req.user);
+    const job = await bomJobManager.getJob(req.params.jobId, req.user);
     if (!job) {
       return res.status(404).json({
         success: false,
@@ -1136,9 +1221,9 @@ router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy']), (re
  * POST /api/bom/jobs/:jobId/cancel
  * Requests cancellation of a running background job.
  */
-router.post('/jobs/:jobId/cancel', requireAppPermission(['bom.create', 'bom.copy']), (req, res) => {
+router.post('/jobs/:jobId/cancel', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), async (req, res) => {
   try {
-    const cancelResult = bomJobManager.cancelJob(
+    const cancelResult = await bomJobManager.cancelJob(
       req.params.jobId,
       req.user
     );

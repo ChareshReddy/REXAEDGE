@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { searchMaterials, getMaterialDetail } from '../services/materialSearchService.js';
+import { f4CacheService } from '../services/f4CacheService.js';
 import { searchMaterialsByOption } from '../services/searchByOptionService.js';
 import { SAP_SEARCH_OPTIONS } from '../config/searchHelpOptions.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
@@ -54,22 +55,33 @@ router.get('/search', materialSearchRateLimiter, requireAppPermission('bom.*'), 
       });
     }
 
-    const results = await searchMaterials({
-      query: cleanQ,
-      plant,
-      limit,
-      mtart,
-      checkBom,
-      bomUsage,
-      mode,
-      server: req.selectedServer,
-      signal: abortController.signal
+    const serverId = req.selectedServer?.id || 'default';
+    const isWildcard = cleanQ === '*';
+    const ttlMs = isWildcard ? 0 : 60000;
+
+    const results = await f4CacheService.fetchWithCache({
+      serverId,
+      lookupType: 'materials',
+      query: `${cleanQ}:${plant || ''}:${mtart || ''}:${checkBom || ''}:${bomUsage || ''}:${mode || ''}`,
+      paging: String(limit || '20'),
+      ttlMs,
+      fetchFn: () => searchMaterials({
+        query: cleanQ,
+        plant,
+        limit,
+        mtart,
+        checkBom,
+        bomUsage,
+        mode,
+        server: req.selectedServer,
+        signal: abortController.signal
+      })
     });
 
     return res.status(200).json({
       success: true,
       data: results,
-      count: results.length
+      count: results ? results.length : 0
     });
   } catch (err) {
     if (req.destroyed || res.writableEnded) {

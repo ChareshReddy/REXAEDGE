@@ -30,6 +30,7 @@ export const ROUTE_IDS = Object.freeze({
   ADMIN_PERMISSIONS: 'adminPermissions',
   ADMIN_LOGS_AUDIT: 'adminLogsAudit',
   ADMIN_LOGS_ERRORS: 'adminLogsErrors',
+  DEV_DESIGN_SYSTEM: 'devDesignSystem',
   ACCESS_DENIED: 'accessDenied',
   NOT_FOUND: 'notFound'
 });
@@ -79,10 +80,10 @@ export const ROUTES = Object.freeze({
     id: ROUTE_IDS.BOM_OPERATIONS,
     path: '/products/bom',
     title: 'Bill of Materials · RexaEdge',
-    breadcrumb: 'Bill of Materials',
+    breadcrumb: 'BOM management',
     access: 'authenticated',
     module: 'bom',
-    parent: ROUTE_IDS.PRODUCTS
+    parent: ROUTE_IDS.HOME
   },
   [ROUTE_IDS.BOM_CREATE_HUB]: {
     id: ROUTE_IDS.BOM_CREATE_HUB,
@@ -228,6 +229,14 @@ export const ROUTES = Object.freeze({
     adminSubTab: 'errors',
     parent: ROUTE_IDS.ADMIN
   },
+  [ROUTE_IDS.DEV_DESIGN_SYSTEM]: {
+    id: ROUTE_IDS.DEV_DESIGN_SYSTEM,
+    path: '/dev/design-system',
+    title: 'Design System Showcase · RexaEdge Dev',
+    breadcrumb: 'Design System',
+    access: 'dev',
+    parent: ROUTE_IDS.HOME
+  },
   [ROUTE_IDS.ACCESS_DENIED]: {
     id: ROUTE_IDS.ACCESS_DENIED,
     path: '/access-denied',
@@ -259,7 +268,8 @@ export const LEGACY_REDIRECTS = Object.freeze({
   '/validate_bom': '/products/bom/validate',
   '/delete_bom': '/products/bom/delete',
   '/bom': '/products/bom',
-  '/launchpad': '/products',
+  '/products': '/home',
+  '/launchpad': '/home',
   '/admin': '/admin/users',
   '/admin/logs': '/admin/logs/audit',
   '/admin/activity-logs': '/admin/logs/audit'

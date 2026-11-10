@@ -247,7 +247,7 @@ export async function checkSession() {
 }
 
 /**
- * Retrieves authentication configuration (e.g. skipGatewayAuth, bypassUser, mockMode).
+ * Retrieves authentication configuration (Ex. skipGatewayAuth, bypassUser, mockMode).
  */
 export async function getAuthConfig() {
   const response = await apiClient.get('/auth/config');
@@ -619,6 +619,16 @@ export async function createAdminServer(serverData) {
 export async function updateAdminServer(id, serverData) {
   const response = await apiClient.put(`/admin/servers/${id}`, serverData);
   return response.data;
+}
+
+export async function clearAdminF4Cache(serverId = null) {
+  const response = await apiClient.post('/admin/cache/clear', { serverId });
+  return response.data;
+}
+
+export async function getAdminPoolStats() {
+  const response = await apiClient.get('/admin/pool-stats');
+  return response.data || {};
 }
 
 export async function deleteAdminServer(id) {

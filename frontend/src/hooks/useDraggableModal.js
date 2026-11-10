@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 /**
  * Custom hook to make a modal dialog draggable by its title bar.
- * - Anchors to fixed top (e.g. 12vh) and horizontally centered by default.
+ * - Anchors to fixed top (Ex. 12vh) and horizontally centered by default.
  * - Allows dragging anywhere on screen via pointer events.
  * - Clamps coordinates so the dialog and title bar never go off-screen.
  * - Ignores drag initiation from buttons, inputs, links, or marked elements.

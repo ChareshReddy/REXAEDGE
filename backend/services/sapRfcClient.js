@@ -39,23 +39,22 @@ loadMockBoms();
 
 import { supabaseService, getPersistedCredential } from './supabaseClient.js';
 import { decryptPassword } from '../utils/crypto.js';
-
-let currentActiveServer = null;
+import { getSapConnectionPool, RFC_PRIORITY, getAllPoolStats } from './sapConnectionPool.js';
 
 /**
  * Sets the active RFC server for the current context/request.
+ * @deprecated Explicit per-request server context must be passed through the call chain.
  */
 export function setActiveRfcServer(server) {
-  if (server && (server.sap_username || server.ashost || server.id)) {
-    currentActiveServer = server;
-  }
+  // Deprecated no-op: module-level mutable server state removed for multi-user safety
 }
 
 /**
  * Returns the currently active RFC server.
+ * @deprecated Explicit per-request server context must be passed through the call chain.
  */
 export function getActiveRfcServer() {
-  return currentActiveServer;
+  return null;
 }
 
 /**
@@ -63,12 +62,7 @@ export function getActiveRfcServer() {
  * Requires stored SAP credentials; never falls back to .env or 'LEELAM_EXT'.
  */
 export function getRfcConnectionParams(customOverrides = {}) {
-  let server = customOverrides.server || customOverrides;
-
-  // Fallback to active server if no server or no credentials provided
-  if ((!server || (!server.sap_username && !server.user)) && currentActiveServer) {
-    server = { ...currentActiveServer, ...(typeof server === 'object' ? server : {}) };
-  }
+  let server = customOverrides?.server || customOverrides || {};
 
   if (typeof customOverrides.serverId === 'string' && !server.ashost) {
     const dbServer = supabaseService.getServerByIdSync
@@ -250,17 +244,14 @@ export async function executeRfcFunction(functionName, parameters = {}, customCr
     };
   }
 
-  const client = await openRfcClient(customCredentials);
-  try {
-    const result = await client.call(functionName, parameters);
-    return result;
-  } finally {
-    try {
-      await client.close();
-    } catch {
-      // Ignore close errors
-    }
-  }
+  const server = customCredentials.server || customCredentials;
+  const pool = getSapConnectionPool(server);
+  const userId = customCredentials.userId || customCredentials.user?.id || 'anonymous';
+  const priority = customCredentials.priority || RFC_PRIORITY.INTERACTIVE;
+
+  return pool.run(priority, userId, async (client) => {
+    return client.call(functionName, parameters);
+  }, { signal: customCredentials.signal, req: customCredentials.req });
 }
 
 /**
@@ -276,14 +267,15 @@ export async function pingRfcServer(customCredentials = {}) {
       return { success: true, message: 'Mock RFC Ping Successful', latencyMs: 2 };
     }
 
-    const client = await openRfcClient(customCredentials);
-    try {
+    const server = customCredentials.server || customCredentials;
+    const pool = getSapConnectionPool(server);
+    const userId = customCredentials.userId || customCredentials.user?.id || 'admin';
+
+    return await pool.run(RFC_PRIORITY.READ, userId, async (client) => {
       await client.call('RFC_PING', {});
       const latencyMs = Date.now() - startTime;
       return { success: true, message: 'SAP RFC Ping Successful', latencyMs };
-    } finally {
-      await client.close();
-    }
+    }, { signal: customCredentials.signal, req: customCredentials.req });
   } catch (err) {
     return {
       success: false,
@@ -447,8 +439,18 @@ export async function rfcReadBom(params = {}) {
   }
 
   // Live RFC execution via RFC_READ_TABLE (MAST -> STAS -> STPO)
-  const client = params.client || (await openRfcClient(params.server || params));
-  const shouldClose = !params.client;
+  if (!params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.READ;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcReadBom({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client;
+  const shouldClose = false;
   try {
     // 1. Query MAST for material and plant
     const mastRes = await client.call('RFC_READ_TABLE', {
@@ -955,8 +957,18 @@ export async function rfcCreateBom(params = {}) {
   }
 
   // Live RFC execution via BAPI_MATERIAL_BOM_GROUP_CREATE
-  const client = params.client || (await openRfcClient(params.server || params));
-  const shouldClose = !params.client;
+  if (!params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.INTERACTIVE;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcCreateBom({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client;
+  const shouldClose = false;
   try {
     let today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     if (validFrom) {
@@ -1304,7 +1316,7 @@ export async function rfcSimulateCopyBom(params = {}) {
   }
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
-  const rfcClient = client || (isMock ? null : await openRfcClient(server || {}));
+  const rfcClient = client || (isMock ? null : await openRfcClient(server || params));
   const shouldClose = !client && !isMock && rfcClient;
 
   try {
@@ -1606,7 +1618,17 @@ export async function rfcDeleteBom(params = {}) {
     };
   }
 
-  const client = params.client || (await openRfcClient(params.server || params));
+  if (!params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.INTERACTIVE;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcDeleteBom({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client;
   try {
     // 1. Execute deletion via headless RFC transaction ZBOM_COPY
     const bdcData = [
@@ -1724,8 +1746,19 @@ export async function rfcExplodeBomHierarchy(params = {}) {
   } = params;
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
-  const client = params.client || (isMock ? null : await openRfcClient(params.server || {}));
-  const shouldClose = !params.client && !isMock;
+
+  if (!isMock && !params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.READ;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcExplodeBomHierarchy({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client || null;
+  const shouldClose = false;
 
   const hierarchyItems = [];
   const visited = new Set();
@@ -2340,8 +2373,19 @@ export async function rfcGetBomDisplayData(params = {}) {
   const cleanAlt = alternativeBom !== undefined && alternativeBom !== null ? String(alternativeBom).trim() : '';
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
-  const client = params.client || (isMock ? null : await openRfcClient(params.server || {}));
-  const shouldClose = !params.client && !isMock;
+
+  if (!isMock && !params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.READ;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcGetBomDisplayData({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client || null;
+  const shouldClose = false;
 
   const server = params.server || {};
   let targetLang = 'E';
@@ -2939,7 +2983,7 @@ export async function inspectAndVerifyHierarchy(params = {}) {
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
   const shouldClose = !client && !isMock;
-  const rfc = client || (isMock ? null : await openRfcClient(params.server || {}));
+  const rfc = client || (isMock ? null : await openRfcClient(params.server || params));
 
   try {
     const verifiedLevels = [];
@@ -3048,7 +3092,7 @@ export async function repairHierarchyBottomUp(params = {}) {
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
   const shouldClose = !client && !isMock;
-  const rfc = client || (isMock ? null : await openRfcClient(params.server || {}));
+  const rfc = client || (isMock ? null : await openRfcClient(params.server || params));
 
   try {
     const cleanSrcMat = String(sourceMaterial || '').trim().toUpperCase();
@@ -3360,7 +3404,7 @@ export async function rfcCopyBom(params = {}) {
           String(b.alternativeBom || '1').padStart(2, '0') === specifiedAlt
       );
     } else {
-      const client = await openRfcClient(params.server || {});
+      const client = await openRfcClient(params.server || params);
       try {
         const chk = await client.call('RFC_READ_TABLE', {
           QUERY_TABLE: 'MAST',
@@ -3893,7 +3937,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
   const shouldClose = !client && !isMock;
-  const rfc = client || (isMock ? null : await openRfcClient(server || {}));
+  const rfc = client || (isMock ? null : await openRfcClient(server || params));
 
   try {
     const cleanSrcMat = String(sourceMaterial || '').trim().toUpperCase();
@@ -4128,7 +4172,16 @@ export async function verifyCopiedBomHierarchy(params = {}) {
   }
 }
 
+export {
+  getSapConnectionPool,
+  RFC_PRIORITY,
+  getAllPoolStats
+};
+
 export default {
+  getSapConnectionPool,
+  RFC_PRIORITY,
+  getAllPoolStats,
   setActiveRfcServer,
   getActiveRfcServer,
   getRfcConnectionParams,
