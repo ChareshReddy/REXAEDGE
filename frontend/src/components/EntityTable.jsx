@@ -183,7 +183,7 @@ export default function EntityTable({
       return '—';
     }
 
-    // Format array values (e.g. BOM components)
+    // Format array values (Ex. BOM components)
     if (Array.isArray(val)) {
       if (val.length === 0) return '—';
       return val.map((c) => {

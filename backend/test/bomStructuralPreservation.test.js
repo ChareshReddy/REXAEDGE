@@ -105,7 +105,7 @@ async function runBomStructuralPreservationTests() {
     console.log('   ✓ Specified alternative 3 preserved when it does not yet exist in target');
 
     // -------------------------------------------------------------------------
-    // TEST 4: Target Alternative Selection - gaps handled (e.g. 1, 3 exist -> uses 2 or 4)
+    // TEST 4: Target Alternative Selection - gaps handled (Ex. 1, 3 exist -> uses 2 or 4)
     // -------------------------------------------------------------------------
     console.log('\n4. Testing Target Alternative Selection (gaps handled):');
     const alt4 = resolveNextAvailableAlternative(['1', '3'], '');

@@ -9,6 +9,7 @@ import F4PopupOverlay from './F4PopupOverlay';
 import TableLoadingState from './TableLoadingState';
 import F4ErrorState from './F4ErrorState';
 import { extractErrorInfo } from '../utils/friendlyError';
+import { SearchInput } from './ui/search-input';
 
 /**
  * SAP-style F4 Value Help popup for BOM Usage (tables T416 and T416T).
@@ -229,13 +230,13 @@ export default function BomUsageValueHelpModal({
         tabIndex={-1}
         className="sap-modal-dialog sap-f4-dialog sap-f4-modal-dialog bom-usage"
         style={{
-          width: 'fit-content',
-          minWidth: 'min(560px, 92vw)',
-          maxWidth: '92vw',
+          width: 'max-content',
+          minWidth: '560px',
+          maxWidth: '90vw',
           background: 'var(--sap-card-bg, #ffffff)',
           borderRadius: 8,
-          boxShadow: '0 16px 36px rgba(234, 88, 12, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)',
-          border: '1px solid #FDBA74',
+          boxShadow: '0 16px 36px rgba(2, 87, 154, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08)',
+          border: '1px solid #B3CDE0',
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '84vh',
@@ -251,12 +252,16 @@ export default function BomUsageValueHelpModal({
           {...headerProps}
           className="sap-modal-header sap-f4-header"
           style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid var(--sap-popup-header-border, #FED7AA)',
+            height: 'var(--popup-header-height, 60px)',
+            minHeight: 'var(--popup-header-height, 60px)',
+            maxHeight: 'var(--popup-header-height, 60px)',
+            boxSizing: 'border-box',
+            padding: '0 18px',
+            borderBottom: '1px solid var(--sap-popup-header-border, #D9E2EC)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--sap-popup-header-bg, #FFEDD5)',
+            background: 'var(--sap-popup-header-bg, #EEF4F9)',
             borderTopLeftRadius: 'inherit',
             borderTopRightRadius: 'inherit',
             cursor: 'move',
@@ -264,13 +269,14 @@ export default function BomUsageValueHelpModal({
             flexShrink: 0
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h3
               style={{
                 margin: 0,
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
-                color: 'var(--sap-popup-header-title, #0f2744)'
+                color: 'var(--sap-popup-header-title, #00204E)',
+                lineHeight: 1.2
               }}
             >
               {modalTitle}
@@ -279,8 +285,7 @@ export default function BomUsageValueHelpModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cancel"
-            title="Cancel"
+            aria-label="Cancel (Esc)" title="Cancel (Esc)"
             className="sap-modal-close sap-modal-close-btn sap-f4-header-close"
             data-no-drag="true"
             style={{
@@ -309,60 +314,23 @@ export default function BomUsageValueHelpModal({
               flexShrink: 0
             }}
           >
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
-              <Search
-                size={14}
-                style={{
-                  position: 'absolute',
-                  left: 8,
-                  color: 'var(--sap-text-muted, #94a3b8)',
-                  pointerEvents: 'none'
-                }}
-              />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setSelectedIndex(0);
-                  selectedIndexRef.current = 0;
-                }}
-                placeholder="Filter by usage or description…"
-                className="sap-input"
-                style={{
-                  width: '100%',
-                  height: 30,
-                  padding: '0 28px 0 28px',
-                  fontSize: 'var(--sap-size-input, 13px)',
-                  boxSizing: 'border-box'
-                }}
-              />
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedIndex(0);
-                    searchInputRef.current?.focus();
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: 6,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--sap-text-secondary, #64748b)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: 2
-                  }}
-                  title="Clear filter"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              isPopup
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setSelectedIndex(0);
+                selectedIndexRef.current = 0;
+              }}
+              onClear={() => {
+                setSearchTerm('');
+                setSelectedIndex(0);
+                selectedIndexRef.current = 0;
+              }}
+              placeholder="Filter by usage or description…"
+              wrapperStyle={{ flex: 1 }}
+            />
           </div>
         )}
 
@@ -413,9 +381,10 @@ export default function BomUsageValueHelpModal({
             </div>
           ) : (
             <table
-              className="sap-table sap-f4-table"
+              className="sap-f4-table"
               style={{
-                width: '100%',
+                width: 'max-content',
+                minWidth: '100%',
                 tableLayout: 'auto',
                 borderCollapse: 'collapse',
                 fontSize: 12.5,
@@ -423,78 +392,71 @@ export default function BomUsageValueHelpModal({
               }}
             >
               <colgroup>
-                <col style={{ width: 70, minWidth: 70 }} />
-                <col style={{ width: 65, minWidth: 65 }} />
-                <col style={{ width: 90, minWidth: 90 }} />
-                <col style={{ width: 90, minWidth: 90 }} />
-                <col style={{ width: 75, minWidth: 75 }} />
-                <col style={{ width: 65, minWidth: 65 }} />
-                <col style={{ width: 80, minWidth: 80 }} />
-                <col style={{ minWidth: 280 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 65 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 110 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 70 }} />
+                <col style={{ width: 80 }} />
+                <col style={{ width: 240 }} />
               </colgroup>
               <thead>
-                <tr style={{ background: '#FFF7ED', borderBottom: '1px solid #FFEDD5' }}>
+                <tr style={{ background: 'var(--color-blue-50, #EEF4F9)', borderBottom: '1px solid var(--color-border, #D9E2EC)' }}>
                   <th
-                    className="sap-f4-sticky-col"
+                    className="sap-f4-sticky-col sap-col-center"
                     style={{
                       width: 70,
-                      minWidth: 70,
-                      maxWidth: 80,
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                      padding: '8px 8px',
                       position: 'sticky',
                       left: 0,
                       top: 0,
                       zIndex: 4,
-                      backgroundColor: '#FFF7ED'
+                      backgroundColor: 'var(--color-blue-50, #EEF4F9)'
                     }}
                   >
                     <Tooltip text="BOM Usage">
                       <span>Usage</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 65, minWidth: 65, maxWidth: 85, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
+                  <th className="sap-col-center" style={{ width: 65 }}>
                     <Tooltip text="Production Indicator">
                       <span>Ind.</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 90, minWidth: 90, maxWidth: 100, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
+                  <th className="sap-col-center" style={{ width: 110, minWidth: 110 }}>
                     <Tooltip text="Engineering/Design">
                       <span>Eng./Design</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 90, minWidth: 90, maxWidth: 100, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
+                  <th className="sap-col-center" style={{ width: 110, minWidth: 110 }}>
                     <Tooltip text="Plant Maintenance">
                       <span>Plant Maint.</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 75, minWidth: 75, maxWidth: 85, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
+                  <th className="sap-col-center" style={{ width: 100, minWidth: 100 }}>
                     <Tooltip text="Spare Parts">
                       <span>Spare Part</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 65, minWidth: 65, maxWidth: 80, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
-                    <Tooltip text="Costing">
+                  <th className="sap-col-center" style={{ width: 70, minWidth: 70 }}>
+                    <Tooltip text="Sales and Distribution">
+                      <span>Sales</span>
+                    </Tooltip>
+                  </th>
+                  <th className="sap-col-center" style={{ width: 80, minWidth: 80 }}>
+                    <Tooltip text="Costing Indicator">
                       <span>Costing</span>
                     </Tooltip>
                   </th>
-                  <th style={{ width: 80, minWidth: 80, maxWidth: 95, textAlign: 'center', whiteSpace: 'nowrap', padding: '8px 6px' }}>
-                    <Tooltip text="Sales and Distribution">
-                      <span>Sales/Dist.</span>
-                    </Tooltip>
-                  </th>
-                  <th style={{ minWidth: 280, textAlign: 'left', whiteSpace: 'nowrap', padding: '8px 12px' }}>
-                    <Tooltip text="BOM Usage Text">
-                      <span>BOM Usage Text</span>
-                    </Tooltip>
+                  <th className="sap-col-left" style={{ width: 240, minWidth: 200 }}>
+                    <span>Description</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsages.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
-                  const rowBg = isSelected ? '#FFEDD5' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
+                  const rowBg = isSelected ? '#EEF4F9' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
                   return (
                     <tr
                       key={`${item.stlan}-${idx}`}
@@ -514,74 +476,31 @@ export default function BomUsageValueHelpModal({
                       onDoubleClick={() => onSelect(item.stlan, item)}
                     >
                       <td
-                        className="sap-f4-sticky-col"
+                        className="sap-f4-sticky-col sap-col-code sap-col-center"
                         style={{
                           width: 70,
-                          minWidth: 70,
-                          maxWidth: 80,
-                          textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 700,
-                          color: isSelected ? '#C2410C' : '#0a6ed1',
+                          fontFamily: 'var(--sap-font-mono)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
+                          color: isSelected ? 'var(--color-navy-900, #00204E)' : 'var(--color-blue-600, #02579A)',
                           position: 'sticky',
                           left: 0,
                           zIndex: 1,
-                          backgroundColor: rowBg,
-                          padding: '6px'
+                          backgroundColor: rowBg
                         }}
                       >
                         {item.stlan}
                       </td>
-                      <td
-                        style={{
-                          width: 65,
-                          minWidth: 65,
-                          maxWidth: 85,
-                          textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
-                          color: item.pmpfe === '+' ? '#166534' : '#475569',
-                          padding: '6px'
-                        }}
-                      >
-                        {item.pmpfe || '.'}
-                      </td>
-                      <td
-                        style={{
-                          width: 90,
-                          minWidth: 90,
-                          maxWidth: 100,
-                          textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
-                          color: item.pmpko === '+' ? '#166534' : '#475569',
-                          padding: '6px'
-                        }}
-                      >
-                        {item.pmpko || '.'}
-                      </td>
-                      <td
-                        style={{
-                          width: 90,
-                          minWidth: 90,
-                          maxWidth: 100,
-                          textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
-                          color: item.pmpin === '+' ? '#166534' : '#475569',
-                          padding: '6px'
-                        }}
-                      >
-                        {item.pmpin || '.'}
-                      </td>
+                      <td className="sap-col-center" style={{ width: 65, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)', color: item.pmpfe === '+' ? 'var(--color-success, #15803D)' : 'var(--color-text-muted, #7A8CA3)' }}>{item.pmpfe || '.'}</td>
+                      <td className="sap-col-center" style={{ width: 95, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)', color: item.pmpko === '+' ? 'var(--color-success, #15803D)' : 'var(--color-text-muted, #7A8CA3)' }}>{item.pmpko || '.'}</td>
+                      <td className="sap-col-center" style={{ width: 95, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)', color: item.pmpin === '+' ? 'var(--color-success, #15803D)' : 'var(--color-text-muted, #7A8CA3)' }}>{item.pmpin || '.'}</td>
                       <td
                         style={{
                           width: 75,
                           minWidth: 75,
                           maxWidth: 85,
                           textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
+                          fontFamily: 'var(--sap-font-mono, monospace)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
                           color: item.pmper === '+' ? '#166534' : '#475569',
                           padding: '6px'
                         }}
@@ -594,39 +513,24 @@ export default function BomUsageValueHelpModal({
                           minWidth: 65,
                           maxWidth: 80,
                           textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
+                          fontFamily: 'var(--sap-font-mono, monospace)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
                           color: item.pmpka === '+' ? '#166534' : '#475569',
                           padding: '6px'
                         }}
                       >
                         {item.pmpka || '.'}
                       </td>
+                      <td className="sap-col-center" style={{ width: 75, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)', color: item.pmprv === '+' ? 'var(--color-success, #15803D)' : 'var(--color-text-muted, #7A8CA3)' }}>{item.pmprv || '.'}</td>
                       <td
+                        className="sap-f4-col-text sap-col-left"
                         style={{
-                          width: 80,
-                          minWidth: 80,
-                          maxWidth: 95,
-                          textAlign: 'center',
-                          fontFamily: 'monospace',
-                          fontWeight: 600,
-                          color: item.pmprv === '+' ? '#166534' : '#475569',
-                          padding: '6px'
-                        }}
-                      >
-                        {item.pmprv || '.'}
-                      </td>
-                      <td
-                        className="sap-f4-col-text"
-                        style={{
-                          minWidth: 280,
-                          padding: '6px 12px',
-                          color: '#1e293b',
-                          fontWeight: 500,
+                          color: 'var(--color-text, #0F2742)',
+                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
                           overflow: 'visible',
-                          textOverflow: 'clip',
                           lineHeight: 1.4
                         }}
                         title={item.antxt || ''}
@@ -646,8 +550,8 @@ export default function BomUsageValueHelpModal({
           className="sap-f4-footer"
           style={{
             padding: '10px 16px',
-            borderTop: '1px solid #FFEDD5',
-            background: 'var(--sap-modal-footer-bg, #FFF1E3)',
+            borderTop: '1px solid #EEF4F9',
+            background: 'var(--sap-modal-footer-bg, #EEF4F9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

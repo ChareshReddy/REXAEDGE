@@ -1,6 +1,5 @@
 import { supabaseService } from '../services/supabaseClient.js';
 import { isModuleAvailable, MODULE_KEYS, ALL_BOM_APPS, normalizePermissions } from '../config/modules.js';
-import { setActiveRfcServer } from '../services/sapRfcClient.js';
 
 const COOKIE_NAME = 'sb_access_token';
 
@@ -120,7 +119,9 @@ export function requireServerAccess(requiredLevel = 'read_only') {
 
     req.selectedServer = accessCheck.server;
     req.serverAccessLevel = 'read_write';
-    setActiveRfcServer(accessCheck.server);
+    req.userPermissions = req.user?.role === 'admin'
+      ? [...ALL_BOM_APPS]
+      : normalizePermissions(accessCheck.permissions || []);
     next();
   };
 }
@@ -255,7 +256,6 @@ export function requireAppPermission(targetApp) {
 
     req.selectedServer = accessCheck.server;
     req.serverAccessLevel = 'read_write';
-    setActiveRfcServer(accessCheck.server);
 
     // Admin bypass: full access to everything on all servers
     if (req.user.role === 'admin') {

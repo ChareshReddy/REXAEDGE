@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Trash2, AlertTriangle, ArrowRight, X, Layers, Factory, Hash } from 'lucide-react';
+import { Trash2, AlertTriangle, ArrowRight, X } from 'lucide-react';
 import ValueHelpInput from './ValueHelpInput';
+import { FormSection, FormActions } from './ui/form-layout';
+import { FieldWrapper } from './ui/FieldWrapper';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { useToast } from '../context/ToastContext';
+import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
 
 export default function DeleteBomForm({
   onSubmit,
@@ -30,8 +34,17 @@ export default function DeleteBomForm({
 
   const [validationError, setValidationError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const userInteractedRef = React.useRef({});
+
+  const handleUserInteraction = (field) => {
+    userInteractedRef.current[field] = true;
+  };
 
   const handleChange = (field, value) => {
+    userInteractedRef.current[field] = true;
+    setTouched((prev) => ({ ...prev, [field]: true }));
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (validationError) setValidationError('');
     if (fieldErrors[field]) {
@@ -39,32 +52,50 @@ export default function DeleteBomForm({
     }
   };
 
+  const handleBlur = (field, ruleKey, isRequired) => {
+    if (!userInteractedRef.current[field]) return;
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = formData[field];
+    const res = validateField(ruleKey, val, isRequired);
+    if (!res.valid) {
+      setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
+    } else {
+      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setIsSubmitted(true);
+    setTouched({ material: true, plant: true, alternativeBom: true, bomUsage: true });
 
     const errors = {};
     const missing = [];
 
-    if (!String(formData.material || '').trim()) {
-      errors.material = true;
-      missing.push('Material number is required');
+    const matRes = validateField('material', formData.material, true);
+    if (!matRes.valid) {
+      errors.material = matRes.error;
+      missing.push(!formData.material.trim() ? 'Material number is required' : matRes.error);
     }
-    if (!String(formData.plant || '').trim()) {
-      errors.plant = true;
-      missing.push('Plant code is required');
+    const plantRes = validateField('plant', formData.plant, true);
+    if (!plantRes.valid) {
+      errors.plant = plantRes.error;
+      missing.push(!formData.plant.trim() ? 'Plant code is required' : plantRes.error);
     }
-    if (!String(formData.alternativeBom || '').trim()) {
-      errors.alternativeBom = true;
-      missing.push('Alternative BOM is required');
+    const altRes = validateField('alternativeBom', formData.alternativeBom, true);
+    if (!altRes.valid) {
+      errors.alternativeBom = altRes.error;
+      missing.push(!formData.alternativeBom.trim() ? 'Alternative BOM is required' : altRes.error);
     }
-    if (!String(formData.bomUsage || '').trim()) {
-      errors.bomUsage = true;
-      missing.push('BOM usage is required');
+    const usageRes = validateField('bomUsage', formData.bomUsage, true);
+    if (!usageRes.valid) {
+      errors.bomUsage = usageRes.error;
+      missing.push(!formData.bomUsage.trim() ? 'BOM usage is required' : usageRes.error);
     }
 
     if (missing.length > 0) {
       setFieldErrors(errors);
-      setValidationError('Please fill in the required fields to proceed.');
+      setValidationError('Please fill in valid required fields to proceed.');
       toast.error('Please fill in the required fields', { messages: missing });
 
       const fieldIdMap = {
@@ -97,39 +128,40 @@ export default function DeleteBomForm({
   };
 
   return (
-    <div className="sap-structured-form-card delete-card sap-full-width" style={{ width: '100%', margin: '0 auto', marginBottom: 16, ...style }}>
-      {!hideHeader && (
-        <div className="sap-form-header sap-section-header">
-          <div className="sap-form-header-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Trash2 size={16} />
-            <h4 style={{ margin: 0, fontSize: 16 }}>Delete BOM</h4>
-          </div>
+    <div className="w-full max-w-[1440px] mx-auto text-left" style={style}>
+      {/* Amber Warning Alert */}
+      <Alert variant="warning" className="mb-4">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <div className="flex flex-col">
+          <AlertTitle>Destructive operation</AlertTitle>
+          <AlertDescription>
+            Deleting a BOM removes component linkages in the specified plant. A safety confirmation check is required prior to execution.
+          </AlertDescription>
         </div>
-      )}
+      </Alert>
 
-      <div className="sap-form-alert sap-form-alert-warning" style={{ margin: hideHeader ? '4px 0 12px' : '8px 14px 12px', padding: '10px 14px', background: '#FFF8F2', border: '1px solid #FED7AA', borderRadius: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#B45309' }}>
-          <AlertTriangle size={16} style={{ flexShrink: 0 }} />
-          <span><strong>Destructive Operation:</strong> Deleting a BOM removes component linkages in the specified plant. A safety confirmation check is required prior to execution.</span>
-        </div>
-      </div>
-
-      
-
-      <form id={formId} onSubmit={handleSubmit}>
-        <div className="sap-form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', padding: hideHeader ? '8px 4px 14px' : '14px 16px', gap: '14px 18px' }}>
-          <div className="sap-form-group">
-            <label htmlFor="delMaterial" className="sap-label">
-              Material Number <span className="required-star">*</span>
-            </label>
-            <div className="sap-form-input-wrapper">
+      <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <FormSection
+          title="Delete Bill of Materials"
+          description="Specify the material, plant, alternative and usage to delete"
+          className="w-full"
+        >
+          <div className="grid grid-cols-1 min-[600px]:grid-cols-2 min-[900px]:grid-cols-3 xl:grid-cols-4 gap-4">
+            <FieldWrapper
+              label="Material"
+              htmlFor="delMaterial"
+              required
+              error={(touched.material || isSubmitted) ? fieldErrors.material || null : null}
+            >
               <ValueHelpInput
                 id="delMaterial"
                 kind="material"
                 plant={formData.plant}
-                placeholder="e.g. A1BH0214C"
+                placeholder="Ex. A1BH0214C"
+                maxLength={FIELD_RULES.material.maxLength}
                 value={formData.material}
                 onChange={(e) => handleChange('material', e.target.value)}
+                onBlur={() => handleBlur('material', 'material', true)}
                 onSelect={(val, full) => {
                   handleChange('material', val);
                   if (full?.stlal) {
@@ -139,91 +171,94 @@ export default function DeleteBomForm({
                     handleChange('plant', full.werks);
                   }
                 }}
-                className={`sap-input sap-form-input ${fieldErrors.material ? 'input-error' : ''}`}
+                hasError={Boolean((touched.material || isSubmitted) && fieldErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
                 autoFocus
               />
-            </div>
-            <div className="sap-field-error-msg">{fieldErrors.material ? 'Material number is required' : ''}</div>
-          </div>
+            </FieldWrapper>
 
-          <div className="sap-form-group">
-            <label htmlFor="delPlant" className="sap-label">
-              Plant Code <span className="required-star">*</span>
-            </label>
-            <div className="sap-form-input-wrapper">
+            <FieldWrapper
+              label="Plant"
+              htmlFor="delPlant"
+              required
+              error={(touched.plant || isSubmitted) ? fieldErrors.plant || null : null}
+            >
               <ValueHelpInput
                 id="delPlant"
                 kind="plant"
                 material={formData.material}
-                placeholder="e.g. 1001"
+                placeholder="Ex. 1001"
+                maxLength={FIELD_RULES.plant.maxLength}
                 value={formData.plant}
                 onChange={(e) => handleChange('plant', e.target.value)}
-                className={`sap-input sap-form-input ${fieldErrors.plant ? 'input-error' : ''}`}
+                onBlur={() => handleBlur('plant', 'plant', true)}
+                hasError={Boolean((touched.plant || isSubmitted) && fieldErrors.plant)} onPointerDown={() => handleUserInteraction('plant')} onKeyDown={() => handleUserInteraction('plant')}
               />
-            </div>
-            <div className="sap-field-error-msg">{fieldErrors.plant ? 'Plant code is required' : ''}</div>
-          </div>
+            </FieldWrapper>
 
-          <div className="sap-form-group">
-            <label htmlFor="delAlternativeBom" className="sap-label">
-              Alternative BOM <span className="required-star">*</span>
-            </label>
-            <div className="sap-form-input-wrapper">
+            <FieldWrapper
+              label="Alternative BOM"
+              htmlFor="delAlternativeBom"
+              required
+              error={(touched.alternativeBom || isSubmitted) ? fieldErrors.alternativeBom || null : null}
+            >
               <input
                 id="delAlternativeBom"
                 type="text"
-                placeholder="e.g. 1"
+                placeholder="Ex. 1"
+                maxLength={FIELD_RULES.alternativeBom.maxLength}
                 value={formData.alternativeBom}
                 onChange={(e) => handleChange('alternativeBom', e.target.value)}
-                className={`sap-input sap-form-input ${fieldErrors.alternativeBom ? 'input-error' : ''}`}
+                onBlur={() => handleBlur('alternativeBom', 'alternativeBom', true)}
+                className={`rx-input rx-input-mono ${fieldErrors.alternativeBom ? 'rx-input-error' : ''}`}
               />
-            </div>
-            <div className="sap-field-error-msg">{fieldErrors.alternativeBom ? 'Alternative BOM is required' : ''}</div>
-          </div>
+            </FieldWrapper>
 
-          <div className="sap-form-group">
-            <label htmlFor="delBomUsage" className="sap-label">
-              BOM Usage <span className="required-star">*</span>
-            </label>
-            <div className="sap-form-input-wrapper">
+            <FieldWrapper
+              label="BOM usage"
+              htmlFor="delBomUsage"
+              required
+              error={(touched.bomUsage || isSubmitted) ? fieldErrors.bomUsage || null : null}
+            >
               <ValueHelpInput
                 id="delBomUsage"
                 kind="bomUsage"
                 placeholder="1"
-                maxLength={1}
+                maxLength={FIELD_RULES.bomUsage.maxLength}
                 value={formData.bomUsage}
                 onChange={(e) => handleChange('bomUsage', e.target.value)}
-                className={`sap-input sap-form-input ${fieldErrors.bomUsage ? 'input-error' : ''}`}
+                onBlur={() => handleBlur('bomUsage', 'bomUsage', true)}
+                hasError={Boolean((touched.bomUsage || isSubmitted) && fieldErrors.bomUsage)} onPointerDown={() => handleUserInteraction('bomUsage')} onKeyDown={() => handleUserInteraction('bomUsage')}
                 aria-label="Delete BOM Usage"
               />
-            </div>
-            <div className="sap-field-error-msg">{fieldErrors.bomUsage ? 'BOM Usage is required' : ''}</div>
+            </FieldWrapper>
           </div>
-        </div>
 
-        {!hideFormActions && (
-          <div className="sap-card-action-row">
-            <button
-              type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={onCancel}
-              style={{ height: 32, fontSize: 13, padding: '0 16px' }}
-            >
-              <X size={14} />
-              <span>Cancel</span>
-            </button>
-
-            <button
-              type="submit"
-              className="sap-btn destructive sap-button-danger"
-              disabled={isSubmitting}
-              style={{ height: 32, fontSize: 13, padding: '0 18px' }}
-            >
-              <span>Proceed to Confirmation</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
+          {!hideFormActions && (
+            <FormActions
+              className="sap-card-action-row"
+              left={
+                <button
+                  type="button"
+                  className="rx-btn rx-btn-secondary"
+                  onClick={onCancel}
+                >
+                  <X size={14} />
+                  <span>Cancel</span>
+                </button>
+              }
+              right={
+                <button
+                  type="submit"
+                  className="rx-btn rx-btn-primary"
+                  disabled={isSubmitting}
+                >
+                  <span>Proceed to confirmation</span>
+                  <ArrowRight size={14} />
+                </button>
+              }
+            />
+          )}
+        </FormSection>
       </form>
     </div>
   );

@@ -20,7 +20,8 @@ import {
   Eye,
   EyeOff,
   Info,
-  Activity
+  Activity,
+  Database
 } from 'lucide-react';
 import {
   getAdminUsers,
@@ -30,6 +31,7 @@ import {
   createAdminServer,
   updateAdminServer,
   deleteAdminServer,
+  clearAdminF4Cache,
   getAdminPermissions,
   grantAdminPermission,
   revokeAdminPermission
@@ -150,9 +152,17 @@ export default function AdminView({
     is_active: true,
     modules: [MODULE_KEYS.BOM],
     sap_username: '',
-    sap_password: ''
+    sap_password: '',
+    max_connections: 3,
+    per_user_limit: 2,
+    queue_timeout_seconds: 20,
+    rfc_call_timeout_seconds: 45
   });
   const [serverSubmitting, setServerSubmitting] = useState(false);
+  const [serverFormErrors, setServerFormErrors] = useState({});
+  const [serverFormTouched, setServerFormTouched] = useState({});
+  const [serverSubmitted, setServerSubmitted] = useState(false);
+  const [grantServerFilter, setGrantServerFilter] = useState('');
 
   // Grant Permission Modal
   const [isGrantModalOpen, setIsGrantModalOpen] = useState(false);
@@ -263,6 +273,37 @@ export default function AdminView({
     loadData();
   }, []);
 
+  // 30s Visibility-aware polling for SAP server live status (zero extra SAP calls, reads from backend cache)
+  useEffect(() => {
+    let intervalId = null;
+
+    const pollServers = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible' && activeTab === 'servers') {
+        try {
+          const freshServers = await getAdminServers();
+          if (Array.isArray(freshServers)) {
+            setServers(freshServers);
+          }
+        } catch (_) {}
+      }
+    };
+
+    intervalId = setInterval(pollServers, 30000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'servers') {
+        pollServers();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeTab]);
+
   const triggerNotice = (msg, isErr = false) => {
     if (isErr) {
       setErrorMessage(msg);
@@ -331,7 +372,65 @@ export default function AdminView({
   };
 
   // --- Server Handlers ---
+  const validateServerForm = (data) => {
+    const errors = {};
+    if (!data.name || !String(data.name).trim()) {
+      errors.name = 'Server Name is required.';
+    }
+    if (!data.ashost || !String(data.ashost).trim()) {
+      errors.ashost = 'Application Host is required.';
+    }
+
+    const maxConn = Number(data.max_connections);
+    if (isNaN(maxConn) || !Number.isInteger(maxConn) || maxConn < 1 || maxConn > 20) {
+      errors.max_connections = 'Max connections must be an integer between 1 and 20.';
+    }
+
+    const userLimit = Number(data.per_user_limit);
+    if (isNaN(userLimit) || !Number.isInteger(userLimit) || userLimit < 1) {
+      errors.per_user_limit = 'Per-user limit must be an integer of at least 1.';
+    } else if (!errors.max_connections && userLimit > maxConn) {
+      errors.per_user_limit = 'Per-user limit cannot exceed max connections.';
+    }
+
+    const queueSec = Number(data.queue_timeout_seconds);
+    if (isNaN(queueSec) || !Number.isInteger(queueSec) || queueSec < 5 || queueSec > 120) {
+      errors.queue_timeout_seconds = 'Queue wait timeout must be between 5 and 120 seconds.';
+    }
+
+    const callSec = Number(data.rfc_call_timeout_seconds);
+    if (isNaN(callSec) || !Number.isInteger(callSec) || callSec < 10 || callSec > 300) {
+      errors.rfc_call_timeout_seconds = 'SAP call timeout must be between 10 and 300 seconds.';
+    }
+
+    return errors;
+  };
+
+  const handleServerFieldChange = (field, val) => {
+    const updated = { ...serverFormData, [field]: val };
+    setServerFormData(updated);
+    if (serverSubmitted || serverFormTouched[field]) {
+      setServerFormErrors(validateServerForm(updated));
+    }
+  };
+
+  const handleServerFieldBlur = (field) => {
+    setServerFormTouched((prev) => ({ ...prev, [field]: true }));
+    setServerFormErrors(validateServerForm(serverFormData));
+  };
+
+  const handleClearServerF4Cache = async (server) => {
+    try {
+      await clearAdminF4Cache(server.id);
+      triggerNotice(`Cleared cached lookups for ${server.name || 'server'}.`);
+    } catch (err) {
+      triggerNotice(err.response?.data?.error || err.message || 'Failed to clear cache.', true);
+    }
+  };
   const handleOpenAddServer = () => {
+    setServerFormErrors({});
+    setServerFormTouched({});
+    setServerSubmitted(false);
     setEditingServerId(null);
     setServerModalError('');
     setServerFormData({
@@ -346,12 +445,19 @@ export default function AdminView({
       is_active: true,
       modules: [MODULE_KEYS.BOM],
       sap_username: '',
-      sap_password: ''
+      sap_password: '',
+    max_connections: 3,
+    per_user_limit: 2,
+    queue_timeout_seconds: 20,
+    rfc_call_timeout_seconds: 45
     });
     setIsServerModalOpen(true);
   };
 
   const handleOpenEditServer = (server) => {
+    setServerFormErrors({});
+    setServerFormTouched({});
+    setServerSubmitted(false);
     setEditingServerId(server.id);
     setServerModalError('');
     setServerFormData({
@@ -366,20 +472,36 @@ export default function AdminView({
       is_active: server.is_active !== undefined ? server.is_active : true,
       modules: server.modules !== undefined ? server.modules : [MODULE_KEYS.BOM],
       sap_username: server.sap_username || '',
-      sap_password: ''
+      sap_password: '',
+      max_connections: server.max_connections !== undefined ? server.max_connections : 3,
+      per_user_limit: server.per_user_limit !== undefined ? server.per_user_limit : 2,
+      queue_timeout_seconds: server.queue_timeout_ms ? Math.round(server.queue_timeout_ms / 1000) : 20,
+      rfc_call_timeout_seconds: server.rfc_call_timeout_ms ? Math.round(server.rfc_call_timeout_ms / 1000) : 45
     });
     setIsServerModalOpen(true);
   };
 
   const executeSaveServer = async () => {
+    setServerSubmitted(true);
+    const formErr = validateServerForm(serverFormData);
+    setServerFormErrors(formErr);
+    if (Object.keys(formErr).length > 0) {
+      setServerModalError('Please resolve the errors in the connection limits section.');
+      return;
+    }
+    const payload = {
+      ...serverFormData,
+      queue_timeout_ms: Math.round(Number(serverFormData.queue_timeout_seconds) * 1000),
+      rfc_call_timeout_ms: Math.round(Number(serverFormData.rfc_call_timeout_seconds) * 1000)
+    };
     setServerSubmitting(true);
     setServerModalError('');
     try {
       if (editingServerId) {
-        await updateAdminServer(editingServerId, serverFormData);
+        await updateAdminServer(editingServerId, payload);
         triggerNotice(`Server "${serverFormData.name}" updated successfully.`);
       } else {
-        await createAdminServer(serverFormData);
+        await createAdminServer(payload);
         triggerNotice(`Server "${serverFormData.name}" added successfully.`);
       }
       setIsServerModalOpen(false);
@@ -598,6 +720,66 @@ export default function AdminView({
     (p.server_name && p.server_name.toLowerCase().includes(permSearch.toLowerCase())) ||
     (p.permissions && formatPermissionsSummary(p.permissions).toLowerCase().includes(permSearch.toLowerCase()))
   );
+
+  const formatRelativeTime = (iso) => {
+    if (!iso) return 'Never';
+    const diffSec = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+    if (isNaN(diffSec) || diffSec < 0) return 'Just now';
+    if (diffSec < 5) return 'Just now';
+    if (diffSec < 60) return `${diffSec}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}h ago`;
+    return `${Math.floor(diffHour / 24)}d ago`;
+  };
+
+  const renderHealthBadge = (s) => {
+    const status = (s.health_status || 'unknown').toLowerCase();
+    let bg = 'var(--sap-surface-subtle)';
+    let color = 'var(--sap-text-subtle)';
+    let border = 'var(--sap-border-subtle)';
+    let label = 'Unknown';
+
+    if (status === 'healthy') {
+      bg = 'var(--sap-status-success-bg)';
+      color = 'var(--sap-status-success-text)';
+      border = 'var(--sap-status-success-border)';
+      label = 'Healthy';
+    } else if (status === 'degraded') {
+      bg = 'var(--sap-status-warning-bg)';
+      color = 'var(--sap-status-warning-text)';
+      border = 'var(--sap-status-warning-border)';
+      label = 'Degraded';
+    } else if (status === 'down') {
+      bg = 'var(--sap-status-error-bg)';
+      color = 'var(--sap-status-error-text)';
+      border = 'var(--sap-status-error-border)';
+      label = 'Down';
+    }
+
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '2px 8px',
+          borderRadius: 'var(--radius-full, 9999px)',
+          fontSize: 11,
+          fontWeight: 600,
+          background: bg,
+          color: color,
+          border: `1px solid ${border}`,
+          whiteSpace: 'nowrap'
+        }}
+        title={s.last_error || ''}
+      >
+        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: color }} />
+        {label}
+      </span>
+    );
+  };
 
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
@@ -884,21 +1066,21 @@ export default function AdminView({
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 160 }} />
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 80 }} />
-                  <col style={{ width: 110 }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '18%' }} />
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '11%' }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th>Server name</th>
-                    <th>Environment</th>
-                    <th>Host / gateway</th>
-                    <th>Sys / client</th>
-                    <th>Username</th>
+                    <th>Host / system</th>
+                    <th>Live health</th>
+                    <th>Pool connections</th>
+                    <th>Last checked</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
@@ -908,76 +1090,95 @@ export default function AdminView({
                     filteredServers.map((s) => (
                       <React.Fragment key={s.id}>
                         <tr>
-                        <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                            <span>{s.name}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`sap-env-badge ${
-                            s.environment === 'PROD'
-                              ? 'sap-env-badge-prod'
-                              : s.environment === 'QA'
-                              ? 'sap-env-badge-qa'
-                              : s.environment === 'SANDBOX'
-                              ? 'sap-env-badge-sandbox'
-                              : 'sap-env-badge-dev'
-                          }`}>
-                            {formatEnvironment(s.environment)}</span>
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
-                          {s.ashost || 'N/A'}
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
-                          Sys {s.sysnr || s.sys_number || '00'} | Client {s.client || '100'}
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--sap-text-dark)' }}>
-                              {s.sap_username || <span style={{ color: 'var(--sap-text-subtle)', fontStyle: 'italic' }}>No User</span>}
-                            </span>
-                            {!(s.has_password || s.credentials_status === 'saved') && (
-                              <span
-                                title="No password saved"
-                                aria-label="No password saved"
-                                style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--sap-warning-text, #b45309)', cursor: 'help' }}
-                              >
-                                <AlertTriangle size={13} strokeWidth={2} />
+                          <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                              <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                            </div>
+                            <div style={{ marginTop: 4 }}>
+                              <span className={`sap-env-badge ${
+                                s.environment === 'PROD'
+                                  ? 'sap-env-badge-prod'
+                                  : s.environment === 'QA'
+                                  ? 'sap-env-badge-qa'
+                                  : s.environment === 'SANDBOX'
+                                  ? 'sap-env-badge-sandbox'
+                                  : 'sap-env-badge-dev'
+                              }`}>
+                                {formatEnvironment(s.environment)}
                               </span>
-                            )}
-                          </div>
-                        </td>
-                        
-                        <td>
-                          <span className={`sap-status-pill ${s.is_active ? 'is-active' : 'is-inactive'}`}>
-                            <span className={`sap-status-dot ${s.is_active ? 'is-active' : 'is-inactive'}`} />
-                            {s.is_active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                            <button
-                              type="button"
-                              className="sap-btn sap-btn-ghost"
-                              onClick={() => handleOpenEditServer(s)}
-                              title="Edit Server"
-                              style={{ color: 'var(--sap-primary)', padding: '4px' }}
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              type="button"
-                              className="sap-btn sap-btn-ghost"
-                              onClick={() => handleDeleteServer(s)}
-                              title="Delete Server"
-                              style={{ color: 'var(--sap-error)', padding: '4px' }}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                          <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.ashost || 'N/A'}</div>
+                            <div style={{ fontSize: 10, color: 'var(--sap-text-subtle)', marginTop: 2 }}>
+                              Sys {s.sysnr || s.sys_number || '00'} | Client {s.client || '100'}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                              {renderHealthBadge(s)}
+                              <div style={{ fontSize: 10, color: 'var(--sap-text-subtle)' }}>
+                                Breaker: <span style={{ fontWeight: 600, color: 'var(--sap-text-body)' }}>{s.circuit_breaker ? (s.circuit_breaker === 'closed' ? 'Normal' : s.circuit_breaker === 'open' ? 'Tripped' : 'Probing') : 'Normal'}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sap-text-dark)' }}>
+                              {s.active_connections ?? 0} / {s.max_connections ?? 3} in use
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 2 }}>
+                              {(s.queued_calls ?? 0) > 0 ? (
+                                <span style={{ color: 'var(--sap-warning-text, #b45309)', fontWeight: 600 }}>{s.queued_calls} queued</span>
+                              ) : (
+                                '0 queued'
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ fontSize: 11, color: 'var(--sap-text-subtle)', whiteSpace: 'nowrap' }}>
+                            {formatRelativeTime(s.last_checked)}
+                          </td>
+                          <td>
+                            <span className={`sap-status-pill ${s.is_active ? 'is-active' : 'is-inactive'}`}>
+                              <span className={`sap-status-dot ${s.is_active ? 'is-active' : 'is-inactive'}`} />
+                              {s.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                              <button
+                                type="button"
+                                className="sap-btn sap-btn-ghost"
+                                onClick={() => handleOpenEditServer(s)}
+                                title="Edit Server & Limits"
+                                aria-label={`Edit ${s.name}`}
+                                style={{ color: 'var(--sap-primary)', padding: '4px' }}
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="sap-btn sap-btn-ghost"
+                                onClick={() => handleClearServerF4Cache(s)}
+                                title="Clear F4 cache"
+                                aria-label={`Clear F4 cache for ${s.name}`}
+                                style={{ color: 'var(--sap-text-subtle)', padding: '4px' }}
+                              >
+                                <Database size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                className="sap-btn sap-btn-ghost"
+                                onClick={() => handleDeleteServer(s)}
+                                title="Delete Server"
+                                aria-label={`Delete ${s.name}`}
+                                style={{ color: 'var(--sap-error)', padding: '4px' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       </React.Fragment>
                     ))
                   ) : (
@@ -1321,7 +1522,8 @@ export default function AdminView({
         title={editingServerId ? 'Edit SAP Server' : 'Add SAP Server'}
         icon={Server}
         isLoading={serverSubmitting}
-        maxWidth={520}
+        maxWidth={560}
+        style={{ maxHeight: '90vh' }}
       >
         <form onSubmit={handleSaveServer}>
           
@@ -1474,6 +1676,117 @@ export default function AdminView({
                 </div>
               </div>
 
+              {/* Connection Limits Section */}
+              <div style={{
+                marginTop: 12,
+                marginBottom: 16,
+                padding: '12px 14px',
+                background: 'var(--sap-surface-subtle)',
+                borderRadius: 'var(--radius-lg, 8px)',
+                border: '1px solid var(--sap-border-subtle)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                    Connection limits
+                  </label>
+                  <span style={{ fontSize: 11, color: 'var(--sap-text-subtle)' }}>
+                    Applied live without restart
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
+                    <label className="sap-form-label" htmlFor="server-max-conn">Max connections (1–20)</label>
+                    <input
+                      id="server-max-conn"
+                      type="number"
+                      min={1}
+                      max={20}
+                      className={`sap-input ${((serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections) ? 'sap-input-error' : ''}`}
+                      value={serverFormData.max_connections}
+                      onChange={(e) => handleServerFieldChange('max_connections', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      onBlur={() => handleServerFieldBlur('max_connections')}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
+                      Ask your SAP Basis team for the allowed parallel connections.
+                    </div>
+                    {(serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections && (
+                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
+                        {serverFormErrors.max_connections}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
+                    <label className="sap-form-label" htmlFor="server-user-limit">Per-user limit</label>
+                    <input
+                      id="server-user-limit"
+                      type="number"
+                      min={1}
+                      max={serverFormData.max_connections || 20}
+                      className={`sap-input ${((serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit) ? 'sap-input-error' : ''}`}
+                      value={serverFormData.per_user_limit}
+                      onChange={(e) => handleServerFieldChange('per_user_limit', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      onBlur={() => handleServerFieldBlur('per_user_limit')}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
+                      Prevents one user&apos;s bulk run from starving others.
+                    </div>
+                    {(serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit && (
+                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
+                        {serverFormErrors.per_user_limit}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
+                    <label className="sap-form-label" htmlFor="server-queue-timeout">Queue wait timeout (seconds, 5–120)</label>
+                    <input
+                      id="server-queue-timeout"
+                      type="number"
+                      min={5}
+                      max={120}
+                      className={`sap-input ${((serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds) ? 'sap-input-error' : ''}`}
+                      value={serverFormData.queue_timeout_seconds}
+                      onChange={(e) => handleServerFieldChange('queue_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      onBlur={() => handleServerFieldBlur('queue_timeout_seconds')}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
+                      How long a request waits in queue before failing fast.
+                    </div>
+                    {(serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds && (
+                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
+                        {serverFormErrors.queue_timeout_seconds}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="sap-form-group" style={{ marginBottom: 0 }}>
+                    <label className="sap-form-label" htmlFor="server-call-timeout">SAP call timeout (seconds, 10–300)</label>
+                    <input
+                      id="server-call-timeout"
+                      type="number"
+                      min={10}
+                      max={300}
+                      className={`sap-input ${((serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds) ? 'sap-input-error' : ''}`}
+                      value={serverFormData.rfc_call_timeout_seconds}
+                      onChange={(e) => handleServerFieldChange('rfc_call_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                      onBlur={() => handleServerFieldBlur('rfc_call_timeout_seconds')}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 3 }}>
+                      Abort slow RFC calls to avoid hanging the app.
+                    </div>
+                    {(serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds && (
+                      <div className="sap-field-error" style={{ fontSize: 11, color: 'var(--sap-error)', marginTop: 3 }}>
+                        {serverFormErrors.rfc_call_timeout_seconds}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, marginBottom: 16 }}>
                 <input
                   type="checkbox"
@@ -1542,7 +1855,25 @@ export default function AdminView({
           </div>
 
           <div className="sap-form-group">
-            <label className="sap-form-label">Select SAP Server</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <label className="sap-form-label" style={{ margin: 0 }}>Select SAP Server</label>
+              {servers.length > 5 && !isEditingPermission && (
+                <input
+                  type="text"
+                  placeholder="Filter servers..."
+                  value={grantServerFilter}
+                  onChange={(e) => setGrantServerFilter(e.target.value)}
+                  style={{
+                    fontSize: 11,
+                    padding: '2px 8px',
+                    height: 22,
+                    borderRadius: 'var(--radius-sm, 4px)',
+                    border: '1px solid var(--sap-border-subtle)',
+                    width: 140
+                  }}
+                />
+              )}
+            </div>
             <select
               className="sap-input"
               value={grantFormData.server_id}
@@ -1551,9 +1882,11 @@ export default function AdminView({
               disabled={isEditingPermission}
             >
               <option value="" disabled>-- Select a Server --</option>
-              {servers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name} ({formatEnvironment(s.environment)})</option>
-              ))}
+              {servers
+                .filter((s) => !grantServerFilter || s.name.toLowerCase().includes(grantServerFilter.toLowerCase()) || (s.environment && s.environment.toLowerCase().includes(grantServerFilter.toLowerCase())))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>{s.name} ({formatEnvironment(s.environment)})</option>
+                ))}
             </select>
           </div>
 

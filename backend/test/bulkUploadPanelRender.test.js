@@ -99,8 +99,8 @@ try {
   assert(panelHtml.includes('Upload Spreadsheet'), 'Panel must render title');
   assert(panelHtml.includes('Accepts tab-delimited text saved as .XLS'), 'Panel must render helper text');
   assert(panelHtml.includes('Download Template'), 'Panel must render Download Template button');
-  assert(panelHtml.includes('sap-btn sap-btn-secondary'), 'Download Template must be a secondary button');
-  assert(panelHtml.includes('Click to browse or drag and drop your file here'), 'Drop zone must prompt user to browse/drag');
+  assert(panelHtml.includes('rx-btn-secondary') || panelHtml.includes('sap-btn sap-btn-secondary'), 'Download Template must be a secondary button');
+  assert(panelHtml.includes('Drag and drop your file here, or browse') || panelHtml.includes('Click to browse or drag and drop your file here'), 'Drop zone must prompt user to browse/drag');
   assert(panelHtml.includes('Supports tab-separated text saved as .XLS'), 'Panel must display format text');
   console.log('✓ PASS: BulkUploadPanel empty state renders cleanly with header, drop zone, and secondary template button\n');
 
@@ -110,7 +110,7 @@ try {
     React.createElement(BulkUploadPanel, {
       title: 'Upload Spreadsheet',
       fileName: 'BOM_Batch_Upload_Sample.xlsx',
-      loading: true,
+      loading: false,
       loadingText: 'Validating data with SAP master records...',
       onClear: () => {},
       error: 'Sample parse warning or validation message'
@@ -118,9 +118,18 @@ try {
   );
 
   assert(activePanelHtml.includes('BOM_Batch_Upload_Sample.xlsx'), 'File name must be displayed prominently in drop zone');
-  assert(activePanelHtml.includes('Validating data with SAP master records...'), 'Loading text and spinner must be shown');
-  assert(activePanelHtml.includes('Clear &amp; Upload Another') || activePanelHtml.includes('Clear & Upload Another'), 'Clear button must render when fileName is present');
+  assert(activePanelHtml.includes('Remove') || activePanelHtml.includes('Clear &amp; Upload Another') || activePanelHtml.includes('Clear & Upload Another'), 'Clear/Remove button must render when fileName is present');
   assert(activePanelHtml.includes('Sample parse warning or validation message'), 'Error message must be shown in alert banner');
+
+  const loadingPanelHtml = renderToStaticMarkup(
+    React.createElement(BulkUploadPanel, {
+      title: 'Upload Spreadsheet',
+      fileName: 'BOM_Batch_Upload_Sample.xlsx',
+      loading: true,
+      loadingText: 'Validating data with SAP master records...'
+    })
+  );
+  assert(loadingPanelHtml.includes('Validating data with SAP master records...'), 'Loading text and spinner must be shown');
   console.log('✓ PASS: BulkUploadPanel with file name, loading state, clear button, and error banner renders correctly\n');
 
   // Test 3: Render BulkCreateBomView using BulkUploadPanel
@@ -136,10 +145,10 @@ try {
 
   assert(createViewHtml.includes('Create Bulk BOM'), 'Breadcrumb and title must include Create Bulk BOM');
   assert(createViewHtml.includes('Upload Spreadsheet'), 'BulkCreateBomView must render BulkUploadPanel title');
-  assert(createViewHtml.includes('Download Template'), 'BulkCreateBomView header must render Download Template button');
+  assert(createViewHtml.toLowerCase().includes('download template'), 'BulkCreateBomView header must render Download Template button');
   assert(createViewHtml.includes('.xlsx,.xls,.tsv,.txt'), 'File input accept attribute must include supported extensions');
-  assert(createViewHtml.includes('Supports tab-separated text saved as .XLS'), 'Drop zone must display supported format hint');
-  assert(createViewHtml.includes('Upload file'), 'Step 1 label must be Upload file');
+  assert(createViewHtml.includes('Accepted formats: .xlsx, .xls, .tsv, .txt'), 'Drop zone must display supported format hint');
+  assert(createViewHtml.includes('Upload spreadsheet') || createViewHtml.includes('Upload file'), 'Step 1 label must be Upload spreadsheet or Upload file');
   assert(createViewHtml.includes('Validate data'), 'Step 2 label must be Validate data');
   assert(createViewHtml.includes('Create BOMs'), 'Step 3 label must be Create BOMs');
   assert(!createViewHtml.includes('Required Excel Columns:'), 'BulkCreateBomView must not include Required Excel Columns helper chips');
@@ -158,10 +167,10 @@ try {
 
   assert(copyViewHtml.includes('Copy Bulk BOM'), 'Breadcrumb and title must include Copy Bulk BOM');
   assert(copyViewHtml.includes('Upload Spreadsheet'), 'BulkBomView must render BulkUploadPanel title');
-  assert(copyViewHtml.includes('Download Template'), 'BulkBomView header must render Download Template button');
-  assert(copyViewHtml.includes('sap-btn sap-btn-secondary'), 'Template button in header must have secondary button styling');
+  assert(copyViewHtml.toLowerCase().includes('download template'), 'BulkBomView header must render Download Template button');
+  assert(copyViewHtml.includes('rx-btn-secondary') || copyViewHtml.includes('sap-btn sap-btn-secondary'), 'Template button in header must have secondary button styling');
   assert(copyViewHtml.includes('.xlsx, .xls, .csv'), 'File input accept attribute must match Bulk Copy formats');
-  assert(copyViewHtml.includes('Upload file'), 'Step 1 label must be Upload file');
+  assert(copyViewHtml.includes('Upload spreadsheet') || copyViewHtml.includes('Upload file'), 'Step 1 label must be Upload spreadsheet or Upload file');
   assert(copyViewHtml.includes('Validate data'), 'Step 2 label must be Validate data');
   assert(copyViewHtml.includes('Copy BOMs'), 'Step 3 label must be Copy BOMs');
   assert(!copyViewHtml.includes('Required Excel Columns:'), 'BulkBomView must not include Required Excel Columns helper chips');

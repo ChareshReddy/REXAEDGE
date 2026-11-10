@@ -222,7 +222,7 @@ export default class ErrorBoundary extends React.Component {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '10px 20px',
-                  backgroundColor: 'var(--sap-btn-primary-bg, #EA580C)',
+                  backgroundColor: 'var(--sap-btn-primary-bg, #02579A)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '8px',

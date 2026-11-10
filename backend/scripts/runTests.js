@@ -87,7 +87,19 @@ const testFiles = [
   'test/friendlyError.test.js',
   'test/homePageRedesign.test.js',
   'test/popupHeaderColorFix.test.js',
-  'test/inPageActionButtons.test.js'
+  'test/inPageActionButtons.test.js',
+  'test/operationCardsRedesign.test.js',
+  'test/designSystemGuards.test.js',
+  'test/serverConcurrencyIsolation.test.js',
+  'test/backendPermissionsEnforcement.test.js',
+  'test/jobSummaryAtomicWrites.test.js',
+  'test/sapConnectionPool.test.js',
+  'test/sapGuiDisabledByDefault.test.js',
+  'test/serverHealthAndCircuitBreaker.test.js',
+  'test/bulkBackgroundJobsStage4.test.js',
+  'test/stage5BomLockAndF4Cache.test.js',
+  'test/stage6AdminServersAndLimits.test.js',
+  'test/stage7FinalBacktest.test.js'
 ];
 
 const env = {

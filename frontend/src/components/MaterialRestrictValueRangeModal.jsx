@@ -26,8 +26,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'M: Material Number/Material Description',
     available: true,
     fields: [
-      { id: 'MATNR', label: 'Material', placeholder: 'e.g. 1102* or 100-100', maxLen: 18 },
-      { id: 'MAKTG', label: 'Material description', placeholder: 'e.g. SOLAR* or PANEL', maxLen: 40 },
+      { id: 'MATNR', label: 'Material', placeholder: 'Ex. 1102* or 100-100', maxLen: 18 },
+      { id: 'MAKTG', label: 'Material description', placeholder: 'Ex. SOLAR* or PANEL', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
   },
@@ -38,8 +38,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'A: Material by Old Material Number',
     available: true,
     fields: [
-      { id: 'BISMT', label: 'Old material number', placeholder: 'e.g. 1527279*', maxLen: 18 },
-      { id: 'MAKTG', label: 'Material description', placeholder: 'e.g. *BEARING*', maxLen: 40 },
+      { id: 'BISMT', label: 'Old material number', placeholder: 'Ex. 1527279*', maxLen: 18 },
+      { id: 'MAKTG', label: 'Material description', placeholder: 'Ex. *BEARING*', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 }
     ]
@@ -51,9 +51,9 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'B: Materials that have a BOM',
     available: true,
     fields: [
-      { id: 'MATNR', label: 'Material', placeholder: 'e.g. 100-*', maxLen: 18 },
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'STLAN', label: 'BOM Usage', placeholder: 'e.g. 1, 2, 3', maxLen: 1 },
+      { id: 'MATNR', label: 'Material', placeholder: 'Ex. 100-*', maxLen: 18 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000', maxLen: 4 },
+      { id: 'STLAN', label: 'BOM Usage', placeholder: 'Ex. 1, 2, 3', maxLen: 1 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
@@ -65,7 +65,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'C: CAD Transfer',
     available: true,
     fields: [
-      { id: 'MATNR', label: 'Material', placeholder: 'e.g. CAD-*', maxLen: 18 },
+      { id: 'MATNR', label: 'Material', placeholder: 'Ex. CAD-*', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
@@ -77,7 +77,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'E: Competitor Product',
     available: true,
     fields: [
-      { id: 'KUNNR', label: 'Competitor', placeholder: 'e.g. 0000100000', maxLen: 10 },
+      { id: 'KUNNR', label: 'Competitor', placeholder: 'Ex. 0000100000', maxLen: 10 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -90,9 +90,9 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'F: PRT',
     available: true,
     fields: [
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'FHM_FGRU1', label: 'PRT Grouping 1', placeholder: 'e.g. PRT1', maxLen: 4 },
-      { id: 'FHM_FGRU2', label: 'PRT Grouping 2', placeholder: 'e.g. PRT2', maxLen: 4 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000', maxLen: 4 },
+      { id: 'FHM_FGRU1', label: 'PRT Grouping 1', placeholder: 'Ex. PRT1', maxLen: 4 },
+      { id: 'FHM_FGRU2', label: 'PRT Grouping 2', placeholder: 'Ex. PRT2', maxLen: 4 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -105,9 +105,9 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'H: Product Hierarchy',
     available: true,
     fields: [
-      { id: 'PRDHA', label: 'Product Hierarchy', placeholder: 'e.g. PROD-*', maxLen: 18 },
-      { id: 'VKORG', label: 'Sales Organization', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'VTWEG', label: 'Distribution Channel', placeholder: 'e.g. 10', maxLen: 2 },
+      { id: 'PRDHA', label: 'Product Hierarchy', placeholder: 'Ex. PROD-*', maxLen: 18 },
+      { id: 'VKORG', label: 'Sales Organization', placeholder: 'Ex. 1000', maxLen: 4 },
+      { id: 'VTWEG', label: 'Distribution Channel', placeholder: 'Ex. 10', maxLen: 2 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -120,8 +120,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: "I: Supplier's Mat. No.",
     available: true,
     fields: [
-      { id: 'IDNLF', label: "Supplier's Material Number", placeholder: 'e.g. VEND-*', maxLen: 35 },
-      { id: 'LIFNR', label: 'Vendor', placeholder: 'e.g. 0000451688', maxLen: 10 },
+      { id: 'IDNLF', label: "Supplier's Material Number", placeholder: 'Ex. VEND-*', maxLen: 35 },
+      { id: 'LIFNR', label: 'Vendor', placeholder: 'Ex. 0000451688', maxLen: 10 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -134,7 +134,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'J: Material Category',
     available: true,
     fields: [
-      { id: 'ATTYP', label: 'Material Category', placeholder: 'e.g. 00, 01, 11', maxLen: 2 },
+      { id: 'ATTYP', label: 'Material Category', placeholder: 'Ex. 00, 01, 11', maxLen: 2 },
       { id: 'MATKL', label: 'Material Group', placeholder: 'Optional group', maxLen: 9 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
@@ -156,7 +156,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'L: Material Group',
     available: true,
     fields: [
-      { id: 'MATKL', label: 'Material Group', placeholder: 'e.g. F1SX or ELEC*', maxLen: 9 },
+      { id: 'MATKL', label: 'Material Group', placeholder: 'Ex. F1SX or ELEC*', maxLen: 9 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -169,8 +169,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'N: EAN',
     available: true,
     fields: [
-      { id: 'EAN11', label: 'International Article Number (EAN)', placeholder: 'e.g. 8905*', maxLen: 18 },
-      { id: 'MEINH', label: 'Unit of Measure', placeholder: 'e.g. ST or PAA', maxLen: 3 },
+      { id: 'EAN11', label: 'International Article Number (EAN)', placeholder: 'Ex. 8905*', maxLen: 18 },
+      { id: 'MEINH', label: 'Unit of Measure', placeholder: 'Ex. ST or PAA', maxLen: 3 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -191,7 +191,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'P: Product Hierarchy',
     available: true,
     fields: [
-      { id: 'PRDHA', label: 'Product Hierarchy', placeholder: 'e.g. PROD-*', maxLen: 18 },
+      { id: 'PRDHA', label: 'Product Hierarchy', placeholder: 'Ex. PROD-*', maxLen: 18 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -204,12 +204,12 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'R: Task List',
     available: true,
     fields: [
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1009, 1000', maxLen: 4 },
-      { id: 'PLNTY', label: 'Task List Type', placeholder: 'e.g. N', maxLen: 1 },
-      { id: 'PLNNR', label: 'Key for Task List Group', placeholder: 'e.g. 09M06154', maxLen: 8 },
-      { id: 'PLNAL', label: 'Group Counter', placeholder: 'e.g. 01', maxLen: 2 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1009, 1000', maxLen: 4 },
+      { id: 'PLNTY', label: 'Task List Type', placeholder: 'Ex. N', maxLen: 1 },
+      { id: 'PLNNR', label: 'Key for Task List Group', placeholder: 'Ex. 09M06154', maxLen: 8 },
+      { id: 'PLNAL', label: 'Group Counter', placeholder: 'Ex. 01', maxLen: 2 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 },
-      { id: 'MAKTG', label: 'Material description', placeholder: 'e.g. CUT COMP*', maxLen: 40 },
+      { id: 'MAKTG', label: 'Material description', placeholder: 'Ex. CUT COMP*', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
   },
@@ -220,10 +220,10 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'S: Sales Material',
     available: true,
     fields: [
-      { id: 'MAKTG', label: 'Material description', placeholder: 'e.g. CASUAL*', maxLen: 40 },
+      { id: 'MAKTG', label: 'Material description', placeholder: 'Ex. CASUAL*', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 },
-      { id: 'VKORG', label: 'Sales Organization', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'VTWEG', label: 'Distribution Channel', placeholder: 'e.g. 10', maxLen: 2 },
+      { id: 'VKORG', label: 'Sales Organization', placeholder: 'Ex. 1000', maxLen: 4 },
+      { id: 'VTWEG', label: 'Distribution Channel', placeholder: 'Ex. 10', maxLen: 2 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 }
     ]
   },
@@ -234,7 +234,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'T: Material Type',
     available: true,
     fields: [
-      { id: 'MTART', label: 'Material Type', placeholder: 'e.g. ROH, FERT, HALB', maxLen: 4 },
+      { id: 'MTART', label: 'Material Type', placeholder: 'Ex. ROH, FERT, HALB', maxLen: 4 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -247,8 +247,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'V: Supply Area',
     available: true,
     fields: [
-      { id: 'PRVBE', label: 'Supply Area', placeholder: 'e.g. PV01', maxLen: 10 },
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
+      { id: 'PRVBE', label: 'Supply Area', placeholder: 'Ex. PV01', maxLen: 10 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000', maxLen: 4 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material filter', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -261,7 +261,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'W: Plant Material',
     available: true,
     fields: [
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000, 1001', maxLen: 4 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000, 1001', maxLen: 4 },
       { id: 'MATNR', label: 'Material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -273,8 +273,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Fashion Fields',
     available: true,
     fields: [
-      { id: 'FSH_SEASON_YEAR', label: 'Season Year', placeholder: 'e.g. 2024', maxLen: 4 },
-      { id: 'FSH_SEASON', label: 'Season', placeholder: 'e.g. SS01', maxLen: 4 },
+      { id: 'FSH_SEASON_YEAR', label: 'Season Year', placeholder: 'Ex. 2024', maxLen: 4 },
+      { id: 'FSH_SEASON', label: 'Season', placeholder: 'Ex. SS01', maxLen: 4 },
       { id: 'FSH_COLLECTION', label: 'Collection', placeholder: 'Optional collection', maxLen: 10 },
       { id: 'FSH_THEME', label: 'Theme', placeholder: 'Optional theme', maxLen: 10 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material', maxLen: 18 },
@@ -288,7 +288,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Generic Variants',
     available: true,
     fields: [
-      { id: 'SATNR', label: 'Generic material', placeholder: 'e.g. XA1FL0464L', maxLen: 18 },
+      { id: 'SATNR', label: 'Generic material', placeholder: 'Ex. XA1FL0464L', maxLen: 18 },
       { id: 'MATNR', label: 'Variant material', placeholder: 'Optional variant', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'MATKL', label: 'Material Group', placeholder: 'Optional group', maxLen: 9 },
@@ -301,8 +301,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Segmentation',
     available: true,
     fields: [
-      { id: 'SGT_CSGR', label: 'Segmentation Structure', placeholder: 'e.g. ZRFL', maxLen: 4 },
-      { id: 'SGT_COVSA', label: 'Segmentation Strategy', placeholder: 'e.g. ZRFL01', maxLen: 8 },
+      { id: 'SGT_CSGR', label: 'Segmentation Structure', placeholder: 'Ex. ZRFL', maxLen: 4 },
+      { id: 'SGT_COVSA', label: 'Segmentation Strategy', placeholder: 'Ex. ZRFL01', maxLen: 8 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material', maxLen: 18 },
       { id: 'MAKTG', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
@@ -328,7 +328,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Original Material',
     available: true,
     fields: [
-      { id: 'ORIGINAL_ART_NR', label: 'Original Article', placeholder: 'e.g. 100-*', maxLen: 18 },
+      { id: 'ORIGINAL_ART_NR', label: 'Original Article', placeholder: 'Ex. 100-*', maxLen: 18 },
       { id: 'FOLUP_ART_NR', label: 'Follow-up Article', placeholder: 'Optional follow-up', maxLen: 18 },
       { id: 'FOLLOWUP_TYP_DE', label: 'Substitution Type', placeholder: 'Optional type', maxLen: 20 },
       { id: 'MAKTG_ORG_ART', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
@@ -341,7 +341,7 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Follow-Up Material',
     available: true,
     fields: [
-      { id: 'FOLUP_ART_NR', label: 'Follow-up Article', placeholder: 'e.g. 100-*', maxLen: 18 },
+      { id: 'FOLUP_ART_NR', label: 'Follow-up Article', placeholder: 'Ex. 100-*', maxLen: 18 },
       { id: 'ORIGINAL_ART_NR', label: 'Original Article', placeholder: 'Optional original', maxLen: 18 },
       { id: 'FOLLOWUP_TYP_DE', label: 'Substitution Type', placeholder: 'Optional type', maxLen: 20 },
       { id: 'MAKTG_FOLUP_ART', label: 'Material description', placeholder: 'Optional description', maxLen: 40 },
@@ -363,8 +363,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'G: Manufacturer Part No.',
     available: true,
     fields: [
-      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'e.g. PART-*', maxLen: 40 },
-      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'e.g. 0000100000', maxLen: 10 },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'Ex. PART-*', maxLen: 40 },
+      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'Ex. 0000100000', maxLen: 10 },
       { id: 'TEXT_HTN', label: 'Description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'MATNR_HTN', label: 'MPN material', placeholder: 'Optional MPN', maxLen: 18 },
       { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'Optional material', maxLen: 18 },
@@ -378,12 +378,12 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'U: MPN with AMPL',
     available: true,
     fields: [
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000, 1001', maxLen: 4 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000, 1001', maxLen: 4 },
       { id: 'AMPSP', label: 'AMPL Status', placeholder: 'Optional AMPL status', maxLen: 4 },
-      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'e.g. 0000100000', maxLen: 10 },
+      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'Ex. 0000100000', maxLen: 10 },
       { id: 'REVLV', label: 'Revision Level', placeholder: 'Optional rev level', maxLen: 2 },
       { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'Optional material', maxLen: 18 },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'e.g. PART-*', maxLen: 40 },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'Ex. PART-*', maxLen: 40 },
       { id: 'MATNR_HTN', label: 'MPN material', placeholder: 'Optional MPN', maxLen: 18 }
     ]
   },
@@ -393,9 +393,9 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'FFF Class Matl No.',
     available: true,
     fields: [
-      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'e.g. 0000100000', maxLen: 10 },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'e.g. PART-*', maxLen: 40 },
-      { id: 'TEXT_HTN', label: 'Description', placeholder: 'e.g. SPARX*', maxLen: 40 },
+      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'Ex. 0000100000', maxLen: 10 },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'Ex. PART-*', maxLen: 40 },
+      { id: 'TEXT_HTN', label: 'Description', placeholder: 'Ex. SPARX*', maxLen: 40 },
       { id: 'MATNR_HTN', label: 'MPN material', placeholder: 'Optional MPN', maxLen: 18 },
       { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'Optional material', maxLen: 18 }
     ]
@@ -406,9 +406,9 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'MPN MRP Sets',
     available: true,
     fields: [
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
-      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'e.g. 0000100000', maxLen: 10 },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'e.g. PART-*', maxLen: 40 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000', maxLen: 4 },
+      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'Ex. 0000100000', maxLen: 10 },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'Ex. PART-*', maxLen: 40 },
       { id: 'MATNR_HTN', label: 'MPN material', placeholder: 'Optional MPN', maxLen: 18 },
       { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'Optional material', maxLen: 18 }
     ]
@@ -420,8 +420,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Z: Interchangeability',
     available: true,
     fields: [
-      { id: 'MATNR', label: 'Material', placeholder: 'e.g. 100-*', maxLen: 18 },
-      { id: 'WERKS', label: 'Plant', placeholder: 'e.g. 1000', maxLen: 4 },
+      { id: 'MATNR', label: 'Material', placeholder: 'Ex. 100-*', maxLen: 18 },
+      { id: 'WERKS', label: 'Plant', placeholder: 'Ex. 1000', maxLen: 4 },
       { id: 'BERID', label: 'MRP Area', placeholder: 'Optional MRP area', maxLen: 10 },
       { id: 'LMATN', label: 'Leading Material', placeholder: 'Optional leading mat.', maxLen: 18 }
     ]
@@ -433,10 +433,10 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'D: Inventory-Managed',
     available: true,
     fields: [
-      { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'e.g. 100-*', maxLen: 18 },
+      { id: 'MATNR_B', label: 'Inventory-managed material', placeholder: 'Ex. 100-*', maxLen: 18 },
       { id: 'MATNR_HTN', label: 'MPN material', placeholder: 'Optional MPN', maxLen: 18 },
-      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'e.g. 0000100000', maxLen: 10 },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'e.g. PART-*', maxLen: 40 },
+      { id: 'MFRNR', label: 'Manufacturer', placeholder: 'Ex. 0000100000', maxLen: 10 },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', placeholder: 'Ex. PART-*', maxLen: 40 },
       { id: 'TEXT_HTN', label: 'Description', placeholder: 'Optional description', maxLen: 40 },
       { id: 'SPRAS', label: 'Language Key', defaultValue: 'EN', maxLen: 2 }
     ]
@@ -448,8 +448,8 @@ export const ALL_SEARCH_OPTIONS = [
     shortName: 'Z: Vendor EAN',
     available: true,
     fields: [
-      { id: 'EAN11', label: 'Vendor-Specific EAN', placeholder: 'e.g. 8905*', maxLen: 18 },
-      { id: 'LIFNR', label: 'Vendor', placeholder: 'e.g. 0000451688', maxLen: 10 },
+      { id: 'EAN11', label: 'Vendor-Specific EAN', placeholder: 'Ex. 8905*', maxLen: 18 },
+      { id: 'LIFNR', label: 'Vendor', placeholder: 'Ex. 0000451688', maxLen: 10 },
       { id: 'MATNR', label: 'Material', placeholder: 'Optional material', maxLen: 18 },
       { id: 'LFEAN', label: 'Vendor EAN Flag', defaultValue: 'X', maxLen: 1 }
     ]
@@ -514,6 +514,16 @@ export function formatFilterSummary(option, values = {}) {
     }
   });
   return parts.join(', ');
+}
+
+export function getChipLabel(opt) {
+  if (!opt) return '';
+  const code = opt.code || opt.key;
+  const name = opt.shortName || opt.name;
+  if (name.startsWith(`${code}:`)) {
+    return name;
+  }
+  return `${code}: ${name}`;
 }
 
 export default function MaterialRestrictValueRangeModal({
@@ -853,8 +863,8 @@ export default function MaterialRestrictValueRangeModal({
         className="sap-f4-modal-dialog sap-restrict-modal-dialog"
         style={{
           ...dialogStyle,
-          width: 'min(600px, 94vw)',
-          maxWidth: 620,
+          width: 'min(720px, 90vw)',
+          maxWidth: 720,
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '85vh'
@@ -876,9 +886,10 @@ export default function MaterialRestrictValueRangeModal({
               id="sap-restrict-range-title"
               style={{
                 margin: 0,
-                fontSize: 'var(--sap-size-section-header, 15px)',
+                fontSize: 'var(--font-size-18, 18px)',
                 fontWeight: 700,
-                color: 'var(--sap-popup-header-title, #0f2744)'
+                color: 'var(--sap-popup-header-title, #00204E)',
+                lineHeight: 1.2
               }}
             >
               Restrict Value Range
@@ -920,7 +931,7 @@ export default function MaterialRestrictValueRangeModal({
                   className={`sap-restrict-tab-btn ${isSelected ? 'active' : ''}`}
                   title={opt.name}
                 >
-                  {opt.shortName || opt.name}
+                  {getChipLabel(opt)}
                 </button>
               );
             })}
@@ -951,14 +962,14 @@ export default function MaterialRestrictValueRangeModal({
                 type="button"
                 className={`sap-restrict-arrow-btn ${isOptionsDropdownOpen ? 'active' : ''}`}
                 onClick={() => setIsOptionsDropdownOpen((v) => !v)}
-                title="All search help options (Image 2 list)"
+                title="All search help options"
                 aria-label="Select from all search help options"
                 aria-expanded={isOptionsDropdownOpen}
               >
                 <ListFilter size={14} />
               </button>
 
-              {/* All Options Dropdown (Image 2 List) */}
+              {/* All Options Dropdown */}
               {isOptionsDropdownOpen && (
                 <div className="sap-restrict-options-dropdown" role="menu">
                   <div className="sap-restrict-dropdown-header">All Search Help Options</div>
@@ -997,7 +1008,7 @@ export default function MaterialRestrictValueRangeModal({
             <div
               className="sap-f4-error"
               style={{
-                marginBottom: 16,
+                marginBottom: 12,
                 backgroundColor: '#fffbeb',
                 border: '1px solid #fde68a',
                 color: '#92400e',
@@ -1030,7 +1041,11 @@ export default function MaterialRestrictValueRangeModal({
             <div className="sap-restrict-form-fields">
               {(activeOption.fields || []).map((field, idx) => {
                 const val = currentTabValues[field.id] ?? (field.defaultValue || '');
-                const inputWidth = getFieldInputWidth(field);
+                const isLang = field.id === 'SPRAS';
+                const isShort = isLang || ['STLAN', 'WERKS', 'VKORG', 'VTWEG', 'REVLV', 'ATTYP', 'AMPSP'].includes(field.id) || (field.maxLen && field.maxLen <= 4);
+                const fieldWidth = isLang ? 80 : (isShort ? 100 : '100%');
+                const isCode = !isDescriptionField(field.id);
+
                 return (
                   <div key={field.id} className="sap-restrict-field-row">
                     <label
@@ -1041,36 +1056,19 @@ export default function MaterialRestrictValueRangeModal({
                       {field.label}:
                     </label>
                     <div className="sap-restrict-input-wrap">
-                      {field.id === 'STLAN' ? (
-                        <ValueHelpInput
-                          id={`field-${field.id}`}
-                          ref={idx === 0 ? firstInputRef : null}
-                          kind="bomUsage"
-                          value={val}
-                          maxLength={field.maxLen || 1}
-                          placeholder={field.placeholder || ''}
-                          onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                          className="sap-restrict-input"
-                          wrapperStyle={{ width: Math.max(inputWidth, 68), maxWidth: '100%' }}
-                          style={{ width: '100%' }}
-                          autoComplete="off"
-                          spellCheck="false"
-                        />
-                      ) : (
-                        <input
-                          id={`field-${field.id}`}
-                          ref={idx === 0 ? firstInputRef : null}
-                          type="text"
-                          value={val}
-                          maxLength={field.maxLen || 40}
-                          placeholder={field.placeholder || ''}
-                          onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                          className="sap-input sap-restrict-input"
-                          autoComplete="off"
-                          spellCheck="false"
-                          style={{ width: inputWidth, maxWidth: '100%' }}
-                        />
-                      )}
+                      <input
+                        id={`field-${field.id}`}
+                        ref={idx === 0 ? firstInputRef : null}
+                        type="text"
+                        value={val}
+                        maxLength={field.maxLen || 40}
+                        placeholder={field.placeholder || ''}
+                        onChange={(e) => handleFieldChange(field.id, e.target.value)}
+                        className={`sap-restrict-input ${isCode ? 'mono' : ''}`}
+                        autoComplete="off"
+                        spellCheck="false"
+                        style={{ width: fieldWidth, height: 34 }}
+                      />
                     </div>
                   </div>
                 );
@@ -1100,12 +1098,12 @@ export default function MaterialRestrictValueRangeModal({
           )}
         </div>
 
-        {/* Maximum Hits / Restriction Section */}
+        {/* Section: Restrict number to */}
         <div className="sap-restrict-limit-section">
-          <div className="sap-restrict-limit-group">
-            <label htmlFor="sap-restrict-max-rows" className="sap-restrict-limit-label">
-              Restrict Number To:
-            </label>
+          <label htmlFor="sap-restrict-max-rows" className="sap-restrict-limit-label">
+            Restrict number to:
+          </label>
+          <div className="sap-restrict-limit-controls">
             <input
               id="sap-restrict-max-rows"
               type="number"
@@ -1114,63 +1112,62 @@ export default function MaterialRestrictValueRangeModal({
               value={maxRows}
               disabled={noRestriction}
               onChange={(e) => setMaxRows(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="sap-input sap-restrict-number-input"
+              className="sap-restrict-number-input mono"
             />
+            <label className="sap-restrict-checkbox-label">
+              <input
+                type="checkbox"
+                checked={noRestriction}
+                onChange={(e) => setNoRestriction(e.target.checked)}
+                className="sap-restrict-checkbox"
+              />
+              <span>No restriction</span>
+            </label>
           </div>
-
-          <label className="sap-restrict-checkbox-label">
-            <input
-              type="checkbox"
-              checked={noRestriction}
-              onChange={(e) => setNoRestriction(e.target.checked)}
-              className="sap-restrict-checkbox"
-            />
-            <span>No Restriction</span>
-          </label>
         </div>
 
-        {/* SAP-Style Footer with Continue (Green Tick), Reset, Cancel (Red X) */}
+        {/* Footer: Active option on left, Continue, Reset, Cancel on right (Original Order) */}
         <div className="sap-f4-footer sap-restrict-footer">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--sap-text-secondary, #64748b)' }}>
-            <span>Active option: <strong>{activeOption.code || activeOption.key}</strong></span>
+          <div className="sap-restrict-footer-active-opt">
+            Active option: <strong>{activeOption.code || activeOption.key}</strong>
           </div>
 
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Continue (Green Tick) */}
+          <div className="sap-restrict-footer-actions">
+            {/* Continue (PRIMARY button style, blue-600 with white text) */}
             <button
               type="button"
               onClick={handleSubmit}
               disabled={!activeOption.available || isSearching}
-              className="sap-button sap-button-primary sap-restrict-btn-continue"
+              className="sap-restrict-btn-continue"
               title="Continue (Enter)"
             >
               {isSearching ? (
                 <Loader2 size={14} className="sap-spin" style={{ marginRight: 6 }} />
               ) : (
-                <Check size={14}  strokeWidth={2.5} style={{ marginRight: 6, color: '#6c6868' }} />
+                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#ffffff' }} />
               )}
               Continue
             </button>
 
-            {/* Reset */}
+            {/* Reset (secondary) */}
             <button
               type="button"
               onClick={handleReset}
               disabled={isSearching || !activeOption.available}
-              className="sap-button sap-button-secondary"
+              className="sap-restrict-btn-reset"
               title="Reset fields on current tab"
             >
               <RotateCcw size={14} style={{ marginRight: 6 }} />
               Reset
             </button>
 
-            {/* Cancel (Neutral icon) */}
+            {/* Cancel (secondary) */}
             <button
               type="button"
               onClick={onClose}
               disabled={isSearching}
-              className="sap-button sap-button-secondary sap-restrict-btn-cancel"
-              title="Cancel"
+              className="sap-restrict-btn-cancel"
+              title="Cancel (Esc)"
             >
               <X size={14} strokeWidth={2.5} style={{ marginRight: 6 }} />
               Cancel

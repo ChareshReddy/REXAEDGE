@@ -1,3 +1,4 @@
+import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import React, { useState, useEffect } from 'react';
 import {
@@ -22,12 +23,15 @@ import Modal from './Modal';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
 import Tooltip from './Tooltip';
+import { FormSection, FormGrid, FormActions } from './ui/form-layout';
+import { FieldWrapper } from './ui/FieldWrapper';
 import { BOM_FIELD_TOOLTIPS } from '../constants/sapFieldHelp';
 import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
 import { PageContainer } from './layout';
+import { FIELD_RULES, validateField, sanitizeValidFromInput, sanitizeBaseQuantityInput, DEFAULT_BASE_UOM, isValidQuantity } from '@shared/fieldRules.js';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -68,6 +72,20 @@ export default function CreateBomView({
   const [validationErrors, setValidationErrors] = useState([]);
   const [validationWarnings, setValidationWarnings] = useState([]);
   const [headerErrors, setHeaderErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const userInteractedRef = React.useRef({});
+
+  const handleUserInteraction = (field) => {
+    userInteractedRef.current[field] = true;
+  };
+
+  useEffect(() => {
+    setHeaderErrors({});
+    setTouched({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+  }, [systemKey]);
   const [isValidating, setIsValidating] = useState(false);
   const [preflightPassed, setPreflightPassed] = useState(false);
   const [preflightData, setPreflightData] = useState(null);
@@ -84,6 +102,7 @@ export default function CreateBomView({
 
   const isProd = systemKey === 'PROD';
   const isLocked = isValidating || isExecuting;
+  const isMaterialValid = Boolean(headerData.material && headerData.material.trim().length >= 8 && headerData.material.trim().length <= 19);
 
   useEffect(() => {
     activityTracker.setOperation('create_bom', isValidating || isExecuting);
@@ -92,7 +111,10 @@ export default function CreateBomView({
 
   const handleHeaderChange = (field, value) => {
     if (isLocked) return;
-    setHeaderData((prev) => ({ ...prev, [field]: value }));
+    userInteractedRef.current[field] = true;
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const finalVal = field === 'validFrom' ? sanitizeValidFromInput(value) : field === 'baseQty' ? sanitizeBaseQuantityInput(value) : value;
+    setHeaderData((prev) => ({ ...prev, [field]: finalVal }));
     if (headerErrors[field]) {
       setHeaderErrors((prev) => ({ ...prev, [field]: false }));
     }
@@ -100,6 +122,20 @@ export default function CreateBomView({
     setPreflightData(null);
     setValidationErrors([]);
     setValidationWarnings([]);
+  };
+
+  const handleHeaderBlur = (field) => {
+    if (isLocked) return;
+    if (!userInteractedRef.current[field]) return;
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = headerData[field];
+    const isRequired = ['material', 'plant', 'bomUsage', 'alternativeBom', 'validFrom', 'baseQty', 'bomStatus'].includes(field);
+    const res = validateField(field, val, isRequired);
+    if (!res.valid) {
+      setHeaderErrors((prev) => ({ ...prev, [field]: res.error }));
+    } else {
+      setHeaderErrors((prev) => ({ ...prev, [field]: false }));
+    }
   };
 
   const handleComponentChange = (id, field, value) => {
@@ -150,40 +186,71 @@ export default function CreateBomView({
     const errors = [];
     const hErrors = {};
 
-    if (!headerData.material.trim()) {
-      errors.push('Header Material is required.');
-      hErrors.material = true;
+    // Material
+    const matRes = validateField('material', headerData.material, true);
+    if (!matRes.valid) {
+      errors.push(!headerData.material.trim() ? 'Header Material is required.' : matRes.error);
+      hErrors.material = !headerData.material.trim() ? 'Material is required' : matRes.error;
     }
-    if (!headerData.plant.trim()) {
-      errors.push('Plant is required.');
-      hErrors.plant = true;
+    // Plant
+    const plantRes = validateField('plant', headerData.plant, true);
+    if (!plantRes.valid) {
+      errors.push(!headerData.plant.trim() ? 'Plant is required.' : plantRes.error);
+      hErrors.plant = !headerData.plant.trim() ? 'Plant is required' : plantRes.error;
     }
-    if (!headerData.bomUsage.trim()) {
-      errors.push('BOM Usage is required.');
-      hErrors.bomUsage = true;
+    // BOM Usage
+    const usageRes = validateField('bomUsage', headerData.bomUsage, true);
+    if (!usageRes.valid) {
+      errors.push(!headerData.bomUsage.trim() ? 'BOM Usage is required.' : usageRes.error);
+      hErrors.bomUsage = !headerData.bomUsage.trim() ? 'BOM Usage is required' : usageRes.error;
     }
-    if (!headerData.alternativeBom.trim()) {
-      errors.push('Alternative BOM is required.');
-      hErrors.alternativeBom = true;
+    // Alternative BOM
+    const altRes = validateField('alternativeBom', headerData.alternativeBom, true);
+    if (!altRes.valid) {
+      errors.push(!headerData.alternativeBom.trim() ? 'Alternative BOM is required.' : altRes.error);
+      hErrors.alternativeBom = !headerData.alternativeBom.trim() ? 'Alternative BOM is required' : altRes.error;
     }
-    if (!headerData.validFrom.trim()) {
-      errors.push('Valid From date is required.');
-      hErrors.validFrom = true;
+    // Valid From
+    const vfRes = validateField('validFrom', headerData.validFrom, true);
+    if (!vfRes.valid) {
+      errors.push(!headerData.validFrom.trim() ? 'Valid From date is required.' : vfRes.error);
+      hErrors.validFrom = !headerData.validFrom.trim() ? 'Valid From date is required' : vfRes.error;
     }
-    if (!headerData.baseQty || parseFloat(headerData.baseQty) <= 0) {
-      errors.push('Base quantity must be greater than 0.');
-      hErrors.baseQty = true;
+    // Base Qty
+    const bqRes = validateField('baseQty', headerData.baseQty, true);
+    if (!bqRes.valid) {
+      errors.push(bqRes.error);
+      hErrors.baseQty = bqRes.error;
     }
-    if (!headerData.bomStatus.trim()) {
-      errors.push('BOM Status is required.');
-      hErrors.bomStatus = true;
+    // BOM Status
+    const bsRes = validateField('bomStatus', headerData.bomStatus, true);
+    if (!bsRes.valid) {
+      errors.push(!headerData.bomStatus.trim() ? 'BOM Status is required.' : bsRes.error);
+      hErrors.bomStatus = !headerData.bomStatus.trim() ? 'BOM Status is required' : bsRes.error;
+    }
+    // Alt Text (optional)
+    const altTextRes = validateField('altText', headerData.altText, false);
+    if (!altTextRes.valid) {
+      errors.push(altTextRes.error);
+      hErrors.altText = altTextRes.error;
     }
 
     components.forEach((c, idx) => {
       const rowNum = idx + 1;
-      if (!c.component.trim()) errors.push(`Component #${rowNum}: Component material is required.`);
-      if (!c.quantity || parseFloat(c.quantity) <= 0) errors.push(`Component #${rowNum}: Quantity must be greater than 0.`);
-      if (!c.storageLocation.trim()) errors.push(`Component #${rowNum}: Storage Location is required.`);
+      const compRes = validateField('component', c.component, true);
+      if (!compRes.valid) {
+        errors.push(!c.component.trim() ? `Component #${rowNum}: Component material is required.` : `Component #${rowNum}: ${compRes.error}`);
+      }
+      const qtyRes = validateField('quantity', c.quantity, true);
+      if (!qtyRes.valid) {
+        errors.push(`Component #${rowNum}: ${qtyRes.error}`);
+      }
+      if (!c.storageLocation.trim()) {
+        errors.push(`Component #${rowNum}: Storage Location is required.`);
+      } else {
+        const slocRes = validateField('storageLocation', c.storageLocation, false);
+        if (!slocRes.valid) errors.push(`Component #${rowNum}: ${slocRes.error}`);
+      }
       if (c.referenceNumber && c.referenceNumber.length > 40) {
         errors.push(`Component #${rowNum}: Reference Number exceeds 40 characters (${c.referenceNumber.length}); cannot truncate.`);
       }
@@ -368,6 +435,7 @@ export default function CreateBomView({
       {/* Page Header */}
       <FioriPageHeader
         title="Create Single BOM"
+        extraTitleContent={<SingleBulkSwitch operation="create" mode="single" />}
         subtitle="Create a new Bill of Materials header and component list"
         onBack={onBack}
         isLocked={isLocked}
@@ -564,22 +632,28 @@ export default function CreateBomView({
             )}
 
             {/* Header Data Card */}
-            <div className="sap-card" style={{ padding: 20 }}>
-              <h3 className="sap-section-header">
-                BOM Header Data
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-                <div>
-                  <label className="sap-label sap-form-label">Material*</label>
+            <FormSection
+              title="BOM Header Data"
+              description="Material and plant specification for single-level BOM"
+              tintedHeader
+            >
+              <FormGrid>
+                <FieldWrapper
+                  label="Material"
+                  htmlFor="createBomMaterial"
+                  required
+                  error={(touched.material || isSubmitted) ? headerErrors.material || null : null}
+                >
                   <ValueHelpInput
                     id="createBomMaterial"
                     kind="material"
                     plant={headerData.plant}
-                    placeholder="e.g. A1BH0214C"
+                    placeholder="Ex. A1BH0214C"
+                    maxLength={FIELD_RULES.material.maxLength}
                     disabled={isLocked}
                     value={headerData.material}
                     onChange={(e) => handleHeaderChange('material', e.target.value)}
+                    onBlur={() => handleHeaderBlur('material')}
                     onSelect={(val, full) => {
                       handleHeaderChange('material', val);
                       if (full?.stlal) {
@@ -589,128 +663,209 @@ export default function CreateBomView({
                         handleHeaderChange('plant', full.werks);
                       }
                     }}
-                    className={`sap-input sap-form-input ${headerErrors.material ? 'input-error' : ''}`}
+                    hasError={Boolean((touched.material || isSubmitted) && headerErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
                     aria-label="Header Material"
                   />
-                  <div className="sap-field-error-msg">{headerErrors.material ? 'Material is required' : ''}</div>
-                </div>
+                </FieldWrapper>
 
-                <div>
-                  <label className="sap-label sap-form-label">Plant*</label>
+                <FieldWrapper
+                  label="Plant"
+                  htmlFor="createBomPlant"
+                  required
+                  error={(touched.plant || isSubmitted) ? headerErrors.plant || null : null}
+                >
                   <ValueHelpInput
                     id="createBomPlant"
                     kind="plant"
                     material={headerData.material}
-                    placeholder="e.g. 1010"
-                    maxLength={4}
+                    placeholder="Ex. 1010"
+                    maxLength={FIELD_RULES.plant.maxLength}
                     disabled={isLocked}
                     value={headerData.plant}
                     onChange={(e) => handleHeaderChange('plant', e.target.value)}
-                    className={`sap-input sap-form-input ${headerErrors.plant ? 'input-error' : ''}`}
+                    onBlur={() => handleHeaderBlur('plant')}
+                    hasError={Boolean((touched.plant || isSubmitted) && headerErrors.plant)} onPointerDown={() => handleUserInteraction('plant')} onKeyDown={() => handleUserInteraction('plant')}
                     aria-label="Header Plant"
                   />
-                  <div className="sap-field-error-msg">{headerErrors.plant ? 'Plant is required' : ''}</div>
-                </div>
+                </FieldWrapper>
 
-                <div>
-                  <label className="sap-label sap-form-label">BOM Usage*</label>
+                <FieldWrapper
+                  label="BOM Usage"
+                  htmlFor="createBomUsage"
+                  required
+                  error={(touched.bomUsage || isSubmitted) ? headerErrors.bomUsage || null : null}
+                >
                   <ValueHelpInput
                     id="createBomUsage"
                     kind="bomUsage"
                     placeholder="1"
-                    maxLength={1}
+                    maxLength={FIELD_RULES.bomUsage.maxLength}
                     disabled={isLocked}
                     value={headerData.bomUsage}
                     onChange={(e) => handleHeaderChange('bomUsage', e.target.value)}
-                    className={`sap-input sap-form-input ${headerErrors.bomUsage ? 'input-error' : ''}`}
+                    onBlur={() => handleHeaderBlur('bomUsage')}
+                    hasError={Boolean((touched.bomUsage || isSubmitted) && headerErrors.bomUsage)} onPointerDown={() => handleUserInteraction('bomUsage')} onKeyDown={() => handleUserInteraction('bomUsage')}
                   />
-                  <div className="sap-field-error-msg">{headerErrors.bomUsage ? 'BOM Usage is required' : ''}</div>
-                </div>
+                </FieldWrapper>
 
-                <div>
-                  <label className="sap-label sap-form-label">Alternative BOM*</label>
+                <FieldWrapper
+                  label="Alternative BOM"
+                  htmlFor="createBomAlt"
+                  required
+                  error={(touched.alternativeBom || isSubmitted) ? headerErrors.alternativeBom || null : null}
+                >
                   <input
                     id="createBomAlt"
                     type="text"
-                    className={`sap-input sap-form-input ${headerErrors.alternativeBom ? 'input-error' : ''}`}
+                    className={`rx-input rx-input-mono ${headerErrors.alternativeBom ? 'rx-input-error' : ''}`}
                     placeholder="01"
-                    maxLength={2}
+                    maxLength={FIELD_RULES.alternativeBom.maxLength}
                     disabled={isLocked}
                     value={headerData.alternativeBom}
                     onChange={(e) => handleHeaderChange('alternativeBom', e.target.value)}
+                    onBlur={() => handleHeaderBlur('alternativeBom')}
                   />
-                  <div className="sap-field-error-msg">{headerErrors.alternativeBom ? 'Alternative BOM is required' : ''}</div>
-                </div>
+                </FieldWrapper>
 
-                <div>
-                  <label className="sap-label sap-form-label">Valid From*</label>
+                <FieldWrapper
+                  label="Valid From"
+                  htmlFor="createBomValidFrom"
+                  required
+                  error={(touched.validFrom || isSubmitted) ? headerErrors.validFrom || null : null}
+                >
                   <input
                     id="createBomValidFrom"
                     type="text"
-                    className={`sap-input sap-form-input ${headerErrors.validFrom ? 'input-error' : ''}`}
+                    className={`rx-input ${headerErrors.validFrom ? 'rx-input-error' : ''}`}
                     placeholder="DD.MM.YYYY"
                     disabled={isLocked}
                     value={headerData.validFrom}
                     onChange={(e) => handleHeaderChange('validFrom', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (!/[\d.]/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Home', 'End'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onBlur={() => handleHeaderBlur('validFrom')}
                   />
-                  <div className="sap-field-error-msg">{headerErrors.validFrom ? 'Valid From date is required' : ''}</div>
+                </FieldWrapper>
+
+                {/* Base Quantity and UOM side by side in the Base Quantity cell */}
+                <div className="flex gap-3 w-full items-start">
+                  <div style={{ flex: '0 0 calc(55% - 6px)', width: 'calc(55% - 6px)', minWidth: 0 }}>
+                    <FieldWrapper
+                      label="Base Quantity"
+                      htmlFor="createBomBaseQty"
+                      required
+                      error={(touched.baseQty || isSubmitted) ? headerErrors.baseQty || null : null}
+                    >
+                      <input
+                        id="createBomBaseQty"
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        className={`rx-input ${headerErrors.baseQty ? 'rx-input-error' : ''}`}
+                        placeholder="1"
+                        disabled={isLocked}
+                        value={headerData.baseQty}
+                        onChange={(e) => handleHeaderChange('baseQty', e.target.value)}
+                        onKeyDown={(e) => {
+                          if (['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'Home', 'End'].includes(e.key) || e.ctrlKey || e.metaKey) {
+                            return;
+                          }
+                          if (!/^\d$/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const text = e.clipboardData ? e.clipboardData.getData('text') : '';
+                          const sanitized = sanitizeBaseQuantityInput(text);
+                          handleHeaderChange('baseQty', sanitized);
+                        }}
+                        onBlur={() => handleHeaderBlur('baseQty')}
+                        style={{ height: 40 }}
+                      />
+                    </FieldWrapper>
+                  </div>
+                  <div style={{ flex: '0 0 calc(45% - 6px)', width: 'calc(45% - 6px)', minWidth: 0 }}>
+                    <FieldWrapper
+                      label="UOM"
+                      htmlFor="createBomUom"
+                    >
+                      <input
+                        id="createBomUom"
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        aria-readonly="true"
+                        aria-label="Base Unit of Measure"
+                        className="rx-input rx-input-readonly"
+                        value={isMaterialValid ? DEFAULT_BASE_UOM : ''}
+                        placeholder=""
+                        style={{
+                          height: 40,
+                          backgroundColor: 'var(--color-blue-50)',
+                          borderColor: 'var(--color-border)',
+                          color: 'var(--color-text-secondary)',
+                          cursor: 'default'
+                        }}
+                      />
+                    </FieldWrapper>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="sap-label sap-form-label">Base Quantity*</label>
-                  <input
-                    id="createBomBaseQty"
-                    type="number"
-                    step="any"
-                    className={`sap-input sap-form-input ${headerErrors.baseQty ? 'input-error' : ''}`}
-                    placeholder="1"
-                    disabled={isLocked}
-                    value={headerData.baseQty}
-                    onChange={(e) => handleHeaderChange('baseQty', e.target.value)}
-                  />
-                  <div className="sap-field-error-msg">{headerErrors.baseQty ? 'Base Quantity must be > 0' : ''}</div>
-                </div>
-
-                <div>
-                  <label className="sap-label sap-form-label">BOM Status*</label>
+                <FieldWrapper
+                  label="BOM Status"
+                  htmlFor="createBomStatus"
+                  required
+                  error={(touched.bomStatus || isSubmitted) ? headerErrors.bomStatus || null : null}
+                >
                   <input
                     id="createBomStatus"
                     type="text"
-                    className={`sap-input sap-form-input ${headerErrors.bomStatus ? 'input-error' : ''}`}
+                    className={`rx-input rx-input-mono ${headerErrors.bomStatus ? 'rx-input-error' : ''}`}
                     placeholder="01"
-                    maxLength={2}
+                    maxLength={FIELD_RULES.bomStatus.maxLength}
                     disabled={isLocked}
                     value={headerData.bomStatus}
                     onChange={(e) => handleHeaderChange('bomStatus', e.target.value)}
+                    onBlur={() => handleHeaderBlur('bomStatus')}
                   />
-                  <div className="sap-field-error-msg">{headerErrors.bomStatus ? 'BOM Status is required' : ''}</div>
-                </div>
+                </FieldWrapper>
 
-                <div>
-                  <label className="sap-label sap-form-label">Alternative Text</label>
+                <FieldWrapper
+                  label="Alternative Text"
+                  htmlFor="createBomAltText"
+                  hint="Optional description (up to 40 characters)"
+                  error={headerErrors.altText || null}
+                  className="md:col-span-2 xl:col-span-2"
+                >
                   <input
+                    id="createBomAltText"
                     type="text"
-                    className="sap-input sap-form-input"
-                    placeholder="Description / Text"
-                    maxLength={40}
+                    className={`rx-input ${headerErrors.altText ? 'rx-input-error' : ''}`}
+                    placeholder=""
+                    maxLength={FIELD_RULES.altText.maxLength}
                     disabled={isLocked}
                     value={headerData.altText}
                     onChange={(e) => handleHeaderChange('altText', e.target.value)}
+                    onBlur={() => handleHeaderBlur('altText')}
+                    aria-label="Alternative Text"
                   />
-                  <div className="sap-field-error-msg"></div>
-                </div>
-              </div>
-            </div>
+                </FieldWrapper>
+              </FormGrid>
+            </FormSection>
 
             {/* Components Card */}
-            <div className="sap-card" style={{ padding: 20 }}>
-              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 className="sap-section-header" style={{ margin: 0 }}>
-                  Component Items ({components.length})
-                </h3>
+            <FormSection
+              title={`Component Items (${components.length})`}
+              description="Components and item quantities for this bill of materials"
+              tintedHeader
+              actions={
                 <button
                   type="button"
-                  className="sap-button sap-btn-primary sap-btn-add-component"
+                  className="sap-button sap-btn-primary sap-btn-add-component rx-btn rx-btn-primary rx-btn-sm"
                   disabled={isLocked}
                   onClick={handleAddComponent}
                   style={{
@@ -732,55 +887,78 @@ export default function CreateBomView({
                   <Plus size={15} strokeWidth={2.4} />
                   <span>Add Component</span>
                 </button>
-              </div>
-
-              <div className="sap-table-container fiori-table-wrapper" style={{ maxHeight: 420 }}>
-                <table className="sap-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              }
+            >
+              <div className="sap-table-container fiori-table-wrapper rounded-[var(--radius-md)] border border-[var(--color-border)] rx-components-table-container" style={{ maxHeight: 420, minHeight: 0, height: 'auto' }}>
+                <table className="sap-table w-full border-collapse text-[13px] rx-components-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '6%' }} />
+                  </colgroup>
                   <thead>
-                    <tr>
-                      <th style={{ width: 50, textAlign: 'center' }} aria-label={BOM_FIELD_TOOLTIPS.itemNo}>
-                        <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo}>
-                          <span>#</span>
+                    <tr className="bg-[var(--color-blue-200)] border-b border-[var(--color-border)] min-h-[56px] h-[56px] sticky top-0 z-10">
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
+                        <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Itm no.</span>
                         </Tooltip>
                       </th>
-                      <th style={{ minWidth: 160 }} aria-label={BOM_FIELD_TOOLTIPS.component}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Component, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.component}>
-                          <span>Component*</span>
+                          <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                            <span className="rx-header-label-text">Component</span>
+                            <span className="text-[var(--color-danger)] font-bold rx-header-star" style={{ marginLeft: 3, lineHeight: 1 }} aria-hidden="true">*</span>
+                          </span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 100 }} aria-label={BOM_FIELD_TOOLTIPS.quantity}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Quantity, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.quantity}>
-                          <span>Quantity*</span>
+                          <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                            <span className="rx-header-label-text">Quantity</span>
+                            <span className="text-[var(--color-danger)] font-bold rx-header-star" style={{ marginLeft: 3, lineHeight: 1 }} aria-hidden="true">*</span>
+                          </span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 85 }} aria-label={BOM_FIELD_TOOLTIPS.itemCategory}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemCategory || 'Item category'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemCategory}>
-                          <span>Item Cat</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Item <br />category</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 120 }} aria-label={BOM_FIELD_TOOLTIPS.storageLocation}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Storage location, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.storageLocation}>
-                          <span>Storage Loc*</span>
+                          <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <span>Storage</span>
+                            <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                              <span className="rx-header-label-text">location</span>
+                              <span className="text-[var(--color-danger)] font-bold rx-header-star" style={{ marginLeft: 3, lineHeight: 1 }} aria-hidden="true">*</span>
+                            </span>
+                          </span>
                         </Tooltip>
                       </th>
-                      <th style={{ minWidth: 160 }} aria-label={BOM_FIELD_TOOLTIPS.referenceNumber}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.referenceNumber || 'Reference number'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.referenceNumber}>
-                          <span>Reference Number</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Reference number</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 110, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.costingRelevancy}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.costingRelevancy || 'Costing relevant'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.costingRelevancy}>
-                          <span>Costing Rel</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Costing <br />relevant</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 95, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.engineering}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.engineering || 'Engineering relevant'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.engineering}>
-                          <span>Eng Rel</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Engineering <br />relevant</span>
                         </Tooltip>
                       </th>
-                      <th style={{ width: 75, textAlign: 'center', whiteSpace: 'nowrap' }} aria-label={BOM_FIELD_TOOLTIPS.action}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.action || 'Action'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.action}>
-                          <span>Action</span>
+                          <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Action</span>
                         </Tooltip>
                       </th>
                     </tr>
@@ -788,54 +966,54 @@ export default function CreateBomView({
                   <tbody>
                     {components.map((comp, idx) => {
                       return (
-                        <tr key={comp.id}>
-                          <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }}>
+                        <tr key={comp.id} className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-blue-50)] h-[44px]">
+                          <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }} className="px-2 py-1.5">
                             <span>{String((idx + 1) * 10).padStart(4, '0')}</span>
                           </td>
-                          <td>
+                          <td className="px-2 py-1.5">
                             <ValueHelpInput
                               kind="material"
                               plant={headerData.plant}
-                              placeholder="Component"
+                              placeholder=""
+                              maxLength={FIELD_RULES.component.maxLength}
                               disabled={isLocked}
+                              isTable={true}
                               value={comp.component}
                               onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
-                              style={{ padding: '6px 8px', fontSize: 12 }}
                               aria-label={`Component ${idx + 1}`}
                             />
                           </td>
-                          <td>
+                          <td className="px-2 py-1.5">
                             <input
                               type="number"
                               step="any"
-                              className="sap-form-input"
+                              className="rx-input rx-input-table"
                               placeholder="Qty"
                               disabled={isLocked}
                               value={comp.quantity}
                               onChange={(e) => handleComponentChange(comp.id, 'quantity', e.target.value)}
-                              style={{ padding: '6px 8px', fontSize: 12 }}
                               aria-label={`Quantity ${idx + 1}`}
                             />
                           </td>
-                          <td>
+                          <td className="px-2 py-1.5">
                             <input
                               type="text"
-                              className="sap-form-input"
-                              maxLength={1}
+                              className="rx-input rx-input-table text-center"
+                              maxLength={FIELD_RULES.itemCategory.maxLength}
                               placeholder="L"
                               disabled={isLocked}
                               value={comp.itemCategory}
                               onChange={(e) => handleComponentChange(comp.id, 'itemCategory', e.target.value)}
-                              style={{ padding: '6px 8px', fontSize: 12, textAlign: 'center' }}
                               aria-label={`Item Category ${idx + 1}`}
                             />
                           </td>
-                          <td>
+                          <td className="px-2 py-1.5">
                             <ValueHelpInput
                               kind="storageLocation"
                               plant={headerData.plant}
-                              placeholder="SLoc"
+                              placeholder=""
                               disabled={isLocked}
+                              isTable={true}
                               value={comp.storageLocation}
                               onChange={(e) => handleComponentChange(comp.id, 'storageLocation', e.target.value)}
                               onSelect={(sloc, record) => {
@@ -844,25 +1022,23 @@ export default function CreateBomView({
                                   setHeaderData((prev) => ({ ...prev, plant: record.werks }));
                                 }
                               }}
-                              maxLength={4}
-                              style={{ padding: '6px 8px', fontSize: 12 }}
-                              aria-label={`Storage Location ${idx + 1}`}
+                              maxLength={FIELD_RULES.storageLocation.maxLength}
+                              aria-label={`Storage location ${idx + 1}`}
                             />
                           </td>
-                          <td>
+                          <td className="px-2 py-1.5">
                             <input
                               type="text"
-                              className="sap-form-input"
+                              className="rx-input rx-input-table"
                               maxLength={40}
                               placeholder="Max 40 chars"
                               disabled={isLocked}
                               value={comp.referenceNumber}
                               onChange={(e) => handleComponentChange(comp.id, 'referenceNumber', e.target.value)}
-                              style={{ padding: '6px 8px', fontSize: 12 }}
                               aria-label={`Reference Number ${idx + 1}`}
                             />
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center' }} className="px-2 py-1.5">
                             <input
                               type="checkbox"
                               disabled={isLocked}
@@ -872,7 +1048,7 @@ export default function CreateBomView({
                               style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
                             />
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center' }} className="px-2 py-1.5">
                             <input
                               type="checkbox"
                               disabled={isLocked}
@@ -882,7 +1058,7 @@ export default function CreateBomView({
                               style={{ cursor: isLocked ? 'not-allowed' : 'pointer' }}
                             />
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center' }} className="px-2 py-1.5">
                             <button
                               type="button"
                               disabled={isLocked || components.length <= 1}
@@ -905,7 +1081,7 @@ export default function CreateBomView({
                     })}
                     {components.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="sap-table-empty-row">
+                        <td colSpan={9} className="sap-table-empty-row p-6 text-center text-[var(--color-text-secondary)]">
                           Add a component to get started
                         </td>
                       </tr>
@@ -915,78 +1091,84 @@ export default function CreateBomView({
               </div>
 
               {/* Form Action Row at bottom of Components Card */}
-              <div className="sap-card-action-row">
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-secondary"
-                  disabled={isLocked}
-                  onClick={() => {
-                    setHeaderData({
-                      material: '',
-                      plant: '',
-                      bomUsage: '1',
-                      alternativeBom: '01',
-                      validFrom: getTodayFormatted(),
-                      baseQty: '1',
-                      bomStatus: '01',
-                      altText: ''
-                    });
-                    setComponents([{
-                      id: 1,
-                      component: '',
-                      quantity: '1',
-                      itemCategory: 'L',
-                      storageLocation: '',
-                      referenceNumber: '',
-                      costingRelevancy: true,
-                      engineering: true
-                    }]);
-                    setPreflightPassed(false);
-                    setPreflightData(null);
-                    setValidationErrors([]);
-                    setValidationWarnings([]);
-                    setHeaderErrors({});
-                  }}
-                  style={{ height: 32, padding: '0 16px', fontSize: 13 }}
-                >
-                  <span>Reset</span>
-                </button>
+              <FormActions
+                className="sap-card-action-row"
+                left={
+                  <button
+                    type="button"
+                    className="rx-btn rx-btn-secondary"
+                    disabled={isLocked}
+                    onClick={() => {
+                      setHeaderData({
+                        material: '',
+                        plant: '',
+                        bomUsage: '1',
+                        alternativeBom: '01',
+                        validFrom: getTodayFormatted(),
+                        baseQty: '1',
+                        bomStatus: '01',
+                        altText: ''
+                      });
+                      setComponents([{
+                        id: 1,
+                        component: '',
+                        quantity: '1',
+                        itemCategory: 'L',
+                        storageLocation: '',
+                        referenceNumber: '',
+                        costingRelevancy: true,
+                        engineering: true
+                      }]);
+                      setPreflightPassed(false);
+                      setPreflightData(null);
+                      setValidationErrors([]);
+                      setValidationWarnings([]);
+                      setHeaderErrors({});
+                    }}
+                    
+                  >
+                    <span>Reset</span>
+                  </button>
+                }
+                right={
+                  <>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-secondary"
+                      disabled={isLocked}
+                      onClick={handleValidate}
+                      
+                    >
+                      {isValidating ? (
+                        <>
+                          <Loader2 size={15} className="sap-spin" />
+                          <span>Validating...</span>
+                        </>
+                      ) : (
+                        <span>Validate Master Data</span>
+                      )}
+                    </button>
 
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-secondary"
-                  disabled={isLocked}
-                  onClick={handleValidate}
-                  style={{ height: 32, padding: '0 18px', fontSize: 13 }}
-                >
-                  {isValidating ? (
-                    <>
-                      <Loader2 size={15} className="sap-spin" />
-                      <span>Validating...</span>
-                    </>
-                  ) : (
-                    <span>Validate Master Data</span>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-primary"
-                  disabled={!preflightPassed || isLocked}
-                  onClick={handleOpenConfirm}
-                  style={{ height: 32, padding: '0 24px', fontSize: 13 }}
-                >
-                  {isExecuting ? (
-                    <>
-                      <Loader2 size={15} className="sap-spin" />
-                      <span>Creating BOM in SAP...</span>
-                    </>
-                  ) : (
-                    <span>Preview & Create BOM</span>
-                  )}
-                </button>
-              </div>
-            </div>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-primary"
+                      disabled={!preflightPassed || isLocked}
+                      onClick={handleOpenConfirm}
+                      
+                    >
+                      {isExecuting ? (
+                        <>
+                          <Loader2 size={15} className="sap-spin" />
+                          <span>Creating BOM in SAP...</span>
+                        </>
+                      ) : (
+                        <span>Preview & Create BOM</span>
+                      )}
+                    </button>
+                  </>
+                }
+              />
+            </FormSection>
           </div>
         )}
 
@@ -1056,7 +1238,7 @@ export default function CreateBomView({
                   <input
                     type="text"
                     className="sap-form-input"
-                    placeholder="e.g. Approved Engineering Change ECO-1049"
+                    placeholder="Ex. Approved Engineering Change ECO-1049"
                     disabled={isExecuting}
                     value={businessReason}
                     onChange={(e) => setBusinessReason(e.target.value)}

@@ -1,7 +1,9 @@
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
+import './FioriOpCard.css';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
+  ArrowRight,
   Layers,
   Wrench,
   TrendingUp,
@@ -65,31 +67,22 @@ export function FioriOpCard({
       disabled={disabled}
       onClick={disabled ? undefined : onClick}
     >
-      <div className="fiori-op-icon-badge">
-        <Icon size={20} strokeWidth={1.8} />
-      </div>
-      <div className="fiori-op-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
-        <div className="fiori-op-title" style={{ margin: 0 }}>{title}</div>
+      <div className="fiori-op-top-row">
+        <div className="fiori-op-icon-badge">
+          <Icon size={24} strokeWidth={1.8} />
+        </div>
         {isDestructive && (
-          <span
-            className="fiori-destructive-badge"
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: '#B45309',
-              backgroundColor: '#FEF3C7',
-              border: '1px solid #FDE68A',
-              borderRadius: '9999px',
-              padding: '1px 7px',
-              marginLeft: '8px',
-              flexShrink: 0
-            }}
-          >
+          <span className="fiori-destructive-badge">
             Destructive
           </span>
         )}
       </div>
+      <div className="fiori-op-title">{title}</div>
       <div className="fiori-op-desc">{desc}</div>
+      <div className="fiori-op-open-link" aria-hidden="true">
+        <span>Open</span>
+        <ArrowRight size={14} strokeWidth={2} />
+      </div>
     </button>
   );
 }
@@ -180,7 +173,7 @@ export default function FioriLaunchpad({
   const activeGroup = homeGroups.find((g) => g.name === currentGroup) || homeGroups[0] || null;
   const activeGroupName = activeGroup ? activeGroup.name : '';
 
-  // Synchronize active group with parent when falling back (e.g. server switch)
+  // Synchronize active group with parent when falling back (Ex. server switch)
   useEffect(() => {
     if (activeGroupName && activeGroupName !== currentGroup) {
       if (onSelectGroup) {
@@ -406,12 +399,12 @@ export default function FioriLaunchpad({
           <FioriPageHeader
             title={activeModule.label}
             subtitle={activeModule.key === 'bom' ? "Create, copy, display, validate and delete Bills of Materials." : (activeModule.desc || "Manage your enterprise operations.")}
-            onBack={() => handleSetView('home')}
-            backTitle="Back to Products"
+            onBack={onNavigateHome || (() => handleSetView('home'))}
+            backTitle="Back to Home"
             systemKey={systemKey}
             breadcrumbs={getBreadcrumbTrail(activeModule.subView, {
               onNavigateHome,
-              onNavigateProducts: () => handleSetView('home')
+              onNavigateBom: () => handleSetView('bom_operations')
             })}
           />
 
@@ -497,9 +490,9 @@ export default function FioriLaunchpad({
           <button
             type="button"
             className="sap-btn sap-btn-secondary"
-            onClick={() => handleSetView('home')}
+            onClick={onNavigateHome || (() => handleSetView('home'))}
           >
-            Return to Products
+            Return to Home
           </button>
         </div>
       )}

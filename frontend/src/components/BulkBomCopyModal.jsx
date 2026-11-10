@@ -18,7 +18,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { batchValidateBoms, batchCopyBoms, downloadBomTemplate } from '../services/api';
-import Modal from './Modal';
+import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 
 /**
@@ -396,20 +396,50 @@ export default function BulkBomCopyModal({
       padding="0"
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        {/* Header */}
-        <div className="sap-bulk-modal-header">
-          <div className="sap-bulk-modal-title">
-            <div className="sap-bulk-icon-badge">
-              <FileSpreadsheet size={16} color="#C2410C" />
+        {/* Header (F4 Popup Style) */}
+        <div
+          className="sap-bulk-modal-header rx-modal-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            height: 'var(--popup-header-height, 60px)',
+            minHeight: 'var(--popup-header-height, 60px)',
+            maxHeight: 'var(--popup-header-height, 60px)',
+            boxSizing: 'border-box',
+            padding: '0 18px',
+            backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+            borderBottom: '1px solid var(--color-border, #D9E2EC)'
+          }}
+        >
+          <div className="sap-bulk-modal-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              className="sap-bulk-icon-badge"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 'var(--radius-md, 8px)',
+                backgroundColor: 'var(--color-blue-100, #DCE8F1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--color-blue-600, #02579A)'
+              }}
+            >
+              <FileSpreadsheet size={18} />
             </div>
             <div>
-              <h3>Bulk BOM Copy via Excel</h3>
-              <p>Upload a spreadsheet to validate and copy multiple Bills of Materials simultaneously.</p>
+              <h3 style={{ margin: 0, fontSize: 'var(--font-size-18, 18px)', fontWeight: 700, color: 'var(--color-navy-900, #00204E)', lineHeight: 1.2 }}>
+                Bulk BOM Copy via Excel
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                Upload a spreadsheet to validate and copy multiple Bills of Materials simultaneously.
+              </p>
             </div>
           </div>
           <button
             type="button"
-            className="sap-modal-close-btn"
+            className="sap-modal-close-btn rx-btn rx-btn-ghost rx-btn-sm"
             onClick={handleClose}
             disabled={isExecuting || isValidating}
             style={{
@@ -420,30 +450,101 @@ export default function BulkBomCopyModal({
               height: 36,
               minWidth: 36,
               minHeight: 36,
-              padding: 0
+              padding: 0,
+              borderRadius: 'var(--radius-md, 8px)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              backgroundColor: 'transparent',
+              color: 'var(--color-text-secondary, #4A5F77)'
             }}
             title={(isExecuting || isValidating) ? 'Operation in progress' : 'Cancel (Esc)'}
-            aria-label="Cancel (Esc)"
+            aria-label={(isExecuting || isValidating) ? 'Operation in progress' : 'Cancel (Esc)'}
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Workflow Steps Indicator */}
-        <div className="sap-bulk-steps-bar">
-          <div className={`sap-bulk-step ${activeStep >= 1 ? 'active' : ''}`}>
-            <span className="step-num">1</span>
-            <span>Upload File</span>
+        <div
+          className="rx-bulk-steps-bar sap-bulk-steps-bar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            backgroundColor: 'var(--color-surface, #FFFFFF)',
+            borderBottom: '1px solid var(--color-border, #D9E2EC)'
+          }}
+        >
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: activeStep >= 1 ? 'var(--color-blue-600, #02579A)' : 'var(--color-surface, #FFFFFF)',
+                color: activeStep >= 1 ? '#FFFFFF' : 'var(--color-text-muted, #7A8CA3)',
+                border: activeStep >= 1 ? 'none' : '2px solid var(--color-border, #D9E2EC)'
+              }}
+            >
+              1
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: activeStep === 1 ? 600 : 500, color: activeStep >= 1 ? 'var(--color-navy-900, #00204E)' : 'var(--color-text-muted, #7A8CA3)' }}>
+              Upload spreadsheet
+            </span>
           </div>
-          <div className="step-arrow"><ArrowRight size={12} /></div>
-          <div className={`sap-bulk-step ${activeStep >= 2 ? 'active' : ''}`}>
-            <span className="step-num">2</span>
-            <span>SAP Pre-flight Validation</span>
+          <ArrowRight size={14} style={{ color: 'var(--color-border, #D9E2EC)' }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: activeStep >= 2 ? 'var(--color-blue-600, #02579A)' : 'var(--color-surface, #FFFFFF)',
+                color: activeStep >= 2 ? '#FFFFFF' : 'var(--color-text-muted, #7A8CA3)',
+                border: activeStep >= 2 ? 'none' : '2px solid var(--color-border, #D9E2EC)'
+              }}
+            >
+              2
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: activeStep === 2 ? 600 : 500, color: activeStep >= 2 ? 'var(--color-navy-900, #00204E)' : 'var(--color-text-muted, #7A8CA3)' }}>
+              Validate data
+            </span>
           </div>
-          <div className="step-arrow"><ArrowRight size={12} /></div>
-          <div className={`sap-bulk-step ${activeStep >= 3 ? 'active' : ''}`}>
-            <span className="step-num">3</span>
-            <span>Sequential Execution</span>
+          <ArrowRight size={14} style={{ color: 'var(--color-border, #D9E2EC)' }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: activeStep >= 3 ? 'var(--color-blue-600, #02579A)' : 'var(--color-surface, #FFFFFF)',
+                color: activeStep >= 3 ? '#FFFFFF' : 'var(--color-text-muted, #7A8CA3)',
+                border: activeStep >= 3 ? 'none' : '2px solid var(--color-border, #D9E2EC)'
+              }}
+            >
+              3
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: activeStep === 3 ? 600 : 500, color: activeStep >= 3 ? 'var(--color-navy-900, #00204E)' : 'var(--color-text-muted, #7A8CA3)' }}>
+              Copy BOMs
+            </span>
           </div>
         </div>
 
@@ -455,11 +556,20 @@ export default function BulkBomCopyModal({
           {parsedRows.length === 0 ? (
             <div className="sap-dropzone-container">
               <div
-                className={`sap-file-dropzone ${isDragging ? 'dragging' : ''}`}
+                className={`sap-file-dropzone rx-bulk-dropzone ${isDragging ? 'dragging is-dragging' : ''}`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: isDragging ? '2px dashed var(--color-blue-600, #02579A)' : '2px dashed var(--color-blue-200, #B3CDE0)',
+                  backgroundColor: isDragging ? 'var(--color-blue-100, #DCE8F1)' : 'var(--color-blue-50, #EEF4F9)',
+                  borderRadius: 'var(--radius-lg, 12px)',
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'all var(--transition-fast, 150ms ease)'
+                }}
               >
                 <input
                   type="file"
@@ -480,27 +590,27 @@ export default function BulkBomCopyModal({
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <button
                     type="button"
-                    className="sap-btn sap-btn-primary"
-                    style={{ height: 28, fontSize: '11px', padding: '0 10px' }}
+                    className="rx-btn rx-btn-primary"
+                    style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
                   >
                     <Upload size={13} />
-                    <span>Browse Files</span>
+                    <span>Browse files</span>
                   </button>
                   <button
                     type="button"
-                    className="sap-btn sap-btn-secondary"
-                    style={{ height: 28, fontSize: '11px', padding: '0 10px' }}
+                    className="rx-btn rx-btn-secondary"
+                    style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDownloadTemplate();
                     }}
                   >
                     <Download size={13} />
-                    <span>Download Template</span>
+                    <span>Download template</span>
                   </button>
                 </div>
               </div>
@@ -681,7 +791,7 @@ export default function BulkBomCopyModal({
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               type="button"
-              className="sap-btn sap-btn-ghost"
+              className="rx-btn rx-btn-secondary" style={{ height: "var(--size-button-height, 40px)", padding: "0 18px", borderRadius: "var(--radius-md, 8px)" }}
               onClick={handleClose}
               disabled={isExecuting || isValidating}
             >

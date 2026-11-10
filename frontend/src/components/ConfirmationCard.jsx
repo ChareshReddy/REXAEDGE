@@ -942,7 +942,7 @@ export default function ConfirmationCard({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={isExecuting}
-              placeholder="Provide business justification (e.g. Approved by Procurement Lead, RFC-2024-8891)..."
+              placeholder="Provide business justification (Ex. Approved by Procurement Lead, RFC-2024-8891)..."
               style={{
                 width: '100%',
                 padding: '6px 8px',

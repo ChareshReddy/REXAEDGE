@@ -164,7 +164,7 @@ async function runMultiSystemTests() {
     assert.strictEqual(noConfirmWordRes.status, 400, 'Must reject when CONFIRM keyword is missing in PROD');
     assert.strictEqual(noConfirmWordRes.data.requiresProdConfirm, true);
 
-    // Attempt 2: Confirm with wrong keyword (e.g. 'yes' or lowercase 'confirm') -> Rejection
+    // Attempt 2: Confirm with wrong keyword (Ex. 'yes' or lowercase 'confirm') -> Rejection
     const wrongWordRes = await makeRequest('POST', '/api/chat', {
       confirmAction: prodAction.actionId,
       reason: 'Urgent production shipment required',

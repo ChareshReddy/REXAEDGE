@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getBomUsages } from '../services/bomUsageService.js';
+import { f4CacheService } from '../services/f4CacheService.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
@@ -38,12 +39,23 @@ router.get('/', bomUsageRateLimiter, async (req, res) => {
 
   try {
     const { lang, refresh } = req.query || {};
+    const serverId = req.selectedServer?.id || 'default';
 
-    const result = await getBomUsages({
-      server: req.selectedServer,
-      lang: lang || req.headers['accept-language'],
-      refresh,
-      signal: abortController.signal
+    if (refresh === 'true' || refresh === true) {
+      f4CacheService.clear(serverId);
+    }
+
+    const effectiveLang = String(lang || req.headers['accept-language'] || 'E').toUpperCase();
+    const result = await f4CacheService.fetchWithCache({
+      serverId,
+      lookupType: 'bomUsages',
+      query: effectiveLang,
+      fetchFn: () => getBomUsages({
+        server: req.selectedServer,
+        lang: lang || req.headers['accept-language'],
+        refresh,
+        signal: abortController.signal
+      })
     });
 
     return res.status(200).json(result);

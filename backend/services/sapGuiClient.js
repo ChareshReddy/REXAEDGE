@@ -260,6 +260,21 @@ export function setMockBomAlternatives(material, plant, bomUsage = '1', alternat
 
 const desktopRunnerPath = path.resolve(__dirname, '..', 'bin', 'DesktopRunner.cs');
 
+export function isSapGuiEnabled() {
+  return process.env.ENABLE_SAP_GUI === 'true' || process.env.SAP_GUI_ENABLED === 'true';
+}
+
+export function assertGuiEnabled(operation = 'SAP GUI Scripting') {
+  if (!isSapGuiEnabled()) {
+    const err = new Error(
+      `SAP GUI Scripting is legacy and disabled by default. Cannot run ${operation}. Headless RFC is the active integration.`
+    );
+    err.code = 'SAP_GUI_DISABLED';
+    err.status = 403;
+    throw err;
+  }
+}
+
 /**
  * Executes a dynamically generated VBScript on the interactive desktop (WinSta0\\Default)
  * via Windows Script Host (cscript.exe) through DesktopRunner.
@@ -269,6 +284,7 @@ const desktopRunnerPath = path.resolve(__dirname, '..', 'bin', 'DesktopRunner.cs
  * @returns {Promise<{ stdout: string, stderr: string }>}
  */
 function runVbsScript(scriptContent, timeoutMs = 30000) {
+  assertGuiEnabled('VBScript execution');
   return new Promise((resolve, reject) => {
     const tempDir = os.tmpdir();
     const tempFile = path.join(tempDir, `sap_gui_script_${Date.now()}_${Math.random().toString(36).slice(2)}.vbs`);
@@ -372,23 +388,43 @@ let cachedActiveSapUser = null;
 let selectedSapSessionId = null;
 let selectedSapUser = null;
 
-export function getSelectedSapSessionId() {
-  return selectedSapSessionId;
-}
+// Per-user session tracking (Map<userId, { selectedSessionId, selectedUser }>)
+const userSessionMap = new Map();
 
-export function getSelectedSapUser() {
-  return selectedSapUser || activeMockSapSessionUser || cachedActiveSapUser || process.env.TEST_SAP_USER || null;
-}
-
-export function setSelectedSapSessionId(sessionId, username = null) {
-  selectedSapSessionId = sessionId ? String(sessionId).trim() : null;
-  if (username) {
-    selectedSapUser = String(username).trim();
+export function getSelectedSapSessionId(userId = null) {
+  if (userId && userSessionMap.has(String(userId))) {
+    return userSessionMap.get(String(userId)).selectedSessionId;
   }
   return selectedSapSessionId;
 }
 
-export function resetSelectedSapSession() {
+export function getSelectedSapUser(userId = null) {
+  if (userId && userSessionMap.has(String(userId))) {
+    return userSessionMap.get(String(userId)).selectedUser;
+  }
+  return selectedSapUser || activeMockSapSessionUser || cachedActiveSapUser || process.env.TEST_SAP_USER || null;
+}
+
+export function setSelectedSapSessionId(sessionId, username = null, userId = null) {
+  selectedSapSessionId = sessionId ? String(sessionId).trim() : null;
+  if (username) {
+    selectedSapUser = String(username).trim();
+  }
+  if (userId) {
+    userSessionMap.set(String(userId), {
+      selectedSessionId: selectedSapSessionId,
+      selectedUser: selectedSapUser
+    });
+  }
+  return selectedSapSessionId;
+}
+
+export function resetSelectedSapSession(userId = null) {
+  if (userId) {
+    userSessionMap.delete(String(userId));
+  } else {
+    userSessionMap.clear();
+  }
   selectedSapSessionId = null;
   selectedSapUser = null;
 }
@@ -1144,6 +1180,7 @@ export const getSapConnectionStatus = checkSapSessionHealth;
  * @returns {Promise<{ success: boolean, code?: string, message: string, user?: string, system?: string, client?: string, connectionName?: string, sessionTitle?: string, sessionPath?: string, allConnections?: Array<object> }>}
  */
 export async function connectToSapGui(maxRetries = 2) {
+  assertGuiEnabled('connectToSapGui');
   if (process.platform !== 'win32') {
     return {
       success: false,

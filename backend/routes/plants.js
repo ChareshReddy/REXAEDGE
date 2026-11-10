@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getPlants } from '../services/plantService.js';
+import { f4CacheService } from '../services/f4CacheService.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
@@ -38,14 +39,24 @@ router.get('/', plantRateLimiter, async (req, res) => {
 
   try {
     const { q, material, refresh } = req.query || {};
+    const serverId = req.selectedServer?.id || 'default';
 
-    const result = await getPlants({
-      server: req.selectedServer,
-      q,
-      material,
-      refresh,
-      userRole: req.user?.role || 'user',
-      signal: abortController.signal
+    if (refresh === 'true' || refresh === true) {
+      f4CacheService.clear(serverId);
+    }
+
+    const result = await f4CacheService.fetchWithCache({
+      serverId,
+      lookupType: 'plants',
+      query: `${q || ''}:${material || ''}`,
+      fetchFn: () => getPlants({
+        server: req.selectedServer,
+        q,
+        material,
+        refresh,
+        userRole: req.user?.role || 'user',
+        signal: abortController.signal
+      })
     });
 
     return res.status(200).json(result);

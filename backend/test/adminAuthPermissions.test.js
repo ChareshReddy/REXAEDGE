@@ -207,7 +207,7 @@ async function runAdminTests() {
     assert.strictEqual(latestBomLog.system, 'Special QA S4HANA');
     console.log(`   ✓ Write succeeded and verified in Audit Logs with user "${latestBomLog.user}" and server "${latestBomLog.system}"`);
 
-    // Attempt to access unpermitted server (e.g. Production server)
+    // Attempt to access unpermitted server (Ex. Production server)
     const unpermittedServerId = '10000000-0000-0000-0000-000000000003';
     const pingUnpermitted = await makeRequest('GET', '/api/bom/ping', null, {
       'Authorization': `Bearer ${newUserToken}`,

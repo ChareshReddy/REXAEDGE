@@ -3,19 +3,19 @@ import {
   Mail,
   Lock,
   AlertCircle,
-  X,
   Eye,
   EyeOff,
-  LogIn,
-  Settings,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
   Layers,
+  Package,
   ShoppingCart,
-  LayoutGrid
+  Loader2
 } from 'lucide-react';
 import { loginUser, warmupAuth } from '../services/api';
-import { useToast, NotificationPlacementProvider } from '../context/ToastContext';
+import { useToast } from '../context/ToastContext';
 import rexaedgeLogo from '../assets/rexaedge_logo.png';
-import sapPortalBgTemplate from '../assets/sap_portal_bg_template.png';
 import './Login.css';
 
 export default function Login({ onLoginSuccess }) {
@@ -24,28 +24,22 @@ export default function Login({ onLoginSuccess }) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSlowNotice, setShowSlowNotice] = useState(false);
-  const slowNoticeTimerRef = useRef(null);
-  const [errorMessage, _setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [slowNotice, setSlowNotice] = useState('');
   const usernameInputRef = useRef(null);
   const passwordInputRef = useRef(null);
 
   useEffect(() => {
     warmupAuth();
-    return () => {
-      if (slowNoticeTimerRef.current) {
-        clearTimeout(slowNoticeTimerRef.current);
-      }
-    };
+    if (usernameInputRef.current) {
+      usernameInputRef.current.focus();
+    }
   }, []);
 
-  const setErrorMessage = (msg) => {
-    _setErrorMessage(msg || '');
-  };
-
   const clearErrors = () => {
-    if (errorMessage) _setErrorMessage('');
-    toast.clearAll();
+    if (errorMessage) setErrorMessage('');
+    if (slowNotice) setSlowNotice('');
+    if (toast?.clearAll) toast.clearAll();
   };
 
   const handleEmailChange = (e) => {
@@ -76,19 +70,15 @@ export default function Login({ onLoginSuccess }) {
     }
 
     setIsLoading(true);
-    setShowSlowNotice(false);
-    if (slowNoticeTimerRef.current) {
-      clearTimeout(slowNoticeTimerRef.current);
-    }
-    slowNoticeTimerRef.current = setTimeout(() => {
-      setShowSlowNotice(true);
+    const slowTimer = setTimeout(() => {
+      setSlowNotice('Connecting to the sign-in service...');
     }, 4000);
 
     try {
       const result = await loginUser(cleanUser, password);
       setPassword('');
       if (result.success && result.user) {
-        toast.clearAll();
+        if (toast?.clearAll) toast.clearAll();
         onLoginSuccess(result.user);
       } else {
         setErrorMessage(result.error || 'Login failed. Please check your credentials.');
@@ -98,20 +88,8 @@ export default function Login({ onLoginSuccess }) {
       if (err.response?.status === 429) {
         setErrorMessage(
           err.response?.data?.error ||
-          'Too many login attempts. Please wait a moment before trying again.'
+          'Too many failed attempts. Please wait 15 minutes before retrying.'
         );
-      } else if (err.response?.status === 401) {
-        setErrorMessage(
-          err.response?.data?.error ||
-          'Invalid username or password. Please verify your credentials or contact your administrator.'
-        );
-      } else if (
-        err.response?.status === 500 &&
-        (typeof err.response?.data === 'string' ||
-         err.response?.headers?.['content-type']?.includes('text/plain') ||
-         err.isProxyPlainTextError)
-      ) {
-        setErrorMessage("Can't reach the sign-in service. Please try again.");
       } else {
         setErrorMessage(
           err.response?.data?.error ||
@@ -119,230 +97,224 @@ export default function Login({ onLoginSuccess }) {
         );
       }
     } finally {
-      if (slowNoticeTimerRef.current) {
-        clearTimeout(slowNoticeTimerRef.current);
-        slowNoticeTimerRef.current = null;
-      }
+      clearTimeout(slowTimer);
+      setSlowNotice('');
       setIsLoading(false);
-      setShowSlowNotice(false);
     }
   };
 
   return (
-    <div className="login-page rexa-portal-viewport sap-login-viewport">
-      {/* High-Resolution Canva Background Template */}
-      <img
-        src={sapPortalBgTemplate}
-        alt=""
-        className="rexa-portal-bg-img"
-        aria-hidden="true"
-      />
+    <div className="login-page">
+      {/* ================= LEFT BRAND PANEL (55%) ================= */}
+      <section className="lg-brand-panel" aria-label="Brand Overview">
+        {/* Glows and Geometric Pattern Overlay */}
+        <div className="lg-radial-glow-1" aria-hidden="true" />
+        <div className="lg-radial-glow-2" aria-hidden="true" />
+        <div className="lg-geometric-overlay" aria-hidden="true" />
 
-      {/* =====================================================================
-          LEFT SECTION (~58%): Typography & Translucent Module Cards
-         ===================================================================== */}
-      <div className="rexa-portal-left sap-login-left-panel">
-        <div className="sap-login-bg-overlay" style={{ display: 'none' }} aria-hidden="true" />
+        <div className="lg-brand-top">
+          <div className="lg-logo-badge">
+            <img
+              src={rexaedgeLogo}
+              alt="RexaEdge"
+              className="lg-logo-img"
+            />
+          </div>
+        </div>
 
-        <div className="rexa-portal-left-content">
-          <h1 className="rexa-portal-heading">SAP Operations Hub</h1>
-          <div className="rexa-portal-tagline">Automate  •  Integrate  •  Execute</div>
-          <p className="rexa-portal-desc">
-            A role-based SAP automation platform to streamline<br />
-            key business processes and improve productivity.
+        <div className="lg-brand-content">
+          <h1 className="lg-headline">SAP operations hub</h1>
+          <div className="lg-tagline">Automate. Integrate. Execute.</div>
+          <p className="lg-description">
+            Unified enterprise gateway for streamlined SAP workflows and intelligent master data management.
           </p>
 
-          <div className="rexa-portal-tiles" aria-hidden="true">
-            <div className="rexa-glass-tile">
-              <Settings className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
-              <div className="rexa-glass-tile-label">
-                Production<br />Planning
+          {/* Compact Feature Chips Row */}
+          <div className="lg-chips-row" role="list">
+            <div className="lg-chip" role="listitem">
+              <Layers size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
+              <span>Production planning</span>
+            </div>
+            <div className="lg-chip" role="listitem">
+              <Package size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
+              <span>Master data</span>
+            </div>
+            <div className="lg-chip" role="listitem">
+              <ShoppingCart size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
+              <span>Procurement</span>
+            </div>
+          </div>
+
+          {/* Floating Product Preview Card (CSS/SVG only, aria-hidden) */}
+          <div className="lg-preview-container" aria-hidden="true">
+            {/* Background card with table rows */}
+            <div className="lg-preview-card-back">
+              <div className="lg-preview-mock-row">
+                <span className="lg-preview-mock-cell lg-cell-lg" />
+                <span className="lg-preview-mock-cell lg-cell-sm" />
+                <span className="lg-preview-mock-cell lg-cell-md" />
+              </div>
+              <div className="lg-preview-mock-row">
+                <span className="lg-preview-mock-cell lg-cell-md" />
+                <span className="lg-preview-mock-cell lg-cell-lg" />
+                <span className="lg-preview-mock-cell lg-cell-sm" />
+              </div>
+              <div className="lg-preview-mock-row">
+                <span className="lg-preview-mock-cell lg-cell-sm" />
+                <span className="lg-preview-mock-cell lg-cell-md" />
+                <span className="lg-preview-mock-cell lg-cell-lg" />
               </div>
             </div>
 
-            <div className="rexa-glass-tile">
-              <Layers className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
-              <div className="rexa-glass-tile-label">
-                Master<br />Data
+            {/* Foreground glassy BOM flow card */}
+            <div className="lg-preview-card-front">
+              <div className="lg-preview-header">
+                <span className="lg-preview-title">BOM creation workflow</span>
+                <span className="lg-preview-badge">
+                  <CheckCircle2 size={12} strokeWidth={2.5} />
+                  <span>Completed</span>
+                </span>
               </div>
-            </div>
-
-            <div className="rexa-glass-tile">
-              <ShoppingCart className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
-              <div className="rexa-glass-tile-label">
-                Procurement<br />(P2P)
+              <div className="lg-preview-progress-track">
+                <div className="lg-preview-progress-fill" />
               </div>
-            </div>
-
-            <div className="rexa-glass-tile">
-              <LayoutGrid className="rexa-glass-tile-icon" size={30} strokeWidth={2.2} />
-              <div className="rexa-glass-tile-label">
-                More<br />Modules
+              <div className="lg-preview-steps">
+                <div className="lg-preview-step">
+                  <span className="lg-preview-step-dot lg-step-done" />
+                  <span>Upload</span>
+                </div>
+                <div className="lg-preview-step">
+                  <span className="lg-preview-step-dot lg-step-done" />
+                  <span>Validate</span>
+                </div>
+                <div className="lg-preview-step">
+                  <span className="lg-preview-step-dot lg-step-done" />
+                  <span>Create</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'none' }} aria-hidden="true">
-          <p>SAP modules, one portal.</p>
-          <p>Work in the SAP modules your administrator has enabled for you, with access set per module and per feature.</p>
+        <div className="lg-brand-footer">
+          RexaEdge ERP Platform · Next IT Point Enterprise Systems
         </div>
-      </div>
+      </section>
 
-      {/* =====================================================================
-          RIGHT SECTION (~42%): Large White Sign-In Card
-         ===================================================================== */}
-      <div className="rexa-portal-right sap-login-right-panel">
-        <NotificationPlacementProvider placement="inline">
-          {/* Overlay Error Alert (zero layout shift, positioned above logo) */}
+      {/* ================= RIGHT FORM PANEL (45%) ================= */}
+      <main className="lg-form-panel">
+        <div className="lg-card-wrapper">
+          {/* Absolutely positioned error overlay above the card (0px layout shift) */}
           {errorMessage && (
-            <div className="lg-error-panel sap-login-panel-error" role="alert" aria-live="assertive">
-              <div className="lg-error-alert">
-                <div className="sap-login-error-alert" style={{ display: 'none' }} aria-hidden="true" />
-                <AlertCircle size={18} className="lg-error-icon sap-login-error-icon" aria-hidden="true" />
-                <div className="lg-error-text sap-login-error-text">{errorMessage}</div>
-                <button
-                  type="button"
-                  className="lg-error-close sap-login-error-close"
-                  onClick={clearErrors}
-                  aria-label="Dismiss error"
-                  title="Dismiss error"
-                >
-                  <X size={15} />
-                </button>
-              </div>
+            <div className="lg-error-overlay" role="alert">
+              <AlertCircle size={16} strokeWidth={2} className="lg-error-icon" aria-hidden="true" />
+              <span className="lg-error-text">{errorMessage}</span>
+            </div>
+          )}
+          {slowNotice && !errorMessage && (
+            <div className="lg-error-overlay lg-slow-notice" role="status">
+              <Loader2 size={16} strokeWidth={2} className="lg-spinner" aria-hidden="true" />
+              <span className="lg-error-text">{slowNotice}</span>
             </div>
           )}
 
-          {/* ONE WHITE CARD ONLY (NO INNER BOX / NO BORDERED PANEL) */}
           <div className="lg-card">
-            {/* Logo container: ~160px wide, centered */}
-            <div className="lg-logo-wrap sap-login-brand-center">
-              <img
-                src={rexaedgeLogo}
-                alt="RexaEdge"
-                className="lg-logo-img sap-login-brand-logo-img"
-              />
+            <div className="lg-card-header">
+              <div className="lg-icon-tile" aria-hidden="true">
+                <ShieldCheck size={22} strokeWidth={2} />
+              </div>
+              <h2 className="lg-card-title">Welcome back</h2>
+              <p className="lg-card-subtitle">
+                Sign in to access your SAP operations
+              </p>
             </div>
 
-            {/* Welcome text below logo: "Welcome to the RexaEdge", 20px semi-bold navy, centered */}
-            <div className="lg-welcome sap-login-header-direct">
-              <h2 className="lg-welcome-title">Welcome to the RexaEdge</h2>
-            </div>
-
-            {/* Left-Aligned Sign-In Heading & Supporting Subtitle */}
-            <div className="lg-intro">
-            
-              <h1 className="lg-title"> Sign In</h1>
-              <p className="lg-subtitle">Access your SAP operations and automations</p>
-            </div>
-
-            {/* Sign-In Form (Directly inside single white card, no inner box) */}
-            <form onSubmit={handleSubmit} className="lg-form">
-              {/* Email Address Field */}
-              <div className="lg-field">
-                <label htmlFor="sap-email" className="lg-label">
-                  Email Address
+            <form onSubmit={handleSubmit} className="lg-form" noValidate>
+              {/* Email field */}
+              <div className="lg-field-group">
+                <label htmlFor="login-email" className="lg-label">
+                  Email address
                 </label>
-                <div className="lg-input-wrap sap-input-group">
-                  <span className="lg-input-icon sap-input-icon-left" aria-hidden="true">
-                    <Mail size={18} strokeWidth={1.8} />
-                  </span>
+                <div className="lg-input-wrap">
+                  <Mail size={16} strokeWidth={1.75} className="lg-input-icon" aria-hidden="true" />
                   <input
+                    id="login-email"
                     ref={usernameInputRef}
-                    id="sap-email"
-                    name="username"
                     type="email"
-                    className="lg-input sap-input"
-                    placeholder="e.g. user@nextitpoint.com"
-                    aria-label="Email Address"
                     value={username}
                     onChange={handleEmailChange}
-                    disabled={isLoading}
+                    placeholder="Ex. user@nextitpoint.com"
                     autoComplete="username"
                     inputMode="email"
-                    autoFocus
                     required
+                    disabled={isLoading}
+                    className="lg-input"
                   />
                 </div>
               </div>
 
-              {/* Password Field */}
-              <div className="lg-field lg-field-last">
-                <label htmlFor="sap-password" className="lg-label">
+              {/* Password field */}
+              <div className="lg-field-group">
+                <label htmlFor="login-password" className="lg-label">
                   Password
                 </label>
                 <div className="lg-input-wrap">
-                  <span className="lg-input-icon sap-password-left-icon" aria-hidden="true">
-                    <Lock size={18} strokeWidth={1.8} />
-                  </span>
+                  <Lock size={16} strokeWidth={1.75} className="lg-input-icon" aria-hidden="true" />
                   <input
+                    id="login-password"
                     ref={passwordInputRef}
-                    id="sap-password"
-                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    className="lg-input lg-password-input sap-input"
-                    placeholder="Enter your password"
-                    aria-label="Password"
                     value={password}
                     onChange={handlePasswordChange}
-                    disabled={isLoading}
+                    placeholder="Enter your password"
                     autoComplete="current-password"
                     required
+                    disabled={isLoading}
+                    className="lg-input lg-input-password"
                   />
                   <button
                     type="button"
                     onClick={togglePasswordVisibility}
-                    className="lg-pwd-toggle sap-password-toggle-btn"
+                    disabled={isLoading}
+                    className="lg-toggle-eye"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showPassword}
-                    title={showPassword ? 'Hide password' : 'Show password'}
                     tabIndex={0}
                   >
-                    {showPassword ? <Eye size={18} strokeWidth={1.8} /> : <EyeOff size={18} strokeWidth={1.8} />}
+                    {showPassword ? (
+                      <EyeOff size={16} strokeWidth={1.75} />
+                    ) : (
+                      <Eye size={16} strokeWidth={1.75} />
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Prominent Sign In Button: 52px high, radius 10px, orange gradient, Lucide LogIn icon BEFORE text */}
-              <span className="sap-btn-navy-login" style={{ display: 'none' }} aria-hidden="true" />
+              {/* Submit button */}
               <button
                 type="submit"
-                className="lg-btn"
                 disabled={isLoading}
+                className="lg-submit-btn"
               >
                 {isLoading ? (
                   <>
-                    <span className="lg-spinner sap-spinner" aria-hidden="true" />
+                    <Loader2 size={18} strokeWidth={2} className="lg-spinner" aria-hidden="true" />
                     <span>Signing in...</span>
                   </>
                 ) : (
                   <>
-                    <LogIn size={20} strokeWidth={2} className="lg-btn-icon" aria-hidden="true" />
-                    <span>Sign In</span>
+                    <span className="lg-btn-text">Sign in</span>
+                    <ArrowRight size={18} strokeWidth={2} className="lg-btn-icon" aria-hidden="true" />
                   </>
                 )}
               </button>
-
-              {/* Slow Connection Notice */}
-              {showSlowNotice && (
-                <div className="lg-slow-notice">
-                  Connecting to the sign-in service...
-                </div>
-              )}
             </form>
-
-            {/* Hidden metadata for test suites */}
-            <div style={{ display: 'none' }} aria-hidden="true">
-              <div className="sap-login-canvas sap-login-body-direct" />
-              <p>Accounts are created and managed by your administrators.</p>
-              <footer className="rexa-footer sap-login-footer">
-                <strong>© {new Date().getFullYear()} RexaEdge · a Product of Next IT Point</strong>
-              </footer>
-            </div>
           </div>
-        </NotificationPlacementProvider>
-      </div>
+
+          <div className="lg-footer-copy">
+            © 2026 RexaEdge. All rights reserved.
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

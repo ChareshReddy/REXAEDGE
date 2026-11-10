@@ -1,3 +1,4 @@
+import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
 import React, { useState, useRef, useEffect } from 'react';
@@ -12,6 +13,7 @@ import {
   XCircle,
   Play,
   RefreshCw,
+  Search,
   ShieldCheck,
   ChevronLeft,
   ChevronDown,
@@ -27,9 +29,12 @@ import {
   BulkWorkflowSteps,
   BulkFileInfoBar,
   BulkJobProgressCard,
-  CREATE_BULK_COLUMNS
+  CREATE_BULK_COLUMNS,
+  BulkStatTiles
 } from './BulkBomShared';
 import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
+import { SearchInput } from './ui/search-input';
+import { FormSection } from './ui/form-layout';
 import { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   preflightCreateBoms,
@@ -87,6 +92,8 @@ export default function BulkCreateBomView({
   };
   const [expandedMessageBoms, setExpandedMessageBoms] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Reset pagination & message expand when preflightReport changes
   useEffect(() => {
@@ -221,11 +228,28 @@ export default function BulkCreateBomView({
     };
   }, []);
 
-  // Poll a running background job every 2 seconds
+  const updateJobUrl = (jobId) => {
+    try {
+      if (jobId) {
+        sessionStorage.setItem('rexa_create_bulk_job_id', jobId);
+        const url = new URL(window.location.href);
+        url.searchParams.set('jobId', jobId);
+        window.history.replaceState({}, '', url);
+      } else {
+        sessionStorage.removeItem('rexa_create_bulk_job_id');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('jobId');
+        window.history.replaceState({}, '', url);
+      }
+    } catch (_) {}
+  };
+
+  // Poll a running background job every 3 seconds
   const startJobPolling = (jobId, type) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     setActiveJobId(jobId);
     setActiveJobType(type);
+    updateJobUrl(jobId);
 
     pollIntervalRef.current = setInterval(async () => {
       try {
@@ -259,6 +283,7 @@ export default function BulkCreateBomView({
           pollIntervalRef.current = null;
           setActiveJobId(null);
           setIsCancelling(false);
+          updateJobUrl(null);
 
           if (type === 'create_preflight') {
             setIsValidating(false);
@@ -305,7 +330,7 @@ export default function BulkCreateBomView({
       } catch (pollErr) {
         console.warn('Job polling warning:', pollErr.message);
       }
-    }, 2000);
+    }, 3000);
   };
 
   // Reconnect to in-flight active job on page mount/reload
@@ -313,6 +338,39 @@ export default function BulkCreateBomView({
     let isMounted = true;
     const checkActiveJob = async () => {
       try {
+        let savedJobId = null;
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          savedJobId = urlParams.get('jobId') || sessionStorage.getItem('rexa_create_bulk_job_id');
+        } catch (_) {}
+
+        if (savedJobId) {
+          const jobRes = await getBomJob(savedJobId);
+          if (isMounted && jobRes && jobRes.success && jobRes.job) {
+            const job = jobRes.job;
+            const isFinished = [
+              'COMPLETED',
+              'COMPLETED_WITH_ERRORS',
+              'CANCELLED',
+              'STOPPED_ON_CONNECTION_DROP',
+              'FAILED',
+              'INTERRUPTED'
+            ].includes(job.status);
+
+            if (!isFinished) {
+              if (job.type === 'create_preflight') {
+                setIsValidating(true);
+                startJobPolling(job.jobId, 'create_preflight');
+                return;
+              } else if (job.type === 'create_bulk') {
+                setIsExecuting(true);
+                startJobPolling(job.jobId, 'create_bulk');
+                return;
+              }
+            }
+          }
+        }
+
         const res = await getActiveBomJob();
         if (!isMounted || !res.success || !res.hasActiveJob || !res.job) return;
         const job = res.job;
@@ -350,6 +408,7 @@ export default function BulkCreateBomView({
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
+    updateJobUrl(null);
     setFile(null);
     setFileName('');
     setFileBase64('');
@@ -365,6 +424,51 @@ export default function BulkCreateBomView({
     setExecutionReport(null);
     setActiveStep(1);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRetryFailedRows = async () => {
+    if (!executionReport || !executionReport.results) return;
+    const failedResults = executionReport.results.filter(
+      (r) => r.status === 'FAILED' || r.status === 'ERROR'
+    );
+    const failedSequenceNums = new Set(failedResults.map((r) => String(r.sequenceNum || r.id)));
+    const failedItems = parsedBoms.filter((b) =>
+      failedSequenceNums.has(String(b.sequenceNum || b.id))
+    );
+
+    const itemsToRetry = failedItems.length > 0
+      ? failedItems
+      : failedResults.map((r) => r.input || r);
+
+    if (itemsToRetry.length === 0) return;
+
+    setParsedBoms(itemsToRetry);
+    setExecutionReport(null);
+    setActiveStep(3);
+    setIsExecuting(true);
+    setJobProgress({
+      current: 0,
+      total: itemsToRetry.length,
+      percent: 0,
+      successCount: 0,
+      failedCount: 0,
+      skippedCount: 0,
+      notProcessedCount: 0
+    });
+
+    try {
+      const res = await startBomJob({
+        type: 'create_bulk',
+        items: itemsToRetry,
+        options: { fileName: fileName || 'retry_failed_rows.xlsx' }
+      });
+      if (res.success && res.jobId) {
+        startJobPolling(res.jobId, 'create_bulk');
+      }
+    } catch (err) {
+      setParseError(err.message || 'Failed to retry failed rows.');
+      setIsExecuting(false);
+    }
   };
 
   const handleFileProcess = (fileObj) => {
@@ -561,16 +665,35 @@ export default function BulkCreateBomView({
   const totalComponentRows = allBoms.reduce((acc, b) => acc + (b.components?.length || 1), 0);
   const isPaginated = totalComponentRows > 300;
   const pageSize = 50;
-  const totalPages = isPaginated ? Math.ceil(allBoms.length / pageSize) : 1;
+
+  const filteredBoms = allBoms.filter((bom) => {
+    if (statusFilter === 'ready' && bom.status !== 'Ready') return false;
+    if (statusFilter === 'invalid' && bom.status !== 'Invalid' && !(bom.errors?.length > 0)) return false;
+    if (statusFilter === 'skipped' && !bom.status?.includes('skipped') && !bom.status?.includes('exists')) return false;
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      const matchMat = (bom.material || '').toLowerCase().includes(term);
+      const matchPlant = (bom.plant || '').toLowerCase().includes(term);
+      const matchComp = (bom.components || []).some((c) =>
+        (c.component || '').toLowerCase().includes(term)
+      );
+      if (!matchMat && !matchPlant && !matchComp) return false;
+    }
+    return true;
+  });
+
+  const totalPages = isPaginated ? Math.ceil(filteredBoms.length / pageSize) : 1;
   const displayedBoms = isPaginated
-    ? allBoms.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : allBoms;
+    ? filteredBoms.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : filteredBoms;
 
   return (
     <div className="fiori-launchpad-root">
       {/* Page Header */}
       <FioriPageHeader
         title="Create Bulk BOM"
+        extraTitleContent={<SingleBulkSwitch operation="create" mode="bulk" />}
         subtitle="Mass create Bills of Materials from an Excel or TSV spreadsheet"
         onBack={onBack}
         backTitle={isLocked ? 'Operation in progress' : 'Back to Create BOM'}
@@ -579,7 +702,7 @@ export default function BulkCreateBomView({
         breadcrumbs={getBreadcrumbTrail('bulk_create_bom', { onNavigateHome, onNavigateProducts, onNavigateBom, onBack }, { isLocked })}
       />
 
-      <BulkFlowContainer>
+      <BulkFlowContainer style={{ paddingTop: 8, paddingBottom: 24, gap: 14 }}>
         {/* Workflow Steps Indicator */}
         <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
@@ -668,7 +791,7 @@ export default function BulkCreateBomView({
               {executionReport.notProcessedCount > 0 && (
                 <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
                   <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Not Processed</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#f97316' }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#02579A' }}>
                     {executionReport.notProcessedCount}
                   </div>
                 </div>
@@ -676,22 +799,36 @@ export default function BulkCreateBomView({
             </div>
 
             {/* Results Table */}
-            <div className="sap-card" style={{ padding: 20, marginBottom: 24 }}>
-              <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h3 className="sap-section-header" style={{ margin: 0 }}>
-                  Execution Details ({executionReport.results?.length || 0})
-                </h3>
-                <button
-                  type="button"
-                  className="sap-button sap-btn sap-btn-secondary"
-                  onClick={handleExportResults}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
-                >
-                  <Download size={15} />
-                  <span>Export Results</span>
-                </button>
-              </div>
-
+            <FormSection
+              title={`Execution Details (${executionReport.results?.length || 0})`}
+              description="Batch processing results and itemized execution status"
+              tintedHeader
+              actions={
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {executionReport.failedCount > 0 && (
+                    <button
+                      type="button"
+                      className="sap-button sap-btn sap-btn-secondary"
+                      onClick={handleRetryFailedRows}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+                    >
+                      <RefreshCw size={15} />
+                      <span>Retry Failed Rows ({executionReport.failedCount})</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="sap-button sap-btn sap-btn-secondary"
+                    onClick={handleExportResults}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+                  >
+                    <Download size={15} />
+                    <span>Export Results</span>
+                  </button>
+                </div>
+              }
+              className="mb-6"
+            >
               <div className="sap-table-container fiori-table-wrapper" style={{ maxHeight: 380 }}>
                 <table className="sap-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
                   <colgroup>
@@ -754,7 +891,7 @@ export default function BulkCreateBomView({
                   </tbody>
                 </table>
               </div>
-            </div>
+            </FormSection>
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 12 }}>
@@ -762,7 +899,7 @@ export default function BulkCreateBomView({
                 type="button"
                 className="sap-button primary"
                 onClick={onBack}
-                style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
+                style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
               >
                 Return to Launchpad
               </button>
@@ -770,7 +907,7 @@ export default function BulkCreateBomView({
                 type="button"
                 className="sap-button"
                 onClick={handleReset}
-                style={{ height: 30, padding: '0 20px', fontSize: 'var(--sap-size-button)' }}
+                style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
               >
                 Upload Another File
               </button>
@@ -779,25 +916,34 @@ export default function BulkCreateBomView({
         ) : (
           /* UPLOAD & PREVIEW VIEW */
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: allBoms.length > 0 ? 16 : 24 }}>
-            {allBoms.length === 0 ? (
-              /* Shared Bulk Upload Panel (shown before upload) */
+            {activeStep === 1 || allBoms.length === 0 ? (
+              /* Shared Bulk Upload Panel (shown in Step 1) */
               <BulkUploadPanel
                 title="Upload Spreadsheet"
                 helperText="Upload a spreadsheet to create multiple Bills of Materials in SAP."
                 acceptedFormats=".xlsx,.xls,.tsv,.txt"
-                supportedFormatsText="Supports tab-separated text saved as .XLS, or Excel .xlsx / .xls"
+                supportedFormatsText="Accepted formats: .xlsx, .xls, .tsv, .txt"
                 fileName={fileName}
+                file={file}
                 onFile={handleFileProcess}
                 loading={isValidating}
                 loadingText="Validating your data in SAP..."
                 disabled={isLocked}
                 templateAction={{
-                  label: 'Download Template',
+                  label: 'Download template',
                   onClick: handleDownloadTemplate,
                   disabled: isLocked
                 }}
+                columns={CREATE_BULK_COLUMNS}
+                rowLimitText="Maximum 500 BOMs per job (batch)."
+                tipText="Materials and components must exist in SAP. Plant codes must be 4 digits. Item category defaults to L (Stock)."
                 error={parseError}
                 onClear={handleReset}
+                onContinue={() => {
+                  if (allBoms.length > 0) {
+                    setActiveStep(2);
+                  }
+                }}
               />
             ) : (
               <>
@@ -814,46 +960,125 @@ export default function BulkCreateBomView({
                   executionLabel="Creating BOMs in SAP"
                 />
 
+                {/* Summary Stat Tiles */}
+                <BulkStatTiles
+                  total={allBoms.length}
+                  valid={readyCount}
+                  errors={invalidCount}
+                  warnings={skippedCount}
+                  totalLabel="Total BOMs"
+                  validLabel="Ready"
+                  errorsLabel="Errors"
+                  warningsLabel="Skipped"
+                  activeFilter={statusFilter}
+                  onFilterChange={(filter) => {
+                    setStatusFilter(filter);
+                    setCurrentPage(1);
+                  }}
+                  style={{ marginBottom: 16 }}
+                />
+
 
 
                 
 
                 {/* PRE-FLIGHT PREVIEW TABLE */}
-                <div className="sap-card" style={{ padding: 20 }}>
-                  {/* Header & Controls */}
-                  <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                      <h3 className="sap-section-header" style={{ margin: 0 }}>
-                        Data Preview
-                      </h3>
-                      <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginTop: 2 }}>
-                        {allBoms.length} BOM(s) found across {totalComponentRows} component row(s)
-                      </div>
-                    </div>
+                <FormSection
+                  title="Data Preview"
+                  description={`${allBoms.length} BOM(s) found across ${totalComponentRows} component row(s)`}
+                  tintedHeader
+                  className="w-full"
+                >
+                  {/* Controls Toolbar */}
+                  <div className="sap-toolbar rx-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      {/* Search Bar */}
+                      <SearchInput
+                        placeholder="Search material or plant..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        onClear={() => {
+                          setSearchTerm('');
+                          setCurrentPage(1);
+                        }}
+                        isTable
+                        wrapperStyle={{ width: 220 }}
+                      />
 
-                    {fileName && (
-                      <span
-                        className="sap-file-badge"
+                      {/* Filter Pills */}
+                      <div
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 6,
-                          padding: '4px 12px',
-                          background: 'var(--sap-surface-subtle, #f1f5f9)',
-                          border: '1px solid var(--sap-border-subtle, #cbd5e1)',
-                          borderRadius: '6px',
-                          fontSize: 12.5,
-                          fontWeight: 600,
-                          color: 'var(--sap-text-dark, #0f2744)'
+                          padding: '2px',
+                          backgroundColor: 'var(--color-blue-200)',
+                          borderRadius: 'var(--radius-md, 8px)',
+                          border: '1px solid var(--color-border, #D9E2EC)'
                         }}
-                        title={fileName}
                       >
-                        <FileSpreadsheet size={15} color="var(--sap-primary, #0070f2)" style={{ flexShrink: 0 }} />
-                        <span style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {fileName}
-                        </span>
+                        {[
+                          { id: 'all', label: `All (${allBoms.length})` },
+                          { id: 'ready', label: `Ready (${readyCount})` },
+                          { id: 'invalid', label: `Errors (${invalidCount})` }
+                        ].map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => {
+                              setStatusFilter(f.id);
+                              setCurrentPage(1);
+                            }}
+                            style={{
+                              height: 26,
+                              padding: '0 8px',
+                              borderRadius: 'var(--radius-sm, 6px)',
+                              border: 'none',
+                              fontSize: '11.5px',
+                              fontWeight: statusFilter === f.id ? 600 : 500,
+                              backgroundColor: statusFilter === f.id ? 'var(--color-surface, #FFFFFF)' : 'transparent',
+                              color: statusFilter === f.id ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
+                              boxShadow: statusFilter === f.id ? 'var(--shadow-sm)' : 'none',
+                              cursor: 'pointer',
+                              transition: 'all var(--transition-fast, 150ms ease)'
+                            }}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                        Showing {filteredBoms.length} of {allBoms.length}
                       </span>
-                    )}
+                      {fileName && (
+                        <span
+                          className="sap-file-badge"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '4px 10px',
+                            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
+                            border: '1px solid var(--color-border, #D9E2EC)',
+                            borderRadius: 'var(--radius-sm, 6px)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--color-navy-900, #00204E)'
+                          }}
+                          title={fileName}
+                        >
+                          <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
+                          <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {fileName}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Pagination Controls if > 300 component rows */}
@@ -923,7 +1148,7 @@ export default function BulkCreateBomView({
                         <col style={{ width: '14.5%' }} />
                       </colgroup>
                       <thead>
-                        <tr style={{ whiteSpace: 'nowrap' }}>
+                        <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--color-blue-200)' }}>
                           <th className="col-seq" title="Sequence Number" style={{ width: '4%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Seq</th>
                           <th className="col-material" title="Material Number" style={{ width: '21%', padding: '6px 6px', whiteSpace: 'nowrap' }}>Material</th>
                           <th className="col-plant" title="Plant" style={{ width: '4.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Plant</th>
@@ -1312,7 +1537,7 @@ export default function BulkCreateBomView({
                 <div
                   className="bulk-preview-sticky-footer sap-card-action-row"
                   style={{
-                    borderTop: '1px solid var(--sap-border, #FED7AA)',
+                    borderTop: '1px solid var(--sap-border, #D9E2EC)',
                     paddingTop: 16,
                     marginTop: 16,
                     display: 'flex',
@@ -1353,7 +1578,7 @@ export default function BulkCreateBomView({
                       className="sap-button"
                       disabled={isLocked}
                       onClick={isLocked ? undefined : handleReset}
-                      style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
+                      style={{ height: 'var(--size-button-height, 40px)', padding: '0 18px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
                     >
                       Clear & Upload Another
                     </button>
@@ -1364,12 +1589,13 @@ export default function BulkCreateBomView({
                       onClick={handleValidateWithSap}
                       disabled={isLocked || allBoms.length === 0}
                       style={{
-                        height: 30,
+                        height: 'var(--size-button-height, 40px)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        padding: '0 18px',
-                        fontSize: 'var(--sap-size-button)'
+                        padding: '0 20px',
+                        fontSize: 'var(--font-size-13, 13px)',
+                        borderRadius: 'var(--radius-md, 8px)'
                       }}
                     >
                       {isValidating ? (
@@ -1390,7 +1616,7 @@ export default function BulkCreateBomView({
                       className="sap-button primary create-ready-boms-btn"
                       disabled={!hasValidated || readyCount === 0 || isLocked}
                       onClick={handleOpenConfirm}
-                      style={{ height: 30, padding: '0 24px', fontSize: 'var(--sap-size-button)' }}
+                      style={{ height: 'var(--size-button-height, 40px)', padding: '0 24px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)', fontWeight: 600 }}
                     >
                       {isExecuting ? (
                         <>
@@ -1407,7 +1633,7 @@ export default function BulkCreateBomView({
                     </button>
                   </div>
                 </div>
-              </div>
+              </FormSection>
             </>
           )}
           </div>
@@ -1476,7 +1702,7 @@ export default function BulkCreateBomView({
                   <input
                     type="text"
                     className="sap-form-input"
-                    placeholder="e.g. Approved Engineering Change ECO-1049"
+                    placeholder="Ex. Approved Engineering Change ECO-1049"
                     disabled={isExecuting}
                     value={businessReason}
                     onChange={(e) => setBusinessReason(e.target.value)}

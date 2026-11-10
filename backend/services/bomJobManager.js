@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { auditLogger } from './auditLog.js';
 import { parseBomSpreadsheet } from './bomSpreadsheetParser.js';
@@ -9,17 +6,19 @@ import {
   rfcCopyBom,
   rfcBatchValidateBoms,
   resolveTargetAlternativeForCopy,
-  resolveSourceAlternativeForCopy
+  resolveSourceAlternativeForCopy,
+  RFC_PRIORITY
 } from './sapRfcClient.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const JOB_SUMMARIES_FILE = path.join(__dirname, '..', 'mock', 'bomJobSummaries.json');
+import { getCircuitBreaker } from './serverHealthService.js';
+import { bomJobRepository } from './bomJobRepository.js';
+import { bomLockService } from './bomLockService.js';
 
 export const DEFAULT_MAX_BOMS = 500;
-export const MAX_BOMS = process.env.BOM_BULK_MAX_LIMIT
-  ? parseInt(process.env.BOM_BULK_MAX_LIMIT, 10) || DEFAULT_MAX_BOMS
-  : DEFAULT_MAX_BOMS;
+export const MAX_BOMS = 500; // Strict Stage 4 limit: max 500 rows per job
+export const CHUNK_SIZE = 10; // Strict Stage 4 chunk size: 10 rows per chunk
+
+export const MAX_RUNNING_PER_USER = 1;
+export const MAX_RUNNING_PER_SERVER = 3;
 
 /**
  * Detects if an error is caused by a broken network interface, SAProuter timeout, or socket termination.
@@ -35,6 +34,7 @@ export function isSapConnectionDrop(err) {
     code === 'ECONNABORTED' ||
     code === 'ETIMEDOUT' ||
     code === 'EPIPE' ||
+    code === 'SERVER_UNAVAILABLE' ||
     msg.includes('saprouter rejected') ||
     msg.includes('return code -5') ||
     msg.includes('timed out') ||
@@ -43,130 +43,125 @@ export function isSapConnectionDrop(err) {
     msg.includes('connection closed') ||
     msg.includes('could not establish connection') ||
     msg.includes('partner not reached') ||
-    msg.includes('broken pipe')
+    msg.includes('broken pipe') ||
+    msg.includes('server is not reachable')
   );
 }
 
 class BomJobManager {
   constructor() {
-    this.jobs = new Map(); // jobId -> Job Object
-    this.activeUserServerJobs = new Map(); // `${userId}:${serverId}` -> jobId
-    this.persistedSummaries = [];
-    this.loadPersistedSummaries();
+    this.jobs = new Map(); // jobId -> Job Object (in-memory cache)
+    this.queuedJobs = []; // Queue of jobIds waiting for capacity (FIFO)
+    this.repository = bomJobRepository;
+    this.initialized = false;
+    this.init();
+  }
+
+  async init() {
+    try {
+      // 1. Mark interrupted jobs from any previous server run
+      await this.repository.markRunningJobsInterrupted();
+      // 2. Retention cleanup: keep results 30 days
+      await this.repository.cleanupOldJobs(30);
+      // 3. Populate in-memory map from repository
+      const existing = await this.repository.listJobs();
+      for (const job of existing) {
+        this.jobs.set(job.jobId, { ...job });
+        if (job.status === 'QUEUED') {
+          this.queuedJobs.push(job.jobId);
+        }
+      }
+      this.initialized = true;
+      // 4. Try processing queued jobs if any
+      this.processQueue();
+    } catch (err) {
+      console.warn('[bomJobManager] Initialization warning:', err.message);
+    }
   }
 
   loadPersistedSummaries() {
-    try {
-      if (fs.existsSync(JOB_SUMMARIES_FILE)) {
-        const raw = fs.readFileSync(JOB_SUMMARIES_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          let hasInterrupted = false;
-          this.persistedSummaries = parsed;
-          // Populate in-memory map from summaries, marking any interrupted jobs
-          for (const summary of parsed) {
-            if (summary.status === 'RUNNING' || summary.status === 'QUEUED') {
-              hasInterrupted = true;
-              summary.status = 'INTERRUPTED';
-              summary.message =
-                'Job was interrupted by a server restart. Execution was stopped and will not resume automatically.';
-              summary.updatedAt = new Date().toISOString();
-              summary.completedAt = summary.completedAt || new Date().toISOString();
+    const list = this.repository._loadFileJobs();
+    this.persistedSummaries = list;
+    for (const summary of list) {
+      if (summary.status === 'RUNNING' || summary.status === 'running') {
+        summary.status = 'INTERRUPTED';
+        summary.message =
+          'Job was interrupted by a server restart. Execution was stopped and will not resume automatically.';
+        summary.updatedAt = new Date().toISOString();
+        summary.completedAt = summary.completedAt || new Date().toISOString();
 
-              const createdCount = (summary.results || []).filter((r) => r.status === 'SUCCESS').length;
-              const failedCount = (summary.results || []).filter((r) => r.status === 'FAILED').length;
-              summary.successCount = createdCount;
-              summary.failedCount = failedCount;
+        const createdCount = (summary.results || []).filter((r) => r.status === 'SUCCESS').length;
+        const failedCount = (summary.results || []).filter((r) => r.status === 'FAILED').length;
+        summary.successCount = createdCount;
+        summary.failedCount = failedCount;
 
-              // Fill out remaining unprocessed BOMs up to total
-              const existingCount = (summary.results || []).length;
-              const remainingCount = Math.max(0, (summary.total || 0) - existingCount);
-              summary.notProcessedCount = remainingCount;
+        const existingCount = (summary.results || []).length;
+        const remainingCount = Math.max(0, (summary.total || summary.total_rows || 0) - existingCount);
+        summary.notProcessedCount = remainingCount;
 
-              if (remainingCount > 0) {
-                summary.results = summary.results || [];
-                for (let k = existingCount; k < summary.total; k++) {
-                  summary.results.push({
-                    sequenceNum: String(k + 1),
-                    status: 'NOT_PROCESSED',
-                    message: 'Not processed: job was interrupted by server restart.'
-                  });
-                }
-              }
-            }
-            this.jobs.set(summary.jobId, { ...summary });
-          }
-
-          if (hasInterrupted) {
-            this.savePersistedSummaries();
+        if (remainingCount > 0) {
+          summary.results = summary.results || [];
+          for (let k = existingCount; k < (summary.total || summary.total_rows || 0); k++) {
+            summary.results.push({
+              sequenceNum: String(k + 1),
+              status: 'NOT_PROCESSED',
+              message: 'Not processed: job was interrupted by server restart.'
+            });
           }
         }
       }
-    } catch (err) {
-      console.warn('[bomJobManager] Could not load persisted job summaries:', err.message);
-      this.persistedSummaries = [];
+      this.jobs.set(summary.jobId || summary.id, { ...summary });
     }
+    return list;
   }
 
   savePersistedSummaries() {
-    try {
-      const dir = path.dirname(JOB_SUMMARIES_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      // Keep most recent 200 job summaries
-      const summaries = Array.from(this.jobs.values())
-        .map((j) => this.toCleanSummary(j))
-        .slice(-200);
-      fs.writeFileSync(JOB_SUMMARIES_FILE, JSON.stringify(summaries, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[bomJobManager] Failed to persist job summaries:', err.message);
-    }
+    const summaries = Array.from(this.jobs.values())
+      .map((j) => this.toCleanSummary(j))
+      .filter(Boolean)
+      .slice(-200);
+    this.persistedSummaries = summaries;
+    this.repository._saveFileJobsSync(summaries);
+    return summaries;
   }
 
   toCleanSummary(job) {
     if (!job) return null;
+    const results = job.results || [];
+    const failedRows = results
+      .filter((r) => r.status === 'FAILED' || r.status === 'ERROR')
+      .map((r) => r.input || r);
+
     return {
-      jobId: job.jobId,
-      type: job.type,
-      userId: job.userId,
+      jobId: job.jobId || job.id,
+      id: job.jobId || job.id,
+      type: job.type || job.action,
+      action: job.action || job.type,
+      userId: job.userId || job.user_id,
       userEmail: job.userEmail,
-      serverId: job.serverId,
+      serverId: job.serverId || job.server_id,
       serverName: job.serverName,
       status: job.status,
-      total: job.total || 0,
-      processed: job.processed || 0,
-      successCount: job.successCount || 0,
-      failedCount: job.failedCount || 0,
+      total: job.total || job.total_rows || 0,
+      total_rows: job.total || job.total_rows || 0,
+      processed: job.processed || job.processed_rows || 0,
+      processed_rows: job.processed || job.processed_rows || 0,
+      successCount: job.successCount || job.success_count || 0,
+      success_count: job.successCount || job.success_count || 0,
+      failedCount: job.failedCount || job.error_count || 0,
+      error_count: job.failedCount || job.error_count || 0,
       skippedCount: job.skippedCount || 0,
       notProcessedCount: job.notProcessedCount || 0,
       currentBom: job.currentBom || null,
-      results: job.results || [],
+      results,
+      failedRows,
       error: job.error || null,
       message: job.message || null,
-      createdAt: job.createdAt,
-      updatedAt: job.updatedAt,
-      completedAt: job.completedAt || null
+      createdAt: job.createdAt || job.created_at,
+      startedAt: job.startedAt || job.started_at,
+      updatedAt: job.updatedAt || job.updated_at,
+      completedAt: job.completedAt || job.finished_at || null
     };
-  }
-
-  getUserServerKey(userId, server) {
-    const sId = server?.id || server?.name || 'default';
-    const uId = userId || 'unknown_user';
-    return `${uId}:${sId}`;
-  }
-
-  getActiveJob(userId, server) {
-    const key = this.getUserServerKey(userId, server);
-    const existingJobId = this.activeUserServerJobs.get(key);
-    if (!existingJobId) return null;
-    const job = this.jobs.get(existingJobId);
-    if (job && (job.status === 'RUNNING' || job.status === 'QUEUED')) {
-      return this.toCleanSummary(job);
-    }
-    // Stale lock cleanup
-    this.activeUserServerJobs.delete(key);
-    return null;
   }
 
   getJob(jobId, requestingUser = null) {
@@ -178,16 +173,31 @@ class BomJobManager {
       const isAdmin = userObj?.role === 'admin';
       const uId = userObj?.id || userObj?.email;
       const uEmail = userObj?.email;
-      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail;
+      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId;
 
       if (!isAdmin && !isOwner) {
         const err = new Error('Forbidden: You do not have permission to access this job.');
         err.code = 'FORBIDDEN';
+        err.status = 403;
         throw err;
       }
     }
 
     return this.toCleanSummary(job);
+  }
+
+  getActiveJob(userId, server) {
+    const sId = server?.id || server?.name || 'default';
+    const uId = userId || 'unknown_user';
+
+    for (const job of this.jobs.values()) {
+      const matchUser = job.userId === uId || job.userEmail === uId;
+      const matchServer = job.serverId === sId || job.serverName === sId;
+      if (matchUser && matchServer && (job.status === 'RUNNING' || job.status === 'QUEUED')) {
+        return this.toCleanSummary(job);
+      }
+    }
+    return null;
   }
 
   cancelJob(jobId, requestingUser = null) {
@@ -201,11 +211,12 @@ class BomJobManager {
       const isAdmin = userObj?.role === 'admin';
       const uId = userObj?.id || userObj?.email;
       const uEmail = userObj?.email;
-      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail;
+      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId;
 
       if (!isAdmin && !isOwner) {
         const err = new Error('Forbidden: You do not have permission to cancel this job.');
         err.code = 'FORBIDDEN';
+        err.status = 403;
         throw err;
       }
     }
@@ -213,16 +224,29 @@ class BomJobManager {
     if (job.status !== 'RUNNING' && job.status !== 'QUEUED') {
       return { success: false, message: `Job cannot be cancelled in state ${job.status}.` };
     }
+
     job.cancelRequested = true;
     job.updatedAt = new Date().toISOString();
+
+    if (job.status === 'QUEUED') {
+      job.status = 'CANCELLED';
+      job.completedAt = new Date().toISOString();
+      job.message = 'Cancelled by user before execution started.';
+      this.repository.saveJob(job).catch(() => {});
+      const qIdx = this.queuedJobs.indexOf(jobId);
+      if (qIdx >= 0) this.queuedJobs.splice(qIdx, 1);
+      return { success: true, message: 'Queued job cancelled immediately.' };
+    }
+
+    this.repository.saveJob(job).catch(() => {});
     return {
       success: true,
-      message: 'Cancellation requested. Job will stop after current BOM finishes.'
+      message: 'Cancellation requested. Job will stop after the current chunk of 10 rows finishes.'
     };
   }
 
   /**
-   * Starts a background job. Returns immediately with the created jobId.
+   * Starts a background job. Returns immediately in < 1s with the created jobId.
    */
   startJob({
     type, // 'create_preflight' | 'create_bulk' | 'copy_validate' | 'copy_bulk'
@@ -237,48 +261,32 @@ class BomJobManager {
     const userEmail = user?.email || 'SYSTEM';
     const serverId = server?.id || server?.name || 'default';
     const serverName = server?.name || 'SAP-BOM';
-    const key = this.getUserServerKey(userId, server);
 
-    // 1. Enforce single active job per user & server
-    const active = this.getActiveJob(userId, server);
-    if (active) {
-      const err = new Error(
-        `An active bulk job (${active.jobId}) is already running on ${serverName}. Please wait for it to complete or cancel it.`
-      );
-      err.code = 'ACTIVE_JOB_EXISTS';
-      err.activeJobId = active.jobId;
-      throw err;
-    }
-
-    // 2. Parse file if fileContent provided (with zero-storage guarantee)
+    // 1. Parse file if fileContent provided
     let processedItems = [...items];
     if (fileContent) {
-      try {
-        const raw = String(fileContent);
-        const buffer = raw.startsWith('data:')
-          ? Buffer.from(raw.split(',')[1], 'base64')
-          : Buffer.from(raw, 'base64');
-        const parseInfo = parseBomSpreadsheet(buffer);
-        // Explicitly clear references to prevent memory retention
-        fileContent = null;
+      const raw = String(fileContent);
+      const buffer = raw.startsWith('data:')
+        ? Buffer.from(raw.split(',')[1], 'base64')
+        : Buffer.from(raw, 'base64');
+      const parseInfo = parseBomSpreadsheet(buffer);
+      fileContent = null;
 
-        if (parseInfo.errors && parseInfo.errors.length > 0 && (!parseInfo.boms || parseInfo.boms.length === 0)) {
-          const err = new Error(parseInfo.errors.join(' | '));
-          err.code = 'PARSE_ERROR';
-          throw err;
-        }
-        processedItems = parseInfo.boms || [];
-      } catch (parseErr) {
-        throw parseErr;
+      if (parseInfo.errors && parseInfo.errors.length > 0 && (!parseInfo.boms || parseInfo.boms.length === 0)) {
+        const err = new Error(parseInfo.errors.join(' | '));
+        err.code = 'PARSE_ERROR';
+        throw err;
       }
+      processedItems = parseInfo.boms || [];
     }
 
-    // 3. BOM Cap Validation (reject files above configurable limit, default 500)
+    // 2. Strict Stage 4 limit: max 500 rows per job
     if (processedItems.length > MAX_BOMS) {
       const err = new Error(
         `Uploaded file contains ${processedItems.length} BOMs, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split your file into smaller batches of ${MAX_BOMS} or fewer.`
       );
       err.code = 'BOM_LIMIT_EXCEEDED';
+      err.status = 400;
       err.limit = MAX_BOMS;
       err.actual = processedItems.length;
       throw err;
@@ -287,52 +295,125 @@ class BomJobManager {
     if (processedItems.length === 0) {
       const err = new Error('No BOM items provided to process.');
       err.code = 'EMPTY_PAYLOAD';
+      err.status = 400;
       throw err;
     }
+
+    // 3. Count currently running jobs for user & server
+    let userRunning = 0;
+    let serverRunning = 0;
+    for (const j of this.jobs.values()) {
+      if (j.status === 'RUNNING') {
+        if (j.userId === userId || j.userEmail === userEmail) userRunning++;
+        if (j.serverId === serverId || j.serverName === serverName) serverRunning++;
+      }
+    }
+
+    const shouldQueue = userRunning >= MAX_RUNNING_PER_USER || serverRunning >= MAX_RUNNING_PER_SERVER;
+    const initialStatus = shouldQueue ? 'QUEUED' : 'RUNNING';
 
     // 4. Create Job Record
     const jobId = `job_${type}_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
     const job = {
       jobId,
+      id: jobId,
       type,
+      action: type.includes('copy') ? 'copy' : type.includes('create') ? 'create' : 'validate',
       userId,
+      user_id: user?.id || null,
       userEmail,
       serverId,
+      server_id: server?.id || null,
       serverName,
-      status: 'QUEUED',
+      status: initialStatus,
       total: processedItems.length,
+      total_rows: processedItems.length,
       processed: 0,
+      processed_rows: 0,
       successCount: 0,
+      success_count: 0,
       failedCount: 0,
+      error_count: 0,
       skippedCount: 0,
       notProcessedCount: 0,
       currentBom: null,
       results: [],
       items: processedItems, // In-memory reference for execution loop only
+      input: {
+        fileName,
+        options,
+        total: processedItems.length
+      },
       options,
       fileName,
       createdAt: new Date().toISOString(),
+      startedAt: initialStatus === 'RUNNING' ? new Date().toISOString() : null,
       updatedAt: new Date().toISOString(),
       completedAt: null,
       cancelRequested: false,
-      error: null
+      error: null,
+      serverRef: server,
+      userRef: user
     };
 
     this.jobs.set(jobId, job);
-    this.activeUserServerJobs.set(key, jobId);
+    this.repository.saveJob(job).catch((e) => console.warn('[bomJobManager] Save error:', e.message));
 
-    // 5. Kick off asynchronous processing immediately
-    setImmediate(() => {
-      this.executeJob(jobId, server, user);
-    });
+    if (shouldQueue) {
+      this.queuedJobs.push(jobId);
+    } else {
+      setImmediate(() => {
+        this.executeJob(jobId, server, user);
+      });
+    }
 
     return {
       success: true,
       jobId,
       total: job.total,
       status: job.status,
-      message: 'Background job initialized successfully.'
+      message: shouldQueue
+        ? 'Capacity reached (max 1 running per user, 3 per server). Job queued for execution.'
+        : 'Background job initialized successfully.'
     };
+  }
+
+  async processQueue() {
+    if (this.queuedJobs.length === 0) return;
+
+    for (let i = 0; i < this.queuedJobs.length; i++) {
+      const jobId = this.queuedJobs[i];
+      const job = this.jobs.get(jobId);
+      if (!job || job.status !== 'QUEUED') {
+        this.queuedJobs.splice(i, 1);
+        i--;
+        continue;
+      }
+
+      // Check current capacity
+      let userRunning = 0;
+      let serverRunning = 0;
+      for (const j of this.jobs.values()) {
+        if (j.status === 'RUNNING') {
+          if (j.userId === job.userId || j.userEmail === job.userEmail) userRunning++;
+          if (j.serverId === job.serverId || j.serverName === job.serverName) serverRunning++;
+        }
+      }
+
+      if (userRunning < MAX_RUNNING_PER_USER && serverRunning < MAX_RUNNING_PER_SERVER) {
+        // Can run this job!
+        this.queuedJobs.splice(i, 1);
+        i--;
+        job.status = 'RUNNING';
+        job.startedAt = new Date().toISOString();
+        job.updatedAt = new Date().toISOString();
+        await this.repository.saveJob(job);
+
+        setImmediate(() => {
+          this.executeJob(job.jobId, job.serverRef, job.userRef);
+        });
+      }
+    }
   }
 
   async executeJob(jobId, server, user) {
@@ -340,10 +421,10 @@ class BomJobManager {
     if (!job) return;
 
     job.status = 'RUNNING';
+    job.startedAt = job.startedAt || new Date().toISOString();
     job.updatedAt = new Date().toISOString();
 
     const items = job.items || [];
-    const isMock = process.env.USE_MOCK_SAP === 'true';
 
     try {
       if (job.type === 'create_preflight') {
@@ -368,17 +449,15 @@ class BomJobManager {
       job.completedAt = new Date().toISOString();
       job.updatedAt = new Date().toISOString();
 
-      // Free items memory from memory map
-      delete job.items;
-
-      // Release active concurrency lock
-      const key = this.getUserServerKey(job.userId, server);
-      if (this.activeUserServerJobs.get(key) === jobId) {
-        this.activeUserServerJobs.delete(key);
+      if (job.status === 'RUNNING') {
+        job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
       }
 
-      // Persist results summary
-      this.savePersistedSummaries();
+      // Free items memory from RAM
+      delete job.items;
+
+      // Persist final state
+      await this.repository.saveJob(job);
 
       // Audit Log
       try {
@@ -403,177 +482,128 @@ class BomJobManager {
       } catch (logErr) {
         console.warn('[bomJobManager] Audit log write failed:', logErr.message);
       }
+
+      // Trigger next queued job in FIFO order
+      this.processQueue();
     }
   }
 
-  // --- JOB TYPE HANDLERS ---
+  // --- JOB HANDLERS WITH 10-ROW CHUNKS & BACKOFF/CIRCUIT BREAKER HANDLING ---
 
   async runCreatePreflight(job, boms, server) {
-    // Validate BOMs sequentially / in chunks of 5 for responsive progress reporting
-    const chunkSize = 5;
-    for (let i = 0; i < boms.length; i += chunkSize) {
+    const serverId = server?.id || server?.name || 'default';
+    const breaker = getCircuitBreaker(serverId);
+
+    for (let i = 0; i < boms.length; i += CHUNK_SIZE) {
       if (job.cancelRequested) {
-        for (let k = i; k < boms.length; k++) {
-          job.results.push({
-            sequenceNum: boms[k].sequenceNum,
-            material: boms[k].material,
-            plant: boms[k].plant,
-            status: 'NOT_PROCESSED',
-            message: 'Cancelled by user before validation.'
-          });
-        }
-        job.notProcessedCount = boms.length - i;
-        job.status = 'CANCELLED';
+        this._cancelRemaining(job, boms, i);
         break;
       }
 
-      const chunk = boms.slice(i, i + chunkSize);
+      const chunk = boms.slice(i, i + CHUNK_SIZE);
       job.currentBom = {
         index: i + 1,
         total: boms.length,
         material: chunk[0].material,
-        plant: chunk[0].plant,
-        alternativeBom: chunk[0].alternativeBom
+        plant: chunk[0].plant
       };
 
-      try {
-        const preflightRes = await rfcPreflightCreateBoms({ boms: chunk, server });
-        const validatedChunk = preflightRes.boms || chunk;
-        for (const vBom of validatedChunk) {
-          job.results.push(vBom);
+      // Read/Validate: circuit breaker / SERVER_BUSY with short backoff (max 3 tries)
+      let preflightRes = null;
+      let lastErr = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const canExec = breaker.canExecute();
+        if (!canExec.allowed) {
+          lastErr = new Error('SAP server is busy or circuit breaker is open.');
+          lastErr.code = 'SERVER_UNAVAILABLE';
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          continue;
+        }
+
+        try {
+          preflightRes = await rfcPreflightCreateBoms({
+            boms: chunk,
+            server,
+            source: 'bulk',
+            priority: RFC_PRIORITY.BULK
+          });
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (err.code === 'SERVER_BUSY' || isSapConnectionDrop(err)) {
+            await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            continue;
+          }
+          break;
+        }
+      }
+
+      if (preflightRes && preflightRes.boms) {
+        for (let idx = 0; idx < preflightRes.boms.length; idx++) {
+          const vBom = preflightRes.boms[idx];
+          const orig = chunk[idx];
+          const outcome = {
+            ...vBom,
+            input: orig,
+            retryable: vBom.status !== 'Ready' && vBom.status !== 'Already exists - skipped'
+          };
+          job.results.push(outcome);
           if (vBom.status === 'Ready') job.successCount++;
           else if (vBom.status === 'Already exists - skipped') job.skippedCount++;
           else job.failedCount++;
         }
-      } catch (err) {
-        if (isSapConnectionDrop(err)) {
-          // Connection drop: mark current and remaining as NOT_PROCESSED and abort
-          for (const c of chunk) {
-            job.results.push({
-              sequenceNum: c.sequenceNum,
-              material: c.material,
-              plant: c.plant,
-              status: 'FAILED',
-              message: `SAP connection dropped: ${err.message}`
-            });
-            job.failedCount++;
-          }
-          const remainingStart = i + chunkSize;
-          for (let k = remainingStart; k < boms.length; k++) {
-            job.results.push({
-              sequenceNum: boms[k].sequenceNum,
-              material: boms[k].material,
-              plant: boms[k].plant,
-              status: 'NOT_PROCESSED',
-              message: 'Skipped: SAP connection dropped during pre-flight.'
-            });
-          }
-          job.notProcessedCount = Math.max(0, boms.length - remainingStart);
-          job.status = 'STOPPED_ON_CONNECTION_DROP';
-          job.error = err.message;
-          break;
-        } else {
-          // Regular error on chunk: mark as invalid and continue
-          for (const c of chunk) {
-            job.results.push({
-              ...c,
-              status: 'Invalid',
-              errors: [err.message]
-            });
-            job.failedCount++;
-          }
+      } else {
+        // Failed chunk after backoff: mark rows failed with retryable flag
+        for (const c of chunk) {
+          job.results.push({
+            sequenceNum: c.sequenceNum,
+            material: c.material,
+            plant: c.plant,
+            status: 'FAILED',
+            retryable: true,
+            message: lastErr?.message || 'Pre-flight check failed.',
+            input: c
+          });
+          job.failedCount++;
         }
       }
 
-      job.processed = Math.min(boms.length, i + chunkSize);
+      job.processed = Math.min(boms.length, i + chunk.length);
+      job.processed_rows = job.processed;
       job.updatedAt = new Date().toISOString();
-    }
 
-    if (job.status === 'RUNNING') {
-      job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+      // Persist after every chunk of 10 rows
+      await this.repository.saveJob(job);
     }
   }
 
   async runCreateBulk(job, boms, server, user) {
-    for (let i = 0; i < boms.length; i++) {
-      const bom = boms[i];
+    const serverId = server?.id || server?.name || 'default';
+    const breaker = getCircuitBreaker(serverId);
 
-      // 1. Check user cancellation
+    for (let i = 0; i < boms.length; i += CHUNK_SIZE) {
       if (job.cancelRequested) {
-        for (let k = i; k < boms.length; k++) {
-          job.results.push({
-            sequenceNum: boms[k].sequenceNum,
-            material: boms[k].material,
-            plant: boms[k].plant,
-            bomUsage: boms[k].bomUsage,
-            alternativeBom: boms[k].alternativeBom,
-            bomNumber: '-',
-            status: 'NOT_PROCESSED',
-            message: 'Cancelled by user before creation.',
-            componentsCount: boms[k].components?.length || 0
-          });
-        }
-        job.notProcessedCount = boms.length - i;
-        job.status = 'CANCELLED';
+        this._cancelRemaining(job, boms, i);
         break;
       }
 
-      // 2. Update current BOM indicator
-      job.currentBom = {
-        index: i + 1,
-        total: boms.length,
-        sequenceNum: bom.sequenceNum,
-        material: bom.material,
-        plant: bom.plant,
-        alternativeBom: bom.alternativeBom
-      };
+      const chunk = boms.slice(i, i + CHUNK_SIZE);
 
-      // 3. Skip already skipped items
-      if (bom.status === 'Already exists - skipped') {
-        job.skippedCount++;
-        job.results.push({
+      for (let j = 0; j < chunk.length; j++) {
+        const bom = chunk[j];
+        const overallIndex = i + j + 1;
+
+        job.currentBom = {
+          index: overallIndex,
+          total: boms.length,
           sequenceNum: bom.sequenceNum,
           material: bom.material,
-          plant: bom.plant,
-          bomUsage: bom.bomUsage,
-          alternativeBom: bom.alternativeBom,
-          bomNumber: '-',
-          status: 'SKIPPED',
-          message: bom.reason || 'BOM already exists in plant; skipped.',
-          discrepancies: [],
-          componentsCount: bom.components?.length || 0
-        });
-        job.processed = i + 1;
-        job.updatedAt = new Date().toISOString();
-        continue;
-      }
+          plant: bom.plant
+        };
 
-      // 4. Execute single BOM creation via shared engine (strict: no retries of SAP writes)
-      try {
-        const createResult = await createBomFromData({
-          bom,
-          server,
-          user,
-          source: 'bulk',
-          fileName: job.fileName
-        });
-
-        if (createResult.success) {
-          job.successCount++;
-          job.results.push({
-            sequenceNum: bom.sequenceNum,
-            material: bom.material,
-            plant: bom.plant,
-            bomUsage: bom.bomUsage,
-            alternativeBom: bom.alternativeBom,
-            bomNumber: createResult.bomNumber || bom.alternativeBom || '-',
-            status: createResult.status || 'SUCCESS',
-            message: createResult.message || 'BOM created and verified in SAP.',
-            discrepancies: createResult.discrepancies || [],
-            componentsCount: bom.components?.length || 0
-          });
-        } else {
-          job.failedCount++;
+        if (bom.status === 'Already exists - skipped') {
+          job.skippedCount++;
           job.results.push({
             sequenceNum: bom.sequenceNum,
             material: bom.material,
@@ -581,15 +611,16 @@ class BomJobManager {
             bomUsage: bom.bomUsage,
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
-            status: 'FAILED',
-            message: createResult.message || 'SAP rejected BOM creation.',
-            discrepancies: createResult.discrepancies || [],
-            componentsCount: bom.components?.length || 0
+            status: 'SKIPPED',
+            message: bom.reason || 'BOM already exists in plant; skipped.',
+            input: bom
           });
+          continue;
         }
-      } catch (err) {
-        if (isSapConnectionDrop(err)) {
-          // Connection drop: mark current item failed, mark all remaining NOT_PROCESSED and abort job
+
+        // Writes: If circuit breaker is open, mark failed immediately with retryable=true, DO NOT RETRY!
+        const canExec = breaker.canExecute();
+        if (!canExec.allowed) {
           job.failedCount++;
           job.results.push({
             sequenceNum: bom.sequenceNum,
@@ -599,32 +630,89 @@ class BomJobManager {
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
             status: 'FAILED',
-            message: `SAP connection dropped: ${err.message}`,
-            discrepancies: [],
-            componentsCount: bom.components?.length || 0
+            retryable: true,
+            message: 'SAP server circuit breaker is open. Write operation not attempted.',
+            input: bom
+          });
+          continue;
+        }
+
+        // Acquire granular per-BOM row lock (Stage 5 Part A)
+        let rowLock = null;
+        try {
+          rowLock = bomLockService.acquireLock({
+            serverId,
+            material: bom.material,
+            plant: bom.plant,
+            bomUsage: bom.bomUsage,
+            alternative: bom.alternativeBom,
+            userId: user?.id || user?.email || job.userId
+          });
+        } catch (lockErr) {
+          if (lockErr.code === 'BOM_LOCKED') {
+            job.failedCount++;
+            job.results.push({
+              sequenceNum: bom.sequenceNum,
+              material: bom.material,
+              plant: bom.plant,
+              bomUsage: bom.bomUsage,
+              alternativeBom: bom.alternativeBom,
+              bomNumber: '-',
+              status: 'FAILED',
+              code: 'BOM_LOCKED',
+              retryable: true,
+              message: 'This BOM is being changed by another user. Please try again in a moment.',
+              input: bom
+            });
+            continue;
+          }
+          throw lockErr;
+        }
+
+        // Execute write: NEVER RETRIED AUTOMATICALLY
+        try {
+          const createResult = await createBomFromData({
+            bom,
+            server,
+            user,
+            source: 'bulk',
+            priority: RFC_PRIORITY.BULK,
+            fileName: job.fileName
           });
 
-          for (let k = i + 1; k < boms.length; k++) {
+          if (createResult.success) {
+            job.successCount++;
             job.results.push({
-              sequenceNum: boms[k].sequenceNum,
-              material: boms[k].material,
-              plant: boms[k].plant,
-              bomUsage: boms[k].bomUsage,
-              alternativeBom: boms[k].alternativeBom,
+              sequenceNum: bom.sequenceNum,
+              material: bom.material,
+              plant: bom.plant,
+              bomUsage: bom.bomUsage,
+              alternativeBom: bom.alternativeBom,
+              bomNumber: createResult.bomNumber || bom.alternativeBom || '-',
+              status: createResult.status || 'SUCCESS',
+              message: createResult.message || 'BOM created and verified in SAP.',
+              discrepancies: createResult.discrepancies || [],
+              componentsCount: bom.components?.length || 0,
+              input: bom
+            });
+          } else {
+            job.failedCount++;
+            job.results.push({
+              sequenceNum: bom.sequenceNum,
+              material: bom.material,
+              plant: bom.plant,
+              bomUsage: bom.bomUsage,
+              alternativeBom: bom.alternativeBom,
               bomNumber: '-',
-              status: 'NOT_PROCESSED',
-              message: 'Skipped: SAP connection dropped during job execution.',
-              discrepancies: [],
-              componentsCount: boms[k].components?.length || 0
+              status: 'FAILED',
+              retryable: false, // Business rejection is not retryable
+              message: createResult.message || 'SAP rejected BOM creation.',
+              discrepancies: createResult.discrepancies || [],
+              input: bom
             });
           }
-          job.notProcessedCount = boms.length - (i + 1);
-          job.status = 'STOPPED_ON_CONNECTION_DROP';
-          job.error = `SAP connection dropped: ${err.message}`;
-          job.processed = boms.length;
-          break;
-        } else {
-          // Regular item failure: record failure, DO NOT retry, continue with next BOM
+        } catch (err) {
+          const isConn = isSapConnectionDrop(err);
           job.failedCount++;
           job.results.push({
             sequenceNum: bom.sequenceNum,
@@ -634,304 +722,340 @@ class BomJobManager {
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
             status: 'FAILED',
-            message: err.message || 'Unexpected error creating BOM in SAP.',
-            discrepancies: [],
-            componentsCount: bom.components?.length || 0
+            retryable: isConn, // Connection error marked retryable for user to re-run
+            message: isConn ? `SAP connection dropped: ${err.message}` : err.message,
+            input: bom
           });
+        } finally {
+          if (rowLock) {
+            rowLock.release();
+          }
         }
       }
 
-      job.processed = i + 1;
+      job.processed = Math.min(boms.length, i + chunk.length);
+      job.processed_rows = job.processed;
       job.updatedAt = new Date().toISOString();
-    }
 
-    if (job.status === 'RUNNING') {
-      job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+      // Persist progress after each chunk of 10 rows
+      await this.repository.saveJob(job);
     }
   }
 
   async runCopyValidate(job, items, server) {
     const allocatedByTargetKey = new Map();
+    const serverId = server?.id || server?.name || 'default';
+    const breaker = getCircuitBreaker(serverId);
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
       if (job.cancelRequested) {
-        for (let k = i; k < items.length; k++) {
-          job.results.push({
-            id: items[k].id || k + 1,
-            sourceMaterial: items[k].sourceMaterial,
-            sourcePlant: items[k].sourcePlant,
-            targetMaterial: items[k].targetMaterial,
-            targetPlant: items[k].targetPlant,
-            status: 'NOT_PROCESSED',
-            message: 'Cancelled by user.'
-          });
-        }
-        job.notProcessedCount = items.length - i;
-        job.status = 'CANCELLED';
+        this._cancelRemaining(job, items, i);
         break;
       }
 
-      job.currentBom = {
-        index: i + 1,
-        total: items.length,
-        sourceMaterial: item.sourceMaterial,
-        targetMaterial: item.targetMaterial || item.sourceMaterial,
-        plant: item.targetPlant || item.sourcePlant
-      };
+      const chunk = items.slice(i, i + CHUNK_SIZE);
 
-      try {
-        const valRes = await rfcBatchValidateBoms([item], { server, allocatedByTargetKey });
-        const row = valRes.results && valRes.results[0]
-          ? valRes.results[0]
-          : { id: item.id || i + 1, status: 'ERROR', message: 'Validation failed.' };
+      for (let j = 0; j < chunk.length; j++) {
+        const item = chunk[j];
+        const overallIndex = i + j + 1;
 
-        job.results.push(row);
-        if (row.status === 'VALID' || row.status === 'WARNING') job.successCount++;
-        else job.failedCount++;
-      } catch (err) {
-        if (isSapConnectionDrop(err)) {
-          job.results.push({
-            id: item.id || i + 1,
-            sourceMaterial: item.sourceMaterial,
-            sourcePlant: item.sourcePlant,
-            targetMaterial: item.targetMaterial,
-            targetPlant: item.targetPlant,
-            status: 'ERROR',
-            message: `SAP connection dropped: ${err.message}`
-          });
-          job.failedCount++;
+        job.currentBom = {
+          index: overallIndex,
+          total: items.length,
+          sourceMaterial: item.sourceMaterial,
+          targetMaterial: item.targetMaterial || item.sourceMaterial,
+          plant: item.targetPlant || item.sourcePlant
+        };
 
-          for (let k = i + 1; k < items.length; k++) {
-            job.results.push({
-              id: items[k].id || k + 1,
-              sourceMaterial: items[k].sourceMaterial,
-              sourcePlant: items[k].sourcePlant,
-              targetMaterial: items[k].targetMaterial,
-              targetPlant: items[k].targetPlant,
-              status: 'NOT_PROCESSED',
-              message: 'Skipped: SAP connection dropped.'
-            });
+        // Reads: circuit breaker / SERVER_BUSY with short backoff (max 3 tries)
+        let valRes = null;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const canExec = breaker.canExecute();
+          if (!canExec.allowed) {
+            lastErr = new Error('SAP server is busy or circuit breaker open.');
+            await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+            continue;
           }
-          job.notProcessedCount = items.length - (i + 1);
-          job.status = 'STOPPED_ON_CONNECTION_DROP';
-          job.error = err.message;
-          job.processed = items.length;
-          break;
+
+          try {
+            valRes = await rfcBatchValidateBoms([item], {
+              server,
+              allocatedByTargetKey,
+              priority: RFC_PRIORITY.BULK
+            });
+            lastErr = null;
+            break;
+          } catch (err) {
+            lastErr = err;
+            if (err.code === 'SERVER_BUSY' || isSapConnectionDrop(err)) {
+              await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+              continue;
+            }
+            break;
+          }
+        }
+
+        if (valRes && valRes.results && valRes.results[0]) {
+          const row = valRes.results[0];
+          job.results.push({
+            ...row,
+            input: item,
+            retryable: row.status === 'ERROR'
+          });
+          if (row.status === 'VALID' || row.status === 'WARNING') job.successCount++;
+          else job.failedCount++;
         } else {
           job.results.push({
-            id: item.id || i + 1,
+            id: item.id || overallIndex,
             sourceMaterial: item.sourceMaterial,
             sourcePlant: item.sourcePlant,
             targetMaterial: item.targetMaterial,
             targetPlant: item.targetPlant,
             status: 'ERROR',
-            message: err.message
+            retryable: true,
+            message: lastErr?.message || 'Validation failed.',
+            input: item
           });
           job.failedCount++;
         }
       }
 
-      job.processed = i + 1;
+      job.processed = Math.min(items.length, i + chunk.length);
+      job.processed_rows = job.processed;
       job.updatedAt = new Date().toISOString();
-    }
 
-    if (job.status === 'RUNNING') {
-      job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+      await this.repository.saveJob(job);
     }
   }
 
   async runCopyBulk(job, items, server, user) {
     const { copyHierarchy = true, skipErrors = true } = job.options || {};
     const allocatedByTargetKey = new Map();
+    const serverId = server?.id || server?.name || 'default';
+    const breaker = getCircuitBreaker(serverId);
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
       if (job.cancelRequested) {
-        for (let k = i; k < items.length; k++) {
-          job.results.push({
-            id: items[k].id || k + 1,
-            sourceMaterial: items[k].sourceMaterial,
-            sourcePlant: items[k].sourcePlant,
-            targetMaterial: items[k].targetMaterial || items[k].sourceMaterial,
-            targetPlant: items[k].targetPlant,
-            status: 'NOT_PROCESSED',
-            message: 'Cancelled by user before copy.'
-          });
-        }
-        job.notProcessedCount = items.length - i;
-        job.status = 'CANCELLED';
+        this._cancelRemaining(job, items, i);
         break;
       }
 
-      job.currentBom = {
-        index: i + 1,
-        total: items.length,
-        sourceMaterial: item.sourceMaterial,
-        targetMaterial: item.targetMaterial || item.sourceMaterial,
-        plant: item.targetPlant || item.sourcePlant
-      };
+      const chunk = items.slice(i, i + CHUNK_SIZE);
 
-      const srcMat = String(item.sourceMaterial || '').trim().toUpperCase();
-      const srcPlant = String(item.sourcePlant || '').trim().toUpperCase();
-      const srcUsage = String(item.sourceUsage || item.sourceBomUsage || '1').trim();
-      const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '').trim();
+      for (let j = 0; j < chunk.length; j++) {
+        const item = chunk[j];
+        const overallIndex = i + j + 1;
 
-      const tgtMat = String(item.targetMaterial || srcMat).trim().toUpperCase();
-      const tgtPlant = String(item.targetPlant || '').trim().toUpperCase();
-      const tgtUsage = String(item.targetUsage || item.targetBomUsage || '1').trim();
-      const tgtAlt = String(item.targetAltBom || item.targetAlternative || '').trim();
+        job.currentBom = {
+          index: overallIndex,
+          total: items.length,
+          sourceMaterial: item.sourceMaterial,
+          targetMaterial: item.targetMaterial || item.sourceMaterial,
+          plant: item.targetPlant || item.sourcePlant
+        };
 
-      // Resolve source alternative if blank
-      let effectiveSrcAlt = srcAlt;
-      if (!effectiveSrcAlt) {
-        const srcAltRes = await resolveSourceAlternativeForCopy({
-          sourceMaterial: srcMat,
-          sourcePlant: srcPlant,
-          sourceUsage: srcUsage,
-          sourceAlternative: srcAlt,
-          server
-        });
-        if (srcAltRes.sourceAlternative) {
-          effectiveSrcAlt = srcAltRes.sourceAlternative;
-        }
-      }
+        const srcMat = String(item.sourceMaterial || '').trim().toUpperCase();
+        const srcPlant = String(item.sourcePlant || '').trim().toUpperCase();
+        const srcUsage = String(item.sourceUsage || item.sourceBomUsage || '1').trim();
+        const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '').trim();
 
-      // Resolve target alternative using shared function
-      const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
-      const allocatedList = allocatedByTargetKey.get(targetKey) || [];
+        const tgtMat = String(item.targetMaterial || srcMat).trim().toUpperCase();
+        const tgtPlant = String(item.targetPlant || '').trim().toUpperCase();
+        const tgtUsage = String(item.targetUsage || item.targetBomUsage || '1').trim();
+        const tgtAlt = String(item.targetAltBom || item.targetAlternative || '').trim();
 
-      const tgtAltRes = await resolveTargetAlternativeForCopy({
-        targetMaterial: tgtMat,
-        targetPlant: tgtPlant,
-        targetUsage: tgtUsage,
-        targetAlternative: tgtAlt,
-        allocatedAlternatives: allocatedList,
-        server
-      });
-
-      const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
-      allocatedByTargetKey.set(targetKey, [...allocatedList, resolvedNum]);
-      const resolvedTgtAlt = tgtAltRes.targetAlternative;
-
-      // If an explicitly specified target alternative already exists, block it
-      if (tgtAltRes.exists) {
-        job.failedCount++;
-        job.results.push({
-          id: item.id || i + 1,
-          sourceMaterial: srcMat,
-          sourcePlant: srcPlant,
-          targetMaterial: tgtMat,
-          targetPlant: tgtPlant,
-          targetAltBom: resolvedTgtAlt,
-          bomNumber: '-',
-          status: 'FAILED',
-          message: `Cannot copy: Alternative ${parseInt(resolvedTgtAlt, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`
-        });
-        job.processed = i + 1;
-        job.updatedAt = new Date().toISOString();
-        if (!skipErrors) break;
-        continue;
-      }
-
-      try {
-        const copyRes = await rfcCopyBom({
-          sourceMaterial: srcMat,
-          sourcePlant: srcPlant,
-          targetMaterial: tgtMat,
-          targetPlant: tgtPlant,
-          bomUsage: tgtUsage,
-          sourceAlternative: effectiveSrcAlt || '1',
-          targetAlternative: resolvedTgtAlt,
-          copyHierarchy,
-          server
-        });
-
-        if (copyRes.success) {
-          job.successCount++;
-          job.results.push({
-            id: item.id || i + 1,
-            sourceMaterial: srcMat,
-            sourcePlant: srcPlant,
-            targetMaterial: tgtMat,
-            targetPlant: tgtPlant,
-            targetAltBom: copyRes.alternativeBom || resolvedTgtAlt,
-            bomNumber: copyRes.bomNumber || '',
-            status: 'SUCCESS',
-            message: copyRes.message || 'BOM copied successfully in SAP.',
-            totalLevels: copyRes.totalLevels || 1,
-            totalBoms: copyRes.totalBoms || 1
-          });
-        } else {
+        // Check circuit breaker: Writes NEVER RETRIED
+        const canExec = breaker.canExecute();
+        if (!canExec.allowed) {
           job.failedCount++;
           job.results.push({
-            id: item.id || i + 1,
+            id: item.id || overallIndex,
             sourceMaterial: srcMat,
             sourcePlant: srcPlant,
             targetMaterial: tgtMat,
             targetPlant: tgtPlant,
-            targetAltBom: resolvedTgtAlt,
-            bomNumber: '-',
             status: 'FAILED',
-            message: copyRes.message || 'BOM copy rejected by SAP.'
+            retryable: true,
+            message: 'SAP server circuit breaker is open. Copy operation not attempted.',
+            input: item
           });
+          continue;
         }
-      } catch (err) {
-        if (isSapConnectionDrop(err)) {
-          job.failedCount++;
-          job.results.push({
-            id: item.id || i + 1,
-            sourceMaterial: srcMat,
-            sourcePlant: srcPlant,
-            targetMaterial: tgtMat,
-            targetPlant: tgtPlant,
-            targetAltBom: resolvedTgtAlt,
-            bomNumber: '-',
-            status: 'FAILED',
-            message: `SAP connection dropped: ${err.message}`
-          });
 
-          for (let k = i + 1; k < items.length; k++) {
-            job.results.push({
-              id: items[k].id || k + 1,
-              sourceMaterial: items[k].sourceMaterial,
-              sourcePlant: items[k].sourcePlant,
-              targetMaterial: items[k].targetMaterial || items[k].sourceMaterial,
-              targetPlant: items[k].targetPlant,
-              bomNumber: '-',
-              status: 'NOT_PROCESSED',
-              message: 'Skipped: SAP connection dropped.'
+        try {
+          let effectiveSrcAlt = srcAlt;
+          if (!effectiveSrcAlt) {
+            const srcAltRes = await resolveSourceAlternativeForCopy({
+              sourceMaterial: srcMat,
+              sourcePlant: srcPlant,
+              sourceUsage: srcUsage,
+              sourceAlternative: srcAlt,
+              server,
+              priority: RFC_PRIORITY.BULK
             });
+            if (srcAltRes.sourceAlternative) effectiveSrcAlt = srcAltRes.sourceAlternative;
           }
-          job.notProcessedCount = items.length - (i + 1);
-          job.status = 'STOPPED_ON_CONNECTION_DROP';
-          job.error = `SAP connection dropped: ${err.message}`;
-          job.processed = items.length;
-          break;
-        } else {
+
+          const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
+          const allocatedList = allocatedByTargetKey.get(targetKey) || [];
+
+          const tgtAltRes = await resolveTargetAlternativeForCopy({
+            targetMaterial: tgtMat,
+            targetPlant: tgtPlant,
+            targetUsage: tgtUsage,
+            targetAlternative: tgtAlt,
+            allocatedAlternatives: allocatedList,
+            server,
+            priority: RFC_PRIORITY.BULK
+          });
+
+          const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
+          allocatedByTargetKey.set(targetKey, [...allocatedList, resolvedNum]);
+          const resolvedTgtAlt = tgtAltRes.targetAlternative;
+
+          if (tgtAltRes.exists) {
+            job.failedCount++;
+            job.results.push({
+              id: item.id || overallIndex,
+              sourceMaterial: srcMat,
+              sourcePlant: srcPlant,
+              targetMaterial: tgtMat,
+              targetPlant: tgtPlant,
+              targetAltBom: resolvedTgtAlt,
+              bomNumber: '-',
+              status: 'FAILED',
+              retryable: false,
+              message: `Cannot copy: Alternative ${parseInt(resolvedTgtAlt, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`,
+              input: item
+            });
+            if (!skipErrors) break;
+            continue;
+          }
+
+          // Acquire target BOM row lock (Stage 5 Part A)
+          let copyRowLock = null;
+          try {
+            copyRowLock = bomLockService.acquireLock({
+              serverId,
+              material: tgtMat,
+              plant: tgtPlant,
+              bomUsage: tgtUsage,
+              alternative: resolvedTgtAlt,
+              userId: user?.id || user?.email || job.userId
+            });
+          } catch (lockErr) {
+            if (lockErr.code === 'BOM_LOCKED') {
+              job.failedCount++;
+              job.results.push({
+                id: item.id || overallIndex,
+                sourceMaterial: srcMat,
+                sourcePlant: srcPlant,
+                targetMaterial: tgtMat,
+                targetPlant: tgtPlant,
+                targetAltBom: resolvedTgtAlt,
+                bomNumber: '-',
+                status: 'FAILED',
+                code: 'BOM_LOCKED',
+                retryable: true,
+                message: 'This BOM is being changed by another user. Please try again in a moment.',
+                input: item
+              });
+              if (!skipErrors) break;
+              continue;
+            }
+            throw lockErr;
+          }
+
+          try {
+            const copyRes = await rfcCopyBom({
+              sourceMaterial: srcMat,
+              sourcePlant: srcPlant,
+              targetMaterial: tgtMat,
+              targetPlant: tgtPlant,
+              bomUsage: tgtUsage,
+              sourceAlternative: effectiveSrcAlt || '1',
+              targetAlternative: resolvedTgtAlt,
+              copyHierarchy,
+              server,
+              priority: RFC_PRIORITY.BULK
+            });
+
+            if (copyRes.success) {
+              job.successCount++;
+              job.results.push({
+                id: item.id || overallIndex,
+                sourceMaterial: srcMat,
+                sourcePlant: srcPlant,
+                targetMaterial: tgtMat,
+                targetPlant: tgtPlant,
+                targetAltBom: copyRes.alternativeBom || resolvedTgtAlt,
+                bomNumber: copyRes.bomNumber || '',
+                status: 'SUCCESS',
+                message: copyRes.message || 'BOM copied successfully in SAP.',
+                input: item
+              });
+            } else {
+              job.failedCount++;
+              job.results.push({
+                id: item.id || overallIndex,
+                sourceMaterial: srcMat,
+                sourcePlant: srcPlant,
+                targetMaterial: tgtMat,
+                targetPlant: tgtPlant,
+                targetAltBom: resolvedTgtAlt,
+                bomNumber: '-',
+                status: 'FAILED',
+                retryable: false,
+                message: copyRes.message || 'BOM copy rejected by SAP.',
+                input: item
+              });
+            }
+          } finally {
+            if (copyRowLock) {
+              copyRowLock.release();
+            }
+          }
+        } catch (err) {
+          const isConn = isSapConnectionDrop(err);
           job.failedCount++;
           job.results.push({
-            id: item.id || i + 1,
-            sourceMaterial: item.sourceMaterial,
-            sourcePlant: item.sourcePlant,
-            targetMaterial: item.targetMaterial || item.sourceMaterial,
-            targetPlant: item.targetPlant,
+            id: item.id || overallIndex,
+            sourceMaterial: srcMat,
+            sourcePlant: srcPlant,
+            targetMaterial: tgtMat,
+            targetPlant: tgtPlant,
             bomNumber: '-',
             status: 'FAILED',
-            message: err.message || 'BOM copy failed in SAP.'
+            retryable: isConn,
+            message: isConn ? `SAP connection dropped: ${err.message}` : err.message,
+            input: item
           });
         }
       }
 
-      job.processed = i + 1;
+      job.processed = Math.min(items.length, i + chunk.length);
+      job.processed_rows = job.processed;
       job.updatedAt = new Date().toISOString();
-    }
 
-    if (job.status === 'RUNNING') {
-      job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+      await this.repository.saveJob(job);
     }
+  }
+
+  _cancelRemaining(job, items, startIndex) {
+    for (let k = startIndex; k < items.length; k++) {
+      job.results.push({
+        id: items[k].id || k + 1,
+        sequenceNum: items[k].sequenceNum || String(k + 1),
+        material: items[k].material || items[k].sourceMaterial,
+        plant: items[k].plant || items[k].sourcePlant,
+        status: 'NOT_PROCESSED',
+        message: 'Cancelled by user before processing chunk.',
+        input: items[k]
+      });
+    }
+    job.notProcessedCount = items.length - startIndex;
+    job.status = 'CANCELLED';
   }
 }
 

@@ -135,7 +135,7 @@ try {
       name: 'HomePage',
       file: 'src/components/HomePage.jsx',
       props: { onExploreProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['RexaEdge', 'Products']
+      expectedTexts: ['Welcome back', 'Bill of Materials']
     },
     {
       name: 'FioriLaunchpad (Products)',
@@ -147,49 +147,49 @@ try {
       name: 'FioriLaunchpad (Bill of Materials Hub)',
       file: 'src/components/FioriLaunchpad.jsx',
       props: { userRole: 'admin', userPermissions: [], enabledModules: ['bom'], subView: 'bom_operations', onNavigateHome: () => {}, onNavigateProducts: () => {} },
-      expectedTexts: ['Bill of Materials', 'Home', 'Products', 'Operations']
+      expectedTexts: ['Bill of Materials', 'Home', 'BOM management', 'Operations']
     },
     {
       name: 'CreateBomView (Create Single BOM)',
       file: 'src/components/CreateBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Create Single BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Create Single BOM', 'Home', 'BOM management']
     },
     {
       name: 'BulkCreateBomView (Create Bulk BOM)',
       file: 'src/components/BulkCreateBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Create Bulk BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Create Bulk BOM', 'Home', 'BOM management']
     },
     {
       name: 'CopyBomView (Copy Single BOM)',
       file: 'src/components/CopyBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Copy Single BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Copy Single BOM', 'Home', 'BOM management']
     },
     {
       name: 'BulkBomView (Copy Bulk BOM)',
       file: 'src/components/BulkBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Copy Bulk BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Copy Bulk BOM', 'Home', 'BOM management']
     },
     {
       name: 'DeleteBomView (Delete BOM)',
       file: 'src/components/DeleteBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Delete BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Delete BOM', 'Home', 'BOM management']
     },
     {
       name: 'BomExplorerView (Display BOM)',
       file: 'src/components/BomExplorerView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Display BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Display BOM', 'Home', 'BOM management']
     },
     {
       name: 'ValidateBomView (Validate BOM)',
       file: 'src/components/ValidateBomView.jsx',
       props: { systemKey: 'DEV', onBack: () => {}, onNavigateBom: () => {}, onNavigateProducts: () => {}, onNavigateHome: () => {} },
-      expectedTexts: ['Validate BOM', 'Home', 'Products', 'Bill of Materials']
+      expectedTexts: ['Validate BOM', 'Home', 'BOM management']
     },
     {
       name: 'AdminActivityLogsView',
@@ -201,7 +201,7 @@ try {
       name: 'Login (Authentication)',
       file: 'src/components/Login.jsx',
       props: { onLoginSuccess: () => {} },
-      expectedTexts: ['Sign In', 'RexaEdge']
+      expectedTexts: ['Sign in', 'RexaEdge']
     }
   ];
 
@@ -306,7 +306,7 @@ try {
     {
       label: 'Unauthenticated App (Login view)',
       props: { initialUser: null, initialCheckingAuth: false },
-      expected: ['Sign In', 'RexaEdge']
+      expected: ['Sign in', 'RexaEdge']
     },
     // Admin on /home with Single Server (tests formatEnvironment in single-server header label)
     {
@@ -318,7 +318,7 @@ try {
         initialServers: [mockServers[0]],
         initialSelectedServer: mockServers[0]
       },
-      expected: ['(Dev)', 'RexaEdge', 'Server', 'Products']
+      expected: ['(Dev)', 'RexaEdge', 'Server', 'Bill of Materials']
     },
     // Admin on /home with Multiple Servers (tests formatEnvironment in multi-server dropdown)
     {
@@ -355,7 +355,7 @@ try {
         initialServers: mockServers,
         initialSelectedServer: mockServers[0]
       },
-      expected: ['Products', 'Bill of Materials', '(Dev)']
+      expected: ['Welcome back', 'Bill of Materials', '(Dev)']
     },
     // Admin on /products/bom (BOM Hub)
     {
@@ -368,7 +368,7 @@ try {
         initialServers: mockServers,
         initialSelectedServer: mockServers[0]
       },
-      expected: ['Bill of Materials', 'Operations', 'Products']
+      expected: ['Bill of Materials', 'Operations', 'BOM management']
     },
     // Admin on Create Single BOM
     {
@@ -380,7 +380,7 @@ try {
         initialServers: mockServers,
         initialSelectedServer: mockServers[0]
       },
-      expected: ['Create Single BOM', 'Component*', 'Base Quantity']
+      expected: ['Create Single BOM', 'Component', 'Base Quantity']
     },
     // Normal User on Create Single BOM
     {
@@ -392,7 +392,7 @@ try {
         initialServers: [{ ...mockServers[0], permissions: ['bom.create'] }],
         initialSelectedServer: { ...mockServers[0], permissions: ['bom.create'] }
       },
-      expected: ['Create Single BOM', 'Component*']
+      expected: ['Create Single BOM', 'Component']
     },
     // Admin on /admin view
     {

@@ -36,7 +36,7 @@ export default function AccessDeniedView({
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 20px',
-          color: '#EA580C'
+          color: '#02579A'
         }}
         aria-hidden="true"
       >
@@ -47,7 +47,7 @@ export default function AccessDeniedView({
         style={{
           fontSize: '1.25rem',
           fontWeight: 700,
-          color: 'var(--sap-shell-navy, #0f2744)',
+          color: 'var(--sap-shell-navy, #00204E)',
           margin: '0 0 10px'
         }}
       >

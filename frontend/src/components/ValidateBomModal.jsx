@@ -87,7 +87,7 @@ export default function ValidateBomModal({
                 <input
                   type="text"
                   className="sap-form-input"
-                  placeholder="e.g. 100001"
+                  placeholder="Ex. 100001"
                   value={formData.material}
                   onChange={(e) => setFormData((p) => ({ ...p, material: e.target.value }))}
                   autoFocus
@@ -104,7 +104,7 @@ export default function ValidateBomModal({
                 <input
                   type="text"
                   className="sap-form-input"
-                  placeholder="e.g. 1000"
+                  placeholder="Ex. 1000"
                   value={formData.plant}
                   onChange={(e) => setFormData((p) => ({ ...p, plant: e.target.value }))}
                 />
@@ -123,7 +123,7 @@ export default function ValidateBomModal({
                   maxLength={1}
                   value={formData.bomUsage}
                   onChange={(e) => setFormData((p) => ({ ...p, bomUsage: e.target.value }))}
-                  style={{ paddingLeft: 30 }}
+                  
                   aria-label="Validate BOM Usage"
                 />
               </div>
@@ -138,7 +138,7 @@ export default function ValidateBomModal({
                 <input
                   type="text"
                   className="sap-form-input"
-                  placeholder="e.g. 01"
+                  placeholder="Ex. 01"
                   value={formData.alternativeBom}
                   onChange={(e) => setFormData((p) => ({ ...p, alternativeBom: e.target.value }))}
                 />

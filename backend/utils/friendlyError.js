@@ -81,6 +81,87 @@ export function toFriendlyError(err, options = {}) {
 
   const textLower = rawText.toLowerCase();
 
+  // 0. Explicit Stage 3 & Stage 5 Standard Codes
+  if (errCode === 'BOM_LOCKED' ||
+      textLower.includes('being changed by another user') ||
+      textLower.includes('is currently locked') ||
+      textLower.includes('locked by user') ||
+      textLower.includes('enqueue') ||
+      (textLower.includes('csap') && (textLower.includes('lock') || textLower.includes('sperr')))) {
+    return {
+      code: 'BOM_LOCKED',
+      title: 'BOM currently locked',
+      message: 'This BOM is being changed by another user. Please try again in a moment.',
+      hint: 'Another user or SAP process is editing this BOM. Please try again in a moment.',
+      retryable: true
+    };
+  }
+
+  if (errCode === 'WRITE_OUTCOME_UNKNOWN' ||
+      textLower.includes('write_outcome_unknown') ||
+      textLower.includes('outcome is unknown')) {
+    return {
+      code: 'WRITE_OUTCOME_UNKNOWN',
+      title: 'Write outcome unknown',
+      message: 'The operation timed out or connection was lost while writing to SAP. The outcome is unknown; please verify using Display BOM before attempting again.',
+      hint: 'Please check the BOM using Display BOM to see if the changes took effect before retrying.',
+      retryable: false
+    };
+  }
+
+  if (errCode === 'SERVER_DISABLED' || textLower.includes('server is currently disabled') || textLower.includes('server is disabled')) {
+    return {
+      code: 'SERVER_DISABLED',
+      title: 'SAP server disabled',
+      message: 'This SAP server is currently disabled. Please contact your administrator.',
+      hint: 'An administrator has temporarily disabled this SAP server. Please reach out to your administrator to enable it.',
+      retryable: false
+    };
+  }
+
+  if (errCode === 'SERVER_UNAVAILABLE' || errCode === 'CIRCUIT_BREAKER_OPEN') {
+    return {
+      code: 'SERVER_UNAVAILABLE',
+      title: 'SAP server not reachable',
+      message: 'SAP server is not reachable right now. Please try again shortly.',
+      hint: 'Check that the server is online and your network or VPN is connected, then try again. If it continues, contact your administrator.',
+      retryable: true,
+      retryAfter: err?.retryAfter || 30
+    };
+  }
+
+  if (errCode === 'TIMEOUT' || errCode === 'RFC_CALL_TIMEOUT' || errCode === 'CALL_TIMEOUT') {
+    return {
+      code: 'TIMEOUT',
+      title: 'Operation timed out',
+      message: 'SAP operation timed out. Please try again.',
+      hint: 'The RFC operation took too long to complete. Please try again.',
+      retryable: true
+    };
+  }
+
+  if (errCode === 'PERMISSION_DENIED' || errCode === 'FORBIDDEN' || errCode === 'NO_PERMITTED_SERVER') {
+    return {
+      code: 'PERMISSION_DENIED',
+      title: 'Permission denied',
+      message: 'You do not have permission to perform this SAP operation.',
+      hint: 'Ask your administrator to grant the required SAP server or module access.',
+      retryable: false
+    };
+  }
+
+  if (errCode === 'SAP_BUSINESS_ERROR' || err?.isBusinessError) {
+    const rawMsg = err.message || err.error || rawText || 'SAP business error.';
+    const cleanMsg = sanitizeClientString(rawMsg);
+    return {
+      code: 'SAP_BUSINESS_ERROR',
+      title: 'SAP notice',
+      message: cleanMsg.startsWith('SAP error:') ? cleanMsg : `SAP error: ${cleanMsg}`,
+      hint: err?.hint ? sanitizeClientString(err.hint) : null,
+      retryable: false
+    };
+  }
+
   // 1. DB_ERROR (Database / Supabase / PostgreSQL errors)
   const isDbError =
     textLower.includes('supabase') ||
@@ -194,7 +275,24 @@ export function toFriendlyError(err, options = {}) {
     };
   }
 
-  // 4. SAP_BUSY
+  // 4. SAP_BUSY / SERVER_BUSY
+  const isServerBusy =
+    errCode === 'SERVER_BUSY' ||
+    textLower.includes('server_busy') ||
+    textLower.includes('server is busy') ||
+    textLower.includes('the sap server is busy');
+
+  if (isServerBusy) {
+    return {
+      code: 'SERVER_BUSY',
+      title: 'SAP server is busy',
+      message: 'The SAP server is busy. Please try again in a moment.',
+      hint: 'The queue or connection pool limit was reached. Please retry in a moment.',
+      retryable: true,
+      retryAfter: err?.retryAfter || 20
+    };
+  }
+
   const isSapBusy =
     textLower.includes('sap is busy') ||
     textLower.includes('system is busy') ||
@@ -278,17 +376,23 @@ export function sendFriendlyError(res, req, err, { httpStatus, source = 'backend
   // Determine appropriate HTTP status code
   let status = httpStatus || err?.status || err?.statusCode;
   if (!status || typeof status !== 'number') {
-    if (friendly.code === 'SAP_UNREACHABLE') {
+    if (friendly.code === 'BOM_LOCKED') {
+      status = 409;
+    } else if (friendly.code === 'WRITE_OUTCOME_UNKNOWN') {
+      status = 504;
+    } else if (friendly.code === 'SAP_UNREACHABLE' || friendly.code === 'SERVER_UNAVAILABLE' || friendly.code === 'SERVER_DISABLED') {
       status = 503;
-    } else if (friendly.code === 'SAP_BUSY') {
+    } else if (friendly.code === 'SAP_BUSY' || friendly.code === 'SERVER_BUSY') {
       status = 503;
-    } else if (friendly.code === 'SAP_NOT_AUTHORIZED') {
+    } else if (friendly.code === 'TIMEOUT') {
+      status = 504;
+    } else if (friendly.code === 'SAP_NOT_AUTHORIZED' || friendly.code === 'PERMISSION_DENIED') {
       status = 403;
     } else if (friendly.code === 'SAP_LOGIN_FAILED') {
       status = 502;
     } else if (friendly.code === 'SAP_NOT_AVAILABLE') {
       status = 501;
-    } else if (friendly.code === 'VALIDATION_ERROR') {
+    } else if (friendly.code === 'VALIDATION_ERROR' || friendly.code === 'SAP_BUSINESS_ERROR') {
       status = 400;
     } else {
       status = 500;
@@ -318,6 +422,12 @@ export function sendFriendlyError(res, req, err, { httpStatus, source = 'backend
 
   console.error(`[Error Ref: ${errorRef}] [${friendly.code}] ${err?.message || err}`);
 
+  if (friendly.retryAfter) {
+    try {
+      res.set('Retry-After', String(friendly.retryAfter));
+    } catch (_) {}
+  }
+
   return res.status(status).json({
     success: false,
     error: friendly.message,
@@ -326,6 +436,7 @@ export function sendFriendlyError(res, req, err, { httpStatus, source = 'backend
     title: friendly.title,
     hint: friendly.hint,
     retryable: friendly.retryable,
+    retryAfter: friendly.retryAfter,
     error_ref: errorRef
   });
 }

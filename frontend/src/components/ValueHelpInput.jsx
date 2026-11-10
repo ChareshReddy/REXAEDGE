@@ -24,6 +24,8 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
     disabled = false,
     readOnly = false,
     placeholder,
+    isTable = false,
+    hasError = false,
     onKeyDown,
     onFocus,
     onBlur,
@@ -148,14 +150,8 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
 
   return (
     <div
-      className="sap-value-help-wrapper"
-      style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
-        width: '100%',
-        ...wrapperStyle
-      }}
+      className={`rx-value-help-container ${isTable ? 'rx-value-help-table' : ''} ${disabled || readOnly ? 'rx-disabled' : ''} ${hasError ? 'rx-value-help-error' : ''}`}
+      style={wrapperStyle}
     >
       <input
         ref={inputRef}
@@ -168,15 +164,13 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
         disabled={disabled}
         readOnly={readOnly}
         placeholder={placeholder}
-        className={`sap-input sap-form-input ${className}`}
-        style={{
-          paddingRight: 28,
-          boxSizing: 'border-box',
-          width: '100%',
-          ...style
-        }}
+        aria-invalid={hasError ? 'true' : undefined}
+        className={`rx-value-help-input rx-input-mono rx-input-uppercase ${className}`}
+        style={style}
         {...restProps}
       />
+
+      <div className="rx-value-help-divider" aria-hidden="true" />
 
       {/* SAP Matchcode / F4 Icon Button */}
       <button
@@ -191,23 +185,11 @@ const ValueHelpInput = forwardRef(function ValueHelpInput(
           }
         }}
         disabled={disabled || readOnly}
-        className="sap-value-help-btn"
+        className={`rx-value-help-btn ${isTable ? 'rx-value-help-table' : ''}`}
         aria-label="Search help"
-        style={{
-          position: 'absolute',
-          right: 3,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 22,
-          height: 22,
-          padding: 0,
-          cursor: disabled || readOnly ? 'default' : 'pointer'
-        }}
+        title="Open value help (F4)"
       >
-        <Search size={13} strokeWidth={2.4} />
+        <Search size={isTable ? 13 : 15} strokeWidth={1.75} aria-hidden="true" />
       </button>
 
       {/* Popups */}

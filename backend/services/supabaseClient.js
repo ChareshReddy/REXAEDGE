@@ -558,6 +558,10 @@ class InMemorySupabaseStore {
         has_password: hasPassword,
         credentials_status: isConfigured ? 'saved' : 'not_set',
         is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
         created_at: s.created_at,
         modules: this.getServerModules(s.id)
       };
@@ -599,6 +603,10 @@ class InMemorySupabaseStore {
       sap_username: serverData.sap_username ? String(serverData.sap_username).trim() : null,
       sap_password_encrypted: encryptedPassword,
       is_active: serverData.is_active !== undefined ? Boolean(serverData.is_active) : true,
+      max_connections: serverData.max_connections !== undefined ? Number(serverData.max_connections) : 3,
+      per_user_limit: serverData.per_user_limit !== undefined ? Number(serverData.per_user_limit) : 2,
+      queue_timeout_ms: serverData.queue_timeout_ms !== undefined ? Number(serverData.queue_timeout_ms) : 20000,
+      rfc_call_timeout_ms: serverData.rfc_call_timeout_ms !== undefined ? Number(serverData.rfc_call_timeout_ms) : 45000,
       created_at: new Date().toISOString()
     };
     this.servers.push(newServer);
@@ -638,6 +646,10 @@ class InMemorySupabaseStore {
     if (serverData.router !== undefined) server.router = serverData.router;
     if (serverData.gwserv !== undefined) server.gwserv = serverData.gwserv;
     if (serverData.is_active !== undefined) server.is_active = Boolean(serverData.is_active);
+    if (serverData.max_connections !== undefined) server.max_connections = Number(serverData.max_connections);
+    if (serverData.per_user_limit !== undefined) server.per_user_limit = Number(serverData.per_user_limit);
+    if (serverData.queue_timeout_ms !== undefined) server.queue_timeout_ms = Number(serverData.queue_timeout_ms);
+    if (serverData.rfc_call_timeout_ms !== undefined) server.rfc_call_timeout_ms = Number(serverData.rfc_call_timeout_ms);
 
     if (serverData.sap_username !== undefined) {
       server.sap_username = serverData.sap_username ? String(serverData.sap_username).trim() : null;
@@ -748,6 +760,10 @@ class InMemorySupabaseStore {
         has_password: hasPassword,
         credentials_status: isConfigured ? 'saved' : 'not_set',
         is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
         permissions: role === 'admin' ? [...ALL_BOM_APPS] : normalizePermissions(perms || [])
       };
     };
@@ -1695,6 +1711,10 @@ export const supabaseService = {
               has_password: hasPassword,
               credentials_status: (s.sap_username && hasPassword) ? 'saved' : 'not_set',
               is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
               permissions: [...ALL_BOM_APPS]
             };
           });
@@ -1723,6 +1743,10 @@ export const supabaseService = {
           name: s.name,
           environment: s.environment,
           is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
           sap_username: s.sap_username,
           has_password: hasPass,
           credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
@@ -1770,6 +1794,10 @@ export const supabaseService = {
             name: s.name,
             environment: s.environment,
             is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
             sap_username: maskSapUsername(s.sap_username),
             has_password: hasPass,
             credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
@@ -1792,6 +1820,10 @@ export const supabaseService = {
           name: s.name,
           environment: s.environment,
           is_active: s.is_active,
+        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
           sap_username: maskSapUsername(s.sap_username),
           has_password: hasPass,
           credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',

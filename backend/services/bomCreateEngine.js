@@ -1,4 +1,5 @@
 import { openRfcClient, rfcCreateBom, formatRfcTableOptions } from './sapRfcClient.js';
+import { getSapConnectionPool, RFC_PRIORITY } from './sapConnectionPool.js';
 import { auditLogger } from './auditLog.js';
 import { BOM_FIELD_MAPPING } from '../config/bomFieldMapping.js';
 
@@ -74,8 +75,16 @@ export async function rfcPreflightCreateBoms({ boms = [], server, client: existi
     return mockPreflightCreateBoms(boms);
   }
 
-  const client = existingClient || (await openRfcClient(server));
-  const shouldClose = !existingClient;
+  if (!existingClient) {
+    const pool = getSapConnectionPool(server);
+    const priority = options.priority || (options.source === 'bulk' ? RFC_PRIORITY.BULK : RFC_PRIORITY.INTERACTIVE);
+    return pool.run(priority, options.userId || 'system', (pooledClient) => {
+      return executePreflightCreateBoms(boms, { ...options, existingClient: pooledClient });
+    });
+  }
+
+  const client = existingClient;
+  const shouldClose = false;
 
   try {
     // 1. Gather all unique materials, plants, storage locations, and statuses
@@ -572,8 +581,16 @@ export async function rfcVerifyCreatedBom({
     };
   }
 
-  const client = existingClient || (await openRfcClient(server));
-  const shouldClose = !existingClient;
+  if (!existingClient) {
+    const pool = getSapConnectionPool(server);
+    const priority = options.priority || (options.source === 'bulk' ? RFC_PRIORITY.BULK : RFC_PRIORITY.INTERACTIVE);
+    return pool.run(priority, options.userId || 'system', (pooledClient) => {
+      return executePreflightCreateBoms(boms, { ...options, existingClient: pooledClient });
+    });
+  }
+
+  const client = existingClient;
+  const shouldClose = false;
 
   try {
     // 1. Read MAST to get STLNR
@@ -929,8 +946,15 @@ export async function rfcBatchCreateBoms({
   }
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
-  const client = isMock ? null : (existingClient || (await openRfcClient(server)));
-  const shouldClose = !isMock && !existingClient && Boolean(client);
+  if (!isMock && !existingClient) {
+    const pool = getSapConnectionPool(server);
+    const priority = options.priority || (options.source === 'bulk' ? RFC_PRIORITY.BULK : RFC_PRIORITY.INTERACTIVE);
+    return pool.run(priority, options.userId || 'system', (pooledClient) => {
+      return executeCreateBomBatch(boms, { server, isMock, client: pooledClient, onProgress });
+    });
+  }
+  const client = isMock ? null : existingClient;
+  const shouldClose = false;
 
   let bomsCreated = 0;
   let componentsCreated = 0;

@@ -34,7 +34,7 @@ export default function NotFoundView({ pathname = '' }) {
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 20px',
-          color: 'var(--sap-shell-navy, #0f2744)'
+          color: 'var(--sap-shell-navy, #00204E)'
         }}
         aria-hidden="true"
       >
@@ -45,7 +45,7 @@ export default function NotFoundView({ pathname = '' }) {
         style={{
           fontSize: '1.25rem',
           fontWeight: 700,
-          color: 'var(--sap-shell-navy, #0f2744)',
+          color: 'var(--sap-shell-navy, #00204E)',
           margin: '0 0 10px'
         }}
       >

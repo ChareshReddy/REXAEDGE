@@ -365,8 +365,8 @@ try {
   // Test 2: Hidden columns verification (Ref, SLoc, Unit, Costing/Eng, itemNo, Alt Text)
   // -------------------------------------------------------------------------
   console.log('Test 2: Verify hidden columns are completely absent from table DOM...');
-  assert(!html12Rows.includes('0010'), 'Item number 0010 must NOT be in table DOM');
-  assert(!html12Rows.includes('0020'), 'Item number 0020 must NOT be in table DOM');
+  assert(!html12Rows.includes('>0010<') && !html12Rows.includes('"0010"'), 'Item number 0010 must NOT be in table DOM');
+  assert(!html12Rows.includes('>0020<') && !html12Rows.includes('"0020"'), 'Item number 0020 must NOT be in table DOM');
   assert(!html12Rows.includes('REF-A-1'), 'Reference number REF-A-1 must NOT be in table DOM');
   assert(!html12Rows.includes('REF-B-1'), 'Reference number REF-B-1 must NOT be in table DOM');
   assert(!html12Rows.includes('101A'), 'Storage location 101A must NOT be in table DOM');
@@ -560,7 +560,7 @@ try {
   const paginatedFirstRows = htmlPaginated.match(/class="[^"]*bom-group-first-row[^"]*"/g) || [];
   assert.strictEqual(paginatedFirstRows.length, 50, `Page 1 must render exactly 50 BOM groups, got ${paginatedFirstRows.length}`);
 
-  // When <= 300 rows (e.g. 12 rows sample), pagination controls are absent
+  // When <= 300 rows (Ex. 12 rows sample), pagination controls are absent
   assert(!html12Rows.includes('bulk-preview-pagination'), 'No pagination controls when component rows <= 300');
   console.log('✓ PASS: Files > 300 component rows paginate 50 BOMs per page with Previous/Next controls\n');
 

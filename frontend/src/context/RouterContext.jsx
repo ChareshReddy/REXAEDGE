@@ -103,6 +103,8 @@ export function RouterProvider({ initialPath, children }) {
 
     // Reset scroll position to top
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const mainEl = document.querySelector('.sap-assistant-layout') || document.querySelector('main');
+    if (mainEl) { mainEl.scrollTop = 0; }
 
     // Focus management for accessibility
     setTimeout(() => {
@@ -134,6 +136,8 @@ export function RouterProvider({ initialPath, children }) {
       });
 
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      const mainEl = document.querySelector('.sap-assistant-layout') || document.querySelector('main');
+      if (mainEl) { mainEl.scrollTop = 0; }
     };
 
     window.addEventListener('popstate', handlePopState);

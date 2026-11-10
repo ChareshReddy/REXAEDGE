@@ -17,7 +17,11 @@ import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
+import { FormSection, FormGrid, FormActions } from './ui/form-layout';
+import { FieldWrapper } from './ui/FieldWrapper';
+import { Input } from './ui/input';
 import { PageContainer } from './layout';
+import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
 
 export default function ValidateBomView({
   systemKey = 'DEV',
@@ -34,6 +38,20 @@ export default function ValidateBomView({
     alternativeBom: ''
   });
   const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const userInteractedRef = React.useRef({});
+
+  const handleUserInteraction = (field) => {
+    userInteractedRef.current[field] = true;
+  };
+
+  useEffect(() => {
+    setTouched({});
+    setFieldErrors({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+  }, [systemKey]);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMsg, _setErrorMsg] = useState('');
@@ -55,23 +73,49 @@ export default function ValidateBomView({
     };
   }, [isLoading]);
 
+  const handleBlur = (field, ruleKey, isRequired) => {
+    if (!userInteractedRef.current[field]) return;
+    setTouched((prev) => ({ ...prev, [field]: true }));
+    const val = formData[field];
+    const res = validateField(ruleKey, val, isRequired);
+    if (!res.valid) {
+      setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
+    } else {
+      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
   const handleValidate = async (e) => {
     e.preventDefault();
+    setIsSubmitted(true);
+    setTouched({ material: true, plant: true, bomUsage: true, alternativeBom: true });
     const errors = {};
     const missing = [];
 
-    if (!formData.material.trim()) {
-      errors.material = true;
-      missing.push('Material number is required');
+    const matRes = validateField('material', formData.material, true);
+    if (!matRes.valid) {
+      errors.material = matRes.error;
+      missing.push(!formData.material.trim() ? 'Material number is required' : matRes.error);
     }
-    if (!formData.plant.trim()) {
-      errors.plant = true;
-      missing.push('Plant code is required');
+    const plantRes = validateField('plant', formData.plant, true);
+    if (!plantRes.valid) {
+      errors.plant = plantRes.error;
+      missing.push(!formData.plant.trim() ? 'Plant code is required' : plantRes.error);
+    }
+    const usageRes = validateField('bomUsage', formData.bomUsage, false);
+    if (!usageRes.valid) {
+      errors.bomUsage = usageRes.error;
+      missing.push(usageRes.error);
+    }
+    const altRes = validateField('alternativeBom', formData.alternativeBom, false);
+    if (!altRes.valid) {
+      errors.alternativeBom = altRes.error;
+      missing.push(altRes.error);
     }
 
     if (missing.length > 0) {
       setFieldErrors(errors);
-      toast.error('Please fill in the required fields', { messages: missing });
+      toast.error('Please fill in valid required fields', { messages: missing });
       if (errors.material) document.getElementById('valMaterial')?.focus();
       else if (errors.plant) document.getElementById('valPlant')?.focus();
       return;
@@ -130,142 +174,140 @@ export default function ValidateBomView({
         <div style={{ marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
               {/* Validation Parameters Card */}
-              <div className="sap-structured-form-card sap-full-width" style={{ width: '100%' }}>
-                <form id="validate-bom-form" onSubmit={handleValidate}>
-                  <div
-                    className="sap-form-grid"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                      padding: '16px 20px',
-                      gap: '14px 18px'
-                    }}
-                  >
-                    <div className="sap-form-group">
-                      <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                        Material Number <span className="sap-required-star" style={{ color: 'var(--sap-error)' }}>*</span>
-                      </label>
-                      <div className="sap-form-input-wrapper">
-                        <Layers size={13} className="input-icon" />
-                        <ValueHelpInput
-                          id="valMaterial"
-                          kind="material"
-                          plant={formData.plant}
-                          placeholder="e.g. 100001"
-                          value={formData.material}
-                          onChange={(e) => {
-                            setFormData((p) => ({ ...p, material: e.target.value }));
-                            if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
-                          }}
-                          onSelect={(val, full) => {
-                            setFormData((p) => ({
-                              ...p,
-                              material: val,
-                              ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
-                              ...(full?.werks && !p.plant ? { plant: full.werks } : {})
-                            }));
-                            if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
-                          }}
-                          className={`sap-form-input ${fieldErrors.material ? 'input-error' : ''}`}
-                          style={{ paddingLeft: 30 }}
-                          aria-label="Validate Material"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="sap-field-error-msg">{fieldErrors.material ? 'Material number is required' : ''}</div>
-                    </div>
-
-                    <div className="sap-form-group">
-                      <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                        Plant Code <span className="sap-required-star" style={{ color: 'var(--sap-error)' }}>*</span>
-                      </label>
-                      <div className="sap-form-input-wrapper">
-                        <Factory size={13} className="input-icon" />
-                        <ValueHelpInput
-                          id="valPlant"
-                          kind="plant"
-                          material={formData.material}
-                          placeholder="e.g. 1000"
-                          maxLength={4}
-                          value={formData.plant}
-                          onChange={(e) => {
-                            setFormData((p) => ({ ...p, plant: e.target.value }));
-                            if (fieldErrors.plant) setFieldErrors((p) => ({ ...p, plant: false }));
-                          }}
-                          className={`sap-form-input ${fieldErrors.plant ? 'input-error' : ''}`}
-                          style={{ paddingLeft: 30 }}
-                          aria-label="Validate Plant"
-                        />
-                      </div>
-                      <div className="sap-field-error-msg">{fieldErrors.plant ? 'Plant code is required' : ''}</div>
-                    </div>
-
-                    <div className="sap-form-group">
-                      <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>BOM Usage</label>
-                      <div className="sap-form-input-wrapper">
-                        <Hash size={13} className="input-icon" />
-                        <ValueHelpInput
-                          kind="bomUsage"
-                          placeholder="1 (Production)"
-                          maxLength={1}
-                          value={formData.bomUsage}
-                          onChange={(e) => setFormData((p) => ({ ...p, bomUsage: e.target.value }))}
-                          style={{ paddingLeft: 30 }}
-                          aria-label="Validate BOM Usage"
-                        />
-                      </div>
-                      <div className="sap-field-error-msg"></div>
-                    </div>
-
-                    <div className="sap-form-group">
-                      <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>Alternative BOM (optional)</label>
-                      <div className="sap-form-input-wrapper">
-                        <Hash size={13} className="input-icon" />
-                        <input
-                          type="text"
-                          className="sap-form-input"
-                          placeholder="e.g. 01"
-                          value={formData.alternativeBom}
-                          onChange={(e) => setFormData((p) => ({ ...p, alternativeBom: e.target.value }))}
-                        />
-                      </div>
-                      <div className="sap-field-error-msg"></div>
-                    </div>
-                  </div>
-
-                  {/* Form Action Row inside card */}
-                  <div className="sap-card-action-row">
-                    <button
-                      type="button"
-                      className="sap-btn sap-btn-secondary"
-                      onClick={handleReset}
-                      style={{ height: 32, padding: '0 16px', fontSize: 13 }}
+              <FormSection
+                title="BOM Validation Parameters"
+                description="Specify material, plant and BOM usage to check BOM status in SAP"
+                className="mb-4"
+              >
+                <form onSubmit={handleValidate}>
+                  <FormGrid cols={4}>
+                    <FieldWrapper
+                      label="Material Number"
+                      htmlFor="valMaterial"
+                      required
+                      error={(touched.material || isSubmitted) ? fieldErrors.material || null : null}
                     >
-                      <X size={14} />
-                      <span>Clear</span>
-                    </button>
+                      <ValueHelpInput
+                        id="valMaterial"
+                        kind="material"
+                        plant={formData.plant}
+                        placeholder="Ex. 100001"
+                        maxLength={FIELD_RULES.material.maxLength}
+                        value={formData.material}
+                        onChange={(e) => {
+                          setFormData((p) => ({ ...p, material: e.target.value }));
+                          if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
+                        }}
+                        onBlur={() => handleBlur('material', 'material', true)}
+                        onSelect={(val, full) => {
+                          setFormData((p) => ({
+                            ...p,
+                            material: val,
+                            ...(full?.stlal ? { alternativeBom: full.stlal } : {}),
+                            ...(full?.werks && !p.plant ? { plant: full.werks } : {})
+                          }));
+                          if (fieldErrors.material) setFieldErrors((p) => ({ ...p, material: false }));
+                        }}
+                        hasError={Boolean((touched.material || isSubmitted) && fieldErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
+                        aria-label="Validate Material"
+                        autoFocus
+                      />
+                    </FieldWrapper>
 
-                    <button
-                      type="submit"
-                      className="sap-btn sap-btn-primary"
-                      disabled={isLoading}
-                      style={{ height: 32, padding: '0 18px', fontSize: 13 }}
+                    <FieldWrapper
+                      label="Plant Code"
+                      htmlFor="valPlant"
+                      required
+                      error={(touched.plant || isSubmitted) ? fieldErrors.plant || null : null}
                     >
-                      {isLoading ? (
-                        <>
-                          <span className="sap-spinner" style={{ width: 14, height: 14 }} />
-                          <span>Validating in SAP...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Search size={14} />
-                          <span>Validate in SAP</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                      <ValueHelpInput
+                        id="valPlant"
+                        kind="plant"
+                        material={formData.material}
+                        placeholder="Ex. 1000"
+                        maxLength={FIELD_RULES.plant.maxLength}
+                        value={formData.plant}
+                        onChange={(e) => {
+                          setFormData((p) => ({ ...p, plant: e.target.value }));
+                          if (fieldErrors.plant) setFieldErrors((p) => ({ ...p, plant: false }));
+                        }}
+                        onBlur={() => handleBlur('plant', 'plant', true)}
+                        hasError={Boolean((touched.plant || isSubmitted) && fieldErrors.plant)} onPointerDown={() => handleUserInteraction('plant')} onKeyDown={() => handleUserInteraction('plant')}
+                        aria-label="Validate Plant"
+                      />
+                    </FieldWrapper>
+
+                    <FieldWrapper
+                      label="BOM Usage"
+                      htmlFor="valUsage"
+                      error={(touched.bomUsage || isSubmitted) ? fieldErrors.bomUsage || null : null}
+                    >
+                      <ValueHelpInput
+                        id="valUsage"
+                        kind="bomUsage"
+                        placeholder="1 (Production)"
+                        maxLength={FIELD_RULES.bomUsage.maxLength}
+                        value={formData.bomUsage}
+                        onChange={(e) => setFormData((p) => ({ ...p, bomUsage: e.target.value }))}
+                        onBlur={() => handleBlur('bomUsage', 'bomUsage', false)}
+                        hasError={Boolean((touched.bomUsage || isSubmitted) && fieldErrors.bomUsage)} onPointerDown={() => handleUserInteraction('bomUsage')} onKeyDown={() => handleUserInteraction('bomUsage')}
+                        aria-label="Validate BOM Usage"
+                      />
+                    </FieldWrapper>
+
+                    <FieldWrapper
+                      label="Alternative BOM (optional)"
+                      htmlFor="valAlternativeBom"
+                      error={(touched.alternativeBom || isSubmitted) ? fieldErrors.alternativeBom || null : null}
+                    >
+                      <Input
+                        id="valAlternativeBom"
+                        type="text"
+                        placeholder="Ex. 01"
+                        maxLength={FIELD_RULES.alternativeBom.maxLength}
+                        value={formData.alternativeBom}
+                        onChange={(e) => setFormData((p) => ({ ...p, alternativeBom: e.target.value }))}
+                        onBlur={() => handleBlur('alternativeBom', 'alternativeBom', false)}
+                        hasError={Boolean((touched.alternativeBom || isSubmitted) && fieldErrors.alternativeBom)} onPointerDown={() => handleUserInteraction('alternativeBom')} onKeyDown={() => handleUserInteraction('alternativeBom')}
+                        isMono
+                      />
+                    </FieldWrapper>
+                  </FormGrid>
+
+                  <FormActions
+                    className="sap-card-action-row mt-4 pt-3 border-t border-[var(--color-border-subtle)]"
+                    left={
+                      <button
+                        type="button"
+                        className="rx-btn rx-btn-secondary"
+                        onClick={handleReset}
+                      >
+                        <X size={14} />
+                        <span>Clear</span>
+                      </button>
+                    }
+                    right={
+                      <button
+                        type="submit"
+                        className="rx-btn rx-btn-primary"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <>
+                            <span className="sap-spinner" style={{ width: 14, height: 14 }} />
+                            <span>Validating in SAP...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Search size={14} />
+                            <span>Validate in SAP</span>
+                          </>
+                        )}
+                      </button>
+                    }
+                  />
                 </form>
-              </div>
+              </FormSection>
 
               {/* Validation Result Box */}
               {result && result.success && (
@@ -275,7 +317,7 @@ export default function ValidateBomView({
                     padding: '16px 20px',
                     borderRadius: 'var(--radius-xl, 12px)',
                     backgroundColor: result.bomExists ? 'var(--sap-success-bg, #f0fdf4)' : 'var(--sap-warning-bg, #fffbeb)',
-                    border: `1px solid ${result.bomExists ? 'var(--sap-success-border, #bbf7d0)' : 'var(--sap-warning-border, #fed7aa)'}`,
+                    border: `1px solid ${result.bomExists ? 'var(--sap-success-border, #bbf7d0)' : 'var(--sap-warning-border, #D9E2EC)'}`,
                     boxShadow: 'var(--sap-shadow-sm)'
                   }}
                 >
@@ -285,7 +327,7 @@ export default function ValidateBomView({
                     ) : (
                       <AlertTriangle size={18} color="var(--sap-warning, #d97706)" />
                     )}
-                    <strong style={{ fontSize: '14px', color: result.bomExists ? 'var(--sap-success-text, #166534)' : 'var(--sap-warning-text, #9a3412)' }}>
+                    <strong style={{ fontSize: '14px', color: result.bomExists ? 'var(--sap-success-text, #166534)' : 'var(--sap-warning-text, #00204E)' }}>
                       {result.bomExists ? 'BOM Exists in SAP' : 'No BOM Found'}
                     </strong>
                   </div>

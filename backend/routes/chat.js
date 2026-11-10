@@ -1375,6 +1375,29 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
       }
     }
 
+    // App Permission Gate for confirmed BOM actions
+    if (req.user?.role !== 'admin' && (['copy_bom', 'delete_bom'].includes(action.type) || action.entityKey === 'bom')) {
+      const perms = req.userPermissions || [];
+      if (action.type === 'copy_bom' && !perms.includes('bom.copy')) {
+        return res.status(403).json({
+          reply: "⚠️ You don't have permission to copy BOMs on this server.",
+          error: "You don't have permission to copy BOMs on this server."
+        });
+      }
+      if (action.type === 'delete_bom' && !perms.includes('bom.delete')) {
+        return res.status(403).json({
+          reply: "⚠️ You don't have permission to delete BOMs on this server.",
+          error: "You don't have permission to delete BOMs on this server."
+        });
+      }
+      if (action.type === 'create_bom' && !perms.includes('bom.create')) {
+        return res.status(403).json({
+          reply: "⚠️ You don't have permission to create BOMs on this server.",
+          error: "You don't have permission to create BOMs on this server."
+        });
+      }
+    }
+
     const isLevel3OrAbove = (action.riskLevel && action.riskLevel >= 3) ||
       requiresChangeReason(action.riskLevel) ||
       Boolean(action.requiresReason) ||

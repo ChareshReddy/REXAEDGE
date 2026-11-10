@@ -5,7 +5,7 @@ import { Link } from '../context/RouterContext';
  * Shared Fiori Page Header Component
  * Layout (top to bottom):
  * 1. Breadcrumbs on top (13px, muted slate, chevrons, hover orange-700, current navy semi-bold)
- * 2. Title below breadcrumbs (28px bold navy #0f2744, 8px gap)
+ * 2. Title below breadcrumbs (28px bold navy #00204E, 8px gap)
  * 3. Description below title (15px regular slate-600 #475569, 4px gap, max 70ch)
  * 4. Children (tabs, filters, etc. at bottom edge with 16px gap above)
  */
@@ -24,7 +24,10 @@ export default function FioriPageHeader({
 }) {
   const isProductsPage = title === 'Products';
 
-  const renderBreadcrumbItem = (b) => {
+  const renderBreadcrumbItem = (b, isLast = false) => {
+    if (isLast) {
+      return <span className="fiori-bc-current">{b.label}</span>;
+    }
     if (b.path || b.to) {
       return (
         <Link to={b.path || b.to} className="fiori-bc-link">
@@ -56,7 +59,7 @@ export default function FioriPageHeader({
               breadcrumbs.map((b, idx) => (
                 <React.Fragment key={idx}>
                   {idx > 0 && <span className="fiori-bc-sep">›</span>}
-                  {renderBreadcrumbItem(b)}
+                  {renderBreadcrumbItem(b, idx === breadcrumbs.length - 1)}
                 </React.Fragment>
               ))
             ) : (
@@ -65,12 +68,12 @@ export default function FioriPageHeader({
                   {breadcrumbs.map((b, idx) => (
                     <React.Fragment key={idx}>
                       {idx > 0 && <span className="fiori-bc-sep">›</span>}
-                      {renderBreadcrumbItem(b)}
+                      {renderBreadcrumbItem(b, idx === breadcrumbs.length - 1)}
                     </React.Fragment>
                   ))}
                 </span>
                 <span className="fiori-bc-mobile">
-                  {renderBreadcrumbItem(breadcrumbs[0])}
+                  {renderBreadcrumbItem(breadcrumbs[0], false)}
                   <span className="fiori-bc-sep">›</span>
                   <span
                     className="fiori-bc-collapsed"
@@ -79,7 +82,7 @@ export default function FioriPageHeader({
                     …
                   </span>
                   <span className="fiori-bc-sep">›</span>
-                  {renderBreadcrumbItem(breadcrumbs[breadcrumbs.length - 1])}
+                  {renderBreadcrumbItem(breadcrumbs[breadcrumbs.length - 1], true)}
                 </span>
               </>
             )}
@@ -87,15 +90,20 @@ export default function FioriPageHeader({
         )}
 
         {/* 2. Title Row below breadcrumbs */}
-        <div className="fiori-ph-title-row">
-          <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
-            {title}
-          </h1>
-          {extraTitleContent}
+        <div className="fiori-ph-title-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
+              {title}
+            </h1>
+            {/* 3. Description below title */}
+            {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle">{subtitle}</p>}
+          </div>
+          {extraTitleContent && (
+            <div className="fiori-ph-actions-right" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+              {extraTitleContent}
+            </div>
+          )}
         </div>
-
-        {/* 3. Description below title */}
-        {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle">{subtitle}</p>}
 
         {/* 4. Tabs / Children (if provided) */}
         {children}

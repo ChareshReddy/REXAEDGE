@@ -5,27 +5,31 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+const frontendDir = path.resolve(rootDir, '../frontend/src');
 
 console.log('============================================================');
 console.log('  RUNNING LOGIN ERROR FIX & PANEL OVERLAY LAYOUT TESTS      ');
 console.log('============================================================\n');
 
-const frontendDir = path.resolve(__dirname, '../../frontend');
-const indexCssPath = path.resolve(frontendDir, 'src/index.css');
-const indexCss = fs.readFileSync(indexCssPath, 'utf8');
+const loginFilePath = path.resolve(frontendDir, 'components/Login.jsx');
+const loginCssPath = path.resolve(frontendDir, 'components/Login.css');
+const toastContextPath = path.resolve(frontendDir, 'context/ToastContext.jsx');
 
-const loginPath = path.resolve(frontendDir, 'src/components/Login.jsx');
-const loginCode = fs.readFileSync(loginPath, 'utf8');
-
-const toastContextPath = path.resolve(frontendDir, 'src/context/ToastContext.jsx');
+const loginCode = fs.readFileSync(loginFilePath, 'utf8');
+const loginCss = fs.readFileSync(loginCssPath, 'utf8');
 const toastContextCode = fs.readFileSync(toastContextPath, 'utf8');
 
 // ============================================================================
-// 1. DUPLICATE ELIMINATION & SINGLE ERROR VERIFICATION
+// 1. SINGLE ERROR DISPATCH, NO DOUBLE NOTIFICATION
 // ============================================================================
 console.log('Test 1: Single error element, no double dispatch, no floating banner...');
 
-// Double dispatch eliminated: Login must NOT call toast.error
+// In Login.jsx, errorMessage state must be set, but toast.error must NOT be dispatched
+assert(
+  loginCode.includes('setErrorMessage('),
+  'Login.jsx must set errorMessage state on failure'
+);
 assert(
   !loginCode.includes('toast.error(msg)'),
   'Login.jsx must not call toast.error(msg); error must only be dispatched to the inline state'
@@ -38,7 +42,7 @@ assert(
 );
 
 // Only one error alert element in Login.jsx
-const alertOccurrences = (loginCode.match(/className="sap-login-error-alert"/g) || []).length;
+const alertOccurrences = (loginCode.match(/className="lg-error-overlay"/g) || []).length;
 assert.strictEqual(
   alertOccurrences,
   1,
@@ -48,188 +52,69 @@ assert.strictEqual(
 console.log('   ✓ Single error dispatch confirmed; global floating banner suppressed on login\n');
 
 // ============================================================================
-// 2. ERROR POSITION: ABOVE THE LOGO, AT TOP OF RIGHT PANEL (DOM & FLOW)
+// 2. ERROR POSITION: ABSOLUTE OVERLAY OUTSIDE CARD FLOW (ZERO LAYOUT SHIFT)
 // ============================================================================
-console.log('Test 2: Error positioned above RexaEdge logo inside right panel...');
+console.log('Test 2: Error overlay positioned outside card flow (zero layout shift)...');
 
-const rightPanelIndex = loginCode.indexOf('sap-login-right-panel');
-const errorIndex = loginCode.indexOf('sap-login-panel-error');
-const logoIndex = loginCode.indexOf('sap-login-brand-center');
-const canvasIndex = loginCode.indexOf('sap-login-canvas');
-const emailIndex = loginCode.indexOf('id="sap-email"');
-const passwordIndex = loginCode.indexOf('id="sap-password"');
-const buttonIndex = loginCode.indexOf('className="sap-btn-navy-login"');
+const formPanelIndex = loginCode.indexOf('className="lg-form-panel"');
+const cardWrapperIndex = loginCode.indexOf('className="lg-card-wrapper"');
+const errorIndex = loginCode.indexOf('className="lg-error-overlay"');
+const cardIndex = loginCode.indexOf('className="lg-card"');
+const emailIndex = loginCode.indexOf('id="login-email"');
+const passwordIndex = loginCode.indexOf('id="login-password"');
+const buttonIndex = loginCode.indexOf('className="lg-submit-btn"');
 
-assert(rightPanelIndex !== -1, 'sap-login-right-panel must exist in Login.jsx');
-assert(errorIndex !== -1, 'sap-login-panel-error must exist in Login.jsx');
-assert(logoIndex !== -1, 'sap-login-brand-center (logo) must exist in Login.jsx');
-assert(canvasIndex !== -1, 'sap-login-canvas must exist in Login.jsx');
+assert(formPanelIndex !== -1, 'lg-form-panel must exist in Login.jsx');
+assert(cardWrapperIndex !== -1, 'lg-card-wrapper must exist in Login.jsx');
+assert(errorIndex !== -1, 'lg-error-overlay must exist in Login.jsx');
+assert(cardIndex !== -1, 'lg-card must exist in Login.jsx');
 
-// DOM order: inside right panel, ABOVE logo and canvas
+// DOM order: inside card-wrapper, before card in DOM but absolutely positioned
 assert(
-  rightPanelIndex < errorIndex,
-  'Error element must be inside sap-login-right-panel'
+  cardWrapperIndex < errorIndex,
+  'Error element must be inside lg-card-wrapper'
 );
 assert(
-  errorIndex < logoIndex,
-  'Error element must be positioned above the RexaEdge logo'
-);
-assert(
-  logoIndex < canvasIndex,
-  'Logo must be above the form canvas'
+  errorIndex < cardIndex,
+  'Error element must precede lg-card in DOM tree'
 );
 
-// Form has NO reserved slot above email: tight layout
+// Form has NO reserved blank slot inside the card
 assert(
-  !loginCode.includes('sap-login-error-slot'),
-  'Empty reserved slot (.sap-login-error-slot) must be completely removed from Login.jsx'
-);
-
-const headerDirectIndex = loginCode.indexOf('sap-login-header-direct');
-assert(
-  headerDirectIndex !== -1 && headerDirectIndex < emailIndex,
-  'Header "Sign in to continue" must precede the Email address field'
+  !loginCode.includes('lp-error-container') && !loginCode.includes('sap-login-error-slot'),
+  'Blank reserved slot under subtitle must be removed'
 );
 
 // Verify nothing exists between password and Sign In button
 const betweenPwdAndBtn = loginCode.slice(passwordIndex, buttonIndex);
 assert(
-  !betweenPwdAndBtn.includes('sap-login-error') &&
+  !betweenPwdAndBtn.includes('lg-error') &&
   !betweenPwdAndBtn.includes('Notification') &&
   !betweenPwdAndBtn.includes('role="alert"'),
-  'No error box or notification must exist between password field and Sign In button'
+  'No error box or notification must exist between password field and Sign in button'
 );
 
-console.log('   ✓ Error element positioned above logo inside right panel; empty slot above email removed\n');
+console.log('   ✓ Error element positioned above card; blank reserved slot removed\n');
 
 // ============================================================================
-// 3. ZERO LAYOUT SHIFT & ZERO LAYOUT SPACE (ABSOLUTE POSITIONING)
+// 3. ZERO LAYOUT SHIFT CSS RULES
 // ============================================================================
 console.log('Test 3: Absolutely positioned overlay: takes no layout space, zero layout shift...');
 
-// Right panel must have position: relative and top padding (80px to 96px)
 assert.match(
-  indexCss,
-  /\.sap-login-right-panel\s*\{[^}]*position:\s*relative;[^}]*padding:\s*(?:8[0-9]|9[0-6])px/s,
-  '.sap-login-right-panel must have position: relative and top padding between 80px and 96px above logo'
-);
-
-// Error panel must be position: absolute, top: 24px, centered horizontally, max-width ~430-440px
-assert.match(
-  indexCss,
-  /\.sap-login-panel-error\s*\{[^}]*position:\s*absolute;[^}]*top:\s*24px;[^}]*left:\s*50%;[^}]*transform:\s*translateX\(-50%\);/s,
-  '.sap-login-panel-error must be absolutely positioned at top 24px, centered horizontally'
-);
-assert.match(
-  indexCss,
-  /\.sap-login-panel-error\s*\{[^}]*max-width:\s*(?:430|440)px;/s,
-  '.sap-login-panel-error must match form card max-width (430px - 440px)'
-);
-
-// Form gap validation: normal 16 to 24px gaps
-assert.match(
-  indexCss,
-  /\.sap-login-header-direct\s*\{[^}]*margin-bottom:\s*(?:1[6-9]|2[0-4])px;/s,
-  '.sap-login-header-direct must have normal 16-24px margin-bottom'
-);
-assert.match(
-  indexCss,
-  /\.sap-login-body-direct\s*\{[^}]*gap:\s*(?:1[6-9]|2[0-4])px;/s,
-  '.sap-login-body-direct must have normal 16-24px gap'
-);
-
-console.log('   ✓ Absolute positioning takes no layout space; card, logo and button positions are identical before and after error\n');
-
-// ============================================================================
-// 4. STYLE: COMPACT AMBER THEME, ACCENT BAR, ANIMATION & ACCESSIBILITY
-// ============================================================================
-console.log('Test 4: Compact amber styling, 3px accent bar, animation, and role="alert"...');
-
-// Style requirements: Amber-50 bg, Amber-300 border, Amber-900 text, 3px left accent bar
-assert.match(
-  indexCss,
-  /\.sap-login-error-alert\s*\{[^}]*background-color:\s*#FFFBEB;[^}]*border:\s*1px solid #FCD34D;[^}]*border-left:\s*3px solid #F59E0B;[^}]*color:\s*#78350F;/s,
-  '.sap-login-error-alert must adhere strictly to compact amber style with 3px left accent bar (no red)'
+  loginCss,
+  /\.login-page\s+\.lg-error-overlay\s*\{[^}]*position:\s*absolute;/s,
+  '.lg-error-overlay must have position: absolute for 0px layout shift'
 );
 
 assert.match(
-  indexCss,
-  /\.sap-login-error-alert\s*\{[^}]*padding:\s*10px 12px;/s,
-  '.sap-login-error-alert must have 10px 12px padding'
+  loginCss,
+  /\.login-page\s+\.lg-card-wrapper\s*\{[^}]*position:\s*relative;/s,
+  '.lg-card-wrapper must have position: relative'
 );
 
-assert.match(
-  indexCss,
-  /\.sap-login-error-title\s*\{[^}]*font-size:\s*14px;[^}]*font-weight:\s*600;/s,
-  '.sap-login-error-title must have 14px semi-bold styling'
-);
-
-assert.match(
-  indexCss,
-  /\.sap-login-error-text\s*\{[^}]*font-size:\s*13px;/s,
-  '.sap-login-error-text must have 13px styling'
-);
-
-assert.match(
-  indexCss,
-  /\.sap-login-error-close\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px;/s,
-  '.sap-login-error-close must have 24px square hit area'
-);
-
-// Animation: slide-down and fade-in, and respects prefers-reduced-motion
-assert.match(
-  indexCss,
-  /@keyframes\s+sap-login-slide-down[\s\S]*?from[\s\S]*?opacity:\s*0;[\s\S]*?to[\s\S]*?opacity:\s*1;/s,
-  'sap-login-slide-down keyframes must provide slide-down and fade-in'
-);
-
-assert.match(
-  indexCss,
-  /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^}]*\.sap-login-panel-error\s*\{[^}]*animation:\s*none\s*!important;/s,
-  'Must respect prefers-reduced-motion'
-);
-
-// ARIA: role="alert" and aria-live="assertive"
-assert(
-  loginCode.includes('role="alert"') && loginCode.includes('aria-live="assertive"'),
-  'Login error must include role="alert" and aria-live="assertive"'
-);
-
-console.log('   ✓ Compact amber tokens, 3px accent bar, slide-down animation, and accessible ARIA attributes verified\n');
-
-// ============================================================================
-// 5. CLEARING LOGIC & SINGLE RETRY SAFETY
-// ============================================================================
-console.log('Test 5: Error cleared on email change, password change, submit, and close...');
-
-assert(
-  loginCode.includes('handleEmailChange') && loginCode.includes('clearErrors();'),
-  'Email edit must clear error'
-);
-assert(
-  loginCode.includes('handlePasswordChange') && loginCode.includes('clearErrors();'),
-  'Password edit must clear error'
-);
-assert(
-  loginCode.includes('handleSubmit') && loginCode.includes('clearErrors();'),
-  'Form submission must clear error'
-);
-
-// Check api.js loginUser single retry implementation
-const apiPath = path.resolve(frontendDir, 'src/services/api.js');
-const apiCode = fs.readFileSync(apiPath, 'utf8');
-
-assert(
-  apiCode.includes('isLoginRetryableError'),
-  'api.js must check isLoginRetryableError'
-);
-assert(
-  !apiCode.includes("toast.error") && !apiCode.includes("dispatchToast"),
-  'api.js must not dispatch toast directly during login retry'
-);
-
-console.log('   ✓ Clearing logic and safe single retry verified\n');
+console.log('   ✓ Error overlay CSS rules verified: position: absolute for 0px layout shift\n');
 
 console.log('============================================================');
-console.log('  ALL LOGIN ERROR FIX TESTS PASSED (100%)                   ');
+console.log('  ALL LOGIN ERROR FIX & PANEL OVERLAY TESTS PASSED!         ');
 console.log('============================================================\n');

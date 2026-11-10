@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Home,
+  Layers,
   LogOut,
   User,
   Menu,
@@ -36,8 +37,11 @@ import ValidateBomView from './components/ValidateBomView';
 import { ToastProvider, toast } from './context/ToastContext';
 import CreateBomView from './components/CreateBomView';
 import BulkCreateBomView from './components/BulkCreateBomView';
+import DesignSystemShowcase from './components/dev/DesignSystemShowcase';
 
 import AdminView from './components/AdminView';
+import Sidebar from './components/layout/Sidebar';
+import CommandPalette from './components/layout/CommandPalette';
 import Modal from './components/Modal';
 import PasswordModal from './components/PasswordModal';
 import {
@@ -56,7 +60,7 @@ import rexaEdgeLogo from './assets/rexaedge_logo.png';
 import rexaEdgeFullColourLogo from './assets/rexaedge_full_colour.png';
 import HomePage from './components/HomePage';
 import activityTracker from './services/activityTracker';
-import { formatEnvironment } from './utils/textFormatters';
+import { formatEnvironment, formatDisplayName } from './utils/textFormatters';
 import { RouterProvider, useRouter, Link } from './context/RouterContext';
 import {
   ROUTES,
@@ -87,6 +91,7 @@ function AppContent({
   const [authConfig, setAuthConfig] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(initialCheckingAuth);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // SAP Server selection state (dynamically loaded per user permissions)
   const [availableServers, setAvailableServers] = useState(initialServers);
@@ -97,8 +102,10 @@ function AppContent({
 
   // Application view state - defaults to modern Home page matching RexaEdge ERP portal
   const getInitialActiveTab = () => {
+    if (initialActiveTab === 'launchpad' && (!initialLaunchpadSubView || initialLaunchpadSubView === 'home')) return 'home';
     if (initialActiveTab && initialActiveTab !== 'home') return initialActiveTab;
     const path = normalizePath(router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '/home'));
+    if (path === '/dev/design-system') return import.meta.env.DEV ? 'dev_design_system' : 'not_found';
     if (path.startsWith('/admin')) return 'admin';
     if (path === '/products/bom/create/single') return 'create_bom';
     if (path === '/products/bom/create/bulk') return 'bulk_create_bom';
@@ -107,6 +114,7 @@ function AppContent({
     if (path === '/products/bom/display') return 'bom_explorer';
     if (path === '/products/bom/validate') return 'validate_bom';
     if (path === '/products/bom/delete') return 'delete_bom';
+    if (path === '/products' || path === '/launchpad') return 'home';
     if (path.startsWith('/products')) return 'launchpad';
     if (path === '/home' || path === '/') return 'home';
     if (path === '/about' || path === '/contact' || path === '/signin') return 'home';
@@ -119,7 +127,7 @@ function AppContent({
     if (path === '/products/bom/create') return 'bom_create_operations';
     if (path === '/products/bom/copy') return 'bom_copy_operations';
     if (path === '/products/bom') return 'bom_operations';
-    return 'home';
+    return 'bom_operations';
   };
 
   const [activeTab, setActiveTab] = useState(getInitialActiveTab); // 'home' | 'launchpad' | 'copy_bom' | 'delete_bom' | 'bom_explorer' | 'validate_bom' | 'bulk_bom' | 'admin' | 'not_found' | 'access_denied'
@@ -131,9 +139,18 @@ function AppContent({
       if (subView === 'bom_operations') return '/products/bom';
       if (subView === 'bom_create_operations') return '/products/bom/create';
       if (subView === 'bom_copy_operations') return '/products/bom/copy';
-      return '/products';
+      return '/home';
     }
-    if (tab === 'admin') return '/admin/users';
+    if (tab === 'admin_users') return '/admin/users';
+    if (tab === 'admin_servers') return '/admin/servers';
+    if (tab === 'admin_permissions') return '/admin/permissions';
+    if (tab === 'admin_logs') return '/admin/logs/audit';
+    if (tab === 'admin') {
+      if (subView === 'servers') return '/admin/servers';
+      if (subView === 'permissions') return '/admin/permissions';
+      if (subView === 'logs' || subView === 'audit' || subView === 'activity-logs') return '/admin/logs/audit';
+      return '/admin/users';
+    }
     if (tab === 'create_bom') return '/products/bom/create/single';
     if (tab === 'bulk_create_bom') return '/products/bom/create/bulk';
     if (tab === 'copy_bom') return '/products/bom/copy/single';
@@ -146,6 +163,23 @@ function AppContent({
 
   const navigateToView = (tab, subView = null, replace = false) => {
     toast.clearOnNavigation();
+    if (tab === 'launchpad' && (!subView || subView === 'home')) {
+      tab = 'home';
+      subView = null;
+    }
+    if (tab === 'admin_users') {
+      tab = 'admin';
+      subView = 'users';
+    } else if (tab === 'admin_servers') {
+      tab = 'admin';
+      subView = 'servers';
+    } else if (tab === 'admin_permissions') {
+      tab = 'admin';
+      subView = 'permissions';
+    } else if (tab === 'admin_logs') {
+      tab = 'admin';
+      subView = 'logs';
+    }
     setActiveTab(tab);
     if (subView !== null) {
       setLaunchpadSubView(subView);
@@ -200,6 +234,26 @@ function AppContent({
   const userMenuHoverTimeoutRef = useRef(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K listener and rexa:open-command-palette event listener
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    const handleOpenCommandPalette = () => {
+      setIsCommandPaletteOpen(true);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('rexa:open-command-palette', handleOpenCommandPalette);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('rexa:open-command-palette', handleOpenCommandPalette);
+    };
+  }, []);
 
   const handleUserMenuMouseEnter = () => {
     if (userMenuHoverTimeoutRef.current) clearTimeout(userMenuHoverTimeoutRef.current);
@@ -331,8 +385,11 @@ function AppContent({
         return;
       }
       if (path === '/products' || path === '/launchpad' || hash === '#products' || hash === '#launchpad') {
-        setActiveTab('launchpad');
-        setLaunchpadSubView('home');
+        setActiveTab('home');
+        setLaunchpadSubView(null);
+        if (typeof window !== 'undefined' && window.location.pathname !== '/home') {
+          window.history.replaceState({ activeTab: 'home' }, '', '/home');
+        }
         return;
       }
       if (path === '/home' || hash === '#home') {
@@ -349,6 +406,14 @@ function AppContent({
         return;
       }
       if (path === '/signin') {
+        return;
+      }
+      if (path === '/dev/design-system') {
+        if (import.meta.env.DEV) {
+          setActiveTab('dev_design_system');
+        } else {
+          setActiveTab('not_found');
+        }
         return;
       }
 
@@ -372,6 +437,14 @@ function AppContent({
       window.removeEventListener('popstate', handleLocationChange);
     };
   }, [user, router?.pathname]);
+
+  // Reset main content scroll on view/route change
+  useEffect(() => {
+    const mainEl = document.querySelector(".sap-assistant-layout") || document.querySelector("main");
+    if (mainEl) {
+      mainEl.scrollTop = 0;
+    }
+  }, [activeTab, launchpadSubView, router?.pathname]);
 
   // Auth guard & redirect handler
   useEffect(() => {
@@ -497,6 +570,9 @@ function AppContent({
 
   const handleLoginSuccess = (userData) => {
     toast.clearAll();
+    try {
+      localStorage.removeItem('rexa_sidebar_expanded_groups');
+    } catch {}
     setUser(userData);
     setSelectedHomeGroup('');
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
@@ -519,6 +595,9 @@ function AppContent({
 
   const handleLogout = async () => {
     toast.clearAll();
+    try {
+      localStorage.removeItem('rexa_sidebar_expanded_groups');
+    } catch {}
     try {
       await logoutUser();
     } catch {
@@ -603,7 +682,7 @@ function AppContent({
     }
   };
 
-  // SAP GUI Heartbeat monitoring: Polls /api/sap/session-status every ~5s
+  // SAP Server Health & Session monitoring: Polls /api/sap/session-status every ~30s with ±20% jitter (24-36s)
   useEffect(() => {
     if (!user) return;
 
@@ -622,8 +701,18 @@ function AppContent({
     let timeoutId = null;
     let isPolling = false;
 
+    const scheduleNextPoll = () => {
+      if (!isMounted) return;
+      if (document.hidden) return; // Pause when tab is hidden
+      if (timeoutId) clearTimeout(timeoutId);
+      // 30s with ±20% random jitter: 24000ms to 36000ms
+      const jitterMs = Math.round(30000 * (0.8 + Math.random() * 0.4));
+      timeoutId = setTimeout(pollStatus, jitterMs);
+    };
+
     const pollStatus = async () => {
       if (isPolling || !isMounted) return;
+      if (document.hidden) return; // Don't poll while tab is hidden
       isPolling = true;
       try {
         const data = await getSapSessionStatus(selectedServer?.id);
@@ -641,16 +730,31 @@ function AppContent({
         }
       } finally {
         isPolling = false;
-        if (isMounted) {
-          timeoutId = setTimeout(pollStatus, 5000);
+        scheduleNextPoll();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Tab became visible: poll immediately if idle
+        if (!isPolling) {
+          pollStatus();
+        }
+      } else {
+        // Tab hidden: clear any scheduled timeout
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
         }
       }
     };
 
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     pollStatus();
 
     return () => {
       isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [user, selectedServer?.id, availableServers.length]);
@@ -694,8 +798,19 @@ function AppContent({
     <ToastProvider>
       <div className="sap-app-root">
       {/* SAP Shell Top Header */}
-      <header className="sap-shell-header sap-toolbar">
+      <header className="sap-shell-header sap-toolbar" style={{ height: 'var(--size-topbar-height, 64px)', minHeight: 'var(--size-topbar-height, 64px)', maxHeight: 'var(--size-topbar-height, 64px)' }}>
         <div className="sap-shell-header-left">
+          <button
+            type="button"
+            className="rx-topbar-sidebar-toggle"
+            onClick={() => {
+              setIsMobileDrawerOpen((prev) => !prev);
+            }}
+            aria-label="Toggle navigation sidebar"
+            title="Toggle navigation sidebar"
+          >
+            <Menu size={18} strokeWidth={2} />
+          </button>
           <Link
             to={ROUTE_IDS.HOME}
             className="sap-brand"
@@ -711,6 +826,19 @@ function AppContent({
 
         {/* Desktop actions and user badge */}
         <div className="sap-shell-actions">
+          {/* Quick Search / Command Palette */}
+          <button
+            type="button"
+            className="rx-topbar-search-btn"
+            onClick={() => setIsCommandPaletteOpen(true)}
+            title="Quick search operations and modules (Ctrl+K)"
+            aria-label="Quick search operations and modules"
+          >
+            <Search size={16} />
+            <span className="rx-topbar-search-text">Search...</span>
+            <kbd className="rx-topbar-search-kbd">Ctrl K</kbd>
+          </button>
+
           {/* 1. Admin button (pill, only visible for admin users) */}
           
 
@@ -764,7 +892,7 @@ function AppContent({
                 <select
                   value={selectedServer?.id || ''}
                   onChange={(e) => handleServerChange(e.target.value)}
-                  className="sap-system-select sap-input"
+                  className="sap-system-select"
                   aria-label="Select SAP Server"
                 >
                   {availableServers.map((srv) => (
@@ -811,6 +939,9 @@ function AppContent({
             {isUserMenuOpen && (
               <div className="sap-user-dropdown-menu" role="menu">
                 <div className="sap-user-dropdown-header">
+                  <div className="sap-user-dropdown-name" style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-navy-900)' }}>
+                    {formatDisplayName(user.name || (user.email ? user.email.split('@')[0] : 'User'))}
+                  </div>
                   <div className="sap-user-dropdown-email" title={user.email}>
                     {user.email}
                   </div>
@@ -827,7 +958,7 @@ function AppContent({
 
                 {/* Multi-Session Capability Preserved */}
                 {sapSession.sessions && sapSession.sessions.length > 0 && (
-                  <div style={{ padding: '8px 14px', background: '#ffffff', borderBottom: '1px solid var(--sap-border, #FED7AA)' }}>
+                  <div style={{ padding: '8px 14px', background: '#ffffff', borderBottom: '1px solid var(--sap-border, var(--color-border, #D9E2EC))' }}>
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted, #475569)', marginBottom: 6 }}>
                       Active SAP Sessions ({sapSession.sessions.length})
                     </div>
@@ -847,10 +978,10 @@ function AppContent({
                               padding: '5px 8px',
                               fontSize: '12px',
                               borderRadius: '4px',
-                              border: isSelected ? '1px solid var(--sap-primary, #EA580C)' : '1px solid var(--sap-border, #FED7AA)',
-                              background: isSelected ? '#FFF7ED' : '#ffffff',
+                              border: isSelected ? '1px solid var(--sap-primary, var(--color-blue-600, #02579A))' : '1px solid var(--sap-border, var(--color-border, #D9E2EC))',
+                              background: isSelected ? 'var(--color-blue-50, #EEF4F9)' : '#ffffff',
                               cursor: 'pointer',
-                              color: isSelected ? 'var(--sap-primary, #EA580C)' : 'var(--sap-text-body, #334155)',
+                              color: isSelected ? 'var(--sap-primary, var(--color-blue-600, #02579A))' : 'var(--sap-text-body, #334155)',
                               fontWeight: isSelected ? 600 : 400,
                               textAlign: 'left'
                             }}
@@ -887,7 +1018,7 @@ function AppContent({
                       }}
                       role="menuitem"
                     >
-                      <ShieldCheck size={14} color="#EA580C" className="sap-user-menu-icon" />
+                      <ShieldCheck size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
                       <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Administration' : 'Enterprise Administration'}</span>
                     </button>
                   )}
@@ -901,7 +1032,7 @@ function AppContent({
                     }}
                     role="menuitem"
                   >
-                    <KeyRound size={14} color="#EA580C" className="sap-user-menu-icon" />
+                    <KeyRound size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
                     <span className="sap-user-menu-label">Change password</span>
                   </button>
 
@@ -990,15 +1121,15 @@ function AppContent({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                 <button
                   type="button"
-                  className={`sap-btn sap-btn-secondary ${activeTab === 'launchpad' ? 'active' : ''}`}
+                  className={`sap-btn sap-btn-secondary ${activeTab === 'launchpad' && launchpadSubView === 'bom_operations' ? 'active' : ''}`}
                   onClick={() => {
-                    navigateToView('launchpad', 'home');
+                    navigateToView('launchpad', 'bom_operations');
                     setIsMobileMenuOpen(false);
                   }}
                   style={{ fontSize: '12px', padding: '6px' }}
                 >
-                  <LayoutGrid size={14} />
-                  <span>Products</span>
+                  <Layers size={14} />
+                  <span>BOM</span>
                 </button>
 
                 {/* Dynamic Mobile Shortcuts from Enabled Modules */}
@@ -1075,11 +1206,21 @@ function AppContent({
         )}
       </header>
 
-      {/* Main SAP Fiori Workspace Layout */}
-      <main className="sap-assistant-layout">
-        {activeTab === 'home' && (
+      {/* App Shell Body with Modern Sidebar */}
+      <div className="rx-app-shell-body">
+        <Sidebar
+          activeView={activeTab}
+          onNavigate={(target, sub) => navigateToView(target, sub)}
+          userRole={user?.role}
+          isOpenMobile={isMobileDrawerOpen}
+          onCloseMobile={() => setIsMobileDrawerOpen(false)}
+        />
+        {/* Main SAP Fiori Workspace Layout */}
+        <main className="sap-assistant-layout">
+        {(activeTab === 'home' || (activeTab === 'launchpad' && (!launchpadSubView || launchpadSubView === 'home'))) && (
           <HomePage
-            onExploreProducts={() => navigateToView('launchpad', 'home')}
+            onExploreProducts={() => navigateToView('launchpad', 'bom_operations')}
+            onOpenBom={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateHome={() => navigateToView('home')}
             onOpenContact={() => setIsHeaderContactOpen(true)}
             user={user}
@@ -1088,7 +1229,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'launchpad' && (
+        {activeTab === 'launchpad' && launchpadSubView && launchpadSubView !== 'home' && (
           <FioriLaunchpad
             sapSession={sapSession}
             systemKey={currentSystem}
@@ -1096,7 +1237,7 @@ function AppContent({
             onSubViewChange={(sub) => navigateToView('launchpad', sub)}
             onOpenAction={(action) => navigateToView(action)}
             onNavigateHome={() => navigateToView('home')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             enabledModules={enabledModules}
             userRole={user.role}
             userPermissions={currentPermittedApps}
@@ -1104,6 +1245,34 @@ function AppContent({
             onSelectGroup={setSelectedHomeGroup}
             isLoading={isLoadingServers}
           />
+        )}
+
+        {/* Inline Alert when no SAP server is selected on operational pages */}
+        {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && !selectedServer && (
+          <div style={{ maxWidth: 'var(--sap-layout-max-width, 1680px)', margin: '16px auto 0', padding: '0 var(--page-gutter, 32px)', boxSizing: 'border-box', width: '100%' }}>
+            <div
+              className="rx-no-server-alert"
+              role="alert"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md, 8px)',
+                backgroundColor: 'var(--color-warning-bg, #FFFBEB)',
+                border: '1px solid var(--color-warning-border, #FDE68A)',
+                color: 'var(--color-warning, #B45309)',
+                fontSize: 13,
+                fontFamily: 'var(--font-sans)'
+              }}
+            >
+              <AlertTriangle size={18} style={{ color: 'var(--color-warning, #B45309)', flexShrink: 0 }} />
+              <div>
+                <strong style={{ display: 'block', fontWeight: 600 }}>Select an SAP server to continue</strong>
+                <span>No SAP server is selected. Please choose a server from the top bar before performing operations.</span>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Admin Serverless Gate: When an admin opens an operational card requiring an SAP server, but 0 servers exist */}
@@ -1149,7 +1318,7 @@ function AppContent({
               <button
                 type="button"
                 className="sap-button sap-btn sap-btn-primary"
-                onClick={() => setActiveTab('admin')}
+                onClick={() => navigateToView('admin_servers')}
                 style={{ padding: '8px 18px', fontSize: 13 }}
               >
                 <ShieldCheck size={16} />
@@ -1186,6 +1355,11 @@ function AppContent({
           />
         )}
 
+        {/* Dev Design System Showcase (Dev Only) */}
+        {activeTab === 'dev_design_system' && (
+          <DesignSystemShowcase />
+        )}
+
         {/* 404 Route Not Found */}
         {activeTab === 'not_found' && (
           <NotFoundView pathname={router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '')} />
@@ -1203,7 +1377,7 @@ function AppContent({
             initialPlant={prefilledPlant}
             onBack={() => navigateToView('launchpad', 'bom_create_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1213,7 +1387,7 @@ function AppContent({
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_create_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1225,7 +1399,7 @@ function AppContent({
             initialPlant={prefilledPlant}
             onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1235,7 +1409,7 @@ function AppContent({
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1245,7 +1419,7 @@ function AppContent({
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1257,7 +1431,7 @@ function AppContent({
             initialPlant={prefilledPlant}
             onBack={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1267,7 +1441,7 @@ function AppContent({
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
@@ -1275,12 +1449,13 @@ function AppContent({
         {activeTab === 'admin' && (
           <AdminView
             currentUser={user}
-            onBack={() => navigateToView('launchpad', 'home')}
-            onNavigateProducts={() => navigateToView('launchpad', 'home')}
+            onBack={() => navigateToView('home')}
+            onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}
           />
         )}
       </main>
+      </div>
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -1402,12 +1577,12 @@ function AppContent({
                 >
                   <div className="rexa-form-field">
                     <label htmlFor="hdr-contact-name">Full Name</label>
-                    <input id="hdr-contact-name" type="text" required placeholder="e.g. John Doe" />
+                    <input id="hdr-contact-name" type="text" required placeholder="Ex. John Doe" />
                   </div>
 
                   <div className="rexa-form-field">
                     <label htmlFor="hdr-contact-email">Corporate Email</label>
-                    <input id="hdr-contact-email" type="email" required placeholder="e.g. j.doe@company.com" />
+                    <input id="hdr-contact-email" type="email" required placeholder="Ex. j.doe@company.com" />
                   </div>
 
                   <div className="rexa-form-field">
@@ -1427,6 +1602,23 @@ function AppContent({
       )}
 
       {/* User Change Password Modal */}
+      
+      {/* Global Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={(item) => {
+          setIsCommandPaletteOpen(false);
+          if (!item) return;
+          if (item.path && router?.navigate) {
+            router.navigate(item.path);
+          } else if (item.tab) {
+            navigateToView(item.tab, item.subView || null);
+          }
+        }}
+        userRole={user?.role}
+        userPermissions={currentPermittedApps}
+      />
       <PasswordModal
         isOpen={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}

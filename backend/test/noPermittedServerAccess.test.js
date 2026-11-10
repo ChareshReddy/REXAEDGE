@@ -77,6 +77,12 @@ async function runNoPermittedServerAccessTests() {
     assert.ok(servers.length > 0, 'At least one server must exist');
     const validServerId = servers[0].id;
 
+    // Configure credentials on validServerId so permitted user operations can connect
+    await makeRequest('PUT', `/api/admin/servers/${validServerId}`, {
+      sap_username: 'SAP_CONSULTANT',
+      sap_password: 'SecureSapPassword123!'
+    }, adminToken);
+
     // 2. Create User A (Zero server permissions)
     const zeroUserEmail = `zero_server_${Date.now()}@nextitpoint.com`;
     const zeroUserRes = await makeRequest('POST', '/api/admin/users', {

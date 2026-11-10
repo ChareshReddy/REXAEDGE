@@ -52,7 +52,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
               id="filter-from"
               type="text"
               className="sap-input"
-              placeholder="e.g. 1000"
+              placeholder="Ex. 1000"
               value={fromVal}
               onChange={(e) => {
                 setFromVal(e.target.value);
@@ -74,7 +74,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
               id="filter-to"
               type="text"
               className="sap-input"
-              placeholder="e.g. 1030"
+              placeholder="Ex. 1030"
               value={toVal}
               onChange={(e) => {
                 setToVal(e.target.value);
