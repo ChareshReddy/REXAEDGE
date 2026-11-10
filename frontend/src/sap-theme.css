@@ -1892,3 +1892,167 @@ input.sap-table-search-input {
   min-width: 0;
   flex: 1;
 }
+
+/* ----------------------------------------------------------------------------
+   Copy Single BOM Layout & Spacing Refinements (Scoped)
+   ---------------------------------------------------------------------------- */
+.rx-copy-bom-form .rx-copy-card-body {
+  padding: var(--space-20, 20px) !important;
+  gap: var(--space-16, 16px) !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn,
+.rx-btn-validate {
+  height: var(--size-button-sm-height, 32px) !important;
+  padding: 0 var(--space-12, 12px) !important;
+  width: auto !important;
+  background-color: var(--color-blue-50) !important;
+  border: 1px solid var(--color-blue-600) !important;
+  color: var(--color-blue-600) !important;
+  font-weight: var(--font-weight-medium, 500) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  cursor: pointer !important;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn:hover:not(:disabled),
+.rx-btn-validate:hover:not(:disabled) {
+  background-color: var(--color-blue-100) !important;
+  border-color: var(--color-blue-700) !important;
+  color: var(--color-blue-700) !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn:focus-visible,
+.rx-btn-validate:focus-visible {
+  outline: 2px solid var(--color-blue-600) !important;
+  outline-offset: 2px !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn:active:not(:disabled),
+.rx-btn-validate:active:not(:disabled) {
+  background-color: var(--color-blue-200) !important;
+  border-color: var(--color-navy-800) !important;
+  color: var(--color-navy-800) !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn.is-validated,
+.rx-btn-validate.is-validated {
+  background-color: var(--color-success-bg) !important;
+  border-color: var(--color-success-border) !important;
+  color: var(--color-success) !important;
+  font-weight: var(--font-weight-medium, 500) !important;
+}
+
+.rx-copy-bom-form #validateSourceBomBtn.is-validated:hover:not(:disabled),
+.rx-btn-validate.is-validated:hover:not(:disabled) {
+  background-color: var(--color-success-bg) !important;
+  border-color: var(--color-success) !important;
+  color: var(--color-success) !important;
+}
+
+.rx-copy-bom-result-strip {
+  box-shadow: var(--shadow-sm) !important;
+  padding: 10px 14px !important;
+}
+
+.rx-copy-bom-result-strip .rx-alt-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 8px !important;
+  background-color: var(--color-surface, #FFFFFF) !important;
+  border: 1px solid var(--color-border, #D9E2EC) !important;
+  color: var(--color-text, #0F2742) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  cursor: pointer !important;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: var(--font-size-12, 12px) !important;
+  line-height: 1.4 !important;
+  transition: all 150ms ease !important;
+}
+
+.rx-copy-bom-result-strip .rx-alt-chip:hover {
+  background-color: var(--color-blue-50, #EEF4F9) !important;
+  border-color: var(--color-blue-400, #6699B8) !important;
+  color: var(--color-blue-700, #034375) !important;
+}
+
+.rx-copy-bom-result-strip .rx-alt-chip.is-selected {
+  background-color: var(--color-blue-600) !important;
+  border-color: var(--color-blue-600) !important;
+  color: var(--color-text-inverse, #FFFFFF) !important;
+  font-weight: var(--font-weight-semibold, 600) !important;
+}
+
+.rx-copy-bom-result-strip .rx-alt-more-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 8px !important;
+  background-color: var(--color-blue-100) !important;
+  border: 1px solid var(--color-blue-200) !important;
+  color: var(--color-blue-700) !important;
+  border-radius: var(--radius-sm, 4px) !important;
+  font-size: var(--font-size-12, 12px) !important;
+  font-weight: var(--font-weight-semibold, 600) !important;
+  line-height: 1.4 !important;
+}
+
+.rx-copy-card-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: var(--space-2, 2px) var(--space-12, 12px) !important;
+  line-height: 1.25 !important;
+  font-size: var(--font-size-12, 12px) !important;
+  font-weight: var(--font-weight-semibold, 600) !important;
+  border-radius: 9999px !important;
+}
+
+/* ----------------------------------------------------------------------------
+   Modal Header, Close Button & Server Modal Scoped Styles
+   ---------------------------------------------------------------------------- */
+.sap-modal-close-btn {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.sap-modal-close-btn:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.sap-modal-close-btn:focus-visible {
+  outline: 2px solid var(--color-blue-600) !important;
+  outline-offset: 1px !important;
+}
+
+.rx-server-modal-section.rx-card {
+  border-radius: var(--radius-md, 8px) !important;
+  overflow: hidden !important;
+}
+
+.rx-server-modal-section .rx-form-section-header-tinted {
+  padding: 8px 16px !important;
+  margin: 0 !important;
+}
+
+.rx-server-modal-section .rx-form-section-title {
+  font-size: var(--font-size-14, 14px) !important;
+}
+
+.rx-server-modal-section .rx-form-section-body {
+  padding: var(--space-12, 12px) var(--space-16, 16px) !important;
+  gap: var(--space-14, 14px) !important;
+}
+
+.rx-server-modal-section .rx-field-label {
+  white-space: nowrap !important;
+}
+
+.rx-server-modal-form {
+  gap: var(--space-14, 14px) !important;
+}
+
+
+
