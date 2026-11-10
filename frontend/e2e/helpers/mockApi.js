@@ -378,11 +378,35 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
 
     // 13. Validate Source BOM (Copy BOM)
     if (url.includes('/api/boms/validate-source') || url.includes('/api/bom/validate-source')) {
+      let postData = {};
+      try {
+        postData = request.postDataJSON() || {};
+      } catch { /* ignore */ }
+
+      const mat = (postData.material || '').toUpperCase();
+      if (mat.includes('NOTFOUND') || mat.includes('INVALID') || mat.includes('ERROR')) {
+        return respondJson({
+          success: false,
+          valid: false,
+          errorCode: 'MATERIAL_NOT_FOUND',
+          message: `Material ${mat || 'UNKNOWN'} not found in plant ${postData.plant || '1000'}`
+        });
+      }
+
+      if (mat.includes('MULTIALT') || mat.includes('12ALTS') || mat.includes('MANY')) {
+        return respondJson({
+          success: true,
+          valid: true,
+          componentCount: 6,
+          availableAlternatives: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+        });
+      }
+
       return respondJson({
         success: true,
         valid: true,
-        componentCount: 2,
-        availableAlternatives: ['01', '02']
+        componentCount: 4,
+        availableAlternatives: ['01', '02', '03']
       });
     }
 

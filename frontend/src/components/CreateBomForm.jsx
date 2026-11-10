@@ -17,6 +17,8 @@ import { validateSourceBom } from '../services/api';
 import ValueHelpInput from './ValueHelpInput';
 import { FormSection, FormActions } from './ui/form-layout';
 import { FieldWrapper } from './ui/FieldWrapper';
+import { Badge } from './ui/badge';
+import { cn } from '@/lib/utils';
 import { useToast } from '../context/ToastContext';
 import { FIELD_RULES, validateField, sanitizeValidFromInput } from '@shared/fieldRules.js';
 
@@ -317,20 +319,23 @@ export default function CreateBomForm({
         </div>
       )}
 
-      <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <form id={formId} onSubmit={handleSubmit} className="rx-copy-bom-form flex flex-col gap-6">
         <div className="grid grid-cols-1 min-[1100px]:grid-cols-[1fr_auto_1fr] items-stretch gap-5">
           {/* SOURCE / REFERENCE BOM SECTION */}
           <FormSection
             title="Reference BOM"
             description="Select the existing bill of materials to copy from"
             badge={
-              <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-600)] border border-[var(--color-blue-200)]">
+              <Badge
+                variant="outline"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+              >
                 Source
-              </span>
+              </Badge>
             }
             accentTop="3px solid var(--color-blue-600)"
             className="w-full h-full flex flex-col"
-            bodyClassName="flex flex-col flex-1 gap-4"
+            bodyClassName="flex flex-col rx-copy-card-body"
           >
             <FieldWrapper
               label="Material"
@@ -381,7 +386,7 @@ export default function CreateBomForm({
               />
             </FieldWrapper>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FieldWrapper
                 label="BOM usage"
                 htmlFor="sourceUsage"
@@ -404,7 +409,6 @@ export default function CreateBomForm({
               <FieldWrapper
                 label="Alternative BOM"
                 htmlFor="sourceAltBom"
-                hint="Optional"
                 error={(touched.sourceAltBom || isSubmitted) ? fieldErrors.sourceAltBom || null : null}
               >
                 <input
@@ -420,131 +424,44 @@ export default function CreateBomForm({
               </FieldWrapper>
             </div>
 
-            {/* Validation Action Button & Status at bottom of Source card */}
-            <div className="mt-auto pt-2 flex flex-col gap-3">
-              <div className="sap-val-action-row">
+            {/* Row 4: Validation Action Button (aligns horizontally on the same baseline with Valid From) */}
+            <div className="rx-field-wrapper flex flex-col gap-1.5 w-full">
+              <div className="rx-field-label text-[13px] font-semibold flex items-center gap-1 invisible select-none" aria-hidden="true">
+                <span>Valid From</span>
+              </div>
+              <div className="flex items-center justify-end w-full" style={{ height: 'var(--size-form-input-height, 40px)' }}>
                 <button
                   type="button"
+                  id="validateSourceBomBtn"
                   onClick={handleValidateSource}
                   disabled={isValidating}
-                  className={`rx-btn w-full justify-center gap-1.5 text-xs h-8 ${isValidated ? 'rx-btn-secondary text-[var(--color-success)]' : 'rx-btn-secondary'}`}
+                  className={cn(
+                    "rx-btn rx-btn-sm rx-btn-validate justify-center gap-1.5 text-xs w-auto shrink-0",
+                    isValidated && "is-validated"
+                  )}
+                  style={{ height: 'var(--size-button-sm-height, 32px)' }}
                 >
-                  {isValidating ? (
-                    <>
-                      <Loader2 size={14} className="sap-spin" />
-                      <span>Validating BOM in SAP...</span>
-                    </>
-                  ) : isValidated ? (
-                    <>
-                      <CheckCircle2 size={14} style={{ color: 'var(--sap-success)' }} />
-                      <span>BOM Validated ✓</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheck size={14} />
-                      <span>Validate BOM (Optional)</span>
-                    </>
-                  )}
-                </button>
+                {isValidating ? (
+                  <>
+                    <Loader2 size={14} className="sap-spin text-[var(--color-blue-600)]" />
+                    <span>Validating BOM in SAP...</span>
+                  </>
+                ) : isValidated ? (
+                  <>
+                    <CheckCircle2 size={14} className="text-[var(--color-success)]" />
+                    <span>BOM Validated</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={14} className="text-[var(--color-blue-600)]" />
+                    <span>Validate BOM</span>
+                  </>
+                )}
+              </button>
               </div>
-
-              {/* Validation Status / Result Card */}
-              {isValidating && (
-                <div className="sap-source-val-card sap-val-loading p-3 rounded-[var(--radius-md)] bg-[var(--color-blue-50)] border border-[var(--color-blue-200)] flex items-center gap-2 text-xs">
-                  <Loader2 size={15} className="sap-spin text-[var(--color-blue-600)]" />
-                  <span>Validating SAP master records for reference BOM...</span>
-                </div>
-              )}
-
-              {validationResult && !isValidating && (
-                <div className={`sap-source-val-card ${validationResult.success ? 'sap-val-success' : 'sap-val-error'} p-3 rounded-[var(--radius-md)] border text-xs`}>
-                  <div className="sap-val-card-header flex items-center gap-2 mb-2 font-semibold">
-                    {validationResult.success ? (
-                      <>
-                        <CheckCircle2 size={15} style={{ color: 'var(--sap-success)', flexShrink: 0 }} />
-                        <span className="sap-val-card-title text-[var(--color-success)]">Source BOM Validated</span>
-                      </>
-                    ) : (
-                      <>
-                        <XCircle size={15} style={{ color: 'var(--sap-error)', flexShrink: 0 }} />
-                        <span className="sap-val-card-title text-[var(--color-danger)]">
-                          Validation Failed {validationResult.errorCode ? `(${validationResult.errorCode})` : ''}
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  {validationResult.success ? (
-                    <div className="sap-val-checklist flex flex-col gap-1 text-[var(--color-text)]">
-                      <div className="sap-val-item flex items-center gap-1.5">
-                        <span className="sap-val-check text-[var(--color-success)]">✓</span>
-                        <span>Material <strong>{formData.sourceMaterial.trim().toUpperCase()}</strong> found</span>
-                      </div>
-                      <div className="sap-val-item flex items-center gap-1.5">
-                        <span className="sap-val-check text-[var(--color-success)]">✓</span>
-                        <span>Plant <strong>{formData.sourcePlant.trim().toUpperCase()}</strong> validated</span>
-                      </div>
-                      <div className="sap-val-item flex items-center gap-1.5">
-                        <span className="sap-val-check text-[var(--color-success)]">✓</span>
-                        <span>BOM Usage <strong>{formData.sourceUsage.trim()}</strong> found</span>
-                      </div>
-                      {formData.sourceAltBom.trim() && (
-                        <div className="sap-val-item flex items-center gap-1.5">
-                          <span className="sap-val-check text-[var(--color-success)]">✓</span>
-                          <span>Alternative BOM <strong>{formData.sourceAltBom.trim()}</strong> exists</span>
-                        </div>
-                      )}
-                      {validationResult.componentCount !== undefined && (
-                        <div className="sap-val-item flex items-center gap-1.5">
-                          <span className="sap-val-check text-[var(--color-success)]">✓</span>
-                          <span><strong>{validationResult.componentCount}</strong> components found</span>
-                        </div>
-                      )}
-
-                      {Array.isArray(validationResult.availableAlternatives) && validationResult.availableAlternatives.length > 0 && (
-                        <div className="sap-val-alts-container mt-2">
-                          <span className="sap-val-alts-label font-medium">Available Alternative BOMs:</span>
-                          <div className="sap-val-alts-chips flex flex-wrap gap-1.5 mt-1">
-                            {validationResult.availableAlternatives.map((alt) => (
-                              <button
-                                type="button"
-                                key={alt}
-                                onClick={() => handleChange('sourceAltBom', alt)}
-                                className={`sap-alt-chip px-2 py-0.5 rounded text-xs border ${formData.sourceAltBom === alt ? 'selected bg-[var(--color-blue-600)] text-white border-[var(--color-blue-600)]' : 'bg-[var(--color-surface)] text-[var(--color-text)] border-[var(--color-border)]'}`}
-                                title={`Select Alternative BOM ${alt}`}
-                              >
-                                Alt {alt}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="sap-val-error-content text-[var(--color-danger)]">
-                      <p className="sap-val-error-message">{validationResult.message}</p>
-                      {Array.isArray(validationResult.availableAlternatives) && validationResult.availableAlternatives.length > 0 && (
-                        <div className="sap-val-alts-container mt-2">
-                          <span className="sap-val-alts-label font-medium text-[var(--color-text)]">Available Alternative BOMs in SAP:</span>
-                          <div className="sap-val-alts-chips flex flex-wrap gap-1.5 mt-1">
-                            {validationResult.availableAlternatives.map((alt) => (
-                              <button
-                                type="button"
-                                key={alt}
-                                onClick={() => handleChange('sourceAltBom', alt)}
-                                className="sap-alt-chip px-2 py-0.5 rounded text-xs border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)]"
-                                title={`Select Alternative BOM ${alt}`}
-                              >
-                                Alt {alt}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="rx-field-hint text-xs mt-0.5 invisible select-none" aria-hidden="true">
+                &nbsp;
+              </div>
             </div>
           </FormSection>
 
@@ -560,13 +477,16 @@ export default function CreateBomForm({
             title="New BOM Destination"
             description="Target material and plant configuration"
             badge={
-              <span className="font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-600)] border border-[var(--color-blue-200)]">
+              <Badge
+                variant="outline"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+              >
                 Target
-              </span>
+              </Badge>
             }
             accentTop="3px solid var(--color-blue-600)"
             className="w-full h-full flex flex-col"
-            bodyClassName="flex flex-col flex-1 gap-4"
+            bodyClassName="flex flex-col rx-copy-card-body"
           >
             <FieldWrapper
               label="Material"
@@ -617,7 +537,7 @@ export default function CreateBomForm({
               />
             </FieldWrapper>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FieldWrapper
                 label="BOM usage"
                 htmlFor="targetUsage"
@@ -640,7 +560,6 @@ export default function CreateBomForm({
               <FieldWrapper
                 label="Alternative BOM"
                 htmlFor="targetAltBom"
-                hint="Optional"
                 error={(touched.targetAltBom || isSubmitted) ? fieldErrors.targetAltBom || null : null}
               >
                 <input
@@ -659,7 +578,7 @@ export default function CreateBomForm({
             <FieldWrapper
               label="Valid From"
               htmlFor="validFrom"
-              hint="Optional, format DD.MM.YYYY"
+              hint="Format DD.MM.YYYY"
               error={(touched.validFrom || isSubmitted) ? fieldErrors.validFrom || null : null}
             >
               <input
@@ -679,6 +598,131 @@ export default function CreateBomForm({
             </FieldWrapper>
           </FormSection>
         </div>
+
+        {/* Validation Status / Result Strip (full width below both cards) */}
+        {isValidating && (
+          <div
+            id="copyBomValidationStrip"
+            className="rx-copy-bom-result-strip rx-copy-bom-result-loading flex items-center gap-2.5 p-3 rounded-[var(--radius-md)] bg-[var(--color-blue-50)] border border-[var(--color-blue-200)] text-xs text-[var(--color-text-secondary)] w-full"
+            role="status"
+          >
+            <Loader2 size={16} className="sap-spin text-[var(--color-blue-600)] shrink-0" />
+            <span className="font-medium">Validating SAP master records for reference BOM...</span>
+          </div>
+        )}
+
+        {validationResult && !isValidating && (
+          <div
+            id="copyBomValidationStrip"
+            className={cn(
+              "rx-copy-bom-result-strip w-full p-3 rounded-[var(--radius-md)] border text-xs",
+              validationResult.success
+                ? "rx-copy-bom-result-success bg-[var(--color-success-bg)] border-[var(--color-success-border)] text-[var(--color-text)]"
+                : "rx-copy-bom-result-error bg-[var(--color-danger-bg)] border-[var(--color-danger-border)] text-[var(--color-danger)]"
+            )}
+            role={validationResult.success ? "status" : "alert"}
+          >
+            {validationResult.success ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <CheckCircle2 size={16} className="text-[var(--color-success)] shrink-0" />
+                    <span className="font-semibold text-xs text-[var(--color-success)]">
+                      Source BOM validated
+                    </span>
+                  </div>
+                  <span className="text-[var(--color-border)] hidden sm:inline" aria-hidden="true">|</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[var(--color-success)] font-bold">✓</span>
+                    <span>Material <strong>{formData.sourceMaterial.trim().toUpperCase()}</strong> found</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[var(--color-success)] font-bold">✓</span>
+                    <span>Plant <strong>{formData.sourcePlant.trim().toUpperCase()}</strong> validated</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[var(--color-success)] font-bold">✓</span>
+                    <span>BOM usage <strong>{formData.sourceUsage.trim()}</strong> found</span>
+                  </div>
+                  {validationResult.componentCount !== undefined && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[var(--color-success)] font-bold">✓</span>
+                      <span><strong>{validationResult.componentCount}</strong> components found</span>
+                    </div>
+                  )}
+                </div>
+
+                {Array.isArray(validationResult.availableAlternatives) && validationResult.availableAlternatives.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1.5 border-t border-[var(--color-success-border)]/60 text-xs">
+                    <span className="font-medium text-[var(--color-text-secondary)]">Available alternative BOMs:</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {validationResult.availableAlternatives.slice(0, 8).map((alt) => (
+                        <button
+                          type="button"
+                          key={alt}
+                          onClick={() => handleChange('sourceAltBom', alt)}
+                          className={cn(
+                            "rx-alt-chip px-2 py-0.5 rounded text-xs border font-mono transition-colors",
+                            formData.sourceAltBom === alt && "is-selected"
+                          )}
+                          title={`Select Alternative BOM ${alt}`}
+                        >
+                          Alt {alt}
+                        </button>
+                      ))}
+                      {validationResult.availableAlternatives.length > 8 && (
+                        <span
+                          className="rx-alt-more-badge text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-blue-100)] text-[var(--color-blue-700)] border border-[var(--color-blue-200)]"
+                          title={`${validationResult.availableAlternatives.length - 8} more alternative BOMs available`}
+                        >
+                          +{validationResult.availableAlternatives.length - 8} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 font-semibold">
+                  <XCircle size={16} className="text-[var(--color-danger)] shrink-0" />
+                  <span className="font-semibold text-xs text-[var(--color-danger)]">
+                    Validation Failed {validationResult.errorCode ? `(${validationResult.errorCode})` : ''}
+                  </span>
+                </div>
+                <p className="sap-val-error-message text-xs text-[var(--color-danger)]">
+                  {validationResult.message}
+                </p>
+                {Array.isArray(validationResult.availableAlternatives) && validationResult.availableAlternatives.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 mt-1 pt-1 border-t border-[var(--color-danger-border)]/60 text-[var(--color-text)]">
+                    <span className="font-medium text-[var(--color-text-secondary)]">Available Alternative BOMs in SAP:</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {validationResult.availableAlternatives.slice(0, 8).map((alt) => (
+                        <button
+                          type="button"
+                          key={alt}
+                          onClick={() => handleChange('sourceAltBom', alt)}
+                          className={cn(
+                            "rx-alt-chip px-2 py-0.5 rounded text-xs border font-mono transition-colors",
+                            formData.sourceAltBom === alt && "is-selected"
+                          )}
+                          title={`Select Alternative BOM ${alt}`}
+                        >
+                          Alt {alt}
+                        </button>
+                      ))}
+                      {validationResult.availableAlternatives.length > 8 && (
+                        <span className="rx-alt-more-badge text-xs font-semibold px-2 py-0.5 rounded bg-[var(--color-blue-100)] text-[var(--color-blue-700)] border border-[var(--color-blue-200)]">
+                          +{validationResult.availableAlternatives.length - 8} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {!hideFormActions && (
           <FormActions
