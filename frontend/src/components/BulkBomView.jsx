@@ -1,7 +1,7 @@
 import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
   FileSpreadsheet,
@@ -9,6 +9,7 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   XCircle,
   Play,
   RefreshCw,
@@ -43,7 +44,10 @@ import {
   BulkFileInfoBar,
   BulkJobProgressCard,
   COPY_BULK_COLUMNS,
-  BulkStatTiles
+  BulkStatTiles,
+  normalizeBomStatus,
+  getBomStatusCounts,
+  filterBoms
 } from './BulkBomShared';
 
 /**
@@ -279,8 +283,8 @@ export default function BulkBomView({
 
               const resMap = new Map((job.results || []).map((r) => [r.id, r]));
               setParsedRows((prev) =>
-                prev.map((row) => {
-                  const match = resMap.get(row.id);
+                prev.map((row, idx) => {
+                  const match = resMap.get(row.id) || (job.results && job.results[idx]);
                   if (match) {
                     return {
                       ...row,
@@ -318,8 +322,8 @@ export default function BulkBomView({
 
             const resMap = new Map((job.results || []).map((r) => [r.id, r]));
             setParsedRows((prev) =>
-              prev.map((row) => {
-                const match = resMap.get(row.id);
+              prev.map((row, idx) => {
+                const match = resMap.get(row.id) || (job.results && job.results[idx]);
                 if (match) {
                   return {
                     ...row,
@@ -832,25 +836,16 @@ export default function BulkBomView({
     XLSX.writeFile(wb, `SAP_BOM_Batch_Copy_Report_${timestamp}.xlsx`);
   };
 
-  const filteredRows = parsedRows.filter((row) => {
-    if (statusFilter === 'valid' && row.status !== 'VALID' && row.status !== 'SUCCESS') return false;
-    if (statusFilter === 'errors' && row.status !== 'ERROR' && row.status !== 'FAILED') return false;
-    if (statusFilter === 'warnings' && row.status !== 'WARNING') return false;
+  const hasValidated = Boolean(validationReport);
+  const statusCounts = useMemo(() => getBomStatusCounts(parsedRows, hasValidated), [parsedRows, hasValidated]);
+  const validCount = statusCounts.ready;
+  const warningCount = statusCounts.skipped;
+  const errorCount = statusCounts.errors;
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      const matchSrc = (row.sourceMaterial || '').toLowerCase().includes(term);
-      const matchTgt = (row.targetMaterial || '').toLowerCase().includes(term);
-      const matchSrcPlant = (row.sourcePlant || '').toLowerCase().includes(term);
-      const matchTgtPlant = (row.targetPlant || '').toLowerCase().includes(term);
-      if (!matchSrc && !matchTgt && !matchSrcPlant && !matchTgtPlant) return false;
-    }
-    return true;
-  });
-
-  const validCount = parsedRows.filter((r) => r.status === 'VALID' || r.status === 'SUCCESS').length;
-  const warningCount = parsedRows.filter((r) => r.status === 'WARNING').length;
-  const errorCount = parsedRows.filter((r) => r.status === 'ERROR' || r.status === 'FAILED').length;
+  const filteredRows = useMemo(
+    () => filterBoms(parsedRows, { statusFilter, searchTerm }),
+    [parsedRows, statusFilter, searchTerm]
+  );
 
   return (
     <div className="fiori-launchpad-root">
@@ -1107,25 +1102,22 @@ export default function BulkBomView({
                   executionLabel="Copying BOMs in SAP"
                 />
 
-                {/* Summary Stat Tiles */}
-                <BulkStatTiles
-                  total={parsedRows.length}
-                  valid={validCount}
-                  errors={errorCount}
-                  warnings={warningCount}
-                  totalLabel="Total BOMs"
-                  validLabel="Valid"
-                  errorsLabel="Errors"
-                  warningsLabel="Warnings"
-                  activeFilter={statusFilter}
-                  onFilterChange={(filter) => setStatusFilter(filter)}
-                  style={{ marginBottom: 16 }}
-                />
-
-
-
-                {/* Error Alert */}
-                
+                {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
+                {hasValidated && activeStep > 1 && (
+                  <BulkStatTiles
+                    total={statusCounts.all}
+                    valid={statusCounts.ready}
+                    errors={statusCounts.errors}
+                    warnings={statusCounts.skipped}
+                    totalLabel="Total BOMs"
+                    validLabel="Ready"
+                    errorsLabel="Errors"
+                    warningsLabel="Skipped"
+                    activeFilter={statusFilter}
+                    onFilterChange={(filter) => setStatusFilter(filter)}
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
 
                 {/* PRE-FLIGHT PREVIEW TABLE CARD */}
                 <FormSection
@@ -1134,10 +1126,10 @@ export default function BulkBomView({
                   tintedHeader
                   className="w-full"
                 >
-                  {/* Header & Controls */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                      {/* Search Bar */}
+                  {/* Controls Toolbar: Search left, Tabs center, Options/Count right */}
+                  <div className="sap-toolbar rx-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                    {/* Left: Search Bar */}
+                    <div style={{ flex: '0 0 auto' }}>
                       <SearchInput
                         placeholder="Search material or plant..."
                         value={searchTerm}
@@ -1146,22 +1138,25 @@ export default function BulkBomView({
                         isTable
                         wrapperStyle={{ width: 220 }}
                       />
+                    </div>
 
-                      {/* Filter Pills */}
+                    {/* Center: Filter Tabs */}
+                    <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center' }}>
                       <div
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           padding: '2px',
-                          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+                          backgroundColor: 'var(--color-blue-200)',
                           borderRadius: 'var(--radius-md, 8px)',
                           border: '1px solid var(--color-border, #D9E2EC)'
                         }}
                       >
                         {[
-                          { id: 'all', label: `All (${parsedRows.length})` },
-                          { id: 'valid', label: `Valid (${validCount})` },
-                          { id: 'errors', label: `Errors (${errorCount})` }
+                          { id: 'all', label: `All (${statusCounts.all})` },
+                          { id: 'ready', label: `Ready (${statusCounts.ready})` },
+                          { id: 'errors', label: `Errors (${statusCounts.errors})` },
+                          { id: 'skipped', label: `Skipped (${statusCounts.skipped})` }
                         ].map((f) => (
                           <button
                             key={f.id}
@@ -1169,7 +1164,7 @@ export default function BulkBomView({
                             onClick={() => setStatusFilter(f.id)}
                             style={{
                               height: 26,
-                              padding: '0 8px',
+                              padding: '0 10px',
                               borderRadius: 'var(--radius-sm, 6px)',
                               border: 'none',
                               fontSize: '11.5px',
@@ -1188,7 +1183,7 @@ export default function BulkBomView({
                     </div>
 
                     {/* Right side controls: File Badge & Hierarchy Options */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                    <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
                         Showing {filteredRows.length} of {parsedRows.length}
                       </span>
@@ -1263,23 +1258,50 @@ export default function BulkBomView({
                         </tr>
                       </thead>
                       <tbody>
-                        {parsedRows.map((row, idx) => {
-                          const isRowValid = row.status === 'VALID' || row.status === 'SUCCESS';
-                          const isRowWarn = row.status === 'WARNING';
-                          const isRowError = row.status === 'ERROR' || row.status === 'FAILED';
+                        {filteredRows.map((row, idx) => {
+                          const normStatus = normalizeBomStatus(row);
+                          const isRowValid = normStatus === 'ready';
+                          const isRowWarn = normStatus === 'skipped';
+                          const isRowError = normStatus === 'error';
 
                           return (
-                            <tr key={row.id || idx} className={`row-status-${row.status.toLowerCase()}`}>
+                            <tr key={row.id || idx} className={`row-status-${normStatus}`}>
                               <td style={{ fontWeight: 600, color: 'var(--sap-text-muted)', fontSize: '11px' }}>{idx + 1}</td>
                               <td>
                                 <div className="bom-identity-cell">
-                                  <span className="mat-pill">{row.sourceMaterial}</span>
+                                  <span
+                                    className="mat-pill"
+                                    title={row.sourceMaterial}
+                                    style={{
+                                      maxWidth: '20ch',
+                                      fontFamily: 'monospace, monospace',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {row.sourceMaterial}
+                                  </span>
                                   <span className="sub-detail">Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
                                 </div>
                               </td>
                               <td>
                                 <div className="bom-identity-cell">
-                                  <span className="mat-pill">{row.targetMaterial}</span>
+                                  <span
+                                    className="mat-pill"
+                                    title={row.targetMaterial}
+                                    style={{
+                                      maxWidth: '20ch',
+                                      fontFamily: 'monospace, monospace',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      display: 'inline-block'
+                                    }}
+                                  >
+                                    {row.targetMaterial}
+                                  </span>
                                   <span className="sub-detail">Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
                                 </div>
                               </td>
@@ -1291,16 +1313,14 @@ export default function BulkBomView({
                                 )}
                               </td>
                               <td>
-                                <span className={`sap-status-chip chip-${row.status.toLowerCase()}`}>
+                                <span className={`sap-status-chip chip-${normStatus}`}>
                                   {isRowValid && <CheckCircle2 size={11} />}
                                   {isRowWarn && <AlertTriangle size={11} />}
-                                  {isRowError && <XCircle size={11} />}
-                                  {row.status === 'PENDING' && 'Not validated'}
-                                  {row.status === 'VALID' && 'Ready'}
-                                  {row.status === 'WARNING' && 'Warning'}
-                                  {row.status === 'ERROR' && 'Error'}
-                                  {row.status === 'SUCCESS' && 'Copied'}
-                                  {row.status === 'FAILED' && 'Failed'}
+                                  {isRowError && <AlertCircle size={11} />}
+                                  {normStatus === 'not_validated' && 'Not validated'}
+                                  {normStatus === 'ready' && 'Ready'}
+                                  {normStatus === 'skipped' && 'Skipped'}
+                                  {normStatus === 'error' && 'Failed'}
                                 </span>
                               </td>
                               <td>
@@ -1352,20 +1372,20 @@ export default function BulkBomView({
                       </span>
                       {!validationReport ? (
                         <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
-                          Not validated ({parsedRows.length} BOM{parsedRows.length === 1 ? '' : 's'})
+                          Not validated ({statusCounts.all} BOM{statusCounts.all === 1 ? '' : 's'})
                         </span>
                       ) : (
                         <>
                           <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
-                            Ready: {validCount}
+                            Ready: {statusCounts.ready}
                           </span>
-                          {warningCount > 0 && (
+                          {statusCounts.skipped > 0 && (
                             <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
-                              Warnings: {warningCount}
+                              Skipped: {statusCounts.skipped}
                             </span>
                           )}
                           <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
-                            Errors: {errorCount}
+                            Errors: {statusCounts.errors}
                           </span>
                         </>
                       )}

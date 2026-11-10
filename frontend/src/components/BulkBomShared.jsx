@@ -508,3 +508,192 @@ export function useBulkBomJobPolling() {
     setJobProgress
   };
 }
+
+/**
+ * Normalizes validation status into one of: 'ready', 'error', 'skipped', 'not_validated'
+ */
+export function normalizeBomStatus(bom) {
+  if (!bom) return 'not_validated';
+  const statusStr = String(bom.status || '').trim().toLowerCase();
+
+  if (
+    statusStr === 'failed' ||
+    statusStr === 'error' ||
+    statusStr === 'invalid' ||
+    (Array.isArray(bom.errors) && bom.errors.length > 0)
+  ) {
+    return 'error';
+  }
+  if (
+    statusStr === 'ready' ||
+    statusStr === 'valid' ||
+    statusStr === 'success'
+  ) {
+    return 'ready';
+  }
+  if (
+    statusStr.includes('skipped') ||
+    statusStr.includes('exist') ||
+    statusStr === 'not_processed' ||
+    statusStr === 'warning'
+  ) {
+    return 'skipped';
+  }
+  if (statusStr === 'pending' || !statusStr) {
+    return 'not_validated';
+  }
+  return 'not_validated';
+}
+
+/**
+ * Single source of truth for BOM counts across All, Ready, Errors, and Skipped.
+ */
+export function getBomStatusCounts(boms = [], hasValidated = true) {
+  let ready = 0;
+  let errors = 0;
+  let skipped = 0;
+  let notValidated = 0;
+
+  (boms || []).forEach((b) => {
+    if (!hasValidated) {
+      notValidated++;
+      return;
+    }
+    const s = normalizeBomStatus(b);
+    if (s === 'ready') ready++;
+    else if (s === 'error') errors++;
+    else if (s === 'skipped') skipped++;
+    else notValidated++;
+  });
+
+  return {
+    all: (boms || []).length,
+    ready,
+    errors,
+    skipped,
+    notValidated
+  };
+}
+
+/**
+ * Filter BOMs by normalized status tab and search term together.
+ */
+export function filterBoms(boms = [], { statusFilter = 'all', searchTerm = '' } = {}) {
+  const term = String(searchTerm || '').trim().toLowerCase();
+
+  return (boms || []).filter((bom) => {
+    const norm = normalizeBomStatus(bom);
+    if (statusFilter === 'ready' && norm !== 'ready') return false;
+    if (statusFilter === 'errors' && norm !== 'error') return false;
+    if (statusFilter === 'skipped' && norm !== 'skipped') return false;
+
+    if (term) {
+      const matchMat = (bom.material || bom.sourceMaterial || '').toLowerCase().includes(term);
+      const matchPlant = (bom.plant || bom.sourcePlant || bom.targetPlant || '').toLowerCase().includes(term);
+      const matchTgtMat = (bom.targetMaterial || '').toLowerCase().includes(term);
+      const matchComp = Array.isArray(bom.components) && bom.components.some((c) =>
+        (c.component || '').toLowerCase().includes(term)
+      );
+      if (!matchMat && !matchPlant && !matchTgtMat && !matchComp) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Safely merges validation outcomes into original parsed BOMs without overwriting parsed fields or dropping component rows.
+ */
+export function mergeValidationIntoBoms(originalBoms = [], validationResults = []) {
+  if (!Array.isArray(originalBoms) || originalBoms.length === 0) return originalBoms || [];
+  if (!Array.isArray(validationResults) || validationResults.length === 0) return originalBoms;
+
+  const bySeq = new Map();
+  const byMatPlant = new Map();
+
+  validationResults.forEach((res, idx) => {
+    if (res.sequenceNum !== undefined && res.sequenceNum !== null && res.sequenceNum !== '') {
+      bySeq.set(String(res.sequenceNum), res);
+    }
+    const key = `${String(res.material || '').trim().toUpperCase()}|${String(res.plant || '').trim()}`;
+    if (!byMatPlant.has(key)) {
+      byMatPlant.set(key, res);
+    }
+  });
+
+  return originalBoms.map((origBom, idx) => {
+    const seqKey = String(origBom.sequenceNum ?? idx + 1);
+    const matPlantKey = `${String(origBom.material || '').trim().toUpperCase()}|${String(origBom.plant || '').trim()}`;
+    const result = bySeq.get(seqKey) || byMatPlant.get(matPlantKey) || validationResults[idx] || {};
+
+    const rawStatus = result.status || origBom.status || 'Pending';
+    const reason = result.reason || result.message || origBom.reason || '';
+
+    const errorsList = [];
+    if (Array.isArray(result.errors)) {
+      result.errors.forEach((e) => {
+        const text = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
+        if (text && !errorsList.includes(text)) errorsList.push(text);
+      });
+    }
+    if (result.reason && !errorsList.includes(result.reason)) {
+      errorsList.push(result.reason);
+    }
+    if (result.message && !errorsList.includes(result.message) && result.message !== result.reason) {
+      errorsList.push(result.message);
+    }
+    if (Array.isArray(origBom.errors)) {
+      origBom.errors.forEach((e) => {
+        const text = typeof e === 'string' ? e : (e.message || JSON.stringify(e));
+        if (text && !errorsList.includes(text)) errorsList.push(text);
+      });
+    }
+
+    const origComponents = Array.isArray(origBom.components) ? origBom.components : [];
+    const resComponents = Array.isArray(result.components) ? result.components : [];
+
+    const mergedComponents = origComponents.map((comp, cIdx) => {
+      const matchComp = resComponents.find((rc) =>
+        (rc.component && comp.component && String(rc.component).trim().toUpperCase() === String(comp.component).trim().toUpperCase()) ||
+        (rc.itemNo && comp.itemNo && rc.itemNo === comp.itemNo) ||
+        (rc.rowNum && comp.rowNum && rc.rowNum === comp.rowNum)
+      ) || resComponents[cIdx];
+
+      if (matchComp) {
+        return {
+          ...comp,
+          status: matchComp.status || comp.status,
+          error: matchComp.error || comp.error,
+          errors: matchComp.errors || comp.errors,
+          warning: matchComp.warning || comp.warning,
+          warnings: matchComp.warnings || comp.warnings
+        };
+      }
+      return comp;
+    });
+
+    return {
+      ...origBom,
+      sequenceNum: origBom.sequenceNum,
+      material: origBom.material,
+      plant: origBom.plant,
+      bomUsage: origBom.bomUsage,
+      alternativeBom: origBom.alternativeBom,
+      validFrom: origBom.validFrom,
+      validFromSap: origBom.validFromSap,
+      baseQty: origBom.baseQty,
+      bomStatus: origBom.bomStatus,
+      altText: origBom.altText,
+      status: rawStatus,
+      reason: reason,
+      message: result.message || origBom.message || reason,
+      errors: errorsList,
+      warnings: result.warnings || origBom.warnings || [],
+      problems: result.problems || origBom.problems,
+      retryable: result.retryable !== undefined ? result.retryable : origBom.retryable,
+      components: mergedComponents.length > 0 ? mergedComponents : origComponents
+    };
+  });
+}

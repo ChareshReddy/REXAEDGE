@@ -1,7 +1,7 @@
 import SingleBulkSwitch from './layout/SingleBulkSwitch';
 import { getBreadcrumbTrail } from '@shared/breadcrumbs.js';
 import FioriPageHeader from './FioriPageHeader';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import {
   FilePlus,
@@ -30,7 +30,11 @@ import {
   BulkFileInfoBar,
   BulkJobProgressCard,
   CREATE_BULK_COLUMNS,
-  BulkStatTiles
+  BulkStatTiles,
+  normalizeBomStatus,
+  getBomStatusCounts,
+  filterBoms,
+  mergeValidationIntoBoms
 } from './BulkBomShared';
 import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
 import { SearchInput } from './ui/search-input';
@@ -94,6 +98,7 @@ export default function BulkCreateBomView({
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [errorPopoverBom, setErrorPopoverBom] = useState(null);
 
   // Reset pagination & message expand when preflightReport changes
   useEffect(() => {
@@ -136,14 +141,16 @@ export default function BulkCreateBomView({
       }
     };
 
-    if (bom.status === 'Invalid' && bom.reason) {
-      addError(bom.reason);
+    if (bom.reason) {
+      if (normalizeBomStatus(bom) === 'skipped') addWarning(bom.reason);
+      else addError(bom.reason);
+    }
+    if (bom.message && bom.message !== bom.reason) {
+      if (normalizeBomStatus(bom) === 'skipped') addWarning(bom.message);
+      else addError(bom.message);
     }
     if (Array.isArray(bom.errors)) {
       bom.errors.forEach(addError);
-    }
-    if (bom.status === 'Already exists - skipped' && bom.reason) {
-      addWarning(bom.reason);
     }
     if (Array.isArray(bom.warnings)) {
       bom.warnings.forEach(addWarning);
@@ -292,13 +299,15 @@ export default function BulkCreateBomView({
             } else if (job.status === 'FAILED') {
               setParseError(job.error || 'Data validation failed.');
             } else {
+              const mergedBoms = mergeValidationIntoBoms(parsedBoms, job.results);
+              setParsedBoms(mergedBoms);
               setPreflightReport({
                 success: true,
-                totalBoms: job.results.length,
+                totalBoms: mergedBoms.length,
                 readyCount: job.successCount,
                 skippedCount: job.skippedCount,
                 invalidCount: job.failedCount,
-                boms: job.results
+                boms: mergedBoms
               });
               setActiveStep(2);
             }
@@ -656,32 +665,21 @@ export default function BulkCreateBomView({
     XLSX.writeFile(wb, `BOM_Creation_Results_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  const readyCount = preflightReport?.readyCount || 0;
-  const skippedCount = preflightReport?.skippedCount || 0;
-  const invalidCount = preflightReport?.invalidCount || 0;
-
   const allBoms = preflightReport?.boms || parsedBoms || [];
   const hasValidated = Boolean(preflightReport);
+  const statusCounts = useMemo(() => getBomStatusCounts(allBoms, hasValidated), [allBoms, hasValidated]);
+  const readyCount = statusCounts.ready;
+  const skippedCount = statusCounts.skipped;
+  const invalidCount = statusCounts.errors;
+
   const totalComponentRows = allBoms.reduce((acc, b) => acc + (b.components?.length || 1), 0);
   const isPaginated = totalComponentRows > 300;
   const pageSize = 50;
 
-  const filteredBoms = allBoms.filter((bom) => {
-    if (statusFilter === 'ready' && bom.status !== 'Ready') return false;
-    if (statusFilter === 'invalid' && bom.status !== 'Invalid' && !(bom.errors?.length > 0)) return false;
-    if (statusFilter === 'skipped' && !bom.status?.includes('skipped') && !bom.status?.includes('exists')) return false;
-
-    if (searchTerm.trim()) {
-      const term = searchTerm.trim().toLowerCase();
-      const matchMat = (bom.material || '').toLowerCase().includes(term);
-      const matchPlant = (bom.plant || '').toLowerCase().includes(term);
-      const matchComp = (bom.components || []).some((c) =>
-        (c.component || '').toLowerCase().includes(term)
-      );
-      if (!matchMat && !matchPlant && !matchComp) return false;
-    }
-    return true;
-  });
+  const filteredBoms = useMemo(
+    () => filterBoms(allBoms, { statusFilter, searchTerm }),
+    [allBoms, statusFilter, searchTerm]
+  );
 
   const totalPages = isPaginated ? Math.ceil(filteredBoms.length / pageSize) : 1;
   const displayedBoms = isPaginated
@@ -960,27 +958,25 @@ export default function BulkCreateBomView({
                   executionLabel="Creating BOMs in SAP"
                 />
 
-                {/* Summary Stat Tiles */}
-                <BulkStatTiles
-                  total={allBoms.length}
-                  valid={readyCount}
-                  errors={invalidCount}
-                  warnings={skippedCount}
-                  totalLabel="Total BOMs"
-                  validLabel="Ready"
-                  errorsLabel="Errors"
-                  warningsLabel="Skipped"
-                  activeFilter={statusFilter}
-                  onFilterChange={(filter) => {
-                    setStatusFilter(filter);
-                    setCurrentPage(1);
-                  }}
-                  style={{ marginBottom: 16 }}
-                />
-
-
-
-                
+                {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
+                {hasValidated && activeStep > 1 && (
+                  <BulkStatTiles
+                    total={statusCounts.all}
+                    valid={statusCounts.ready}
+                    errors={statusCounts.errors}
+                    warnings={statusCounts.skipped}
+                    totalLabel="Total BOMs"
+                    validLabel="Ready"
+                    errorsLabel="Errors"
+                    warningsLabel="Skipped"
+                    activeFilter={statusFilter}
+                    onFilterChange={(filter) => {
+                      setStatusFilter(filter);
+                      setCurrentPage(1);
+                    }}
+                    style={{ marginBottom: 16 }}
+                  />
+                )}
 
                 {/* PRE-FLIGHT PREVIEW TABLE */}
                 <FormSection
@@ -989,10 +985,10 @@ export default function BulkCreateBomView({
                   tintedHeader
                   className="w-full"
                 >
-                  {/* Controls Toolbar */}
+                  {/* Controls Toolbar: Search left, Tabs center, Showing x of y + File chip right */}
                   <div className="sap-toolbar rx-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                      {/* Search Bar */}
+                    {/* Left: Search Bar */}
+                    <div style={{ flex: '0 0 auto' }}>
                       <SearchInput
                         placeholder="Search material or plant..."
                         value={searchTerm}
@@ -1007,8 +1003,10 @@ export default function BulkCreateBomView({
                         isTable
                         wrapperStyle={{ width: 220 }}
                       />
+                    </div>
 
-                      {/* Filter Pills */}
+                    {/* Center: Filter Tabs */}
+                    <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center' }}>
                       <div
                         style={{
                           display: 'inline-flex',
@@ -1020,9 +1018,10 @@ export default function BulkCreateBomView({
                         }}
                       >
                         {[
-                          { id: 'all', label: `All (${allBoms.length})` },
-                          { id: 'ready', label: `Ready (${readyCount})` },
-                          { id: 'invalid', label: `Errors (${invalidCount})` }
+                          { id: 'all', label: `All (${statusCounts.all})` },
+                          { id: 'ready', label: `Ready (${statusCounts.ready})` },
+                          { id: 'errors', label: `Errors (${statusCounts.errors})` },
+                          { id: 'skipped', label: `Skipped (${statusCounts.skipped})` }
                         ].map((f) => (
                           <button
                             key={f.id}
@@ -1033,7 +1032,7 @@ export default function BulkCreateBomView({
                             }}
                             style={{
                               height: 26,
-                              padding: '0 8px',
+                              padding: '0 10px',
                               borderRadius: 'var(--radius-sm, 6px)',
                               border: 'none',
                               fontSize: '11.5px',
@@ -1051,7 +1050,8 @@ export default function BulkCreateBomView({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {/* Right: Record count & File chip */}
+                    <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
                         Showing {filteredBoms.length} of {allBoms.length}
                       </span>
@@ -1128,41 +1128,42 @@ export default function BulkCreateBomView({
                       className="sap-table preflight-preview-table"
                       style={{
                         width: '100%',
+                        minWidth: 1080,
                         tableLayout: 'fixed',
                         borderCollapse: 'collapse',
                         fontSize: 12.5
                       }}
                     >
                       <colgroup>
-                        <col style={{ width: '4%' }} />
-                        <col style={{ width: '21%' }} />
-                        <col style={{ width: '4.5%' }} />
-                        <col style={{ width: '4.5%' }} />
-                        <col style={{ width: '3.5%' }} />
-                        <col style={{ width: '7.5%' }} />
-                        <col style={{ width: '6.5%' }} />
-                        <col style={{ width: '4.5%' }} />
-                        <col style={{ width: '3.5%' }} />
-                        <col style={{ width: '21%' }} />
-                        <col style={{ width: '5%' }} />
-                        <col style={{ width: '14.5%' }} />
+                        <col style={{ width: 48 }} />
+                        <col style={{ width: 170 }} />
+                        <col style={{ width: 64 }} />
+                        <col style={{ width: 54 }} />
+                        <col style={{ width: 48 }} />
+                        <col style={{ width: 104 }} />
+                        <col style={{ width: 76 }} />
+                        <col style={{ width: 58 }} />
+                        <col style={{ width: 48 }} />
+                        <col style={{ width: 170 }} />
+                        <col style={{ width: 70 }} />
+                        <col style={{ width: 220 }} />
                       </colgroup>
                       <thead>
                         <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--color-blue-200)' }}>
-                          <th className="col-seq" title="Sequence Number" style={{ width: '4%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Seq</th>
-                          <th className="col-material" title="Material Number" style={{ width: '21%', padding: '6px 6px', whiteSpace: 'nowrap' }}>Material</th>
-                          <th className="col-plant" title="Plant" style={{ width: '4.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Plant</th>
-                          <th className="col-usage col-usage-narrow narrow-usage" title="BOM Usage" style={{ width: '4.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>
+                          <th className="col-seq" title="Sequence Number" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Seq</th>
+                          <th className="col-material" title="Material Number" style={{ width: 170, textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Material</th>
+                          <th className="col-plant" title="Plant" style={{ width: 64, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Plant</th>
+                          <th className="col-usage col-usage-narrow narrow-usage" title="BOM Usage" style={{ width: 54, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>
                             Usage
                           </th>
-                          <th className="col-alt" title="Alternative BOM" style={{ width: '3.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Alt</th>
-                          <th className="col-valid-from" title="Valid From Date" style={{ width: '7.5%', textAlign: 'center', padding: '6px 3px', whiteSpace: 'nowrap' }}>Valid From</th>
-                          <th className="col-base-qty" title="Base Quantity" style={{ width: '6.5%', textAlign: 'right', padding: '6px 3px', whiteSpace: 'nowrap' }}>Base Qty</th>
-                          <th className="col-bom-status col-status" title="BOM Status" style={{ width: '4.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Status</th>
-                          <th className="col-item-cat col-cat" title="Item Category" style={{ width: '3.5%', textAlign: 'center', padding: '6px 2px', whiteSpace: 'nowrap' }}>Cat</th>
-                          <th className="col-component" title="Component Material" style={{ width: '21%', padding: '6px 6px', whiteSpace: 'nowrap' }}>Component</th>
-                          <th className="col-qty" title="Component Quantity" style={{ width: '5%', textAlign: 'right', padding: '6px 3px', whiteSpace: 'nowrap' }}>Qty</th>
-                          <th className="col-result" title="Validation Result" style={{ width: '14.5%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Result</th>
+                          <th className="col-alt" title="Alternative BOM" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Alt</th>
+                          <th className="col-valid-from" title="Valid From Date" style={{ width: 104, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Valid From</th>
+                          <th className="col-base-qty" title="Base Quantity" style={{ width: 76, textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Base Qty</th>
+                          <th className="col-bom-status col-status" title="BOM Status" style={{ width: 58, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Status</th>
+                          <th className="col-item-cat col-cat" title="Item Category" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Cat</th>
+                          <th className="col-component" title="Component Material" style={{ width: 170, textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Component</th>
+                          <th className="col-qty" title="Component Quantity" style={{ width: 70, textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Qty</th>
+                          <th className="col-result" title="Validation Result" style={{ width: 220, textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1170,7 +1171,12 @@ export default function BulkCreateBomView({
                           const bomKey = bom.sequenceNum || String(bIdx);
                           const compList = Array.isArray(bom.components) && bom.components.length > 0 ? bom.components : [{}];
                           const span = compList.length;
+                          const normStatus = normalizeBomStatus(bom);
                           const messages = getBomMessages(bom);
+                          const allErrors = messages.errors.length > 0
+                            ? messages.errors
+                            : (bom.reason ? [bom.reason] : (bom.message ? [bom.message] : []));
+                          const primaryReason = allErrors[0] || bom.reason || bom.message || 'Validation failed';
                           const isMessagesExpanded = expandedMessageBoms.has(bomKey);
 
                           return (
@@ -1191,7 +1197,7 @@ export default function BulkCreateBomView({
                                           textAlign: 'center',
                                           color: 'var(--sap-text-muted)',
                                           fontWeight: 600,
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1206,7 +1212,9 @@ export default function BulkCreateBomView({
                                         className="col-material"
                                         title={bom.material}
                                         style={{
-                                          padding: '5px 6px',
+                                          width: 170,
+                                          maxWidth: '20ch',
+                                          padding: '6px 8px',
                                           fontWeight: 600,
                                           fontFamily: 'monospace, monospace',
                                           fontVariantNumeric: 'tabular-nums',
@@ -1214,10 +1222,11 @@ export default function BulkCreateBomView({
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff'
+                                          background: '#ffffff',
+                                          textAlign: 'left'
                                         }}
                                       >
-                                        <span className="bom-mat-code" title={bom.material} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        <span className="bom-mat-code" title={bom.material} style={{ display: 'block', maxWidth: '20ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                           {bom.material}
                                         </span>
                                       </td>
@@ -1230,7 +1239,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1246,7 +1255,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1262,7 +1271,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1271,18 +1280,17 @@ export default function BulkCreateBomView({
                                         {bom.alternativeBom}
                                       </td>
 
-                                      {/* 6. Valid From */}
+                                      {/* 6. Valid From (must show fully, no ellipsis) */}
                                       <td
                                         rowSpan={span}
                                         className="col-valid-from"
                                         style={{
+                                          width: 104,
                                           textAlign: 'center',
-                                          padding: '5px 3px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
-                                          whiteSpace: 'nowrap',
-                                          overflow: 'hidden',
-                                          textOverflow: 'ellipsis'
+                                          whiteSpace: 'nowrap'
                                         }}
                                       >
                                         {bom.validFrom || '-'}
@@ -1295,7 +1303,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'right',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 3px',
+                                          padding: '6px 6px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1311,7 +1319,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1325,7 +1333,7 @@ export default function BulkCreateBomView({
                                         className="col-item-cat col-cat"
                                         style={{
                                           textAlign: 'center',
-                                          padding: '5px 2px',
+                                          padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1339,17 +1347,20 @@ export default function BulkCreateBomView({
                                         className="col-component"
                                         title={comp.component || ''}
                                         style={{
-                                          padding: '5px 6px',
+                                          width: 170,
+                                          maxWidth: '20ch',
+                                          padding: '6px 8px',
                                           fontFamily: 'monospace, monospace',
                                           fontVariantNumeric: 'tabular-nums',
                                           whiteSpace: 'nowrap',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff'
+                                          background: '#ffffff',
+                                          textAlign: 'left'
                                         }}
                                       >
-                                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.component || ''}>
+                                        <span style={{ display: 'block', maxWidth: '20ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.component || ''}>
                                           {comp.component || '-'}
                                         </span>
                                       </td>
@@ -1360,7 +1371,7 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'right',
                                           fontVariantNumeric: 'tabular-nums',
-                                          padding: '5px 3px',
+                                          padding: '6px 6px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           whiteSpace: 'nowrap'
@@ -1369,39 +1380,140 @@ export default function BulkCreateBomView({
                                         {comp.quantity ?? '-'}
                                       </td>
 
-                                      {/* 12. Result Badge */}
+                                      {/* 12. Result Badge with reason & click popover */}
                                       <td
                                         rowSpan={span}
                                         className="col-result"
                                         style={{
-                                          textAlign: 'center',
-                                          padding: '5px 4px',
-                                          whiteSpace: 'nowrap',
+                                          width: 220,
+                                          minWidth: 200,
+                                          maxWidth: 240,
+                                          textAlign: 'left',
+                                          padding: '6px 8px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff'
+                                          background: '#ffffff',
+                                          verticalAlign: 'middle',
+                                          boxSizing: 'border-box'
                                         }}
                                       >
-                                        {!hasValidated ? (
+                                        {!hasValidated || normStatus === 'not_validated' ? (
                                           <span
                                             className="sap-badge sap-badge-neutral"
-                                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 5,
+                                              fontSize: 11,
+                                              padding: '3px 8px',
+                                              whiteSpace: 'nowrap'
+                                            }}
                                           >
-                                            Not validated
+                                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-text-muted, #7A8CA3)' }} />
+                                            <span>Not validated</span>
                                           </span>
-                                        ) : (
+                                        ) : normStatus === 'ready' ? (
                                           <span
-                                            className={`sap-badge ${
-                                              bom.status === 'Ready'
-                                                ? 'sap-badge-success'
-                                                : bom.status === 'Already exists - skipped' || bom.status === 'Already exists'
-                                                ? 'sap-badge-warning'
-                                                : 'sap-badge-warning'
-                                            }`}
-                                            style={{ fontSize: 11, padding: '3px 8px', whiteSpace: 'nowrap', display: 'inline-block' }}
+                                            className="sap-badge sap-badge-success"
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: 5,
+                                              fontSize: 11,
+                                              padding: '3px 8px',
+                                              whiteSpace: 'nowrap'
+                                            }}
                                           >
-                                            {bom.status === 'Already exists - skipped' ? 'Already exists' : bom.status}
+                                            <CheckCircle2 size={13} style={{ color: 'var(--color-success, #15803D)' }} />
+                                            <span>Ready</span>
                                           </span>
-                                        )}
+                                        ) : normStatus === 'error' ? (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 204 }}>
+                                            <span
+                                              className="sap-badge sap-badge-danger"
+                                              style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 5,
+                                                fontSize: 11,
+                                                padding: '3px 8px',
+                                                alignSelf: 'flex-start',
+                                                whiteSpace: 'nowrap',
+                                                backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                                                color: 'var(--color-danger, #B42318)',
+                                                border: '1px solid var(--color-danger-border, #FECDCA)'
+                                              }}
+                                            >
+                                              <AlertCircle size={13} />
+                                              <span>Failed</span>
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => setErrorPopoverBom({
+                                                material: bom.material,
+                                                plant: bom.plant,
+                                                bomUsage: bom.bomUsage,
+                                                errors: allErrors
+                                              })}
+                                              title={allErrors.join(' | ') || primaryReason}
+                                              style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                padding: 0,
+                                                margin: 0,
+                                                textAlign: 'left',
+                                                cursor: 'pointer',
+                                                fontSize: '11px',
+                                                color: 'var(--color-danger, #B42318)',
+                                                opacity: 0.9,
+                                                lineHeight: 1.3,
+                                                display: 'block',
+                                                maxWidth: 204,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                              }}
+                                            >
+                                              {primaryReason}
+                                              {allErrors.length > 1 && (
+                                                <span style={{ fontWeight: 600, marginLeft: 4, textDecoration: 'underline' }}>
+                                                  +{allErrors.length - 1} more
+                                                </span>
+                                              )}
+                                            </button>
+                                          </div>
+                                        ) : normStatus === 'skipped' ? (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 204 }}>
+                                            <span
+                                              className="sap-badge sap-badge-warning"
+                                              style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 5,
+                                                fontSize: 11,
+                                                padding: '3px 8px',
+                                                alignSelf: 'flex-start',
+                                                whiteSpace: 'nowrap'
+                                              }}
+                                            >
+                                              <AlertTriangle size={13} />
+                                              <span>Skipped</span>
+                                            </span>
+                                            <span
+                                              title={bom.reason || bom.message || 'BOM already exists'}
+                                              style={{
+                                                fontSize: '11px',
+                                                color: 'var(--color-warning, #B45309)',
+                                                lineHeight: 1.3,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                maxWidth: 204
+                                              }}
+                                            >
+                                              {bom.reason || bom.message || 'BOM already exists'}
+                                            </span>
+                                          </div>
+                                        ) : null}
                                       </td>
                                     </tr>
                                   );
@@ -1417,7 +1529,7 @@ export default function BulkCreateBomView({
                                       className="col-item-cat col-cat"
                                       style={{
                                         textAlign: 'center',
-                                        padding: '5px 2px',
+                                        padding: '6px 4px',
                                         border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                         background: '#ffffff',
                                         whiteSpace: 'nowrap'
@@ -1431,17 +1543,20 @@ export default function BulkCreateBomView({
                                       className="col-component"
                                       title={comp.component || ''}
                                       style={{
-                                        padding: '5px 6px',
+                                        width: 170,
+                                        maxWidth: '20ch',
+                                        padding: '6px 8px',
                                         fontFamily: 'monospace, monospace',
                                         fontVariantNumeric: 'tabular-nums',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
                                         border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                        background: '#ffffff'
+                                        background: '#ffffff',
+                                        textAlign: 'left'
                                       }}
                                     >
-                                      <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.component || ''}>
+                                      <span style={{ display: 'block', maxWidth: '20ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={comp.component || ''}>
                                         {comp.component || '-'}
                                       </span>
                                     </td>
@@ -1452,7 +1567,7 @@ export default function BulkCreateBomView({
                                       style={{
                                         textAlign: 'right',
                                         fontVariantNumeric: 'tabular-nums',
-                                        padding: '5px 3px',
+                                        padding: '6px 6px',
                                         border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                         background: '#ffffff',
                                         whiteSpace: 'nowrap'
@@ -1554,18 +1669,18 @@ export default function BulkCreateBomView({
                     </span>
                     {!hasValidated ? (
                       <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
-                        Not validated ({allBoms.length} BOM{allBoms.length === 1 ? '' : 's'})
+                        Not validated ({statusCounts.all} BOM{statusCounts.all === 1 ? '' : 's'})
                       </span>
                     ) : (
                       <>
                         <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
-                          Ready: {readyCount}
+                          Ready: {statusCounts.ready}
                         </span>
                         <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
-                          Skipped (Existing): {skippedCount}
+                          Skipped (Existing): {statusCounts.skipped}
                         </span>
                         <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
-                          Invalid: {invalidCount}
+                          Invalid: {statusCounts.errors}
                         </span>
                       </>
                     )}
@@ -1746,6 +1861,45 @@ export default function BulkCreateBomView({
             </div>
           </div>
         </Modal>
+
+        {/* Validation Errors Popover Modal */}
+        {errorPopoverBom && (
+          <Modal
+            isOpen={Boolean(errorPopoverBom)}
+            onClose={() => setErrorPopoverBom(null)}
+            title={`Validation Issues · ${errorPopoverBom.material}`}
+            subtitle={`Plant ${errorPopoverBom.plant || ''}${errorPopoverBom.bomUsage ? ` · Usage ${errorPopoverBom.bomUsage}` : ''}`}
+            icon={AlertCircle}
+            iconColor="var(--color-danger, #B42318)"
+            maxWidth={520}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+              {(errorPopoverBom.errors || []).map((err, i) => {
+                const text = typeof err === 'string' ? err : `${err.field ? `${err.field}: ` : ''}${err.message || ''}`;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                      padding: '10px 12px',
+                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                      border: '1px solid var(--color-danger-border, #FECDCA)',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      fontSize: '12.5px',
+                      color: 'var(--color-danger, #B42318)',
+                      lineHeight: 1.4
+                    }}
+                  >
+                    <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ wordBreak: 'break-word' }}>{text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Modal>
+        )}
     </div>
   );
 }
