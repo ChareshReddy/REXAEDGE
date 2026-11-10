@@ -11,8 +11,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MAKT',
     fields: [
-      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'e.g. 1102* or 100-100' },
-      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'e.g. SOLAR* or PANEL' },
+      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Ex. 1102* or 100-100' },
+      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Ex. SOLAR* or PANEL' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]
   },
@@ -23,8 +23,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'BISMT', label: 'Old material number', length: 18, placeholder: 'e.g. 1527279*' },
-      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'e.g. *BEARING*' },
+      { id: 'BISMT', label: 'Old material number', length: 18, placeholder: 'Ex. 1527279*' },
+      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Ex. *BEARING*' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' }
     ]
@@ -36,9 +36,9 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MAST',
     fields: [
-      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'e.g. 100-*' },
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'STLAN', label: 'BOM Usage', length: 1, placeholder: 'e.g. 1, 2, 3' },
+      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Ex. 100-*' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000' },
+      { id: 'STLAN', label: 'BOM Usage', length: 1, placeholder: 'Ex. 1, 2, 3' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]
@@ -50,7 +50,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1C',
     fields: [
-      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'e.g. CAD-*' },
+      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Ex. CAD-*' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]
@@ -62,7 +62,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1E',
     fields: [
-      { id: 'KUNNR', label: 'Competitor', length: 10, placeholder: 'e.g. 0000100000' },
+      { id: 'KUNNR', label: 'Competitor', length: 10, placeholder: 'Ex. 0000100000' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -75,9 +75,9 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1F',
     fields: [
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'FHM_FGRU1', label: 'PRT Grouping 1', length: 4, placeholder: 'e.g. PRT1' },
-      { id: 'FHM_FGRU2', label: 'PRT Grouping 2', length: 4, placeholder: 'e.g. PRT2' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000' },
+      { id: 'FHM_FGRU1', label: 'PRT Grouping 1', length: 4, placeholder: 'Ex. PRT1' },
+      { id: 'FHM_FGRU2', label: 'PRT Grouping 2', length: 4, placeholder: 'Ex. PRT2' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -90,9 +90,9 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1H',
     fields: [
-      { id: 'PRDHA', label: 'Product Hierarchy', length: 18, placeholder: 'e.g. PROD-*' },
-      { id: 'VKORG', label: 'Sales Organization', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'VTWEG', label: 'Distribution Channel', length: 2, placeholder: 'e.g. 10' },
+      { id: 'PRDHA', label: 'Product Hierarchy', length: 18, placeholder: 'Ex. PROD-*' },
+      { id: 'VKORG', label: 'Sales Organization', length: 4, placeholder: 'Ex. 1000' },
+      { id: 'VTWEG', label: 'Distribution Channel', length: 2, placeholder: 'Ex. 10' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -105,8 +105,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'EINA',
     fields: [
-      { id: 'IDNLF', label: "Supplier's Material Number", length: 35, placeholder: 'e.g. VEND-*' },
-      { id: 'LIFNR', label: 'Vendor', length: 10, placeholder: 'e.g. 0000451688' },
+      { id: 'IDNLF', label: "Supplier's Material Number", length: 35, placeholder: 'Ex. VEND-*' },
+      { id: 'LIFNR', label: 'Vendor', length: 10, placeholder: 'Ex. 0000451688' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -119,7 +119,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'ATTYP', label: 'Material Category', length: 2, placeholder: 'e.g. 00, 01, 11' },
+      { id: 'ATTYP', label: 'Material Category', length: 2, placeholder: 'Ex. 00, 01, 11' },
       { id: 'MATKL', label: 'Material Group', length: 9, placeholder: 'Optional group' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
@@ -140,7 +140,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'MATKL', label: 'Material Group', length: 9, placeholder: 'e.g. F1SX or ELEC*' },
+      { id: 'MATKL', label: 'Material Group', length: 9, placeholder: 'Ex. F1SX or ELEC*' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -153,8 +153,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MEAN',
     fields: [
-      { id: 'EAN11', label: 'International Article Number (EAN)', length: 18, placeholder: 'e.g. 8905*' },
-      { id: 'MEINH', label: 'Unit of Measure', length: 3, placeholder: 'e.g. ST or PAA' },
+      { id: 'EAN11', label: 'International Article Number (EAN)', length: 18, placeholder: 'Ex. 8905*' },
+      { id: 'MEINH', label: 'Unit of Measure', length: 3, placeholder: 'Ex. ST or PAA' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -174,7 +174,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'PRDHA', label: 'Product Hierarchy', length: 18, placeholder: 'e.g. PROD-*' },
+      { id: 'PRDHA', label: 'Product Hierarchy', length: 18, placeholder: 'Ex. PROD-*' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -187,12 +187,12 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1R',
     fields: [
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1009, 1000' },
-      { id: 'PLNTY', label: 'Task List Type', length: 1, placeholder: 'e.g. N' },
-      { id: 'PLNNR', label: 'Key for Task List Group', length: 8, placeholder: 'e.g. 09M06154' },
-      { id: 'PLNAL', label: 'Group Counter', length: 2, placeholder: 'e.g. 01' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1009, 1000' },
+      { id: 'PLNTY', label: 'Task List Type', length: 1, placeholder: 'Ex. N' },
+      { id: 'PLNNR', label: 'Key for Task List Group', length: 8, placeholder: 'Ex. 09M06154' },
+      { id: 'PLNAL', label: 'Group Counter', length: 2, placeholder: 'Ex. 01' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' },
-      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'e.g. CUT COMP*' },
+      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Ex. CUT COMP*' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]
   },
@@ -203,10 +203,10 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1S',
     fields: [
-      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'e.g. CASUAL*' },
+      { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Ex. CASUAL*' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' },
-      { id: 'VKORG', label: 'Sales Organization', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'VTWEG', label: 'Distribution Channel', length: 2, placeholder: 'e.g. 10' },
+      { id: 'VKORG', label: 'Sales Organization', length: 4, placeholder: 'Ex. 1000' },
+      { id: 'VTWEG', label: 'Distribution Channel', length: 2, placeholder: 'Ex. 10' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' }
     ]
   },
@@ -217,7 +217,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'MTART', label: 'Material Type', length: 4, placeholder: 'e.g. ROH, FERT, HALB' },
+      { id: 'MTART', label: 'Material Type', length: 4, placeholder: 'Ex. ROH, FERT, HALB' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -230,8 +230,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1V',
     fields: [
-      { id: 'PRVBE', label: 'Supply Area', length: 10, placeholder: 'e.g. PV01' },
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
+      { id: 'PRVBE', label: 'Supply Area', length: 10, placeholder: 'Ex. PV01' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material filter' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -244,7 +244,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1W',
     fields: [
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000, 1001' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000, 1001' },
       { id: 'MATNR', label: 'Material', length: 18 },
       { id: 'MAKTG', label: 'Material description', length: 40 },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -256,8 +256,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'FSH_MG_MATNR_V',
     fields: [
-      { id: 'FSH_SEASON_YEAR', label: 'Season Year', length: 4, placeholder: 'e.g. 2024' },
-      { id: 'FSH_SEASON', label: 'Season', length: 4, placeholder: 'e.g. SS01' },
+      { id: 'FSH_SEASON_YEAR', label: 'Season Year', length: 4, placeholder: 'Ex. 2024' },
+      { id: 'FSH_SEASON', label: 'Season', length: 4, placeholder: 'Ex. SS01' },
       { id: 'FSH_COLLECTION', label: 'Collection', length: 10, placeholder: 'Optional collection' },
       { id: 'FSH_THEME', label: 'Theme', length: 10, placeholder: 'Optional theme' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material' },
@@ -271,7 +271,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MGW_GENERIC_VAR',
     fields: [
-      { id: 'SATNR', label: 'Generic material', length: 18, placeholder: 'e.g. XA1FL0464L' },
+      { id: 'SATNR', label: 'Generic material', length: 18, placeholder: 'Ex. XA1FL0464L' },
       { id: 'MATNR', label: 'Variant material', length: 18, placeholder: 'Optional variant' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'MATKL', label: 'Material Group', length: 9, placeholder: 'Optional group' },
@@ -284,8 +284,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MARA',
     fields: [
-      { id: 'SGT_CSGR', label: 'Segmentation Structure', length: 4, placeholder: 'e.g. ZRFL' },
-      { id: 'SGT_COVSA', label: 'Segmentation Strategy', length: 8, placeholder: 'e.g. ZRFL01' },
+      { id: 'SGT_CSGR', label: 'Segmentation Structure', length: 4, placeholder: 'Ex. ZRFL' },
+      { id: 'SGT_COVSA', label: 'Segmentation Strategy', length: 8, placeholder: 'Ex. ZRFL01' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material' },
       { id: 'MAKTG', label: 'Material description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
@@ -309,7 +309,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'VWRF_ART_SHLP',
     fields: [
-      { id: 'ORIGINAL_ART_NR', label: 'Original Article', length: 18, placeholder: 'e.g. 100-*' },
+      { id: 'ORIGINAL_ART_NR', label: 'Original Article', length: 18, placeholder: 'Ex. 100-*' },
       { id: 'FOLUP_ART_NR', label: 'Follow-up Article', length: 18, placeholder: 'Optional follow-up' },
       { id: 'FOLLOWUP_TYP_DE', label: 'Substitution Type', length: 20, placeholder: 'Optional type' },
       { id: 'MAKTG_ORG_ART', label: 'Material description', length: 40, placeholder: 'Optional description' },
@@ -322,7 +322,7 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'VWRF_ART_SHLP',
     fields: [
-      { id: 'FOLUP_ART_NR', label: 'Follow-up Article', length: 18, placeholder: 'e.g. 100-*' },
+      { id: 'FOLUP_ART_NR', label: 'Follow-up Article', length: 18, placeholder: 'Ex. 100-*' },
       { id: 'ORIGINAL_ART_NR', label: 'Original Article', length: 18, placeholder: 'Optional original' },
       { id: 'FOLLOWUP_TYP_DE', label: 'Substitution Type', length: 20, placeholder: 'Optional type' },
       { id: 'MAKTG_FOLUP_ART', label: 'Material description', length: 40, placeholder: 'Optional description' },
@@ -343,8 +343,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1MPN',
     fields: [
-      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'e.g. PART-*' },
-      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'e.g. 0000100000' },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'Ex. PART-*' },
+      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'Ex. 0000100000' },
       { id: 'TEXT_HTN', label: 'Description', length: 40, placeholder: 'Optional description' },
       { id: 'MATNR_HTN', label: 'MPN material', length: 18, placeholder: 'Optional MPN' },
       { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'Optional material' },
@@ -358,12 +358,12 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT2MPN',
     fields: [
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000, 1001' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000, 1001' },
       { id: 'AMPSP', label: 'AMPL Status', length: 4, placeholder: 'Optional AMPL status' },
-      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'e.g. 0000100000' },
+      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'Ex. 0000100000' },
       { id: 'REVLV', label: 'Revision Level', length: 2, placeholder: 'Optional rev level' },
       { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'Optional material' },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'e.g. PART-*' },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'Ex. PART-*' },
       { id: 'MATNR_HTN', label: 'MPN material', length: 18, placeholder: 'Optional MPN' }
     ]
   },
@@ -373,9 +373,9 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1MPN',
     fields: [
-      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'e.g. 0000100000' },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'e.g. PART-*' },
-      { id: 'TEXT_HTN', label: 'Description', length: 40, placeholder: 'e.g. SPARX*' },
+      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'Ex. 0000100000' },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'Ex. PART-*' },
+      { id: 'TEXT_HTN', label: 'Description', length: 40, placeholder: 'Ex. SPARX*' },
       { id: 'MATNR_HTN', label: 'MPN material', length: 18, placeholder: 'Optional MPN' },
       { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'Optional material' }
     ]
@@ -386,9 +386,9 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1MPN',
     fields: [
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
-      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'e.g. 0000100000' },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'e.g. PART-*' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000' },
+      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'Ex. 0000100000' },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'Ex. PART-*' },
       { id: 'MATNR_HTN', label: 'MPN material', length: 18, placeholder: 'Optional MPN' },
       { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'Optional material' }
     ]
@@ -400,8 +400,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'V_PICPSRL',
     fields: [
-      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'e.g. 100-*' },
-      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'e.g. 1000' },
+      { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Ex. 100-*' },
+      { id: 'WERKS', label: 'Plant', length: 4, placeholder: 'Ex. 1000' },
       { id: 'BERID', label: 'MRP Area', length: 10, placeholder: 'Optional MRP area' },
       { id: 'LMATN', label: 'Leading Material', length: 18, placeholder: 'Optional leading mat.' }
     ]
@@ -413,10 +413,10 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'M_MAT1MPN',
     fields: [
-      { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'e.g. 100-*' },
+      { id: 'MATNR_B', label: 'Inventory-managed material', length: 18, placeholder: 'Ex. 100-*' },
       { id: 'MATNR_HTN', label: 'MPN material', length: 18, placeholder: 'Optional MPN' },
-      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'e.g. 0000100000' },
-      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'e.g. PART-*' },
+      { id: 'MFRNR', label: 'Manufacturer', length: 10, placeholder: 'Ex. 0000100000' },
+      { id: 'MFRPN', label: 'Manufacturer Part Number', length: 40, placeholder: 'Ex. PART-*' },
       { id: 'TEXT_HTN', label: 'Description', length: 40, placeholder: 'Optional description' },
       { id: 'SPRAS', label: 'Language Key', length: 2, defaultValue: 'EN' }
     ]
@@ -428,8 +428,8 @@ export const SAP_SEARCH_OPTIONS = [
     available: true,
     table: 'MLEA',
     fields: [
-      { id: 'EAN11', label: 'Vendor-Specific EAN', length: 18, placeholder: 'e.g. 8905*' },
-      { id: 'LIFNR', label: 'Vendor', length: 10, placeholder: 'e.g. 0000451688' },
+      { id: 'EAN11', label: 'Vendor-Specific EAN', length: 18, placeholder: 'Ex. 8905*' },
+      { id: 'LIFNR', label: 'Vendor', length: 10, placeholder: 'Ex. 0000451688' },
       { id: 'MATNR', label: 'Material', length: 18, placeholder: 'Optional material' },
       { id: 'LFEAN', label: 'Vendor EAN Flag', length: 1, defaultValue: 'X' }
     ]

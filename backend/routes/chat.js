@@ -2839,7 +2839,7 @@ router.post('/', async (req, res) => {
                 });
 
                 if (entityKey === 'bom') {
-                  replyMsg = `To create a new Bill of Materials, please provide the missing required field(s): ${missingLabels.join(', ')} (e.g. component item and quantity).`;
+                  replyMsg = `To create a new Bill of Materials, please provide the missing required field(s): ${missingLabels.join(', ')} (Ex. component item and quantity).`;
                 } else {
                   replyMsg = `To create a new ${entLabel}, please provide the missing required field(s): ${missingLabels.join(', ')}.`;
                 }

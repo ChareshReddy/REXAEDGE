@@ -120,7 +120,7 @@ router.post('/search-by-option', materialSearchRateLimiter, requireAppPermission
     if (!tab) {
       return res.status(400).json({
         success: false,
-        error: 'Search tab identifier is required (e.g. M, A, B, etc.).'
+        error: 'Search tab identifier is required (Ex. M, A, B, etc.).'
       });
     }
 

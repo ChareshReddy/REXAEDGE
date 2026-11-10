@@ -919,7 +919,7 @@ export default function AdminView({
                     <th>Role</th>
                     <th>Created date</th>
                     <th>Password</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -932,7 +932,7 @@ export default function AdminView({
                       return (
                         <tr key={u.id}>
                           <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0, overflow: 'hidden' }}>
                               <div style={{
                                 width: 24,
                                 height: 24,
@@ -948,7 +948,7 @@ export default function AdminView({
                               }}>
                                 {u.email.charAt(0).toUpperCase()}
                               </div>
-                              <span style={{ fontWeight: 500, color: 'var(--sap-text-dark)', whiteSpace: 'nowrap' }} title={u.email}>{u.email}</span>
+                              <span style={{ fontWeight: 500, color: 'var(--sap-text-dark)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={u.email}>{u.email}</span>
                             </div>
                           </td>
                           <td>
@@ -975,7 +975,7 @@ export default function AdminView({
                               <span>Set password</span>
                             </button>
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                               {isSelf ? (
                                 <span
@@ -1084,7 +1084,7 @@ export default function AdminView({
                     <th>Pool connections</th>
                     <th>Last checked</th>
                     <th>Status</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1095,7 +1095,7 @@ export default function AdminView({
                           <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                               <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>{s.name}</span>
                             </div>
                             <div style={{ marginTop: 4 }}>
                               <span className={`sap-env-badge ${
@@ -1112,7 +1112,7 @@ export default function AdminView({
                             </div>
                           </td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
-                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.ashost || 'N/A'}</div>
+                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.ashost || 'N/A'}>{s.ashost || 'N/A'}</div>
                             <div style={{ fontSize: 10, color: 'var(--sap-text-subtle)', marginTop: 2 }}>
                               Sys {s.sysnr || s.sys_number || '00'} | Client {s.client || '100'}
                             </div>
@@ -1146,7 +1146,7 @@ export default function AdminView({
                               {s.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                               <button
                                 type="button"
@@ -1285,7 +1285,7 @@ export default function AdminView({
                     <th>Environment</th>
                     <th>Permitted features</th>
                     <th>Granted at</th>
-                    <th style={{ textAlign: 'center' }}>Actions</th>
+                    <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1397,7 +1397,7 @@ export default function AdminView({
                           <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.granted_at ? new Date(p.granted_at).toLocaleDateString() : 'N/A'}
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', overflow: 'visible' }}>
+                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap', overflow: 'visible' }}>
                             <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                               <button
                                 type="button"
@@ -1461,7 +1461,7 @@ export default function AdminView({
             <input
               type="email"
               className="sap-input"
-              placeholder="e.g. engineer@nextitpoint.com"
+              placeholder="Ex. engineer@nextitpoint.com"
               value={userFormData.email}
               onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
               required
@@ -1470,7 +1470,7 @@ export default function AdminView({
           </div>
 
           <div className="sap-form-group">
-            <label className="sap-form-label">Initial / Temporary Password</label>
+            <label className="sap-form-label">Temporary Password</label>
             <PasswordInput
               placeholder="Minimum 6 characters"
               value={userFormData.password}
@@ -1478,6 +1478,7 @@ export default function AdminView({
               required
               minLength={6}
               autoComplete="new-password"
+              leftIcon={<KeyRound size={16} />}
             />
           </div>
 

@@ -88,7 +88,7 @@ const PasswordInput = forwardRef(function PasswordInput(
             left: 12,
             top: '50%',
             transform: 'translateY(-50%)',
-            color: 'var(--sap-text-secondary)',
+            color: 'var(--color-text-muted, #7A8CA3)',
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',

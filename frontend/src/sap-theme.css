@@ -500,7 +500,7 @@ table.sap-data-table th,
   color: var(--color-navy-900) !important;
   border: var(--sap-border-width) solid var(--sap-border-color) !important;
   padding: 0 var(--sap-table-cell-padding) !important;
-  text-align: left !important;
+  text-align: left;
   vertical-align: middle !important;
   white-space: normal;
   overflow: visible;
@@ -1641,10 +1641,62 @@ button.sap-admin-nav-tab.active .sap-admin-tab-badge {
   text-overflow: clip !important;
 }
 
-.rx-audit-table td.rx-audit-col-actions,
-.rx-audit-table td:last-child {
-  overflow: hidden !important;
+.rx-audit-table td.rx-audit-col-timestamp,
+.sap-table td.rx-audit-col-timestamp,
+.sap-admin-compact-table td.rx-audit-col-timestamp {
+  overflow: visible !important;
   text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.rx-audit-table td.rx-audit-col-actions,
+.rx-audit-table td.actions-column,
+.rx-audit-table th.actions-column,
+.rx-audit-table td:last-child {
+  text-align: center !important;
+  overflow: visible !important;
+}
+
+/* ==========================================================================
+   ADMIN ACTIONS COLUMN CENTERING STANDARD
+   Enforces centered alignment for Actions header and button content across
+   all tables in the application (Users, Servers, Permissions, Logs, etc.)
+   ========================================================================== */
+.sap-table th.actions-column,
+.sap-table td.actions-column,
+.sap-admin-compact-table th.actions-column,
+.sap-admin-compact-table td.actions-column,
+.rx-audit-table th.actions-column,
+.rx-audit-table td.actions-column,
+.rx-table th.actions-column,
+.rx-table td.actions-column,
+.rx-table-th.actions-column,
+.rx-table-td.actions-column,
+.actions-column,
+th.actions,
+td.actions,
+th.sap-col-actions,
+td.sap-col-actions,
+.sap-col-actions,
+.rx-audit-th-actions,
+.rx-audit-col-actions {
+  text-align: center !important;
+}
+
+.sap-table td.actions-column > div,
+.sap-admin-compact-table td.actions-column > div,
+.rx-audit-table td.actions-column > div,
+.rx-table td.actions-column > div,
+.actions-column > div,
+td.actions > div,
+td.sap-col-actions > div,
+td.rx-audit-col-actions > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
 }
 
 /* Admin compact table font, row height, and padding standards */

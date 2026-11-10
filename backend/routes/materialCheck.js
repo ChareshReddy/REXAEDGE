@@ -27,7 +27,7 @@ async function handleMaterialCheck(req, res) {
       return res.status(400).json({
         success: false,
         error: 'Plant is required.',
-        message: 'A target SAP plant code (e.g. 1000, 1001, 1012) is required.'
+        message: 'A target SAP plant code (Ex. 1000, 1001, 1012) is required.'
       });
     }
 
