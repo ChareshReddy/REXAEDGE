@@ -50,6 +50,87 @@ export default function CopyBomView({
   const [verifiedData, setVerifiedData] = useState(null);
   const [readBackError, setReadBackError] = useState('');
   const [showDiscrepancies, setShowDiscrepancies] = useState(false);
+  const [verifyElapsed, setVerifyElapsed] = useState(0);
+  const verifyTimerRef = useRef(null);
+
+  const formatElapsed = (sec) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const startVerifyTimer = () => {
+    if (verifyTimerRef.current) clearInterval(verifyTimerRef.current);
+    setVerifyElapsed(0);
+    const startTime = Date.now();
+    verifyTimerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setVerifyElapsed(elapsed);
+    }, 1000);
+  };
+
+  const stopVerifyTimer = () => {
+    if (verifyTimerRef.current) {
+      clearInterval(verifyTimerRef.current);
+      verifyTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopVerifyTimer();
+  }, []);
+
+  const triggerVerification = async (formDetails, targetAlt) => {
+    setIsReadingBack(true);
+    setReadBackError('');
+    startVerifyTimer();
+
+    // 60-second client-side timeout limit
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Verification timed out after 60 seconds.')), 60000);
+    });
+
+    try {
+      const verifyPromise = verifyCopiedBom({
+        sourceMaterial: formDetails?.sourceMaterial,
+        sourcePlant: formDetails?.sourcePlant,
+        sourceUsage: formDetails?.sourceUsage || '1',
+        sourceAlternative: formDetails?.sourceAltBom || '1',
+        targetMaterial: formDetails?.targetMaterial,
+        targetPlant: formDetails?.targetPlant,
+        targetUsage: formDetails?.targetUsage || '1',
+        targetAlternative: targetAlt
+      });
+
+      const verifyResult = await Promise.race([verifyPromise, timeoutPromise]);
+
+      if (verifyResult && (verifyResult.verification || verifyResult.status === 'SUCCESS' || verifyResult.status === 'PARTIAL' || verifyResult.bomsCreated !== undefined)) {
+        setVerifiedData(verifyResult);
+        setReadBackError('');
+      } else if (verifyResult?.message) {
+        setReadBackError(verifyResult.message);
+      }
+    } catch (readErr) {
+      console.error('[CopyBomView] Read-back failed:', readErr);
+      setReadBackError(
+        readErr.response?.data?.message || readErr.message || 'Unable to read back target hierarchy from SAP.'
+      );
+    } finally {
+      stopVerifyTimer();
+      setIsReadingBack(false);
+    }
+  };
+
+  const handleVerifyAgain = () => {
+    if (!lastSubmittedForm) return;
+    const resolvedAlt =
+      verifiedData?.rootAlternative ||
+      executionResult?.alternativeBom ||
+      executionResult?.createdAlternative ||
+      lastSubmittedForm?.targetAltBom ||
+      '01';
+    triggerVerification(lastSubmittedForm, resolvedAlt);
+  };
 
   useEffect(() => {
     activityTracker.setOperation('copy_bom', isSubmitting || actionStatus === 'executing');
@@ -166,32 +247,7 @@ export default function CopyBomView({
           lastSubmittedForm?.targetAltBom ||
           '01';
 
-        setIsReadingBack(true);
-        try {
-          const verifyResult = await verifyCopiedBom({
-            sourceMaterial: lastSubmittedForm?.sourceMaterial,
-            sourcePlant: lastSubmittedForm?.sourcePlant,
-            sourceUsage: lastSubmittedForm?.sourceUsage || '1',
-            sourceAlternative: lastSubmittedForm?.sourceAltBom || '1',
-            targetMaterial: lastSubmittedForm?.targetMaterial,
-            targetPlant: lastSubmittedForm?.targetPlant,
-            targetUsage: lastSubmittedForm?.targetUsage || '1',
-            targetAlternative: resolvedAlt
-          });
-
-          if (verifyResult) {
-            setVerifiedData(verifyResult);
-          } else if (verifyResult?.message) {
-            setReadBackError(verifyResult.message);
-          }
-        } catch (readErr) {
-          console.error('[CopyBomView] Read-back failed:', readErr);
-          setReadBackError(
-            readErr.response?.data?.message || readErr.message || 'Unable to read back target hierarchy from SAP.'
-          );
-        } finally {
-          setIsReadingBack(false);
-        }
+        await triggerVerification(lastSubmittedForm, resolvedAlt);
       }
     } catch (err) {
       console.error('Error confirming Copy BOM:', err);
@@ -224,21 +280,25 @@ export default function CopyBomView({
     setLastSubmittedForm(null);
   };
 
+  // Immediate values from executionResult
+  const immediateComps = executionResult?.totalComponents !== undefined
+    ? executionResult.totalComponents
+    : (Array.isArray(executionResult?.hierarchy) && executionResult.hierarchy.length > 0
+        ? executionResult.hierarchy.reduce((sum, h) => sum + (h.componentCount || 0), 0)
+        : null);
+
+  const immediateLevels = executionResult?.totalLevels !== undefined
+    ? executionResult.totalLevels
+    : null;
+
   // Consistent single source of truth for all counts across banner and cards
-  const bomsCount = verifiedData
-    ? verifiedData.bomsCreated
-    : (executionResult?.totalBoms || executionResult?.data?.length || 1);
-
-  const compsCount = verifiedData
-    ? verifiedData.totalComponents
-    : (isReadingBack ? '...' : (executionResult?.totalComponents || executionResult?.data?.length || '-'));
-
-  const levelsCount = verifiedData
-    ? verifiedData.totalLevels
-    : (executionResult?.totalLevels || 1);
+  const bomsCount = verifiedData?.bomsCreated ?? (executionResult?.totalBoms || executionResult?.copiedCount || executionResult?.data?.length || 1);
+  const compsCount = verifiedData ? verifiedData.totalComponents : immediateComps;
+  const levelsCount = verifiedData ? verifiedData.totalLevels : immediateLevels;
 
   const rootAlt =
     verifiedData?.rootAlternative ||
+    executionResult?.alternativeBom ||
     executionResult?.createdAlternative ||
     executionResult?.executedAction?.alternative ||
     lastSubmittedForm?.targetAltBom ||
@@ -254,10 +314,17 @@ export default function CopyBomView({
   const hasDifferences = verifiedData ? (differences.length > 0 || verifiedData.status === 'PARTIAL' || verifiedData.status === 'FAILED') : false;
   const diffCount = differences.length;
 
-  // Plain text banner subtitle (consistent numbers with cards, no technical wording)
-  const bannerSubtitle = isReadingBack
-    ? `Verifying copied BOM hierarchy for ${targetMat}...`
-    : `Created Alternative ${rootAlt} for ${targetMat}: ${bomsCount} BOMs and ${compsCount} components across ${levelsCount} levels.`;
+  // Plain text banner subtitle
+  let bannerSubtitle = null;
+  if (isReadingBack) {
+    bannerSubtitle = 'Verifying copied hierarchy...';
+  } else if (readBackError && !verifiedData) {
+    bannerSubtitle = 'Copy completed. Verification could not finish.';
+  } else if (hasDifferences) {
+    bannerSubtitle = `Created Alternative ${rootAlt} for ${targetMat}: ${bomsCount} BOMs across ${levelsCount || 1} levels.`;
+  } else {
+    bannerSubtitle = null;
+  }
 
   return (
     <div className="fiori-app-view-root sap-page-viewport">
@@ -391,9 +458,11 @@ export default function CopyBomView({
                         </button>
                       )}
                     </div>
-                    <p className="sap-result-success-message" style={{ marginTop: 4, marginBottom: 0 }}>
-                      {bannerSubtitle}
-                    </p>
+                    {bannerSubtitle && (
+                      <p className="sap-result-success-message" style={{ marginTop: 4, marginBottom: 0 }}>
+                        {bannerSubtitle}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -431,15 +500,84 @@ export default function CopyBomView({
                   </div>
                   <div className="sap-result-meta-item">
                     <span className="sap-result-meta-label">Total Components Copied</span>
-                    <strong className="sap-result-meta-val" style={{ color: 'var(--sap-text-dark)' }}>
-                      {compsCount}
-                    </strong>
+                    {compsCount !== null && compsCount !== undefined ? (
+                      <strong className="sap-result-meta-val" style={{ color: 'var(--sap-text-dark)' }}>
+                        {compsCount}
+                      </strong>
+                    ) : isReadingBack ? (
+                      <span
+                        className="sap-verifying-indicator"
+                        data-testid="verifying-components"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: '13px',
+                          color: 'var(--color-blue-600, #02579A)',
+                          fontWeight: 500
+                        }}
+                      >
+                        <Loader2 size={14} className="sap-spin" />
+                        <span>Verifying... ({formatElapsed(verifyElapsed)})</span>
+                      </span>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ color: 'var(--color-danger, #B42318)', fontSize: '13px', fontWeight: 600 }}>
+                          Not verified
+                        </span>
+                        <button
+                          type="button"
+                          className="sap-button sap-btn sap-btn-secondary"
+                          onClick={handleVerifyAgain}
+                          style={{ fontSize: '11px', padding: '2px 8px', width: 'fit-content', height: 'auto' }}
+                        >
+                          Verify again
+                        </button>
+                        {readBackError && (
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #475569)', lineHeight: 1.2 }}>
+                            {readBackError}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="sap-result-meta-item">
                     <span className="sap-result-meta-label">Levels</span>
-                    <strong className="sap-result-meta-val">
-                      {levelsCount}
-                    </strong>
+                    {levelsCount !== null && levelsCount !== undefined ? (
+                      <strong className="sap-result-meta-val">
+                        {levelsCount}
+                      </strong>
+                    ) : isReadingBack ? (
+                      <span
+                        className="sap-verifying-indicator"
+                        data-testid="verifying-levels"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: '13px',
+                          color: 'var(--color-blue-600, #02579A)',
+                          fontWeight: 500
+                        }}
+                      >
+                        <Loader2 size={14} className="sap-spin" />
+                        <span>Verifying...</span>
+                      </span>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ color: 'var(--color-danger, #B42318)', fontSize: '13px', fontWeight: 600 }}>
+                          Not verified
+                        </span>
+                        <button
+                          type="button"
+                          className="sap-button sap-btn sap-btn-secondary"
+                          onClick={handleVerifyAgain}
+                          style={{ fontSize: '11px', padding: '2px 8px', width: 'fit-content', height: 'auto' }}
+                        >
+                          Verify again
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="sap-result-meta-item">
                     <span className="sap-result-meta-label">Root Alternative</span>

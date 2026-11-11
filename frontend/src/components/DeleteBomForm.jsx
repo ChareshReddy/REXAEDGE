@@ -6,6 +6,7 @@ import { FieldWrapper } from './ui/FieldWrapper';
 import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import { useToast } from '../context/ToastContext';
 import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
+import { checkFieldExistence } from '../services/fieldValidationService';
 
 export default function DeleteBomForm({
   onSubmit,
@@ -37,13 +38,27 @@ export default function DeleteBomForm({
   const [touched, setTouched] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const userInteractedRef = React.useRef({});
+  const validationSeqRef = React.useRef({});
 
   const handleUserInteraction = (field) => {
     userInteractedRef.current[field] = true;
   };
 
+  useEffect(() => {
+    const handleServerChanged = () => {
+      setFieldErrors({});
+      setTouched({});
+      setIsSubmitted(false);
+      userInteractedRef.current = {};
+      validationSeqRef.current = {};
+    };
+    window.addEventListener('sap-server-changed', handleServerChanged);
+    return () => window.removeEventListener('sap-server-changed', handleServerChanged);
+  }, []);
+
   const handleChange = (field, value) => {
     userInteractedRef.current[field] = true;
+    validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
     setTouched((prev) => ({ ...prev, [field]: true }));
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (validationError) setValidationError('');
@@ -52,19 +67,33 @@ export default function DeleteBomForm({
     }
   };
 
-  const handleBlur = (field, ruleKey, isRequired) => {
-    if (!userInteractedRef.current[field]) return;
+  const handleBlur = async (field, ruleKey, isRequired) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     const val = formData[field];
     const res = validateField(ruleKey, val, isRequired);
     if (!res.valid) {
       setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
-    } else {
-      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: false }));
+
+    if (val && val.trim() && (ruleKey === 'material' || ruleKey === 'plant')) {
+      const curVal = val.trim();
+      validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
+      const seq = validationSeqRef.current[field];
+      const existRes = await checkFieldExistence({
+        kind: ruleKey,
+        value: curVal,
+        plant: formData.plant
+      });
+      if (validationSeqRef.current[field] !== seq || formData[field]?.trim() !== curVal) return;
+      if (!existRes.valid && existRes.error) {
+        setFieldErrors((prev) => ({ ...prev, [field]: existRes.error }));
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitted(true);
     setTouched({ material: true, plant: true, alternativeBom: true, bomUsage: true });
@@ -91,6 +120,29 @@ export default function DeleteBomForm({
     if (!usageRes.valid) {
       errors.bomUsage = usageRes.error;
       missing.push(!formData.bomUsage.trim() ? 'BOM usage is required' : usageRes.error);
+    }
+
+    // Check existence if format passed
+    if (!errors.material && formData.material.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: formData.material.trim(),
+        plant: formData.plant
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.material = existRes.error;
+        missing.push(existRes.error);
+      }
+    }
+    if (!errors.plant && formData.plant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: formData.plant.trim()
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.plant = existRes.error;
+        missing.push(existRes.error);
+      }
     }
 
     if (missing.length > 0) {
@@ -172,7 +224,6 @@ export default function DeleteBomForm({
                   }
                 }}
                 hasError={Boolean((touched.material || isSubmitted) && fieldErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
-                autoFocus
               />
             </FieldWrapper>
 
@@ -240,7 +291,14 @@ export default function DeleteBomForm({
                 <button
                   type="button"
                   className="rx-btn rx-btn-secondary"
-                  onClick={onCancel}
+                  onClick={() => {
+                    setFieldErrors({});
+                    setTouched({});
+                    setIsSubmitted(false);
+                    userInteractedRef.current = {};
+                    validationSeqRef.current = {};
+                    if (onCancel) onCancel();
+                  }}
                 >
                   <X size={14} />
                   <span>Cancel</span>

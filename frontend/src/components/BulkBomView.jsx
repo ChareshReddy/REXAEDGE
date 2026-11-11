@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   AlertCircle,
+  Info,
   XCircle,
   Play,
   RefreshCw,
@@ -47,7 +48,10 @@ import {
   BulkStatTiles,
   normalizeBomStatus,
   getBomStatusCounts,
-  filterBoms
+  filterBoms,
+  getBomMessages,
+  BulkBomMessageRow,
+  BulkBomResultBadge
 } from './BulkBomShared';
 
 /**
@@ -144,10 +148,23 @@ export default function BulkBomView({
 
   // Execution phase state
   const [isExecuting, setIsExecuting] = useState(false);
-  const [skipErrors, setSkipErrors] = useState(true);
-  const [copyHierarchy, setCopyHierarchy] = useState(true);
+  const [skipErrors] = useState(true);
+  const [copyHierarchy] = useState(true);
+  const [expandedMessageBoms, setExpandedMessageBoms] = useState(() => new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  const toggleMessageExpand = (key) => {
+    setExpandedMessageBoms((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
   const [executionReport, setExecutionReport] = useState(initialExecutionReport);
   const [activeStep, setActiveStep] = useState(
     initialExecutionReport ? 3 : (initialParsedRows.length > 0 || initialIsValidating) ? 2 : 1
@@ -156,6 +173,11 @@ export default function BulkBomView({
   // Background Job States
   const [activeJobId, setActiveJobId] = useState(initialActiveJobId);
   const [activeJobType, setActiveJobType] = useState(initialActiveJobId ? 'copy_validate' : null);
+  const [jobStatus, setJobStatus] = useState(null);
+  const [queuedReason, setQueuedReason] = useState('');
+  const [watchdogWarning, setWatchdogWarning] = useState('');
+  const [jobError, setJobError] = useState('');
+  const lastProgressRef = useRef({ processed: 0, lastChangedAt: Date.now(), startedAt: Date.now() });
   const [jobCurrentBom, setJobCurrentBom] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [jobProgress, setJobProgress] = useState(
@@ -226,27 +248,113 @@ export default function BulkBomView({
     } catch (_) {}
   };
 
-  const startJobPolling = (jobId, type) => {
+  const startJobPolling = (jobId, type, initialStatus = 'RUNNING', initialQueuedReason = '') => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     setActiveJobId(jobId);
     setActiveJobType(type);
     updateJobUrl(jobId);
+    setJobStatus(initialStatus);
+    setQueuedReason(initialQueuedReason);
+    setWatchdogWarning('');
+    setJobError('');
+    lastProgressRef.current = { processed: 0, lastChangedAt: Date.now(), startedAt: Date.now() };
 
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const data = await getBomJob(jobId);
-        if (!data.success || !data.job) return;
-        const job = data.job;
+        const now = Date.now();
+        // 10-minute timeout watchdog
+        if (now - lastProgressRef.current.startedAt >= 600000) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+          setActiveJobId(null);
+          setJobStatus(null);
+          setIsValidating(false);
+          setIsExecuting(false);
+          setIsCancelling(false);
+          updateJobUrl(null);
+          setWatchdogWarning('');
+          setJobError('Operation timed out after 10 minutes. Please check your SAP connection or retry.');
+          return;
+        }
 
-        const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
-        setJobProgress({
+        let data;
+        try {
+          data = await getBomJob(jobId);
+        } catch (apiErr) {
+          const status = apiErr.response?.status;
+          const elapsed = now - (lastProgressRef.current?.startedAt || now);
+          if ((status === 404 || apiErr.message?.includes('not found')) && elapsed >= 10000) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+            setActiveJobId(null);
+            setJobStatus(null);
+            setIsValidating(false);
+            setIsExecuting(false);
+            setIsCancelling(false);
+            updateJobUrl(null);
+            setWatchdogWarning('');
+            setJobError('Job not found. The job may have expired or been removed.');
+            return;
+          }
+          if (status === 404) {
+            // Grace period retry
+            return;
+          }
+          console.warn('Job polling warning:', apiErr.message);
+          return;
+        }
+
+        if (!data || !data.success || !data.job) {
+          const elapsed = now - (lastProgressRef.current?.startedAt || now);
+          if (elapsed >= 10000) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+            setActiveJobId(null);
+            setJobStatus(null);
+            setIsValidating(false);
+            setIsExecuting(false);
+            setIsCancelling(false);
+            updateJobUrl(null);
+            setWatchdogWarning('');
+            setJobError('Job not found. The job may have expired or been removed.');
+            return;
+          }
+          return;
+        }
+
+        const job = data.job;
+        setJobStatus(job.status);
+        if (job.queuedReason) {
+          setQueuedReason(job.queuedReason);
+        }
+
+        // 90-second watchdog warning
+        if (job.status === 'RUNNING') {
+          if (job.processed !== lastProgressRef.current.processed) {
+            lastProgressRef.current.processed = job.processed;
+            lastProgressRef.current.lastChangedAt = now;
+            setWatchdogWarning('');
+          } else if (now - lastProgressRef.current.lastChangedAt >= 90000) {
+            setWatchdogWarning('This is taking longer than expected');
+          }
+        }
+
+        const rawPct = typeof job.progress_percent === 'number'
+          ? job.progress_percent
+          : (job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0);
+        setJobProgress((prev) => ({
           current: job.processed,
           total: job.total,
-          percent: pct,
+          percent: Math.max(prev?.percent || 0, rawPct),
+          currentStep: job.current_step,
+          completedSteps: job.completed_steps ?? job.processed,
+          totalSteps: job.total_steps ?? job.total,
+          startedAt: job.startedAt || job.createdAt || lastProgressRef.current.startedAt,
           successCount: job.successCount || 0,
           failedCount: job.failedCount || 0,
+          skippedCount: job.skippedCount || 0,
           notProcessedCount: job.notProcessedCount || 0
-        });
+        }));
         setJobCurrentBom(job.currentBom);
 
         const isFinished = [
@@ -263,7 +371,15 @@ export default function BulkBomView({
           pollIntervalRef.current = null;
           setActiveJobId(null);
           setIsCancelling(false);
+          setWatchdogWarning('');
           updateJobUrl(null);
+
+          if (job.status === 'INTERRUPTED') {
+            setIsValidating(false);
+            setIsExecuting(false);
+            setJobError('The job was interrupted. Please upload again.');
+            return;
+          }
 
           if (type === 'copy_validate') {
             setIsValidating(false);
@@ -346,7 +462,7 @@ export default function BulkBomView({
       } catch (err) {
         console.warn('Job polling warning:', err.message);
       }
-    }, 3000);
+    }, 1000);
   };
 
   // Reconnect on mount if an active job is already in flight
@@ -428,6 +544,7 @@ export default function BulkBomView({
     updateJobUrl(null);
     setFile(null);
     setParsedRows([]);
+    setExpandedMessageBoms(new Set());
     setParseError('');
     setValidationReport(null);
     setIsExecuting(false);
@@ -721,7 +838,7 @@ export default function BulkBomView({
           failedCount: 0,
           notProcessedCount: 0
         });
-        startJobPolling(res.jobId, 'copy_validate');
+        startJobPolling(res.jobId, 'copy_validate', res.status || 'RUNNING', res.queuedReason || '');
       } else {
         setParseError(res.message || 'Failed to start validation job.');
         setIsValidating(false);
@@ -741,7 +858,10 @@ export default function BulkBomView({
   };
 
   const handleExecuteBatchCopy = async () => {
-    const executableRows = parsedRows.filter((r) => r.status === 'VALID' || r.status === 'WARNING');
+    const executableRows = parsedRows.filter((r) => {
+      const norm = normalizeBomStatus(r);
+      return norm === 'ready' || norm === 'skipped' || r.status === 'VALID' || r.status === 'WARNING';
+    });
     if (executableRows.length === 0) {
       toast.warning('No valid rows available to execute.', { title: 'Validation notice' });
       return;
@@ -869,7 +989,51 @@ export default function BulkBomView({
         {executionReport ? (
           <div>
             {/* Success / Partial Banner */}
-            {executionReport.failedCount === 0 ? (
+            {(executionReport.failedCount > 0) ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--color-danger-bg, #FEF3F2)',
+                  border: '1px solid var(--color-danger-border, #FECDCA)',
+                  color: 'var(--color-danger, #B42318)',
+                  marginBottom: 20
+                }}
+              >
+                <AlertCircle size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Issues</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.failedCount ?? 0} failed out of {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total.
+                  </p>
+                </div>
+              </div>
+            ) : ((executionReport.skippedCount ?? 0) > 0) ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--color-info-bg, #F0F9FF)',
+                  border: '1px solid var(--color-info-border, #B9E6FE)',
+                  color: 'var(--color-blue-600, #02579A)',
+                  marginBottom: 20
+                }}
+              >
+                <Info size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Skipped Rows</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.skippedCount} were skipped.
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div
                 style={{
                   display: 'flex',
@@ -886,30 +1050,8 @@ export default function BulkBomView({
                 <CheckCircle2 size={24} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed Successfully</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
                     Successfully copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s) across {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total entries.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--sap-warning-bg)',
-                  border: '1px solid var(--sap-warning-border)',
-                  color: 'var(--sap-warning)',
-                  marginBottom: 20
-                }}
-              >
-                <AlertTriangle size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Issues</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.failedCount ?? 0} failed out of {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total.
                   </p>
                 </div>
               </div>
@@ -1100,7 +1242,83 @@ export default function BulkBomView({
                   onCancelJob={handleCancelJob}
                   validationLabel="Validating data in SAP"
                   executionLabel="Copying BOMs in SAP"
+                  jobStatus={jobStatus}
+                  queuedReason={queuedReason}
+                  watchdogWarning={watchdogWarning}
                 />
+
+                {/* Job Error or Interrupted Alert in Step 2 */}
+                {jobStatus === 'INTERRUPTED' && (
+                  <div
+                    className="rx-alert rx-alert-danger sap-alert"
+                    style={{
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      borderRadius: 'var(--radius-md, 8px)',
+                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                      border: '1px solid var(--color-danger-border, #FECDCA)',
+                      color: 'var(--color-danger, #B42318)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger, #B42318)' }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>
+                        The job was interrupted. Please upload again.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-secondary rx-btn-sm"
+                      onClick={resetAll}
+                      style={{
+                        height: 'var(--size-button-sm-height, 32px)',
+                        padding: '0 12px',
+                        borderRadius: 'var(--radius-md, 8px)'
+                      }}
+                    >
+                      Upload Again
+                    </button>
+                  </div>
+                )}
+
+                {jobError && (
+                  <div
+                    className="rx-alert rx-alert-danger sap-alert"
+                    style={{
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      borderRadius: 'var(--radius-md, 8px)',
+                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                      border: '1px solid var(--color-danger-border, #FECDCA)',
+                      color: 'var(--color-danger, #B42318)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{jobError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-secondary rx-btn-sm"
+                      onClick={() => setJobError('')}
+                      style={{
+                        height: 'var(--size-button-sm-height, 32px)',
+                        padding: '0 12px',
+                        borderRadius: 'var(--radius-md, 8px)'
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
 
                 {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
                 {hasValidated && activeStep > 1 && (
@@ -1211,140 +1429,104 @@ export default function BulkBomView({
                           </span>
                         </span>
                       )}
-
-                      {/* Options */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <label style={{ fontSize: '12px', color: 'var(--color-text, #0F2742)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={copyHierarchy}
-                            onChange={(e) => setCopyHierarchy(e.target.checked)}
-                            disabled={isExecuting}
-                          />
-                          <span>Copy Full Hierarchy</span>
-                        </label>
-                        <label style={{ fontSize: '12px', color: 'var(--color-text-secondary, #4A5F77)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={skipErrors}
-                            onChange={(e) => setSkipErrors(e.target.checked)}
-                            disabled={isExecuting}
-                          />
-                          <span>Skip errors</span>
-                        </label>
-                      </div>
                     </div>
                   </div>
 
                   {/* Grid Table */}
-                  <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table">
+                  <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table" style={{ width: '100%', boxSizing: 'border-box' }}>
                     <table className="sap-bulk-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                       <colgroup>
-                        <col style={{ width: '4%' }} />
-                        <col style={{ width: '24%' }} />
-                        <col style={{ width: '24%' }} />
-                        <col style={{ width: '6%' }} />
-                        <col style={{ width: '12%' }} />
-                        <col style={{ width: '30%' }} />
+                        <col style={{ width: '5%' }} />
+                        <col style={{ width: '35%' }} />
+                        <col style={{ width: '35%' }} />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '16%' }} />
                       </colgroup>
                       <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
                         <tr style={{ backgroundColor: 'var(--color-blue-200)' }}>
-                          <th style={{ width: 36 }}>#</th>
-                          <th>Source BOM</th>
-                          <th>Target BOM</th>
-                          <th style={{ width: 80, textAlign: 'center' }}>Items</th>
-                          <th style={{ width: 100 }}>Status</th>
-                          <th>Diagnostic Message</th>
+                          <th style={{ width: '5%', textAlign: 'center' }}>#</th>
+                          <th style={{ width: '35%' }}>Source BOM</th>
+                          <th style={{ width: '35%' }}>Target BOM</th>
+                          <th style={{ width: '9%', textAlign: 'center' }}>Items</th>
+                          <th style={{ width: '16%', textAlign: 'center' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredRows.map((row, idx) => {
                           const normStatus = normalizeBomStatus(row);
-                          const isRowValid = normStatus === 'ready';
-                          const isRowWarn = normStatus === 'skipped';
-                          const isRowError = normStatus === 'error';
+                          const bomKey = row.id != null ? String(row.id) : `${row.sourceMaterial || ''}_${row.sourcePlant || ''}_${row.targetMaterial || ''}_${row.targetPlant || ''}_${idx}`;
+                          const messages = getBomMessages(row);
+                          const isMessagesExpanded = expandedMessageBoms.has(bomKey);
 
                           return (
-                            <tr key={row.id || idx} className={`row-status-${normStatus}`}>
-                              <td style={{ fontWeight: 600, color: 'var(--sap-text-muted)', fontSize: '11px' }}>{idx + 1}</td>
-                              <td>
-                                <div className="bom-identity-cell">
-                                  <span
-                                    className="mat-pill"
-                                    title={row.sourceMaterial}
-                                    style={{
-                                      maxWidth: '20ch',
-                                      fontFamily: 'monospace, monospace',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      display: 'inline-block'
-                                    }}
-                                  >
-                                    {row.sourceMaterial}
-                                  </span>
-                                  <span className="sub-detail">Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
-                                </div>
-                              </td>
-                              <td>
-                                <div className="bom-identity-cell">
-                                  <span
-                                    className="mat-pill"
-                                    title={row.targetMaterial}
-                                    style={{
-                                      maxWidth: '20ch',
-                                      fontFamily: 'monospace, monospace',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      display: 'inline-block'
-                                    }}
-                                  >
-                                    {row.targetMaterial}
-                                  </span>
-                                  <span className="sub-detail">Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
-                                </div>
-                              </td>
-                              <td style={{ textAlign: 'center' }}>
-                                {row.componentCount !== undefined && row.componentCount > 0 ? (
-                                  <span className="comp-count-badge">{row.componentCount}</span>
-                                ) : (
-                                  <span style={{ color: 'var(--sap-text-subtle)' }}>-</span>
-                                )}
-                              </td>
-                              <td>
-                                <span className={`sap-status-chip chip-${normStatus}`}>
-                                  {isRowValid && <CheckCircle2 size={11} />}
-                                  {isRowWarn && <AlertTriangle size={11} />}
-                                  {isRowError && <AlertCircle size={11} />}
-                                  {normStatus === 'not_validated' && 'Not validated'}
-                                  {normStatus === 'ready' && 'Ready'}
-                                  {normStatus === 'skipped' && 'Skipped'}
-                                  {normStatus === 'error' && 'Failed'}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="message-cell">
-                                  {isRowError ? (
-                                    <BlockedReasonsList
-                                      problems={row.problems || row.message}
-                                      totalBoms={row.totalBomsSimulated}
-                                      message={row.message}
-                                    />
-                                  ) : isRowValid ? (
-                                    <span className="cell-msg-text cell-msg-valid" style={{ color: 'var(--sap-success, #059669)', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
-                                      <CheckCircle2 size={12} style={{ flexShrink: 0 }} />
-                                      <span>{cleanDiagnosticMessage(row.message) || 'Ready to copy.'}</span>
+                            <React.Fragment key={bomKey}>
+                              <tr className={`row-status-${normStatus}`}>
+                                <td style={{ fontWeight: 600, color: 'var(--sap-text-muted)', fontSize: '11px', textAlign: 'center' }}>{idx + 1}</td>
+                                <td>
+                                  <div className="bom-identity-cell" style={{ maxWidth: 320 }}>
+                                    <span
+                                      className="mat-pill"
+                                      title={row.sourceMaterial}
+                                      style={{
+                                        maxWidth: '20ch',
+                                        fontFamily: 'monospace, monospace',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        display: 'inline-block'
+                                      }}
+                                    >
+                                      {row.sourceMaterial}
                                     </span>
+                                    <span className="sub-detail" style={{ whiteSpace: 'nowrap' }}>Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="bom-identity-cell" style={{ maxWidth: 320 }}>
+                                    <span
+                                      className="mat-pill"
+                                      title={row.targetMaterial}
+                                      style={{
+                                        maxWidth: '20ch',
+                                        fontFamily: 'monospace, monospace',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        display: 'inline-block'
+                                      }}
+                                    >
+                                      {row.targetMaterial}
+                                    </span>
+                                    <span className="sub-detail" style={{ whiteSpace: 'nowrap' }}>Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
+                                  </div>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  {row.componentCount !== undefined && row.componentCount > 0 ? (
+                                    <span className="comp-count-badge">{row.componentCount}</span>
                                   ) : (
-                                    <span className="cell-msg-text">{cleanDiagnosticMessage(row.message)}</span>
+                                    <span style={{ color: 'var(--sap-text-subtle)' }}>-</span>
                                   )}
-                                  {row.bomNumber && (
-                                    <span className="bom-num-tag">SAP BOM: {row.bomNumber}</span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
+                                </td>
+                                <td
+                                  className="col-result"
+                                  style={{
+                                    textAlign: 'center',
+                                    padding: '6px 8px',
+                                    verticalAlign: 'middle',
+                                    boxSizing: 'border-box'
+                                  }}
+                                >
+                                  <BulkBomResultBadge status={normStatus} hasValidated={hasValidated} />
+                                </td>
+                              </tr>
+                              <BulkBomMessageRow
+                                messages={messages}
+                                bomKey={bomKey}
+                                isExpanded={isMessagesExpanded}
+                                onToggleExpand={toggleMessageExpand}
+                                colSpan={5}
+                              />
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -1380,11 +1562,11 @@ export default function BulkBomView({
                             Ready: {statusCounts.ready}
                           </span>
                           {statusCounts.skipped > 0 && (
-                            <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                            <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
                               Skipped: {statusCounts.skipped}
                             </span>
                           )}
-                          <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                          <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
                             Errors: {statusCounts.errors}
                           </span>
                         </>

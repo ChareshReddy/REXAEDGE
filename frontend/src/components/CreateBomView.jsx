@@ -31,7 +31,8 @@ import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
 import { PageContainer } from './layout';
-import { FIELD_RULES, validateField, sanitizeValidFromInput, sanitizeBaseQuantityInput, DEFAULT_BASE_UOM, isValidQuantity } from '@shared/fieldRules.js';
+import { FIELD_RULES, validateField, sanitizeValidFromInput, sanitizeBaseQuantityInput, isValidQuantity } from '@shared/fieldRules.js';
+import { checkFieldExistence } from '../services/fieldValidationService';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -72,9 +73,13 @@ export default function CreateBomView({
   const [validationErrors, setValidationErrors] = useState([]);
   const [validationWarnings, setValidationWarnings] = useState([]);
   const [headerErrors, setHeaderErrors] = useState({});
+  const [componentErrors, setComponentErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [resolvedBaseUnit, setResolvedBaseUnit] = useState('');
   const userInteractedRef = React.useRef({});
+  const validationSeqRef = React.useRef({});
+  const confirmButtonRef = React.useRef(null);
 
   const handleUserInteraction = (field) => {
     userInteractedRef.current[field] = true;
@@ -82,10 +87,27 @@ export default function CreateBomView({
 
   useEffect(() => {
     setHeaderErrors({});
+    setComponentErrors({});
     setTouched({});
     setIsSubmitted(false);
     userInteractedRef.current = {};
+    validationSeqRef.current = {};
+    setResolvedBaseUnit('');
   }, [systemKey]);
+
+  useEffect(() => {
+    const handleServerChanged = () => {
+      setHeaderErrors({});
+      setComponentErrors({});
+      setTouched({});
+      setIsSubmitted(false);
+      userInteractedRef.current = {};
+      validationSeqRef.current = {};
+      setResolvedBaseUnit('');
+    };
+    window.addEventListener('sap-server-changed', handleServerChanged);
+    return () => window.removeEventListener('sap-server-changed', handleServerChanged);
+  }, []);
   const [isValidating, setIsValidating] = useState(false);
   const [preflightPassed, setPreflightPassed] = useState(false);
   const [preflightData, setPreflightData] = useState(null);
@@ -95,6 +117,17 @@ export default function CreateBomView({
   const [confirmText, setConfirmText] = useState('');
   const [businessReason, setBusinessReason] = useState('');
 
+  useEffect(() => {
+    if (isConfirmModalOpen) {
+      const timer = setTimeout(() => {
+        if (confirmButtonRef.current) {
+          confirmButtonRef.current.focus();
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirmModalOpen]);
+
   // Execution & result state
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState(null);
@@ -102,7 +135,6 @@ export default function CreateBomView({
 
   const isProd = systemKey === 'PROD';
   const isLocked = isValidating || isExecuting;
-  const isMaterialValid = Boolean(headerData.material && headerData.material.trim().length >= 8 && headerData.material.trim().length <= 19);
 
   useEffect(() => {
     activityTracker.setOperation('create_bom', isValidating || isExecuting);
@@ -112,9 +144,13 @@ export default function CreateBomView({
   const handleHeaderChange = (field, value) => {
     if (isLocked) return;
     userInteractedRef.current[field] = true;
+    validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
     setTouched((prev) => ({ ...prev, [field]: true }));
     const finalVal = field === 'validFrom' ? sanitizeValidFromInput(value) : field === 'baseQty' ? sanitizeBaseQuantityInput(value) : value;
     setHeaderData((prev) => ({ ...prev, [field]: finalVal }));
+    if (field === 'material') {
+      setResolvedBaseUnit('');
+    }
     if (headerErrors[field]) {
       setHeaderErrors((prev) => ({ ...prev, [field]: false }));
     }
@@ -124,29 +160,105 @@ export default function CreateBomView({
     setValidationWarnings([]);
   };
 
-  const handleHeaderBlur = (field) => {
+  const handleHeaderBlur = async (field) => {
     if (isLocked) return;
-    if (!userInteractedRef.current[field]) return;
     setTouched((prev) => ({ ...prev, [field]: true }));
     const val = headerData[field];
     const isRequired = ['material', 'plant', 'bomUsage', 'alternativeBom', 'validFrom', 'baseQty', 'bomStatus'].includes(field);
     const res = validateField(field, val, isRequired);
     if (!res.valid) {
       setHeaderErrors((prev) => ({ ...prev, [field]: res.error }));
-    } else {
-      setHeaderErrors((prev) => ({ ...prev, [field]: false }));
+      if (field === 'material') {
+        setResolvedBaseUnit('');
+      }
+      return;
+    }
+    setHeaderErrors((prev) => ({ ...prev, [field]: false }));
+
+    if ((field === 'material' || field === 'plant') && val && val.trim()) {
+      const curVal = val.trim();
+      validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
+      const seq = validationSeqRef.current[field];
+      const existRes = await checkFieldExistence({
+        kind: field,
+        value: curVal,
+        plant: headerData.plant,
+        serverId: systemKey
+      });
+      if (validationSeqRef.current[field] !== seq || headerData[field]?.trim() !== curVal) return;
+      if (!existRes.valid && existRes.error) {
+        setHeaderErrors((prev) => ({ ...prev, [field]: existRes.error }));
+        if (field === 'material') {
+          setResolvedBaseUnit('');
+        }
+      } else if (field === 'material') {
+        if (existRes.valid && existRes.meins) {
+          setResolvedBaseUnit(existRes.meins);
+        } else {
+          setResolvedBaseUnit('');
+        }
+      }
+    } else if (field === 'material') {
+      setResolvedBaseUnit('');
     }
   };
 
   const handleComponentChange = (id, field, value) => {
     if (isLocked) return;
+    validationSeqRef.current[`comp_${id}_${field}`] = (validationSeqRef.current[`comp_${id}_${field}`] || 0) + 1;
     setComponents((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     );
+    if (componentErrors[id]?.[field]) {
+      setComponentErrors((prev) => ({
+        ...prev,
+        [id]: { ...(prev[id] || {}), [field]: false }
+      }));
+    }
     setPreflightPassed(false);
     setPreflightData(null);
     setValidationErrors([]);
     setValidationWarnings([]);
+  };
+
+  const handleComponentBlur = async (id, field) => {
+    if (isLocked) return;
+    const comp = components.find((c) => c.id === id);
+    if (!comp) return;
+    const val = comp[field];
+    const isRequired = field === 'component' || field === 'quantity';
+    const res = validateField(field, val, isRequired);
+    if (!res.valid) {
+      setComponentErrors((prev) => ({
+        ...prev,
+        [id]: { ...(prev[id] || {}), [field]: res.error }
+      }));
+      return;
+    }
+    setComponentErrors((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: false }
+    }));
+
+    if (field === 'component' && val && val.trim()) {
+      const key = `comp_${id}_${field}`;
+      validationSeqRef.current[key] = (validationSeqRef.current[key] || 0) + 1;
+      const seq = validationSeqRef.current[key];
+      const curVal = val.trim();
+      const existRes = await checkFieldExistence({
+        kind: 'component',
+        value: curVal,
+        plant: headerData.plant,
+        serverId: systemKey
+      });
+      if (validationSeqRef.current[key] !== seq) return;
+      if (!existRes.valid && existRes.error) {
+        setComponentErrors((prev) => ({
+          ...prev,
+          [id]: { ...(prev[id] || {}), [field]: existRes.error }
+        }));
+      }
+    }
   };
 
   const handleAddComponent = () => {
@@ -183,6 +295,17 @@ export default function CreateBomView({
   // Pre-flight validation
   const handleValidate = async () => {
     if (isLocked) return;
+    setIsSubmitted(true);
+    setTouched((prev) => ({
+      ...prev,
+      material: true,
+      plant: true,
+      bomUsage: true,
+      alternativeBom: true,
+      validFrom: true,
+      baseQty: true,
+      bomStatus: true
+    }));
     const errors = [];
     const hErrors = {};
 
@@ -235,15 +358,18 @@ export default function CreateBomView({
       hErrors.altText = altTextRes.error;
     }
 
+    const cErrors = {};
     components.forEach((c, idx) => {
       const rowNum = idx + 1;
       const compRes = validateField('component', c.component, true);
       if (!compRes.valid) {
         errors.push(!c.component.trim() ? `Component #${rowNum}: Component material is required.` : `Component #${rowNum}: ${compRes.error}`);
+        cErrors[c.id] = { ...(cErrors[c.id] || {}), component: !c.component.trim() ? 'Component is required' : compRes.error };
       }
       const qtyRes = validateField('quantity', c.quantity, true);
       if (!qtyRes.valid) {
         errors.push(`Component #${rowNum}: ${qtyRes.error}`);
+        cErrors[c.id] = { ...(cErrors[c.id] || {}), quantity: qtyRes.error };
       }
       if (!c.storageLocation.trim()) {
         errors.push(`Component #${rowNum}: Storage Location is required.`);
@@ -256,8 +382,52 @@ export default function CreateBomView({
       }
     });
 
+    // Check existence for header material and plant
+    if (!hErrors.material && headerData.material.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: headerData.material.trim(),
+        plant: headerData.plant,
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        hErrors.material = existRes.error;
+        errors.push(existRes.error);
+      }
+    }
+    if (!hErrors.plant && headerData.plant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: headerData.plant.trim(),
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        hErrors.plant = existRes.error;
+        errors.push(existRes.error);
+      }
+    }
+
+    // Check existence for component materials
+    for (let i = 0; i < components.length; i++) {
+      const c = components[i];
+      const rowNum = i + 1;
+      if (!cErrors[c.id]?.component && c.component.trim()) {
+        const existRes = await checkFieldExistence({
+          kind: 'component',
+          value: c.component.trim(),
+          plant: headerData.plant,
+          serverId: systemKey
+        });
+        if (!existRes.valid && existRes.error) {
+          cErrors[c.id] = { ...(cErrors[c.id] || {}), component: existRes.error };
+          errors.push(`Component #${rowNum}: ${existRes.error}`);
+        }
+      }
+    }
+
     if (errors.length > 0) {
       setHeaderErrors(hErrors);
+      setComponentErrors(cErrors);
       setValidationErrors(errors);
       setPreflightPassed(false);
       toast.validation(errors, 'Validation notice');
@@ -274,6 +444,11 @@ export default function CreateBomView({
       const firstInvalidHeader = ['material', 'plant', 'bomUsage', 'alternativeBom', 'validFrom', 'baseQty', 'bomStatus'].find((f) => hErrors[f]);
       if (firstInvalidHeader && headerFieldMap[firstInvalidHeader]) {
         document.getElementById(headerFieldMap[firstInvalidHeader])?.focus();
+      } else {
+        const firstCompErr = components.find((c) => cErrors[c.id]?.component || cErrors[c.id]?.quantity);
+        if (firstCompErr) {
+          document.getElementById(`comp_material_${firstCompErr.id}`)?.focus();
+        }
       }
       return;
     }
@@ -290,6 +465,7 @@ export default function CreateBomView({
       alternativeBom: headerData.alternativeBom.trim().padStart(2, '0'),
       validFrom: headerData.validFrom.trim(),
       baseQty: headerData.baseQty.trim(),
+      baseUnit: resolvedBaseUnit || undefined,
       bomStatus: headerData.bomStatus.trim().padStart(2, '0'),
       altText: headerData.altText.trim(),
       components: components.map((c, idx) => ({
@@ -424,8 +600,15 @@ export default function CreateBomView({
       }
     ]);
     setValidationErrors([]);
+    setHeaderErrors({});
+    setComponentErrors({});
+    setTouched({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+    validationSeqRef.current = {};
     setPreflightPassed(false);
     setPreflightData(null);
+    setResolvedBaseUnit('');
     setExecutionResult(null);
     setShowDiscrepancies(false);
   };
@@ -654,13 +837,28 @@ export default function CreateBomView({
                     value={headerData.material}
                     onChange={(e) => handleHeaderChange('material', e.target.value)}
                     onBlur={() => handleHeaderBlur('material')}
-                    onSelect={(val, full) => {
+                    onSelect={async (val, full) => {
                       handleHeaderChange('material', val);
                       if (full?.stlal) {
                         handleHeaderChange('alternativeBom', full.stlal);
                       }
                       if (full?.werks && !headerData.plant) {
                         handleHeaderChange('plant', full.werks);
+                      }
+                      if (full?.meins || full?.MEINS) {
+                        setResolvedBaseUnit(full.meins || full.MEINS);
+                      } else if (val) {
+                        const existRes = await checkFieldExistence({
+                          kind: 'material',
+                          value: val,
+                          plant: headerData.plant || full?.werks,
+                          serverId: systemKey
+                        });
+                        if (existRes?.valid && existRes?.meins) {
+                          setResolvedBaseUnit(existRes.meins);
+                        } else {
+                          setResolvedBaseUnit('');
+                        }
                       }
                     }}
                     hasError={Boolean((touched.material || isSubmitted) && headerErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
@@ -801,7 +999,7 @@ export default function CreateBomView({
                         aria-readonly="true"
                         aria-label="Base Unit of Measure"
                         className="rx-input rx-input-readonly"
-                        value={isMaterialValid ? DEFAULT_BASE_UOM : ''}
+                        value={resolvedBaseUnit || ''}
                         placeholder=""
                         style={{
                           height: 40,
@@ -972,6 +1170,7 @@ export default function CreateBomView({
                           </td>
                           <td className="px-2 py-1.5">
                             <ValueHelpInput
+                              id={`comp_material_${comp.id}`}
                               kind="material"
                               plant={headerData.plant}
                               placeholder=""
@@ -980,6 +1179,8 @@ export default function CreateBomView({
                               isTable={true}
                               value={comp.component}
                               onChange={(e) => handleComponentChange(comp.id, 'component', e.target.value)}
+                              onBlur={() => handleComponentBlur(comp.id, 'component')}
+                              hasError={Boolean(componentErrors[comp.id]?.component)}
                               aria-label={`Component ${idx + 1}`}
                             />
                           </td>
@@ -987,11 +1188,12 @@ export default function CreateBomView({
                             <input
                               type="number"
                               step="any"
-                              className="rx-input rx-input-table"
+                              className={`rx-input rx-input-table ${componentErrors[comp.id]?.quantity ? 'rx-input-error' : ''}`}
                               placeholder="Qty"
                               disabled={isLocked}
                               value={comp.quantity}
                               onChange={(e) => handleComponentChange(comp.id, 'quantity', e.target.value)}
+                              onBlur={() => handleComponentBlur(comp.id, 'quantity')}
                               aria-label={`Quantity ${idx + 1}`}
                             />
                           </td>
@@ -1098,34 +1300,7 @@ export default function CreateBomView({
                     type="button"
                     className="rx-btn rx-btn-secondary"
                     disabled={isLocked}
-                    onClick={() => {
-                      setHeaderData({
-                        material: '',
-                        plant: '',
-                        bomUsage: '1',
-                        alternativeBom: '01',
-                        validFrom: getTodayFormatted(),
-                        baseQty: '1',
-                        bomStatus: '01',
-                        altText: ''
-                      });
-                      setComponents([{
-                        id: 1,
-                        component: '',
-                        quantity: '1',
-                        itemCategory: 'L',
-                        storageLocation: '',
-                        referenceNumber: '',
-                        costingRelevancy: true,
-                        engineering: true
-                      }]);
-                      setPreflightPassed(false);
-                      setPreflightData(null);
-                      setValidationErrors([]);
-                      setValidationWarnings([]);
-                      setHeaderErrors({});
-                    }}
-                    
+                    onClick={handleReset}
                   >
                     <span>Reset</span>
                   </button>
@@ -1175,34 +1350,132 @@ export default function CreateBomView({
         {/* CONFIRMATION MODAL */}
         <Modal
           isOpen={isConfirmModalOpen}
+          closeOnEscape={!isExecuting}
           onClose={() => {
             if (!isExecuting) setIsConfirmModalOpen(false);
           }}
           title="Confirm BOM Creation"
+          maxWidth="min(920px, calc(100vw - 48px))"
+          width="min(920px, calc(100vw - 48px))"
         >
           <div style={{ padding: 4 }}>
             <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--sap-text-dark)' }}>
               You are about to create a new Bill of Materials in SAP:
             </p>
 
+            {/* BOM Header Overview Table */}
             <div
+              className="sap-table-container fiori-table-wrapper"
+              data-testid="confirm-bom-header-container"
               style={{
-                background: 'var(--sap-surface-subtle)',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: 16,
-                fontSize: 13,
-                lineHeight: 1.6
+                overflowX: 'hidden',
+                border: '1px solid var(--sap-border-color)',
+                borderRadius: 'var(--sap-radius-sm)',
+                marginBottom: 16
               }}
             >
-              <div><strong>Material:</strong> {headerData.material}</div>
-              <div><strong>Plant:</strong> {headerData.plant}</div>
-              <div><strong>BOM Usage:</strong> {headerData.bomUsage}</div>
-              <div><strong>Alternative:</strong> {headerData.alternativeBom}</div>
-              <div><strong>Valid From:</strong> {headerData.validFrom}</div>
-              <div><strong>Base Quantity:</strong> {headerData.baseQty}</div>
-              <div><strong>Components Count:</strong> {components.length}</div>
+              <table
+                className="sap-table"
+                data-testid="confirm-bom-header-table"
+                style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
+              >
+                <colgroup>
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '16%' }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Plant</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>BOM usage</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Alternative</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Valid from</th>
+                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Base qty</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>UoM</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Components</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'left', fontWeight: 600 }}>{headerData.material || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{headerData.plant || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{headerData.bomUsage || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{headerData.alternativeBom || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{headerData.validFrom || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'right' }}>{headerData.baseQty || '1'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{resolvedBaseUnit || preflightData?.baseUnit || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center', fontWeight: 600 }}>{components.length}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+
+            {/* Components Table (max 5 rows visible with scroll) */}
+            {components && components.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--color-navy-900, #00204E)',
+                    marginBottom: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <span>Components ({components.length})</span>
+                </div>
+                <div
+                  className="sap-table-container fiori-table-wrapper"
+                  data-testid="confirm-bom-components-container"
+                  style={{
+                    maxHeight: 205,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    border: '1px solid var(--sap-border-color)',
+                    borderRadius: 'var(--sap-radius-sm)'
+                  }}
+                >
+                  <table
+                    className="sap-table"
+                    data-testid="confirm-bom-components-table"
+                    style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
+                  >
+                    <colgroup>
+                      <col style={{ width: '38%' }} />
+                      <col style={{ width: '18%' }} />
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '24%' }} />
+                    </colgroup>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                      <tr>
+                        <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>Component</th>
+                        <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Quantity</th>
+                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Item category</th>
+                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Storage location</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {components.map((c, idx) => (
+                        <tr key={c.id || idx}>
+                          <td className="rx-table-cell-code" style={{ textAlign: 'left', fontWeight: 600 }}>{c.component || '-'}</td>
+                          <td className="rx-table-cell-text" style={{ textAlign: 'right' }}>{c.quantity || '1'}</td>
+                          <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{c.itemCategory || 'L'}</td>
+                          <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{c.storageLocation || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {isProd && (
               <div
@@ -1261,6 +1534,9 @@ export default function CreateBomView({
               </button>
               <button
                 type="button"
+                ref={confirmButtonRef}
+                autoFocus
+                data-autofocus
                 className="sap-button primary"
                 disabled={isExecuting}
                 onClick={handleExecuteCreate}

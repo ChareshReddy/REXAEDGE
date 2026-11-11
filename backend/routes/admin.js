@@ -10,6 +10,7 @@ import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { ALL_BOM_APPS } from '../config/modules.js';
 import { getAllPoolStats, getPoolStats, updatePoolConfig, removePool } from '../services/sapConnectionPool.js';
 import { f4CacheService } from '../services/f4CacheService.js';
+import { jobPerformanceTracker } from '../services/jobPerformanceTracker.js';
 import { getServerHealth } from '../services/serverHealthService.js';
 import { bomJobRepository } from '../services/bomJobRepository.js';
 
@@ -753,6 +754,25 @@ router.post('/cache/clear', (req, res) => {
     console.error('[Admin] Error clearing F4 cache:', err.message);
     return res.status(500).json({ error: 'Failed to clear cache.' });
   }
+});
+
+/**
+ * GET /api/admin/jobs/:jobId/timeline
+ * Returns the RFC call timeline, duration, and slowest calls for a background job.
+ */
+router.get('/jobs/:jobId/timeline', (req, res) => {
+  const { jobId } = req.params;
+  const timeline = jobPerformanceTracker.getTimeline(jobId);
+  if (!timeline) {
+    return res.status(404).json({
+      success: false,
+      message: `No performance timeline found for job ${jobId}.`
+    });
+  }
+  return res.status(200).json({
+    success: true,
+    timeline
+  });
 });
 
 export default router;

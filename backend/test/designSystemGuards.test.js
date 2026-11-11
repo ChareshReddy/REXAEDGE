@@ -149,6 +149,79 @@ assert.match(uiCss, /height:\s*var\(--size-table-input-height\)/s, 'Table cell i
 assert.match(uiCss, /height:\s*var\(--size-button-height\)/s, 'Button height must use token');
 console.log('   ✓ Table 6px spacing and token-driven input/button heights verified\n');
 
+// 7. Verify Modal/Popup headers contain no orange/amber hex codes or classes
+console.log('Test 7: Static check that modal/popup component files contain no orange/amber colors in header/icon code...');
+const popupFiles = [
+  'components/Modal.jsx',
+  'components/ui/Modal.jsx',
+  'components/ValidateBomModal.jsx',
+  'components/PasswordModal.jsx',
+  'components/BulkBomCopyModal.jsx',
+  'components/PlantValueHelpModal.jsx',
+  'components/MaterialValueHelpModal.jsx',
+  'components/StorageLocationValueHelpModal.jsx',
+  'components/BomUsageValueHelpModal.jsx',
+  'components/MaterialRestrictValueRangeModal.jsx',
+  'components/ConfirmationCard.jsx',
+  'components/DeleteBomView.jsx'
+];
+
+const disallowedOrangeHeaderHexRegex = /#(ffd099|d97706|f59e0b|ea580c|c2410c|9a3412|f97316)\b/i;
+
+for (const relPath of popupFiles) {
+  const filePath = path.resolve(frontendDir, relPath);
+  if (!fs.existsSync(filePath)) continue;
+  const content = fs.readFileSync(filePath, 'utf8');
+  // Check that header/badge definitions do not use orange/amber hex
+  const lines = content.split('\n');
+  lines.forEach((line, idx) => {
+    if (line.includes('sap-bulk-icon-badge') || line.includes('sap-f4-header') || line.includes('sap-confirm-header') || line.includes('sap-proposal-header-card') || line.includes('iconBadgeBg') || line.includes('iconColor')) {
+      const match = line.match(disallowedOrangeHeaderHexRegex);
+      assert(!match, `Found disallowed orange/amber hex ${match?.[0]} at ${relPath}:${idx + 1}: ${line.trim()}`);
+    }
+  });
+}
+console.log('   ✓ Zero disallowed orange/amber hex colors in modal/popup headers and icons\n');
+
+// 8. Static check: Bulk components & CSS files contain no orange/amber hex or utility classes
+console.log('Test 8: Static check: Bulk operation components contain no orange/amber colors...');
+const bulkFiles = [
+  'components/bulk/BulkStatTiles.jsx',
+  'components/bulk/BulkLayout.jsx',
+  'components/bulk/BulkUploadCard.jsx',
+  'components/BulkBomShared.jsx',
+  'components/BulkBomView.jsx',
+  'components/BulkCreateBomView.jsx',
+  'components/BulkUploadPanel.jsx',
+  'components/BlockedReasonsList.jsx'
+];
+
+const disallowedBulkHexRegex = /#(d97706|f59e0b|b45309|fef3c7|fffbeb|ea580c|c2410c|f97316)\b/i;
+const disallowedBulkClassRegex = /\b(sap-badge-warning|rx-alert-warning|status-stat\.warning)\b/i;
+
+for (const relPath of bulkFiles) {
+  const filePath = path.resolve(frontendDir, relPath);
+  if (!fs.existsSync(filePath)) continue;
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content.split('\n');
+  lines.forEach((line, idx) => {
+    // Disallowed utility classes
+    const classMatch = line.match(disallowedBulkClassRegex);
+    assert(!classMatch, `Disallowed class ${classMatch?.[0]} found in ${relPath}:${idx + 1}: ${line.trim()}`);
+
+    // Disallowed hex colors (allow only single warning icon token var(--color-warning, #d97706) on AlertTriangle)
+    const hexMatch = line.match(disallowedBulkHexRegex);
+    if (hexMatch) {
+      const isAllowedWarningIcon = line.includes('AlertTriangle') && line.includes('var(--color-warning, #d97706)');
+      assert(
+        isAllowedWarningIcon,
+        `Disallowed orange/amber hex ${hexMatch[0]} found in ${relPath}:${idx + 1}: ${line.trim()}`
+      );
+    }
+  });
+}
+console.log('   ✓ Zero disallowed orange/amber colors or classes in bulk components\n');
+
 console.log('============================================================');
 console.log('  ALL DESIGN SYSTEM & SCOPE GUARD TESTS PASSED! (100%)      ');
 console.log('============================================================\n');

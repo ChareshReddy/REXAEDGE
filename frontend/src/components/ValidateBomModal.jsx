@@ -68,9 +68,9 @@ export default function ValidateBomModal({
       title="Validate BOM"
       subtitle="Check that a material and its BOM are ready in SAP before you create or copy."
       icon={ShieldCheck}
-      iconColor="var(--sap-warning)"
-      iconBadgeBg="var(--sap-warning-bg)"
-      iconBadgeBorder="var(--sap-warning-border)"
+      iconColor="var(--color-blue-600, #02579A)"
+      iconBadgeBg="var(--color-blue-100, #EEF4F9)"
+      iconBadgeBorder="var(--color-blue-300, #B3CDE0)"
       isLoading={isLoading}
       maxWidth={460}
       padding="16px 20px"
@@ -131,7 +131,7 @@ export default function ValidateBomModal({
 
             <div className="sap-form-group">
               <label className="sap-form-label" style={{ fontSize: '11px', marginBottom: 2 }}>
-                Alt BOM (optional)
+                Alt BOM
               </label>
               <div className="sap-form-input-wrapper">
                 <Hash size={13} className="input-icon" />

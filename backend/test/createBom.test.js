@@ -279,6 +279,22 @@ assert.strictEqual(createSkippedRes.success, false);
 assert.strictEqual(createSkippedRes.status, 'SKIPPED');
 assert(createSkippedRes.message.includes('already exists'));
 
+// Reject create with no resolvable unit
+const noUnitBom = {
+  status: 'Ready',
+  material: 'MAT_UNKNOWN_NO_UNIT',
+  plant: '1010',
+  bomUsage: '1',
+  alternativeBom: '01',
+  validFrom: '19.10.2026',
+  baseQty: '1',
+  components: [{ component: 'C1', quantity: '1' }]
+};
+const noUnitRes = await createBomFromData({ bom: noUnitBom, server: { id: 'MOCK_DEV' } });
+assert.strictEqual(noUnitRes.success, false);
+assert.strictEqual(noUnitRes.status, 'FAILED');
+assert.strictEqual(noUnitRes.message, 'Base unit of measure of the material could not be determined');
+
 console.log('   ✓ Execution engine strictly blocks write when pre-flight status is not Ready');
 
 // -----------------------------------------------------------------------------
@@ -306,7 +322,7 @@ console.log('   ✓ Strict verification structure handles and surfaces discrepan
 console.log('\n8. Testing single create and sequential batch execution:');
 
 const validBom = preflightRes.boms[0]; // Ready
-const singleCreateRes = await createBomFromData({ bom: validBom, user: { email: 'tester@nextitpoint.com' } });
+const singleCreateRes = await createBomFromData({ bom: validBom, server: { id: 'MOCK_DEV' }, user: { email: 'tester@nextitpoint.com' } });
 assert.strictEqual(singleCreateRes.success, true);
 assert.strictEqual(singleCreateRes.status, 'SUCCESS');
 assert.strictEqual(singleCreateRes.alternativeBom, '01');
@@ -314,6 +330,7 @@ assert.strictEqual(singleCreateRes.componentsCreated, 1);
 
 const batchRes = await rfcBatchCreateBoms({
   boms: preflightRes.boms,
+  server: { id: 'MOCK_DEV' },
   user: { email: 'batch_tester@nextitpoint.com' },
   fileName: 'sample_batch.xlsx'
 });
@@ -334,6 +351,7 @@ const mockCreateRes = await rfcCreateBom({
   plant: '1010',
   bomUsage: '1',
   alternativeBom: '01',
+  server: { id: 'MOCK_DEV' },
   components: [
     { itemCategory: 'L', component: 'GUARD_C1', quantity: 2, unit: 'EA' }
   ]

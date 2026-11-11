@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * Enterprise Stat Tiles Summary Strip
  * Small stat tiles (Total rows, Valid, Errors, Warnings) using Beautiful Blues and accessible status tokens.
- * Green/blue/red/amber typography on tinted backgrounds.
+ * Green/blue/red/slate typography on tinted backgrounds.
  */
 export default function BulkStatTiles({
   total = 0,
@@ -35,7 +35,7 @@ export default function BulkStatTiles({
       count: total,
       bg: 'var(--color-blue-50, #EEF4F9)',
       border: isTileActive('all') ? '2px solid var(--color-blue-600, #02579A)' : '1px solid var(--color-blue-200, #B3CDE0)',
-      textColor: 'var(--color-navy-900, #00204E)',
+      textColor: 'var(--color-blue-600, #02579A)',
       labelColor: 'var(--color-text-secondary, #4A5F77)'
     },
     {
@@ -63,10 +63,10 @@ export default function BulkStatTiles({
       filterKey: 'skipped',
       label: warningsLabel,
       count: warnings,
-      bg: 'var(--color-warning-bg, #FFFBEB)',
-      border: isTileActive('skipped') ? '2px solid var(--color-warning, #B45309)' : '1px solid var(--color-warning-border, #FDE68A)',
-      textColor: 'var(--color-warning, #B45309)',
-      labelColor: 'var(--color-warning, #B45309)'
+      bg: 'var(--color-surface-subtle, #F8FAFC)',
+      border: isTileActive('skipped') ? '2px solid var(--color-blue-400, #6699B8)' : '1px solid var(--color-border, #D9E2EC)',
+      textColor: 'var(--color-text-secondary, #4A5F77)',
+      labelColor: 'var(--color-text-secondary, #4A5F77)'
     }
   ];
 

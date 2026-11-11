@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Copy,
   Layers,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import activityTracker from '../services/activityTracker';
 import BlockedReasonsList from './BlockedReasonsList';
@@ -30,20 +31,86 @@ export default function ConfirmationCard({
   const isProd = targetSystem === 'PROD';
 
   const [reason, setReason] = useState(() => action.reason || preview?.reason || '');
+  const [reasonTouched, setReasonTouched] = useState(false);
+  const [showReasonError, setShowReasonError] = useState(false);
   const [prodConfirmation, setProdConfirmation] = useState('');
   const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
+  const [deleteTouched, setDeleteTouched] = useState(false);
   const [isActionTriggered, setIsActionTriggered] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(() => {
     if (!expiresAt) return 300;
     return Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
   });
 
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const elapsedStartRef = useRef(null);
   const timerRef = useRef(null);
 
   const isDone = status === 'confirmed' || status === 'cancelled';
   const isFailed = status === 'failed';
   const isExecuting = status === 'executing' || (isActionTriggered && !isDone && !isFailed);
   const isExpired = (!isExecuting && !isDone && !isFailed && secondsRemaining <= 0) || status === 'expired';
+
+  // Elapsed timer for executing state
+  useEffect(() => {
+    if (!isExecuting) {
+      setElapsedSeconds(0);
+      elapsedStartRef.current = null;
+      return;
+    }
+
+    if (!elapsedStartRef.current) {
+      elapsedStartRef.current = Date.now();
+    }
+
+    const interval = setInterval(() => {
+      if (elapsedStartRef.current) {
+        const diff = Math.max(0, Math.floor((Date.now() - elapsedStartRef.current) / 1000));
+        setElapsedSeconds(diff);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isExecuting]);
+
+  const formatElapsed = (sec) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const getExecutingTitle = () => {
+    if (type === 'copy_bom') return 'Copying BOM in SAP...';
+    if (type === 'delete_bom') return 'Deleting BOM in SAP...';
+    if (type === 'create' || type === 'create_bom') return 'Creating BOM in SAP...';
+    if (type === 'delete') return 'Deleting in SAP...';
+    if (type === 'release_po') return 'Releasing PO in SAP...';
+    if (type === 'post_fi_doc') return 'Posting Financial Doc in SAP...';
+    if (type === 'change_master_data') return 'Modifying Master Data in SAP...';
+    if (type === 'retry') return 'Retrying job in SAP...';
+    if (type === 'reprocess') return 'Reprocessing in SAP...';
+    if (type === 'retrigger') return 'Retriggering in SAP...';
+    return 'Processing in SAP...';
+  };
+
+  const executingTitle = getExecutingTitle();
+  const executingSubtext = elapsedSeconds >= 45
+    ? 'Still working... SAP is taking longer than usual.'
+    : 'This can take up to a minute. Please do not close or refresh this page.';
+
+  const getConfirmButtonLabel = () => {
+    if (type === 'delete_bom') return 'Confirm Delete BOM';
+    if (type === 'delete') return 'Confirm Delete';
+    if (type === 'create' || type === 'create_bom') return 'Confirm Creation';
+    if (type === 'copy_bom') return 'Confirm Copy BOM';
+    if (type === 'retry') return 'Confirm Job Retry';
+    if (type === 'reprocess') return 'Confirm Reprocess';
+    if (type === 'retrigger') return 'Confirm Retrigger';
+    if (type === 'release_po') return 'Authorize PO Release';
+    if (type === 'post_fi_doc') return 'Authorize Financial Post';
+    if (type === 'change_master_data') return 'Confirm Modification';
+    return 'Confirm';
+  };
 
   // Synchronously stop and clear countdown timer
   const stopTimer = useCallback(() => {
@@ -92,6 +159,13 @@ export default function ConfirmationCard({
   }, [actionId, status, isExecuting, isActionTriggered, isDone, isFailed, isExpired]);
 
   const handleConfirmClick = () => {
+    if ((type === 'delete_bom' || isLevel3) && !reason.trim()) {
+      setShowReasonError(true);
+      return;
+    }
+    if ((type === 'delete' || type === 'delete_bom') && !deleteAcknowledged) {
+      return;
+    }
     setIsActionTriggered(true);
     stopTimer();
     onConfirm(actionId, {
@@ -129,8 +203,8 @@ export default function ConfirmationCard({
     if (type === 'delete_bom') {
       return {
         title: `Delete BOM Confirmation Required`,
-        icon: <Trash2 size={16} color="var(--sap-error)" />,
-        accentClass: 'sap-confirm-card-danger'
+        icon: <Trash2 size={16} color="var(--color-primary, #02579A)" />,
+        accentClass: 'sap-confirm-card-info'
       };
     }
     if (type === 'delete') {
@@ -199,7 +273,23 @@ export default function ConfirmationCard({
   const headerInfo = getCardHeader();
 
   return (
-    <div className={`sap-confirm-card ${headerInfo.accentClass}`}>
+    <div
+      className={`sap-confirm-card ${headerInfo.accentClass}`}
+      aria-busy={isExecuting ? 'true' : 'false'}
+    >
+      {/* Top Edge Indeterminate Progress Bar */}
+      {isExecuting && (
+        <div
+          className="rx-confirm-progress-bar-track"
+          data-testid="confirm-progress-bar-track"
+        >
+          <div
+            className="rx-confirm-progress-bar-fill"
+            data-testid="confirm-progress-bar-fill"
+          />
+        </div>
+      )}
+
       {/* Card Header */}
       <div className="sap-confirm-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -225,8 +315,28 @@ export default function ConfirmationCard({
             </span>
           )}
           {isExecuting && (
-            <span className="sap-badge sap-badge-running" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="sap-spinner" style={{ width: 12, height: 12, borderWidth: 2 }} />
+            <span
+              className="sap-badge sap-badge-running"
+              data-testid="confirm-badge-executing"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'var(--color-blue-100, #D9E2EC)',
+                color: 'var(--color-blue-700, #034375)',
+                border: '1px solid var(--color-blue-200, #B3CDE0)',
+                fontWeight: 600,
+                fontSize: 12,
+                padding: '4px 10px',
+                borderRadius: '9999px'
+              }}
+            >
+              <Loader2
+                size={13}
+                className="sap-spin"
+                color="var(--color-blue-600, #02579A)"
+                strokeWidth={2.5}
+              />
               <span>Executing...</span>
             </span>
           )}
@@ -245,6 +355,80 @@ export default function ConfirmationCard({
 
       {/* Proposal Body */}
       <div className="sap-confirm-body">
+        {/* Status strip at top of card body */}
+        {isExecuting && (
+          <div
+            role="status"
+            aria-live="polite"
+            data-testid="confirm-executing-strip"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: 'var(--color-blue-50, #EEF4F9)',
+              border: '1px solid var(--color-blue-200, #B3CDE0)',
+              borderRadius: 'var(--radius-md, 6px)',
+              marginBottom: 16,
+              gap: 12
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <Loader2
+                size={20}
+                className="sap-spin"
+                color="var(--color-blue-600, #02579A)"
+                strokeWidth={2.5}
+                style={{ flexShrink: 0 }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div
+                  data-testid="confirm-executing-title"
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--color-navy-900, #00204E)',
+                    lineHeight: 1.3
+                  }}
+                >
+                  {executingTitle}
+                </div>
+                <div
+                  data-testid="confirm-executing-subtext"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--color-text-secondary, #475569)',
+                    marginTop: 2,
+                    lineHeight: 1.3
+                  }}
+                >
+                  {executingSubtext}
+                </div>
+              </div>
+            </div>
+
+            <div
+              data-testid="confirm-executing-timer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-sm, 4px)',
+                background: 'var(--color-surface, #FFFFFF)',
+                border: '1px solid var(--color-blue-200, #B3CDE0)',
+                color: 'var(--color-navy-900, #00204E)',
+                fontSize: 12,
+                fontFamily: 'var(--font-mono, monospace)',
+                fontWeight: 600,
+                flexShrink: 0
+              }}
+            >
+              <Clock size={13} color="var(--color-blue-600, #02579A)" />
+              <span data-testid="confirm-elapsed-time">{formatElapsed(elapsedSeconds)}</span>
+            </div>
+          </div>
+        )}
         {/* CASE 1: UPDATE PROPOSAL (DIFF TABLE) */}
         {type === 'update' && (
           <div>
@@ -491,48 +675,134 @@ export default function ConfirmationCard({
         {/* CASE 3B: DELETE BOM PROPOSAL (ZBOM_COPY) */}
         {type === 'delete_bom' && (
           <div>
-            <div className="sap-confirm-danger-banner">
-              <AlertOctagon size={20} color="var(--sap-error)" style={{ flexShrink: 0 }} />
-              <div>
-                <strong>Warning: Permanent Deletion of Bill of Materials</strong>
-                <p style={{ fontSize: '12px', marginTop: 2 }}>
-                  You are about to delete BOM: Material: <strong>{preview?.material}</strong>, Plant: <strong>{preview?.plant}</strong>, Alternative BOM: <strong>{preview?.alternativeBom}</strong>, BOM Usage: <strong>{preview?.bomUsage || '1'}</strong>. This will permanently delete the selected BOM. Do you want to proceed?
-                </p>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+              padding: '10px 14px',
+              background: 'var(--color-danger-bg, #FEF3F2)',
+              border: '1px solid var(--color-danger-border, #FECDCA)',
+              borderRadius: 'var(--sap-radius, 6px)',
+              marginBottom: 12
+            }}>
+              <AlertTriangle size={15} color="var(--color-danger, #B42318)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1, fontSize: '13px', lineHeight: 1.45, color: 'var(--color-danger, #B42318)' }}>
+                <span style={{ fontWeight: 700, marginRight: 6 }}>Permanent deletion:</span>
+                <span style={{ color: 'var(--color-text, #0F2742)' }}>
+                  You are about to delete BOM for Material <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.material}</strong>, Plant <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.plant}</strong>, Alternative BOM <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.alternativeBom}</strong>, BOM Usage <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.bomUsage || '1'}</strong>. This will permanently delete the selected BOM. Do you want to proceed?
+                </span>
               </div>
             </div>
 
-            <div className="sap-diff-table-wrapper" tabIndex={0} role="region" aria-label="Delete BOM Parameters" style={{ marginTop: 10 }}>
-              <table className="sap-diff-table">
+            <div
+              className="fiori-table-wrapper rx-delete-bom-table-wrapper"
+              data-testid="delete-bom-param-container"
+              style={{
+                minHeight: 'auto',
+                height: 'auto',
+                flex: 'none',
+                flexGrow: 0,
+                overflowX: 'hidden',
+                border: '1px solid var(--color-border, #D9E2EC)',
+                borderRadius: 'var(--radius-sm, 4px)',
+                marginTop: 10,
+                marginBottom: 10
+              }}
+            >
+              <table
+                className="sap-table"
+                data-testid="delete-bom-param-table"
+                style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
+              >
+                <colgroup>
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '20%' }} />
+                  <col style={{ width: '25%' }} />
+                  <col style={{ width: '25%' }} />
+                </colgroup>
                 <thead>
-                  <tr>
-                    <th>Parameter</th>
-                    <th>Value</th>
+                  <tr style={{ background: 'var(--sap-card-nested-bg, #EEF4F9)' }}>
+                    <th style={{ textAlign: 'left', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Material</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Plant</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Alternative BOM</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>BOM usage</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td className="sap-diff-field-name">Material</td>
-                    <td className="sap-diff-new-val"><strong>{preview?.material}</strong></td>
-                  </tr>
-                  <tr>
-                    <td className="sap-diff-field-name">Plant</td>
-                    <td className="sap-diff-new-val"><strong>{preview?.plant}</strong></td>
-                  </tr>
-                  <tr>
-                    <td className="sap-diff-field-name">Alternative BOM</td>
-                    <td className="sap-diff-new-val"><strong>{preview?.alternativeBom}</strong></td>
-                  </tr>
-                  <tr>
-                    <td className="sap-diff-field-name">BOM Usage</td>
-                    <td className="sap-diff-new-val"><strong>{preview?.bomUsage || '1'}</strong></td>
+                  <tr style={{ background: 'var(--color-surface, #ffffff)' }}>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'left', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--color-navy-900, #00204E)' }}>{preview?.material || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-navy-900, #00204E)' }}>{preview?.plant || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-navy-900, #00204E)' }}>{preview?.alternativeBom || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center', padding: '8px 10px', color: 'var(--color-navy-900, #00204E)' }}>{preview?.bomUsage || '1'}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
-            <div style={{ marginTop: 10, fontSize: '12px', color: 'var(--sap-text-muted)' }}>
-              ℹ️ Executed directly in SAP. BOM operations are verified and committed in your SAP system.
+            <div style={{
+              marginTop: 10,
+              padding: '10px 14px',
+              background: 'var(--sap-card-nested-bg, #EEF4F9)',
+              border: '1px solid var(--sap-border, #D9E2EC)',
+              borderRadius: 'var(--sap-radius, 6px)',
+              fontSize: '12px',
+              color: 'var(--sap-text-muted, #475569)',
+              lineHeight: 1.5,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8
+            }}>
+              <Info size={16} color="var(--color-primary, #02579A)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>
+                Executed directly in SAP. BOM operations are verified and committed in your SAP system.
+              </span>
             </div>
+
+            {/* Mandatory Reason for Change */}
+            {!isDone && !isExpired && (
+              <div style={{ marginTop: 12 }}>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-navy-900, #00204E)', marginBottom: 4 }}>
+                  Mandatory Reason for Change <span style={{ color: 'var(--color-danger, #B42318)' }}>*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    setShowReasonError(false);
+                    if (!reasonTouched) setReasonTouched(true);
+                  }}
+                  onBlur={() => {
+                    setReasonTouched(true);
+                    if (!reason.trim()) {
+                      setShowReasonError(true);
+                    }
+                  }}
+                  disabled={isExecuting}
+                  placeholder="Provide business justification for BOM deletion..."
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    fontFamily: 'var(--font-family, sans-serif)',
+                    color: 'var(--color-text, #0F2742)',
+                    background: 'var(--color-surface, #ffffff)',
+                    border: showReasonError && !reason.trim()
+                      ? '1px solid var(--color-danger, #B42318)'
+                      : '1px solid var(--color-border-input, #C7D4E1)',
+                    borderRadius: 'var(--sap-radius, 6px)',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+                {showReasonError && !reason.trim() && (
+                  <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: 'var(--color-danger, #B42318)' }}>
+                    Reason for change is required before confirming deletion.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Extra safety guard checkbox for deletes */}
             {!isDone && !isExpired && (
@@ -541,11 +811,23 @@ export default function ConfirmationCard({
                   <input
                     type="checkbox"
                     checked={deleteAcknowledged}
-                    onChange={(e) => setDeleteAcknowledged(e.target.checked)}
+                    onChange={(e) => {
+                      setDeleteAcknowledged(e.target.checked);
+                      if (e.target.checked && !reason.trim()) {
+                        setShowReasonError(true);
+                      }
+                      if (!deleteTouched) setDeleteTouched(true);
+                    }}
                     disabled={isExecuting}
+                    style={{ accentColor: 'var(--color-blue-600, #02579A)' }}
                   />
                   <span>I understand that this action cannot be undone and will permanently delete this BOM in SAP.</span>
                 </label>
+                {deleteTouched && !deleteAcknowledged && (
+                  <p style={{ margin: '4px 0 0 24px', fontSize: '11.5px', color: 'var(--color-danger, #B42318)' }}>
+                    You must acknowledge this warning to proceed.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -932,7 +1214,7 @@ export default function ConfirmationCard({
         )}
 
         {/* Mandatory Reason for Level 3 Actions */}
-        {isLevel3 && !isDone && !isExpired && (
+        {isLevel3 && type !== 'delete_bom' && !isDone && !isExpired && (
           <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--sap-warning-bg)', border: '1px solid var(--sap-warning-border)', borderRadius: 'var(--sap-radius)' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--sap-warning-text)', marginBottom: 4 }}>
               Mandatory Reason for Change (Business Justification):
@@ -993,6 +1275,7 @@ export default function ConfirmationCard({
             className="sap-button sap-btn sap-btn-secondary"
             onClick={handleCancelClick}
             disabled={isExecuting}
+            title={isExecuting ? "A running SAP operation cannot be cancelled" : undefined}
             style={{ fontSize: '13px', padding: '6px 14px' }}
           >
             <X size={14} />
@@ -1001,21 +1284,30 @@ export default function ConfirmationCard({
 
           <button
             type="button"
-            className={`sap-button sap-btn ${type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? 'destructive sap-button-danger sap-btn-danger' : 'sap-btn-primary'}`}
+            className={`sap-button sap-btn ${type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? 'destructive sap-button-danger sap-btn-danger' : 'sap-btn-primary'} ${isExecuting ? 'rx-confirm-btn-executing' : ''}`}
             onClick={handleConfirmClick}
             disabled={
               isExecuting ||
               ((type === 'delete' || type === 'delete_bom') && !deleteAcknowledged) ||
-              (isLevel3 && type !== 'delete_bom' && !reason.trim()) ||
+              ((isLevel3 || type === 'delete_bom') && !reason.trim()) ||
               (isProd && isLevel3 && prodConfirmation.trim() !== 'CONFIRM') ||
               Boolean(preview?.blocked || preview?.canCopy === false)
             }
-            style={{ fontSize: '13px', padding: '6px 18px', gap: 6 }}
+            style={{
+              fontSize: '13px',
+              padding: '6px 18px',
+              gap: 6,
+              ...(type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? {
+                background: 'var(--color-danger, #B42318)',
+                backgroundColor: 'var(--color-danger, #B42318)',
+                borderColor: 'var(--color-danger, #B42318)'
+              } : {})
+            }}
           >
             {isExecuting ? (
               <>
-                <span className="sap-spinner" style={{ width: 14, height: 14 }} />
-                <span>Executing...</span>
+                <Loader2 size={14} className="sap-spin" color="#ffffff" strokeWidth={2.5} />
+                <span>{getConfirmButtonLabel()}</span>
               </>
             ) : (
               <>
@@ -1027,27 +1319,7 @@ export default function ConfirmationCard({
                   <Check size={14} />
                 )}
                 <span>
-                  {type === 'delete_bom'
-                    ? 'Confirm Delete BOM'
-                    : type === 'delete'
-                    ? 'Confirm Delete'
-                    : type === 'create'
-                    ? 'Confirm Creation'
-                    : type === 'copy_bom'
-                    ? 'Confirm Copy BOM'
-                    : type === 'retry'
-                    ? 'Confirm Job Retry'
-                    : type === 'reprocess'
-                    ? 'Confirm Reprocess'
-                    : type === 'retrigger'
-                    ? 'Confirm Retrigger'
-                    : type === 'release_po'
-                    ? 'Authorize PO Release'
-                    : type === 'post_fi_doc'
-                    ? 'Authorize Financial Post'
-                    : type === 'change_master_data'
-                    ? 'Authorize Master Data Change'
-                    : 'Confirm Update'}
+                  {getConfirmButtonLabel()}
                 </span>
               </>
             )}
@@ -1071,7 +1343,7 @@ export default function ConfirmationCard({
 
       {isFailed && (
         <div className="sap-confirm-footer" style={{ color: 'var(--sap-error)', fontSize: '12px' }}>
-          ⚠️ Execution failed.
+          Execution failed.
         </div>
       )}
     </div>

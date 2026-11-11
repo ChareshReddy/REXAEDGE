@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Info, AlertTriangle, CheckCircle2, Check, Copy, X } from 'lucide-react';
+import { Info, AlertTriangle, AlertCircle, CheckCircle2, Check, Copy, X } from 'lucide-react';
 import Notification, {
   NotificationPlacementContext,
   NotificationPlacementProvider,
@@ -67,7 +67,30 @@ function ToastRootProvider({ children, suppressBanner = false }) {
       else title = 'Notice';
     }
 
-    const message = toastObj.message || '';
+    let message = toastObj.message || '';
+
+    // Strip leading emojis from title and message
+    const cleanEmoji = (str) =>
+      typeof str === 'string'
+        ? str.replace(/^[\u274C\u274E\u26A0\uFE0F\u2705\u2714\u2716\u2747\uD83C-\uDBFF\uDC00-\uDFFF\s]+/u, '').trim()
+        : str;
+    if (title) title = cleanEmoji(title);
+    if (message) message = cleanEmoji(message);
+
+    // Prevent duplicate title in message body (e.g. Title: "Execution failed", Body: "Execution failed: ...")
+    if (title && message) {
+      const lowerTitle = title.toLowerCase();
+      const lowerMsg = message.toLowerCase();
+      if (lowerMsg === lowerTitle) {
+        message = '';
+      } else if (lowerMsg.startsWith(lowerTitle + ':')) {
+        message = message.slice(title.length + 1).trim();
+      } else if (lowerTitle === 'error' && lowerMsg.startsWith('execution failed:')) {
+        title = 'Execution failed';
+        message = message.replace(/^execution failed:\s*/i, '').trim();
+      }
+    }
+
     const messages = Array.isArray(toastObj.messages) ? toastObj.messages : [];
     const errorRef = toastObj.errorRef || toastObj.error_ref || '';
     const hint = toastObj.hint || '';
@@ -427,9 +450,10 @@ function ToastItem({ toast: item, onRemove }) {
   const isWarningOrError = item.type === 'error' || item.type === 'warning';
   const isSuccess = item.type === 'success';
 
-  // Icon selection
+  // Icon selection: danger error icon for errors, amber warning icon for warnings
   let IconComponent = Info;
-  if (isWarningOrError) IconComponent = AlertTriangle;
+  if (item.type === 'error') IconComponent = AlertCircle;
+  else if (item.type === 'warning') IconComponent = AlertTriangle;
   else if (isSuccess) IconComponent = CheckCircle2;
 
   return (

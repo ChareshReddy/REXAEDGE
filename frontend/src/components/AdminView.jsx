@@ -1451,27 +1451,68 @@ export default function AdminView({
         onClose={() => setIsUserModalOpen(false)}
         title="Add New User"
         icon={Users}
+        iconColor="var(--color-blue-600, #02579A)"
         isLoading={userSubmitting}
-        maxWidth={440}
+        maxWidth={480}
+        closeOnEscape={true}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', width: '100%' }}>
+            <button
+              type="button"
+              className="sap-button"
+              onClick={() => setIsUserModalOpen(false)}
+              disabled={userSubmitting}
+              style={{ height: 32, fontSize: 'var(--sap-size-button)', padding: '0 16px', fontWeight: 500 }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="add-user-modal-form"
+              className="sap-button primary"
+              disabled={userSubmitting}
+              style={{ height: 32, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 90, fontWeight: 600 }}
+            >
+              {userSubmitting ? 'Creating...' : 'Create User'}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleCreateUser}>
-          
-          <div className="sap-form-group">
-            <label className="sap-form-label">Email Address</label>
+        <form id="add-user-modal-form" onSubmit={handleCreateUser} className="flex flex-col gap-4">
+          {userModalError && (
+            <Notification
+              placement="popup"
+              type="error"
+              message={userModalError}
+              onClose={() => setUserModalError('')}
+            />
+          )}
+
+          <FieldWrapper
+            label="Email Address"
+            htmlFor="add-user-email"
+            required
+          >
             <input
+              id="add-user-email"
               type="email"
-              className="sap-input"
+              className="rx-input"
               placeholder="Ex. engineer@nextitpoint.com"
               value={userFormData.email}
               onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
               required
               autoFocus
             />
-          </div>
+          </FieldWrapper>
 
-          <div className="sap-form-group">
-            <label className="sap-form-label">Temporary Password</label>
+          <FieldWrapper
+            label="Temporary Password"
+            htmlFor="add-user-pwd"
+            required
+            hint="Minimum 6 characters"
+          >
             <PasswordInput
+              id="add-user-pwd"
               placeholder="Minimum 6 characters"
               value={userFormData.password}
               onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
@@ -1479,40 +1520,26 @@ export default function AdminView({
               minLength={6}
               autoComplete="new-password"
               leftIcon={<KeyRound size={16} />}
+              className="rx-input"
+              style={{ height: 38, fontFamily: 'var(--font-sans)' }}
             />
-          </div>
+          </FieldWrapper>
 
-          <div className="sap-form-group">
-            <label className="sap-form-label">System Role</label>
+          <FieldWrapper
+            label="System Role"
+            htmlFor="add-user-role"
+            required
+          >
             <select
-              className="sap-input"
+              id="add-user-role"
+              className="rx-select"
               value={userFormData.role}
               onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
             >
               <option value="user">Standard User (Permitted servers only)</option>
               <option value="admin">Administrator (Full platform &amp; user control)</option>
             </select>
-          </div>
-
-          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-            <button
-              type="button"
-              className="sap-button"
-              onClick={() => setIsUserModalOpen(false)}
-              disabled={userSubmitting}
-              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="sap-button primary"
-              disabled={userSubmitting}
-              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 90 }}
-            >
-              {userSubmitting ? 'Creating...' : 'Create User'}
-            </button>
-          </div>
+          </FieldWrapper>
         </form>
       </Modal>
 
