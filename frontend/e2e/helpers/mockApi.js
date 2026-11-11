@@ -115,11 +115,12 @@ export const mockStorageLocations = [
 ];
 
 export const mockMaterials = [
-  { matnr: '0000000000000100019', maktx: 'Heavy Duty Industrial Continuous Transmission Gearbox Assembly With Integrated Dual Cooling Jacket and Temperature Sensors', werks: '1010', mtart: 'FERT', stlal: '01', spras: 'E' },
-  { matnr: 'A1BH0214C', maktx: 'Main Drive Motor Housing', werks: '1010', mtart: 'FERT', stlal: '01' },
-  { matnr: 'B2CH0315D', maktx: 'Secondary Sensor Bracket', werks: '1010', mtart: 'HALB', stlal: '01' },
-  { matnr: 'C3DH0416E', maktx: 'Cold Rolled Steel Plate 10mm', werks: '1010', mtart: 'ROH', stlal: '01' },
-  { matnr: 'D4EH0517F', maktx: 'Hex Head Bolt M12 x 50', werks: '1010', mtart: 'ROH', stlal: '01' }
+  { matnr: '0000000000000100019', maktx: 'Heavy Duty Industrial Continuous Transmission Gearbox Assembly With Integrated Dual Cooling Jacket and Temperature Sensors', werks: '1010', mtart: 'FERT', meins: 'EA', stlal: '01', spras: 'E' },
+  { matnr: 'A1BH0214C', maktx: 'Main Drive Motor Housing', werks: '1010', mtart: 'FERT', meins: 'PAA', stlal: '01' },
+  { matnr: 'TG0001', maktx: 'Trading Good for Consumption', werks: '1010', mtart: 'MAT', meins: 'ST', stlal: '01' },
+  { matnr: 'B2CH0315D', maktx: 'Secondary Sensor Bracket', werks: '1010', mtart: 'HALB', meins: 'EA', stlal: '01' },
+  { matnr: 'C3DH0416E', maktx: 'Cold Rolled Steel Plate 10mm', werks: '1010', mtart: 'ROH', meins: 'KG', stlal: '01' },
+  { matnr: 'D4EH0517F', maktx: 'Hex Head Bolt M12 x 50', werks: '1010', mtart: 'ROH', meins: 'EA', stlal: '01' }
 ];
 
 export const mockAdminUsers = [
@@ -353,8 +354,25 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       return respondJson({ success: true, data: mockStorageLocations, storageLocations: mockStorageLocations });
     }
 
-    // 11. Materials Search
-    if (url.includes('/api/materials/search') || url.includes('/api/materials')) {
+    // 11. Materials Search & Detail
+    if (url.includes('/api/materials/search')) {
+      return respondJson({ success: true, data: mockMaterials, materials: mockMaterials });
+    }
+    const matDetailMatch = url.match(/\/api\/materials\/([^?]+)/);
+    if (matDetailMatch) {
+      const targetMat = decodeURIComponent(matDetailMatch[1]).toUpperCase();
+      const matched = mockMaterials.find((m) => m.matnr.toUpperCase() === targetMat || m.matnr.toUpperCase().endsWith(targetMat));
+      if (matched) {
+        return respondJson({ success: true, data: matched });
+      } else {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: false, error: `Material ${targetMat} not found in SAP.`, code: 'NOT_FOUND' })
+        });
+      }
+    }
+    if (url.includes('/api/materials')) {
       return respondJson({ success: true, data: mockMaterials, materials: mockMaterials });
     }
 

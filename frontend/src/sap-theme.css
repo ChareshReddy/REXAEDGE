@@ -2054,5 +2054,102 @@ input.sap-table-search-input {
   gap: var(--space-14, 14px) !important;
 }
 
+.sap-table:not(.sap-f4-table) td.bulk-execution-msg-cell,
+.sap-table td.bulk-execution-msg-cell,
+.bulk-execution-msg-cell {
+  font-family: var(--font-family, sans-serif) !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+.sap-table:not(.sap-f4-table) td.rx-table-cell-text,
+.sap-table td.rx-table-cell-text,
+.rx-table-cell-text {
+  font-family: var(--font-family, sans-serif) !important;
+}
+
+.sap-table:not(.sap-f4-table) td.rx-table-cell-code,
+.sap-table td.rx-table-cell-code,
+.rx-table-cell-code {
+  font-family: var(--font-mono, monospace) !important;
+}
+
+/* ----------------------------------------------------------------------------
+   Confirmation Card Executing Progress Bar
+   ---------------------------------------------------------------------------- */
+.rx-confirm-progress-bar-track {
+  height: 4px;
+  width: 100%;
+  background-color: var(--color-blue-100, #D9E2EC);
+  overflow: hidden;
+  position: relative;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+
+.rx-confirm-progress-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background-color: var(--color-blue-600, #02579A);
+  width: 40%;
+  animation: rx-confirm-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes rx-confirm-sweep {
+  0% {
+    left: -40%;
+    width: 30%;
+  }
+  50% {
+    left: 30%;
+    width: 50%;
+  }
+  100% {
+    left: 100%;
+    width: 30%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rx-confirm-progress-bar-fill {
+    width: 100%;
+    left: 0;
+    animation: rx-confirm-pulse 2s ease-in-out infinite;
+  }
+  @keyframes rx-confirm-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+}
+
+button.sap-btn.rx-confirm-btn-executing:disabled,
+button.sap-button.rx-confirm-btn-executing:disabled {
+  opacity: 0.9 !important;
+  cursor: not-allowed !important;
+  color: #ffffff !important;
+}
+
+button.sap-btn-primary.rx-confirm-btn-executing:disabled {
+  background-color: var(--color-blue-600, #02579A) !important;
+  border-color: var(--color-blue-600, #02579A) !important;
+}
+
+button.sap-btn-danger.rx-confirm-btn-executing:disabled,
+button.sap-button-danger.rx-confirm-btn-executing:disabled {
+  background-color: var(--color-danger, #B42318) !important;
+  border-color: var(--color-danger, #B42318) !important;
+}
+
+
+
+
 
 

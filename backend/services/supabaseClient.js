@@ -756,6 +756,7 @@ class InMemorySupabaseStore {
         id: s.id,
         name: s.name,
         environment: s.environment,
+        created_at: s.created_at,
         sap_username: role === 'admin' ? (s.sap_username || null) : maskSapUsername(s.sap_username),
         has_password: hasPassword,
         credentials_status: isConfigured ? 'saved' : 'not_set',
@@ -1400,7 +1401,7 @@ export const supabaseService = {
       ...clientSafe,
       has_password: hasPassword,
       credentials_status: isConfigured ? 'saved' : 'not_set',
-      modules: readBack.modules || targetModules
+      modules: readBack.modules || (serverData.modules !== undefined ? serverData.modules : [MODULE_KEYS.BOM])
     };
   },
 
@@ -1707,6 +1708,7 @@ export const supabaseService = {
               id: s.id,
               name: s.name,
               environment: s.environment,
+              created_at: s.created_at,
               sap_username: maskSapUsername(s.sap_username),
               has_password: hasPassword,
               credentials_status: (s.sap_username && hasPassword) ? 'saved' : 'not_set',
@@ -1742,6 +1744,7 @@ export const supabaseService = {
           id: s.id,
           name: s.name,
           environment: s.environment,
+          created_at: s.created_at,
           is_active: s.is_active,
         max_connections: s.max_connections !== undefined ? s.max_connections : 3,
         per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
@@ -1793,6 +1796,7 @@ export const supabaseService = {
             id: s.id,
             name: s.name,
             environment: s.environment,
+            created_at: s.created_at,
             is_active: s.is_active,
         max_connections: s.max_connections !== undefined ? s.max_connections : 3,
         per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,

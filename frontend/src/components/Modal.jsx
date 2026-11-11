@@ -35,7 +35,8 @@ export default function Modal({
   style = {},
   ariaLabel,
   showCloseButton = true,
-  customLayout = false
+  customLayout = false,
+  closeOnEscape = false
 }) {
   const modalCardRef = useRef(null);
   const previouslyFocusedElementRef = useRef(null);
@@ -97,8 +98,14 @@ export default function Modal({
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
-      // Escape key must NOT close the modal
+      // Escape key handling
       if (e.key === 'Escape') {
+        if (closeOnEscape && !isLoading && typeof onClose === 'function') {
+          e.preventDefault();
+          e.stopPropagation();
+          onClose();
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -201,7 +208,7 @@ export default function Modal({
                   flexShrink: 0
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, marginRight: 8 }}>
                   {Icon && (
                     <div
                       className="sap-bulk-icon-badge"
@@ -221,7 +228,7 @@ export default function Modal({
                       <Icon size={18} />
                     </div>
                   )}
-                  <div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <h3
                       id={titleId}
                       style={{
@@ -235,7 +242,17 @@ export default function Modal({
                       {title}
                     </h3>
                     {subtitle && (
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--sap-text-secondary, #475569)' }}>
+                      <p
+                        title={typeof subtitle === 'string' ? subtitle : undefined}
+                        style={{
+                          margin: '2px 0 0',
+                          fontSize: 12,
+                          color: 'var(--sap-text-secondary, #475569)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
                         {subtitle}
                       </p>
                     )}

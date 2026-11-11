@@ -1364,35 +1364,46 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
 
     const actionSystem = action.systemKey || systemKey;
 
+    // Verify server context matches pending proposal if bound
+    const proposalServerId = action.serverId || action.server_id || action.payload?.server?.id || action.preview?.server_id || action.preview?.serverId;
+    const currentServerId = req.selectedServer?.id;
+    if (proposalServerId && currentServerId && proposalServerId !== currentServerId) {
+      return res.status(400).json({
+        reply: 'The selected server changed. Please start again.',
+        error: true,
+        serverMismatch: true
+      });
+    }
+
     // Module Access Gate for confirmed actions
-    if (['copy_bom', 'delete_bom'].includes(action.type) || action.entityKey === 'bom') {
+    if (['copy_bom', 'delete_bom', 'create_bom'].includes(action.type) || action.entityKey === 'bom') {
       const isEnabled = await supabaseService.isModuleEnabledForServer(req.selectedServer?.id, MODULE_KEYS.BOM);
       if (!isEnabled) {
         return res.status(403).json({
-          reply: '❌ Module not enabled for this server',
+          reply: 'Module not enabled for this server',
           error: 'Module not enabled for this server'
         });
       }
     }
 
     // App Permission Gate for confirmed BOM actions
-    if (req.user?.role !== 'admin' && (['copy_bom', 'delete_bom'].includes(action.type) || action.entityKey === 'bom')) {
+    if (req.user?.role !== 'admin' && (['copy_bom', 'delete_bom', 'create_bom'].includes(action.type) || action.entityKey === 'bom')) {
       const perms = req.userPermissions || [];
       if (action.type === 'copy_bom' && !perms.includes('bom.copy')) {
         return res.status(403).json({
-          reply: "⚠️ You don't have permission to copy BOMs on this server.",
+          reply: "You don't have permission to copy BOMs on this server.",
           error: "You don't have permission to copy BOMs on this server."
         });
       }
       if (action.type === 'delete_bom' && !perms.includes('bom.delete')) {
         return res.status(403).json({
-          reply: "⚠️ You don't have permission to delete BOMs on this server.",
+          reply: "You don't have permission to delete BOMs on this server.",
           error: "You don't have permission to delete BOMs on this server."
         });
       }
-      if (action.type === 'create_bom' && !perms.includes('bom.create')) {
+      if ((action.type === 'create_bom' || (action.type === 'create' && action.entityKey === 'bom')) && !perms.includes('bom.create')) {
         return res.status(403).json({
-          reply: "⚠️ You don't have permission to create BOMs on this server.",
+          reply: "You don't have permission to create BOMs on this server.",
           error: "You don't have permission to create BOMs on this server."
         });
       }
@@ -1431,7 +1442,7 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
     const recordId = action.recordId || action.businessPartnerId;
     try {
       // Session Safety Verification for SAP GUI Operations (only needed when using GUI)
-      const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
+      const useRfc = process.env.SAP_BOM_MODE === 'RFC' || (process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true');
       if (!useRfc && ['copy_bom', 'delete_bom'].includes(action.type)) {
         const currentSelectedUser = getSelectedSapUser();
         const preflight = await ensureSapSession();
@@ -1472,16 +1483,69 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
         executedMessage = `Successfully updated ${entityLabel} ${recordId}${nameVal ? ` (${nameVal})` : ''} in ${actionSystem}.`;
         data = [result.after];
       } else if (action.type === 'create') {
-        result = await createEntityRecord(entityKey, action.payload, credentials, actionSystem);
-        const newId = result.after?.[schema?.idField] || 'new';
-        const nameVal = result.after?.[schema?.nameField] || '';
-        executedMessage = `Successfully created ${entityLabel} ${newId}${nameVal ? ` (${nameVal})` : ''} in ${actionSystem}.`;
-        data = [result.after];
+        if (entityKey === 'bom' && useRfc) {
+          const createParams = action.payload || {};
+          result = await rfcCreateBom({
+            material: createParams.material,
+            plant: createParams.plant,
+            bomUsage: createParams.bomUsage || '1',
+            alternativeBom: createParams.alternativeBom || '01',
+            validFrom: createParams.validFrom,
+            baseQty: createParams.baseQty,
+            baseUnit: createParams.baseUnit,
+            bomStatus: createParams.bomStatus,
+            altText: createParams.altText,
+            components: createParams.components || [],
+            server: req.selectedServer,
+            user: req.user
+          });
+          if (!result.success) {
+            const err = new Error(result.message || 'Create BOM failed via RFC.');
+            err.code = result.code || 'RFC_CREATE_FAILED';
+            throw err;
+          }
+          executedMessage = result.message || `Successfully created BOM for ${createParams.material} in plant ${createParams.plant} via RFC.`;
+          data = [result.after || {
+            material: createParams.material,
+            plant: createParams.plant,
+            alternativeBom: createParams.alternativeBom || '01',
+            bomUsage: createParams.bomUsage || '1',
+            status: 'CREATED_VIA_RFC'
+          }];
+        } else {
+          result = await createEntityRecord(entityKey, action.payload, credentials, actionSystem);
+          const newId = result.after?.[schema?.idField] || 'new';
+          const nameVal = result.after?.[schema?.nameField] || '';
+          executedMessage = `Successfully created ${entityLabel} ${newId}${nameVal ? ` (${nameVal})` : ''} in ${actionSystem}.`;
+          data = [result.after];
+        }
       } else if (action.type === 'delete') {
-        result = await deleteEntityRecord(entityKey, recordId, credentials, actionSystem);
-        const nameVal = result.before?.[schema?.nameField] || '';
-        executedMessage = `Successfully deleted ${entityLabel} ${recordId}${nameVal ? ` (${nameVal})` : ''} in ${actionSystem}.`;
-        data = [];
+        if (entityKey === 'bom' && useRfc) {
+          const deleteParams = action.payload || {};
+          result = await rfcDeleteBom({
+            ...deleteParams,
+            server: req.selectedServer,
+            user: req.user
+          });
+          if (!result.success) {
+            const err = new Error(result.message || 'Delete BOM failed via RFC.');
+            err.code = result.code || 'RFC_DELETE_FAILED';
+            throw err;
+          }
+          executedMessage = result.message || `Successfully deleted BOM for ${deleteParams.material} in plant ${deleteParams.plant} via RFC.`;
+          data = [result.after || {
+            material: deleteParams.material,
+            plant: deleteParams.plant,
+            alternativeBom: deleteParams.alternativeBom,
+            bomUsage: deleteParams.bomUsage,
+            status: 'DELETED_VIA_RFC'
+          }];
+        } else {
+          result = await deleteEntityRecord(entityKey, recordId, credentials, actionSystem);
+          const nameVal = result.before?.[schema?.nameField] || '';
+          executedMessage = `Successfully deleted ${entityLabel} ${recordId}${nameVal ? ` (${nameVal})` : ''} in ${actionSystem}.`;
+          data = [];
+        }
       } else if (action.type === 'retry') {
         result = await retryBackgroundJob(recordId, actionSystem);
         const jobName = result.after?.jobName || '';
@@ -1520,7 +1584,7 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
         executedMessage = `Successfully changed master data for ${entityLabel} ${recordId} in ${actionSystem}.`;
         data = [result.after];
       } else if (action.type === 'copy_bom') {
-        const copyParams = action.payload;
+        const copyParams = action.payload || {};
 
         if (useRfc) {
           result = await rfcCopyBom({
@@ -1530,7 +1594,9 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
             targetPlant: copyParams.target?.plant || copyParams.targetPlant,
             bomUsage: copyParams.target?.bomUsage || copyParams.bomUsage || '1',
             sourceAlternative: copyParams.source?.alternativeBom || copyParams.sourceAltBom || '1',
-            targetAlternative: (copyParams.target?.alternativeBom || copyParams.targetAltBom || '1').match(/\b(\d{1,2})\b/)?.[1]?.padStart(2, '0') || '01'
+            targetAlternative: (copyParams.target?.alternativeBom || copyParams.targetAltBom || '1').match(/\b(\d{1,2})\b/)?.[1]?.padStart(2, '0') || '01',
+            server: req.selectedServer,
+            user: req.user
           });
 
           if (!result.success) {
@@ -1601,10 +1667,14 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
           data = result.createdRecords;
         }
       } else if (action.type === 'delete_bom') {
-        const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
-        const deleteParams = action.payload;
+        const useRfc = process.env.SAP_BOM_MODE === 'RFC' || (process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true');
+        const deleteParams = action.payload || {};
         if (useRfc) {
-          result = await rfcDeleteBom(deleteParams);
+          result = await rfcDeleteBom({
+            ...deleteParams,
+            server: req.selectedServer,
+            user: req.user
+          });
           if (!result.success) {
             const err = new Error(result.message || 'Delete BOM failed via RFC.');
             err.code = result.code || 'RFC_DELETE_FAILED';
@@ -1639,6 +1709,43 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
             bomUsage: deleteParams.bomUsage,
             status: 'DELETED_AND_VERIFIED_VIA_GUI'
           }];
+        }
+      } else if (action.type === 'create_bom') {
+        const useRfc = process.env.SAP_BOM_MODE === 'RFC' || (process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true');
+        const createParams = action.payload || {};
+        if (useRfc) {
+          result = await rfcCreateBom({
+            material: createParams.material,
+            plant: createParams.plant,
+            bomUsage: createParams.bomUsage || '1',
+            alternativeBom: createParams.alternativeBom || '01',
+            validFrom: createParams.validFrom,
+            baseQty: createParams.baseQty,
+            baseUnit: createParams.baseUnit,
+            bomStatus: createParams.bomStatus,
+            altText: createParams.altText,
+            components: createParams.components || [],
+            server: req.selectedServer,
+            user: req.user
+          });
+          if (!result.success) {
+            const err = new Error(result.message || 'Create BOM failed via RFC.');
+            err.code = result.code || 'RFC_CREATE_FAILED';
+            throw err;
+          }
+          executedMessage = result.message || `Successfully created BOM for ${createParams.material} in plant ${createParams.plant} via RFC.`;
+          data = [result.after || {
+            material: createParams.material,
+            plant: createParams.plant,
+            alternativeBom: createParams.alternativeBom || '01',
+            bomUsage: createParams.bomUsage || '1',
+            status: 'CREATED_VIA_RFC'
+          }];
+        } else {
+          result = await createEntityRecord('bom', createParams, credentials, actionSystem);
+          const newId = result.after?.[schema?.idField] || createParams.material || 'new';
+          executedMessage = `Successfully created BOM ${newId} in ${actionSystem}.`;
+          data = [result.after];
         }
       } else {
         throw new Error(`Unknown action type: ${action.type}`);
@@ -1696,7 +1803,7 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
     } catch (execErr) {
       console.error('Error executing confirmed action:', execErr);
       return res.status(200).json({
-        reply: `❌ Execution failed: ${execErr.message}`,
+        reply: `Execution failed: ${execErr.message}`,
         data: null,
         error: true
       });
@@ -1813,6 +1920,8 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
           recordId: clean.targetMaterial,
           payload: { source: clean, target: clean },
           preview,
+          serverId: req.selectedServer?.id,
+          serverName: req.selectedServer?.name,
           sapUsername: req.user?.username || getActiveSapUser() || 'LEELAM_EXT',
           expectedSapUser: getSelectedSapUser() || getActiveSapUser() || null,
           selectedSessionId: getSelectedSapSessionId() || null,
@@ -1910,6 +2019,8 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
       recordId: clean.targetMaterial,
       payload,
       preview,
+      serverId: req.selectedServer?.id,
+      serverName: req.selectedServer?.name,
       sapUsername: req.user?.username || getActiveSapUser() || 'LEELAM_EXT',
       expectedSapUser: getSelectedSapUser() || getActiveSapUser() || null,
       selectedSessionId: getSelectedSapSessionId() || null,
@@ -2050,6 +2161,8 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
       recordId: material,
       payload,
       preview,
+      serverId: req.selectedServer?.id,
+      serverName: req.selectedServer?.name,
       sapUsername: req.user?.username || getActiveSapUser() || 'LEELAM_EXT',
       expectedSapUser: getSelectedSapUser() || getActiveSapUser() || null,
       selectedSessionId: getSelectedSapSessionId() || null,
@@ -2432,6 +2545,8 @@ router.post('/', async (req, res) => {
               recordId: clean.targetMaterial,
               payload,
               preview,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               expectedSapUser: getSelectedSapUser() || username || null,
               selectedSessionId: getSelectedSapSessionId() || null,
@@ -2498,6 +2613,8 @@ router.post('/', async (req, res) => {
               payload,
               preview,
               riskLevel: 3,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               expectedSapUser: getSelectedSapUser() || username || null,
               selectedSessionId: getSelectedSapSessionId() || null,
@@ -2678,6 +2795,8 @@ router.post('/', async (req, res) => {
               businessPartnerId: String(recordId).trim(),
               payload: validation.normalizedChanges,
               preview,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               sourcePrompt: message.trim(),
               systemKey: activeSystem
@@ -2794,6 +2913,8 @@ router.post('/', async (req, res) => {
                   recordId: clean.targetMaterial,
                   payload,
                   preview,
+                  serverId: req.selectedServer?.id,
+                  serverName: req.selectedServer?.name,
                   sapUsername: username,
                   expectedSapUser: getSelectedSapUser() || username || null,
                   selectedSessionId: getSelectedSapSessionId() || null,
@@ -2868,6 +2989,8 @@ router.post('/', async (req, res) => {
               entityKey,
               payload: validation.normalizedFields,
               preview,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               sourcePrompt: message.trim()
             });
@@ -2997,6 +3120,8 @@ router.post('/', async (req, res) => {
               recordId: clean.targetMaterial,
               payload,
               preview,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               expectedSapUser: getSelectedSapUser() || username || null,
               selectedSessionId: getSelectedSapSessionId() || null,
@@ -3156,6 +3281,8 @@ router.post('/', async (req, res) => {
               payload,
               preview,
               riskLevel: 3,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               expectedSapUser: getSelectedSapUser() || username || null,
               selectedSessionId: getSelectedSapSessionId() || null,
@@ -3238,6 +3365,8 @@ router.post('/', async (req, res) => {
                 payload,
                 preview,
                 riskLevel: 3,
+                serverId: req.selectedServer?.id,
+                serverName: req.selectedServer?.name,
                 sapUsername: username,
                 expectedSapUser: getSelectedSapUser() || username || null,
                 selectedSessionId: getSelectedSapSessionId() || null,
@@ -3334,6 +3463,8 @@ router.post('/', async (req, res) => {
               businessPartnerId: String(recordId).trim(),
               payload: {},
               preview,
+              serverId: req.selectedServer?.id,
+              serverName: req.selectedServer?.name,
               sapUsername: username,
               sourcePrompt: message.trim()
             });
@@ -3569,6 +3700,8 @@ router.post('/', async (req, res) => {
             category: diagnosis.category,
             systemKey,
             preview,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });
@@ -3799,6 +3932,8 @@ router.post('/', async (req, res) => {
             category: diagnosis.category,
             systemKey,
             preview,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });
@@ -3974,6 +4109,8 @@ router.post('/', async (req, res) => {
             category: diagnosis.category,
             systemKey,
             preview,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });
@@ -4091,6 +4228,8 @@ router.post('/', async (req, res) => {
             requiresReason: true,
             reason: reason || '',
             systemKey,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });
@@ -4175,6 +4314,8 @@ router.post('/', async (req, res) => {
             requiresReason: true,
             reason,
             systemKey,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });
@@ -4251,6 +4392,8 @@ router.post('/', async (req, res) => {
             requiresReason: true,
             reason,
             systemKey,
+            serverId: req.selectedServer?.id,
+            serverName: req.selectedServer?.name,
             sapUsername: username,
             sourcePrompt: message.trim()
           });

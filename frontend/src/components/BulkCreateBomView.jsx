@@ -20,7 +20,8 @@ import {
   ChevronRight,
   FileCheck,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Info
 } from 'lucide-react';
 import Modal from './Modal';
 import BulkUploadPanel from './BulkUploadPanel';
@@ -34,7 +35,14 @@ import {
   normalizeBomStatus,
   getBomStatusCounts,
   filterBoms,
-  mergeValidationIntoBoms
+  mergeValidationIntoBoms,
+  getBomMessages,
+  BulkBomMessageRow,
+  BulkBomResultBadge,
+  BulkExecutionResultBadge,
+  normalizeExecutionStatus,
+  getExecutionRowMessages,
+  resolveBomGroups
 } from './BulkBomShared';
 import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
 import { SearchInput } from './ui/search-input';
@@ -118,65 +126,20 @@ export default function BulkCreateBomView({
     });
   };
 
-  const getBomMessages = (bom) => {
-    const errorList = [];
-    const warningList = [];
-    const seen = new Set();
-
-    const addError = (msg) => {
-      if (!msg || typeof msg !== 'string') return;
-      const cleaned = cleanDiagnosticMessage(msg);
-      if (cleaned && !seen.has(cleaned)) {
-        seen.add(cleaned);
-        errorList.push(cleaned);
+  const [expandedResultRows, setExpandedResultRows] = useState(new Set());
+  const toggleResultRowExpand = (key) => {
+    setExpandedResultRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
       }
-    };
-
-    const addWarning = (msg) => {
-      if (!msg || typeof msg !== 'string') return;
-      const cleaned = cleanDiagnosticMessage(msg);
-      if (cleaned && !seen.has(cleaned)) {
-        seen.add(cleaned);
-        warningList.push(cleaned);
-      }
-    };
-
-    if (bom.reason) {
-      if (normalizeBomStatus(bom) === 'skipped') addWarning(bom.reason);
-      else addError(bom.reason);
-    }
-    if (bom.message && bom.message !== bom.reason) {
-      if (normalizeBomStatus(bom) === 'skipped') addWarning(bom.message);
-      else addError(bom.message);
-    }
-    if (Array.isArray(bom.errors)) {
-      bom.errors.forEach(addError);
-    }
-    if (Array.isArray(bom.warnings)) {
-      bom.warnings.forEach(addWarning);
-    }
-
-    if (Array.isArray(bom.components)) {
-      bom.components.forEach((c) => {
-        if (Array.isArray(c.errors)) c.errors.forEach(addError);
-        if (typeof c.error === 'string') addError(c.error);
-        if (Array.isArray(c.warnings)) c.warnings.forEach(addWarning);
-        if (typeof c.warning === 'string') addWarning(c.warning);
-      });
-    }
-
-    const all = [
-      ...errorList.map((text) => ({ text, type: 'error' })),
-      ...warningList.map((text) => ({ text, type: 'warning' }))
-    ];
-
-    return {
-      errors: errorList,
-      warnings: warningList,
-      total: all.length,
-      all
-    };
+      return next;
+    });
   };
+
+
 
   // Execution states
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -188,6 +151,11 @@ export default function BulkCreateBomView({
   // Background Job States
   const [activeJobId, setActiveJobId] = useState(initialActiveJobId);
   const [activeJobType, setActiveJobType] = useState(initialActiveJobId ? 'create_preflight' : null);
+  const [jobStatus, setJobStatus] = useState(null);
+  const [queuedReason, setQueuedReason] = useState('');
+  const [watchdogWarning, setWatchdogWarning] = useState('');
+  const [jobError, setJobError] = useState('');
+  const lastProgressRef = useRef({ processed: 0, lastChangedAt: Date.now(), startedAt: Date.now() });
   const [jobCurrentBom, setJobCurrentBom] = useState(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [jobProgress, setJobProgress] = useState(
@@ -252,28 +220,113 @@ export default function BulkCreateBomView({
   };
 
   // Poll a running background job every 3 seconds
-  const startJobPolling = (jobId, type) => {
+  const startJobPolling = (jobId, type, initialStatus = 'RUNNING', initialQueuedReason = '') => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     setActiveJobId(jobId);
     setActiveJobType(type);
     updateJobUrl(jobId);
+    setJobStatus(initialStatus);
+    setQueuedReason(initialQueuedReason);
+    setWatchdogWarning('');
+    setJobError('');
+    lastProgressRef.current = { processed: 0, lastChangedAt: Date.now(), startedAt: Date.now() };
 
     pollIntervalRef.current = setInterval(async () => {
       try {
-        const data = await getBomJob(jobId);
-        if (!data.success || !data.job) return;
-        const job = data.job;
+        const now = Date.now();
+        // 10-minute timeout watchdog
+        if (now - lastProgressRef.current.startedAt >= 600000) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+          setActiveJobId(null);
+          setJobStatus(null);
+          setIsValidating(false);
+          setIsExecuting(false);
+          setIsCancelling(false);
+          updateJobUrl(null);
+          setWatchdogWarning('');
+          setJobError('Operation timed out after 10 minutes. Please check your SAP connection or retry.');
+          return;
+        }
 
-        const pct = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
-        setJobProgress({
+        let data;
+        try {
+          data = await getBomJob(jobId);
+        } catch (apiErr) {
+          const status = apiErr.response?.status;
+          const elapsed = now - (lastProgressRef.current?.startedAt || now);
+          if ((status === 404 || apiErr.message?.includes('not found')) && elapsed >= 10000) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+            setActiveJobId(null);
+            setJobStatus(null);
+            setIsValidating(false);
+            setIsExecuting(false);
+            setIsCancelling(false);
+            updateJobUrl(null);
+            setWatchdogWarning('');
+            setJobError('Job not found. The job may have expired or been removed.');
+            return;
+          }
+          if (status === 404) {
+            // Grace period retry
+            return;
+          }
+          console.warn('Job polling warning:', apiErr.message);
+          return;
+        }
+
+        if (!data || !data.success || !data.job) {
+          const elapsed = now - (lastProgressRef.current?.startedAt || now);
+          if (elapsed >= 10000) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+            setActiveJobId(null);
+            setJobStatus(null);
+            setIsValidating(false);
+            setIsExecuting(false);
+            setIsCancelling(false);
+            updateJobUrl(null);
+            setWatchdogWarning('');
+            setJobError('Job not found. The job may have expired or been removed.');
+            return;
+          }
+          return;
+        }
+
+        const job = data.job;
+        setJobStatus(job.status);
+        if (job.queuedReason) {
+          setQueuedReason(job.queuedReason);
+        }
+
+        // 90-second watchdog warning
+        if (job.status === 'RUNNING') {
+          if (job.processed !== lastProgressRef.current.processed) {
+            lastProgressRef.current.processed = job.processed;
+            lastProgressRef.current.lastChangedAt = now;
+            setWatchdogWarning('');
+          } else if (now - lastProgressRef.current.lastChangedAt >= 90000) {
+            setWatchdogWarning('This is taking longer than expected');
+          }
+        }
+
+        const rawPct = typeof job.progress_percent === 'number'
+          ? job.progress_percent
+          : (job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0);
+        setJobProgress((prev) => ({
           current: job.processed,
           total: job.total,
-          percent: pct,
+          percent: Math.max(prev?.percent || 0, rawPct),
+          currentStep: job.current_step,
+          completedSteps: job.completed_steps ?? job.processed,
+          totalSteps: job.total_steps ?? job.total,
+          startedAt: job.startedAt || job.createdAt || lastProgressRef.current.startedAt,
           successCount: job.successCount || 0,
           failedCount: job.failedCount || 0,
           skippedCount: job.skippedCount || 0,
           notProcessedCount: job.notProcessedCount || 0
-        });
+        }));
         setJobCurrentBom(job.currentBom);
 
         const isFinished = [
@@ -290,7 +343,15 @@ export default function BulkCreateBomView({
           pollIntervalRef.current = null;
           setActiveJobId(null);
           setIsCancelling(false);
+          setWatchdogWarning('');
           updateJobUrl(null);
+
+          if (job.status === 'INTERRUPTED') {
+            setIsValidating(false);
+            setIsExecuting(false);
+            setJobError('The job was interrupted. Please upload again.');
+            return;
+          }
 
           if (type === 'create_preflight') {
             setIsValidating(false);
@@ -301,18 +362,24 @@ export default function BulkCreateBomView({
             } else {
               const mergedBoms = mergeValidationIntoBoms(parsedBoms, job.results);
               setParsedBoms(mergedBoms);
+              const counts = getBomStatusCounts(mergedBoms, true);
               setPreflightReport({
                 success: true,
                 totalBoms: mergedBoms.length,
-                readyCount: job.successCount,
-                skippedCount: job.skippedCount,
-                invalidCount: job.failedCount,
+                readyCount: counts.ready,
+                skippedCount: counts.skipped,
+                invalidCount: counts.errors,
                 boms: mergedBoms
               });
               setActiveStep(2);
             }
           } else if (type === 'create_bulk') {
             setIsExecuting(false);
+            setActiveStep(3);
+            const rawResults = job.results || [];
+            const bomsCreated = rawResults.filter((r) => normalizeExecutionStatus(r) === 'CREATED').length;
+            const skippedCount = rawResults.filter((r) => normalizeExecutionStatus(r) === 'SKIPPED').length;
+            const failedCount = rawResults.filter((r) => normalizeExecutionStatus(r) === 'FAILED').length;
             setExecutionReport({
               success: job.status === 'COMPLETED',
               status: job.status,
@@ -323,23 +390,23 @@ export default function BulkCreateBomView({
                   : job.status === 'STOPPED_ON_CONNECTION_DROP'
                   ? 'Execution stopped: SAP connection dropped. Remaining BOMs marked not processed.'
                   : 'Bulk BOM creation finished.'),
-              totalProcessed: job.total,
-              bomsCreated: job.successCount,
-              componentsCreated: (job.results || []).reduce(
+              totalProcessed: rawResults.length,
+              bomsCreated,
+              componentsCreated: rawResults.reduce(
                 (acc, r) => acc + (r.componentsCount || 0),
                 0
               ),
-              skippedCount: job.skippedCount,
-              failedCount: job.failedCount,
+              skippedCount,
+              failedCount,
               notProcessedCount: job.notProcessedCount || 0,
-              results: job.results || []
+              results: rawResults
             });
           }
         }
       } catch (pollErr) {
         console.warn('Job polling warning:', pollErr.message);
       }
-    }, 3000);
+    }, 1000);
   };
 
   // Reconnect to in-flight active job on page mount/reload
@@ -373,6 +440,7 @@ export default function BulkCreateBomView({
                 return;
               } else if (job.type === 'create_bulk') {
                 setIsExecuting(true);
+                setActiveStep(3);
                 startJobPolling(job.jobId, 'create_bulk');
                 return;
               }
@@ -388,6 +456,7 @@ export default function BulkCreateBomView({
           startJobPolling(job.jobId, 'create_preflight');
         } else if (job.type === 'create_bulk') {
           setIsExecuting(true);
+          setActiveStep(3);
           startJobPolling(job.jobId, 'create_bulk');
         }
       } catch (err) {
@@ -425,6 +494,7 @@ export default function BulkCreateBomView({
     setPreflightReport(null);
     setParseError('');
     setExpandedMessageBoms(new Set());
+    setExpandedResultRows(new Set());
     setCurrentPage(1);
     setIsExecuting(false);
     setActiveJobId(null);
@@ -438,19 +508,47 @@ export default function BulkCreateBomView({
   const handleRetryFailedRows = async () => {
     if (!executionReport || !executionReport.results) return;
     const failedResults = executionReport.results.filter(
-      (r) => r.status === 'FAILED' || r.status === 'ERROR'
+      (r) => normalizeExecutionStatus(r) === 'FAILED'
     );
-    const failedSequenceNums = new Set(failedResults.map((r) => String(r.sequenceNum || r.id)));
-    const failedItems = parsedBoms.filter((b) =>
-      failedSequenceNums.has(String(b.sequenceNum || b.id))
-    );
+    if (failedResults.length === 0) return;
 
-    const itemsToRetry = failedItems.length > 0
-      ? failedItems
-      : failedResults.map((r) => r.input || r);
+    const failedMats = new Set(failedResults.map((r) => String(r.material || '').trim().toUpperCase()));
+    const failedSequenceNums = new Set(failedResults.map((r) => String(r.sequenceNum || r.id)));
+
+    // Resolve groups from the original parsed BOMs (or execution inputs)
+    const sourceBoms = parsedBoms.length > 0 ? parsedBoms : executionReport.results.map((r) => r.input || r);
+    const groups = resolveBomGroups(sourceBoms);
+
+    // Identify groups that had at least one failure
+    const failedGroups = groups.filter((g) => {
+      return g.members.some((m) => {
+        const mat = String(m.material || '').trim().toUpperCase();
+        const seq = String(m.sequenceNum || m.id);
+        return failedMats.has(mat) || failedSequenceNums.has(seq);
+      });
+    });
+
+    // Retry failed group as a whole: its failed and blocked rows together, excluding already-created rows
+    const itemsToRetry = [];
+    failedGroups.forEach((g) => {
+      g.members.forEach((m) => {
+        const mat = String(m.material || '').trim().toUpperCase();
+        const execRow = executionReport.results.find((r) => String(r.material || '').trim().toUpperCase() === mat);
+        const normStatus = execRow ? normalizeExecutionStatus(execRow) : 'FAILED';
+        if (normStatus === 'FAILED' || normStatus === 'SKIPPED') {
+          itemsToRetry.push({
+            ...(m.input || m),
+            status: 'Ready',
+            errors: [],
+            warnings: []
+          });
+        }
+      });
+    });
 
     if (itemsToRetry.length === 0) return;
 
+    setExpandedResultRows(new Set());
     setParsedBoms(itemsToRetry);
     setExecutionReport(null);
     setActiveStep(3);
@@ -472,7 +570,7 @@ export default function BulkCreateBomView({
         options: { fileName: fileName || 'retry_failed_rows.xlsx' }
       });
       if (res.success && res.jobId) {
-        startJobPolling(res.jobId, 'create_bulk');
+        startJobPolling(res.jobId, 'create_bulk', res.status || 'RUNNING', res.queuedReason || '');
       }
     } catch (err) {
       setParseError(err.message || 'Failed to retry failed rows.');
@@ -547,7 +645,7 @@ export default function BulkCreateBomView({
           skippedCount: 0,
           notProcessedCount: 0
         });
-        startJobPolling(res.jobId, 'create_preflight');
+        startJobPolling(res.jobId, 'create_preflight', res.status || 'RUNNING', res.queuedReason || '');
       } else {
         setParseError(res.message || 'Failed to start data validation job.');
         setIsValidating(false);
@@ -619,7 +717,7 @@ export default function BulkCreateBomView({
           skippedCount: 0,
           notProcessedCount: 0
         });
-        startJobPolling(res.jobId, 'create_bulk');
+        startJobPolling(res.jobId, 'create_bulk', res.status || 'RUNNING', res.queuedReason || '');
       } else {
         setParseError(res.message || 'Failed to start bulk creation job.');
         setIsExecuting(false);
@@ -707,7 +805,51 @@ export default function BulkCreateBomView({
         {executionReport ? (
           <div>
             {/* Success / Partial / Failed Banner */}
-            {executionReport.failedCount === 0 ? (
+            {executionReport.failedCount > 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--color-danger-bg, #FEF3F2)',
+                  border: '1px solid var(--color-danger-border, #FECDCA)',
+                  color: 'var(--color-danger, #B42318)',
+                  marginBottom: 24
+                }}
+              >
+                <AlertCircle size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed with Issues</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    Created {executionReport.bomsCreated} BOM(s); {executionReport.failedCount} failed and {executionReport.skippedCount} were skipped.
+                  </p>
+                </div>
+              </div>
+            ) : executionReport.skippedCount > 0 ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 20px',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--color-info-bg, #F0F9FF)',
+                  border: '1px solid var(--color-info-border, #B9E6FE)',
+                  color: 'var(--color-blue-600, #02579A)',
+                  marginBottom: 24
+                }}
+              >
+                <Info size={24} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed with Skipped Rows</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    Created {executionReport.bomsCreated} BOM(s); {executionReport.skippedCount} were skipped.
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div
                 style={{
                   display: 'flex',
@@ -724,30 +866,8 @@ export default function BulkCreateBomView({
                 <CheckCircle2 size={24} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed Successfully</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
                     Created {executionReport.bomsCreated} BOM(s) and {executionReport.componentsCreated} component(s) across {executionReport.totalProcessed} total entries.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--sap-warning-bg)',
-                  border: '1px solid var(--sap-warning-border)',
-                  color: 'var(--sap-warning)',
-                  marginBottom: 24
-                }}
-              >
-                <AlertTriangle size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed with Issues</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                    Created {executionReport.bomsCreated} BOM(s); {executionReport.failedCount} failed and {executionReport.skippedCount} were skipped.
                   </p>
                 </div>
               </div>
@@ -770,13 +890,13 @@ export default function BulkCreateBomView({
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
                 <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Total Components</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-blue-600, #02579A)' }}>
                   {executionReport.componentsCreated}
                 </div>
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
                 <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Skipped (Existing)</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-warning)' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-secondary, #4A5F77)' }}>
                   {executionReport.skippedCount}
                 </div>
               </div>
@@ -827,65 +947,132 @@ export default function BulkCreateBomView({
               }
               className="mb-6"
             >
-              <div className="sap-table-container fiori-table-wrapper" style={{ maxHeight: 380 }}>
-                <table className="sap-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}>
+              <div
+                className="sap-table-container fiori-table-wrapper"
+                data-testid="execution-details-table-container"
+                style={{ maxHeight: 380, overflowX: 'hidden' }}
+              >
+                <table
+                  className="sap-table"
+                  data-testid="execution-details-table"
+                  style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
+                >
                   <colgroup>
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '22%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '16%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '30%' }} />
+                    <col style={{ width: 50 }} />
+                    <col style={{ width: 140 }} />
+                    <col style={{ width: 70 }} />
+                    <col style={{ width: 55 }} />
+                    <col style={{ width: 50 }} />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 105 }} />
+                    <col style={{ width: 'auto' }} />
                   </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ width: 60, textAlign: 'center' }}>Seq</th>
-                      <th style={{ minWidth: 140 }}>Material</th>
-                      <th style={{ width: 80 }}>Plant</th>
-                      <th style={{ width: 60, textAlign: 'center' }}>Usage</th>
-                      <th style={{ width: 60, textAlign: 'center' }}>Alt</th>
-                      <th style={{ minWidth: 140 }}>BOM Number</th>
-                      <th style={{ width: 100, textAlign: 'center' }}>Status</th>
-                      <th style={{ minWidth: 240 }}>Message / Details</th>
+                      <th style={{ width: 50, textAlign: 'center' }}>Seq</th>
+                      <th style={{ width: 140 }}>Material</th>
+                      <th style={{ width: 70 }}>Plant</th>
+                      <th style={{ width: 55, textAlign: 'center' }}>Usage</th>
+                      <th style={{ width: 50, textAlign: 'center' }}>Alt</th>
+                      <th style={{ width: 120 }}>BOM Number</th>
+                      <th style={{ width: 105, textAlign: 'center' }}>Status</th>
+                      <th style={{ width: 'auto' }}>Message / Details</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(executionReport.results || []).map((row, idx) => (
-                      <tr key={idx}>
-                        <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }}>{row.sequenceNum}</td>
-                        <td style={{ fontWeight: 600 }}>{row.material}</td>
-                        <td>{row.plant}</td>
-                        <td style={{ textAlign: 'center' }}>{row.bomUsage}</td>
-                        <td style={{ textAlign: 'center' }}>{row.alternativeBom}</td>
-                        <td>{row.bomNumber || '-'}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span
-                            className={`sap-badge ${
-                              row.status === 'SUCCESS'
-                                ? 'sap-badge-success'
-                                : row.status === 'PARTIAL'
-                                ? 'sap-badge-warning'
-                                : row.status === 'SKIPPED'
-                                ? 'sap-badge-info'
-                                : 'sap-badge-warning'
-                            }`}
+                    {(executionReport.results || []).map((row, idx) => {
+                      const rowKey = String(row.sequenceNum || row.id || idx);
+                      const normStatus = normalizeExecutionStatus(row);
+                      const messages = getExecutionRowMessages(row);
+                      const isExpanded = expandedResultRows.has(rowKey);
+                      const visibleMessages = isExpanded ? messages : messages.slice(0, 3);
+                      const hiddenCount = messages.length - 3;
+
+                      return (
+                        <tr key={rowKey} data-testid={`execution-row-${idx}`}>
+                          <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)', verticalAlign: 'top', paddingTop: 10 }}>
+                            {row.sequenceNum || idx + 1}
+                          </td>
+                          <td style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: 10, wordBreak: 'break-all' }}>
+                            {row.material}
+                          </td>
+                          <td style={{ verticalAlign: 'top', paddingTop: 10 }}>{row.plant}</td>
+                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.bomUsage}</td>
+                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.alternativeBom}</td>
+                          <td style={{ verticalAlign: 'top', paddingTop: 10, fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
+                            {row.bomNumber || '-'}
+                          </td>
+                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }}>
+                            <BulkExecutionResultBadge status={normStatus} />
+                          </td>
+                          <td
+                            className="bulk-execution-msg-cell"
+                            style={{
+                              verticalAlign: 'top',
+                              paddingTop: 8,
+                              paddingBottom: 8,
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              overflowWrap: 'anywhere'
+                            }}
                           >
-                            {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1).toLowerCase() : ''}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: 12 }}>
-                          {row.discrepancies?.length > 0 ? (
-                            <span style={{ color: 'var(--sap-warning)' }}>
-                              Discrepancies: {row.discrepancies.join(', ')}
-                            </span>
-                          ) : (
-                            row.message
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            <div className="bulk-execution-msg-container" style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                              {visibleMessages.map((m, mIdx) => (
+                                <div
+                                  key={mIdx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: 6,
+                                    fontSize: 12,
+                                    lineHeight: 1.45,
+                                    color:
+                                      m.type === 'error'
+                                        ? 'var(--color-danger)'
+                                        : (normStatus === 'FAILED' || normStatus === 'INVALID')
+                                        ? 'var(--sap-text-muted, #64748B)'
+                                        : 'var(--sap-text)'
+                                  }}
+                                >
+                                  {m.type === 'error' ? (
+                                    <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-danger)' }} />
+                                  ) : m.type === 'warning' ? (
+                                    <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-warning, #d97706)' }} />
+                                  ) : (normStatus === 'FAILED' || normStatus === 'INVALID' || m.type === 'info') ? (
+                                    <Info size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--sap-text-muted, #7A8CA3)' }} />
+                                  ) : (
+                                    <CheckCircle2 size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-success)' }} />
+                                  )}
+                                  <span style={{ flex: 1, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.text}</span>
+                                </div>
+                              ))}
+
+                              {messages.length > 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleResultRowExpand(rowKey)}
+                                  className="sap-link"
+                                  style={{
+                                    alignSelf: 'flex-start',
+                                    marginTop: 2,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    color: 'var(--color-primary, var(--sap-brand))',
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline'
+                                  }}
+                                >
+                                  {isExpanded ? 'Show less' : `Show ${hiddenCount} more`}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -956,7 +1143,83 @@ export default function BulkCreateBomView({
                   onCancelJob={handleCancelJob}
                   validationLabel="Validating data in SAP"
                   executionLabel="Creating BOMs in SAP"
+                  jobStatus={jobStatus}
+                  queuedReason={queuedReason}
+                  watchdogWarning={watchdogWarning}
                 />
+
+                {/* Job Error or Interrupted Alert in Step 2 */}
+                {jobStatus === 'INTERRUPTED' && (
+                  <div
+                    className="rx-alert rx-alert-danger sap-alert"
+                    style={{
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      borderRadius: 'var(--radius-md, 8px)',
+                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                      border: '1px solid var(--color-danger-border, #FECDCA)',
+                      color: 'var(--color-danger, #B42318)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger, #B42318)' }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>
+                        The job was interrupted. Please upload again.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-secondary rx-btn-sm"
+                      onClick={handleReset}
+                      style={{
+                        height: 'var(--size-button-sm-height, 32px)',
+                        padding: '0 12px',
+                        borderRadius: 'var(--radius-md, 8px)'
+                      }}
+                    >
+                      Upload Again
+                    </button>
+                  </div>
+                )}
+
+                {jobError && (
+                  <div
+                    className="rx-alert rx-alert-danger sap-alert"
+                    style={{
+                      padding: '12px 16px',
+                      marginBottom: 16,
+                      borderRadius: 'var(--radius-md, 8px)',
+                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+                      border: '1px solid var(--color-danger-border, #FECDCA)',
+                      color: 'var(--color-danger, #B42318)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500 }}>{jobError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="rx-btn rx-btn-secondary rx-btn-sm"
+                      onClick={() => setJobError('')}
+                      style={{
+                        height: 'var(--size-button-sm-height, 32px)',
+                        padding: '0 12px',
+                        borderRadius: 'var(--radius-md, 8px)'
+                      }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
 
                 {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
                 {hasValidated && activeStep > 1 && (
@@ -1128,42 +1391,41 @@ export default function BulkCreateBomView({
                       className="sap-table preflight-preview-table"
                       style={{
                         width: '100%',
-                        minWidth: 1080,
                         tableLayout: 'fixed',
                         borderCollapse: 'collapse',
                         fontSize: 12.5
                       }}
                     >
                       <colgroup>
-                        <col style={{ width: 48 }} />
-                        <col style={{ width: 170 }} />
-                        <col style={{ width: 64 }} />
-                        <col style={{ width: 54 }} />
-                        <col style={{ width: 48 }} />
-                        <col style={{ width: 104 }} />
-                        <col style={{ width: 76 }} />
-                        <col style={{ width: 58 }} />
-                        <col style={{ width: 48 }} />
-                        <col style={{ width: 170 }} />
-                        <col style={{ width: 70 }} />
-                        <col style={{ width: 220 }} />
+                        <col style={{ width: '4%' }} />
+                        <col style={{ width: '14%' }} />
+                        <col style={{ width: '5%' }} />
+                        <col style={{ width: '5%' }} />
+                        <col style={{ width: '4%' }} />
+                        <col style={{ width: '9%' }} />
+                        <col style={{ width: '6%' }} />
+                        <col style={{ width: '5%' }} />
+                        <col style={{ width: '4%' }} />
+                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '6%' }} />
+                        <col style={{ width: '22%' }} />
                       </colgroup>
                       <thead>
                         <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--color-blue-200)' }}>
-                          <th className="col-seq" title="Sequence Number" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Seq</th>
-                          <th className="col-material" title="Material Number" style={{ width: 170, textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Material</th>
-                          <th className="col-plant" title="Plant" style={{ width: 64, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Plant</th>
-                          <th className="col-usage col-usage-narrow narrow-usage" title="BOM Usage" style={{ width: 54, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>
+                          <th className="col-seq" title="Sequence Number" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Seq</th>
+                          <th className="col-material" title="Material Number" style={{ width: '14%', textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Material</th>
+                          <th className="col-plant" title="Plant" style={{ width: '5%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Plant</th>
+                          <th className="col-usage col-usage-narrow narrow-usage" title="BOM Usage" style={{ width: '5%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>
                             Usage
                           </th>
-                          <th className="col-alt" title="Alternative BOM" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Alt</th>
-                          <th className="col-valid-from" title="Valid From Date" style={{ width: 104, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Valid From</th>
-                          <th className="col-base-qty" title="Base Quantity" style={{ width: 76, textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Base Qty</th>
-                          <th className="col-bom-status col-status" title="BOM Status" style={{ width: 58, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Status</th>
-                          <th className="col-item-cat col-cat" title="Item Category" style={{ width: 48, textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Cat</th>
-                          <th className="col-component" title="Component Material" style={{ width: 170, textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Component</th>
-                          <th className="col-qty" title="Component Quantity" style={{ width: 70, textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Qty</th>
-                          <th className="col-result" title="Validation Result" style={{ width: 220, textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
+                          <th className="col-alt" title="Alternative BOM" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Alt</th>
+                          <th className="col-valid-from" title="Valid From Date" style={{ width: '9%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Valid From</th>
+                          <th className="col-base-qty" title="Base Quantity" style={{ width: '6%', textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Base Qty</th>
+                          <th className="col-bom-status col-status" title="BOM Status" style={{ width: '5%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Status</th>
+                          <th className="col-item-cat col-cat" title="Item Category" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Cat</th>
+                          <th className="col-component" title="Component Material" style={{ width: '16%', textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Component</th>
+                          <th className="col-qty" title="Component Quantity" style={{ width: '6%', textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Qty</th>
+                          <th className="col-result" title="Validation Result" style={{ width: '22%', textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1212,7 +1474,6 @@ export default function BulkCreateBomView({
                                         className="col-material"
                                         title={bom.material}
                                         style={{
-                                          width: 170,
                                           maxWidth: '20ch',
                                           padding: '6px 8px',
                                           fontWeight: 600,
@@ -1285,7 +1546,6 @@ export default function BulkCreateBomView({
                                         rowSpan={span}
                                         className="col-valid-from"
                                         style={{
-                                          width: 104,
                                           textAlign: 'center',
                                           padding: '6px 4px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
@@ -1347,7 +1607,6 @@ export default function BulkCreateBomView({
                                         className="col-component"
                                         title={comp.component || ''}
                                         style={{
-                                          width: 170,
                                           maxWidth: '20ch',
                                           padding: '6px 8px',
                                           fontFamily: 'monospace, monospace',
@@ -1380,140 +1639,20 @@ export default function BulkCreateBomView({
                                         {comp.quantity ?? '-'}
                                       </td>
 
-                                      {/* 12. Result Badge with reason & click popover */}
+                                      {/* 12. Result Badge only */}
                                       <td
                                         rowSpan={span}
                                         className="col-result"
                                         style={{
-                                          width: 220,
-                                          minWidth: 200,
-                                          maxWidth: 240,
-                                          textAlign: 'left',
-                                          padding: '6px 8px',
+                                          textAlign: 'center',
+                                          padding: '6px 6px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           verticalAlign: 'middle',
                                           boxSizing: 'border-box'
                                         }}
                                       >
-                                        {!hasValidated || normStatus === 'not_validated' ? (
-                                          <span
-                                            className="sap-badge sap-badge-neutral"
-                                            style={{
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: 5,
-                                              fontSize: 11,
-                                              padding: '3px 8px',
-                                              whiteSpace: 'nowrap'
-                                            }}
-                                          >
-                                            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-text-muted, #7A8CA3)' }} />
-                                            <span>Not validated</span>
-                                          </span>
-                                        ) : normStatus === 'ready' ? (
-                                          <span
-                                            className="sap-badge sap-badge-success"
-                                            style={{
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: 5,
-                                              fontSize: 11,
-                                              padding: '3px 8px',
-                                              whiteSpace: 'nowrap'
-                                            }}
-                                          >
-                                            <CheckCircle2 size={13} style={{ color: 'var(--color-success, #15803D)' }} />
-                                            <span>Ready</span>
-                                          </span>
-                                        ) : normStatus === 'error' ? (
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 204 }}>
-                                            <span
-                                              className="sap-badge sap-badge-danger"
-                                              style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 5,
-                                                fontSize: 11,
-                                                padding: '3px 8px',
-                                                alignSelf: 'flex-start',
-                                                whiteSpace: 'nowrap',
-                                                backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                                                color: 'var(--color-danger, #B42318)',
-                                                border: '1px solid var(--color-danger-border, #FECDCA)'
-                                              }}
-                                            >
-                                              <AlertCircle size={13} />
-                                              <span>Failed</span>
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => setErrorPopoverBom({
-                                                material: bom.material,
-                                                plant: bom.plant,
-                                                bomUsage: bom.bomUsage,
-                                                errors: allErrors
-                                              })}
-                                              title={allErrors.join(' | ') || primaryReason}
-                                              style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                padding: 0,
-                                                margin: 0,
-                                                textAlign: 'left',
-                                                cursor: 'pointer',
-                                                fontSize: '11px',
-                                                color: 'var(--color-danger, #B42318)',
-                                                opacity: 0.9,
-                                                lineHeight: 1.3,
-                                                display: 'block',
-                                                maxWidth: 204,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap'
-                                              }}
-                                            >
-                                              {primaryReason}
-                                              {allErrors.length > 1 && (
-                                                <span style={{ fontWeight: 600, marginLeft: 4, textDecoration: 'underline' }}>
-                                                  +{allErrors.length - 1} more
-                                                </span>
-                                              )}
-                                            </button>
-                                          </div>
-                                        ) : normStatus === 'skipped' ? (
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 204 }}>
-                                            <span
-                                              className="sap-badge sap-badge-warning"
-                                              style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: 5,
-                                                fontSize: 11,
-                                                padding: '3px 8px',
-                                                alignSelf: 'flex-start',
-                                                whiteSpace: 'nowrap'
-                                              }}
-                                            >
-                                              <AlertTriangle size={13} />
-                                              <span>Skipped</span>
-                                            </span>
-                                            <span
-                                              title={bom.reason || bom.message || 'BOM already exists'}
-                                              style={{
-                                                fontSize: '11px',
-                                                color: 'var(--color-warning, #B45309)',
-                                                lineHeight: 1.3,
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                                maxWidth: 204
-                                              }}
-                                            >
-                                              {bom.reason || bom.message || 'BOM already exists'}
-                                            </span>
-                                          </div>
-                                        ) : null}
+                                        <BulkBomResultBadge status={normStatus} hasValidated={hasValidated} />
                                       </td>
                                     </tr>
                                   );
@@ -1580,67 +1719,13 @@ export default function BulkCreateBomView({
                               })}
 
                               {/* Message Row if BOM has errors, warnings, or an existence note */}
-                              {messages.total > 0 && (
-                                <tr className="bom-messages-row" key={`bom-${bomKey}-messages`}>
-                                  <td
-                                    colSpan={12}
-                                    style={{
-                                      whiteSpace: 'normal',
-                                      padding: '8px 16px',
-                                      backgroundColor: 'var(--sap-surface-subtle, #f8fafc)',
-                                      borderTop: '1px dashed var(--sap-border-subtle, #e2e8f0)',
-                                      borderBottom: '2px solid var(--sap-border, #cbd5e1)',
-                                      fontSize: 12,
-                                      lineHeight: 1.45
-                                    }}
-                                  >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                      {(isMessagesExpanded ? messages.all : messages.all.slice(0, 3)).map((item, mIdx) => (
-                                        <div
-                                          key={mIdx}
-                                          className={`bom-msg-item bom-msg-${item.type}`}
-                                          style={{
-                                            color: item.type === 'error' ? 'var(--sap-error-text, #b45309)' : 'var(--sap-warning, #d97706)',
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: 6
-                                          }}
-                                        >
-                                          <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
-                                            {item.type === 'error' ? (
-                                              <AlertCircle size={13} style={{ color: 'var(--sap-error-text, #b45309)' }} />
-                                            ) : (
-                                              <AlertTriangle size={13} style={{ color: 'var(--sap-warning, #d97706)' }} />
-                                            )}
-                                          </span>
-                                          <span style={{ wordBreak: 'break-word', color: 'var(--sap-text-dark, #0f172a)' }}>{item.text}</span>
-                                        </div>
-                                      ))}
-                                      {messages.all.length > 3 && (
-                                        <div style={{ marginTop: 2 }}>
-                                          <button
-                                            type="button"
-                                            className="toggle-messages-btn"
-                                            onClick={() => toggleMessageExpand(bomKey)}
-                                            style={{
-                                              background: 'none',
-                                              border: 'none',
-                                              color: 'var(--sap-link, #0070f2)',
-                                              cursor: 'pointer',
-                                              padding: '2px 0',
-                                              fontSize: 11,
-                                              fontWeight: 600,
-                                              textDecoration: 'underline'
-                                            }}
-                                          >
-                                            {isMessagesExpanded ? 'Show less' : `+${messages.all.length - 3} more`}
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
+                              <BulkBomMessageRow
+                                messages={messages}
+                                bomKey={bomKey}
+                                isExpanded={isMessagesExpanded}
+                                onToggleExpand={toggleMessageExpand}
+                                colSpan={12}
+                              />
                             </React.Fragment>
                           );
                         })}
@@ -1676,10 +1761,10 @@ export default function BulkCreateBomView({
                         <span className="sap-badge sap-badge-success" style={{ fontSize: 12, padding: '4px 10px' }}>
                           Ready: {statusCounts.ready}
                         </span>
-                        <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                        <span className="sap-badge sap-badge-neutral" style={{ fontSize: 12, padding: '4px 10px' }}>
                           Skipped (Existing): {statusCounts.skipped}
                         </span>
-                        <span className="sap-badge sap-badge-warning" style={{ fontSize: 12, padding: '4px 10px' }}>
+                        <span className="sap-badge sap-badge-danger" style={{ fontSize: 12, padding: '4px 10px' }}>
                           Invalid: {statusCounts.errors}
                         </span>
                       </>

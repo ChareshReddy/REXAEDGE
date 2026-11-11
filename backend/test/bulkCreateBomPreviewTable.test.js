@@ -497,8 +497,8 @@ try {
   // 2. Alternative 01 is currently active
   // 3. Engineering flag set without active ECN
   // Total unique = 6 messages.
-  // First 3 are shown, and a '+3 more' toggle button is displayed!
-  assert(htmlErrors.includes('+3 more'), 'BOM with 6 messages must show first 3 and "+3 more" toggle button');
+  // First 3 are shown, and a 'Show 3 more' toggle button is displayed!
+  assert(htmlErrors.includes('Show 3 more') || htmlErrors.includes('+3 more'), 'BOM with 6 messages must show first 3 and "Show 3 more" toggle button');
   assert(htmlErrors.includes('toggle-messages-btn'), 'Toggle button must have toggle-messages-btn class');
 
   // Verify de-duplication: duplicate message text appears only once

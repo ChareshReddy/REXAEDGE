@@ -22,6 +22,7 @@ import { FieldWrapper } from './ui/FieldWrapper';
 import { Input } from './ui/input';
 import { PageContainer } from './layout';
 import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
+import { checkFieldExistence } from '../services/fieldValidationService';
 
 export default function ValidateBomView({
   systemKey = 'DEV',
@@ -41,6 +42,7 @@ export default function ValidateBomView({
   const [touched, setTouched] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const userInteractedRef = React.useRef({});
+  const validationSeqRef = React.useRef({});
 
   const handleUserInteraction = (field) => {
     userInteractedRef.current[field] = true;
@@ -51,7 +53,20 @@ export default function ValidateBomView({
     setFieldErrors({});
     setIsSubmitted(false);
     userInteractedRef.current = {};
+    validationSeqRef.current = {};
   }, [systemKey]);
+
+  useEffect(() => {
+    const handleServerChanged = () => {
+      setTouched({});
+      setFieldErrors({});
+      setIsSubmitted(false);
+      userInteractedRef.current = {};
+      validationSeqRef.current = {};
+    };
+    window.addEventListener('sap-server-changed', handleServerChanged);
+    return () => window.removeEventListener('sap-server-changed', handleServerChanged);
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMsg, _setErrorMsg] = useState('');
@@ -73,15 +88,30 @@ export default function ValidateBomView({
     };
   }, [isLoading]);
 
-  const handleBlur = (field, ruleKey, isRequired) => {
-    if (!userInteractedRef.current[field]) return;
+  const handleBlur = async (field, ruleKey, isRequired) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     const val = formData[field];
     const res = validateField(ruleKey, val, isRequired);
     if (!res.valid) {
       setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
-    } else {
-      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: false }));
+
+    if (val && val.trim() && (ruleKey === 'material' || ruleKey === 'plant')) {
+      const curVal = val.trim();
+      validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
+      const seq = validationSeqRef.current[field];
+      const existRes = await checkFieldExistence({
+        kind: ruleKey,
+        value: curVal,
+        plant: formData.plant,
+        serverId: systemKey
+      });
+      if (validationSeqRef.current[field] !== seq || formData[field]?.trim() !== curVal) return;
+      if (!existRes.valid && existRes.error) {
+        setFieldErrors((prev) => ({ ...prev, [field]: existRes.error }));
+      }
     }
   };
 
@@ -111,6 +141,31 @@ export default function ValidateBomView({
     if (!altRes.valid) {
       errors.alternativeBom = altRes.error;
       missing.push(altRes.error);
+    }
+
+    // Check existence if format passed
+    if (!errors.material && formData.material.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: formData.material.trim(),
+        plant: formData.plant,
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.material = existRes.error;
+        missing.push(existRes.error);
+      }
+    }
+    if (!errors.plant && formData.plant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: formData.plant.trim(),
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.plant = existRes.error;
+        missing.push(existRes.error);
+      }
     }
 
     if (missing.length > 0) {
@@ -154,6 +209,10 @@ export default function ValidateBomView({
       alternativeBom: ''
     });
     setFieldErrors({});
+    setTouched({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+    validationSeqRef.current = {};
     setResult(null);
     setErrorMsg('');
   };
@@ -210,7 +269,6 @@ export default function ValidateBomView({
                         }}
                         hasError={Boolean((touched.material || isSubmitted) && fieldErrors.material)} onPointerDown={() => handleUserInteraction('material')} onKeyDown={() => handleUserInteraction('material')}
                         aria-label="Validate Material"
-                        autoFocus
                       />
                     </FieldWrapper>
 
@@ -256,7 +314,7 @@ export default function ValidateBomView({
                     </FieldWrapper>
 
                     <FieldWrapper
-                      label="Alternative BOM (optional)"
+                      label="Alternative BOM"
                       htmlFor="valAlternativeBom"
                       error={(touched.alternativeBom || isSubmitted) ? fieldErrors.alternativeBom || null : null}
                     >

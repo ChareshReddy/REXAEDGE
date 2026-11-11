@@ -165,7 +165,7 @@ class BomJobRepository {
   }
 
   async _saveFileJobs(jobsList) {
-    this._writeMutex = this._writeMutex.then(async () => {
+    this._writeMutex = this._writeMutex.catch(() => {}).then(async () => {
       let tempFile = null;
       try {
         const dir = path.dirname(JOB_SUMMARIES_FILE);
@@ -185,7 +185,12 @@ class BomJobRepository {
             renamed = true;
             break;
           } catch (renameErr) {
-            if (attempt === 4) throw renameErr;
+            if (attempt === 4) {
+              // Fallback to direct write if rename is locked by Windows file watcher
+              fs.writeFileSync(JOB_SUMMARIES_FILE, content, 'utf-8');
+              renamed = true;
+              break;
+            }
             await new Promise((r) => setTimeout(r, 25));
           }
         }
@@ -213,14 +218,13 @@ class BomJobRepository {
           .from('bom_jobs')
           .upsert(row, { onConflict: 'id' });
         if (error) throw error;
-        return this._normalizeJobFromRow(row);
       } catch (err) {
         console.warn('[bomJobRepository] DB upsert failed, using file fallback:', err.message);
         this.tableAvailable = false;
       }
     }
 
-    // File Store Fallback
+    // Always maintain atomic file store (dual-write) for resilience across restarts and offline mode
     const list = this._loadFileJobs();
     const existingIdx = list.findIndex((j) => (j.jobId || j.id) === (job.jobId || job.id));
     const cleanJob = {
@@ -237,7 +241,7 @@ class BomJobRepository {
     }
 
     await this._saveFileJobs(list);
-    return cleanJob;
+    return isDb ? this._normalizeJobFromRow(row) : cleanJob;
   }
 
   async getJob(jobId) {
@@ -414,9 +418,14 @@ class BomJobRepository {
     const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
     const isDb = await this._checkTableAvailability();
 
+    // NEVER delete queued or running jobs, regardless of timestamp
     if (isDb) {
       try {
-        await liveSupabase.from('bom_jobs').delete().lt('created_at', cutoffDate);
+        await liveSupabase
+          .from('bom_jobs')
+          .delete()
+          .lt('created_at', cutoffDate)
+          .not('status', 'in', '("queued","running","QUEUED","RUNNING")');
       } catch (err) {
         console.warn('[bomJobRepository] DB cleanup error:', err.message);
       }
@@ -424,6 +433,9 @@ class BomJobRepository {
 
     const list = this._loadFileJobs();
     const filtered = list.filter((j) => {
+      const status = String(j.status || '').toLowerCase();
+      // Keep all queued or running jobs
+      if (status === 'queued' || status === 'running') return true;
       const created = j.createdAt || j.created_at;
       if (!created) return true;
       return new Date(created).toISOString() >= cutoffDate;

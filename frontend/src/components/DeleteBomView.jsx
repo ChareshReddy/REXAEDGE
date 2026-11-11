@@ -233,10 +233,10 @@ export default function DeleteBomView({
           {/* Step 2: Confirmation Proposal Gate */}
           {proposedAction && !executionResult && (
             <div className="sap-proposal-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
-              <div className="sap-proposal-header-card danger">
-                <ShieldCheck size={20} color="var(--sap-error)" />
+              <div className="sap-proposal-header-card">
+                <ShieldCheck size={20} color="var(--color-primary, #02579A)" style={{ flexShrink: 0 }} />
                 <div>
-                  <h4>Safety Gate: Confirm Permanent BOM Deletion</h4>
+                  <h4>Human Confirmation Gate: Confirm Permanent BOM Deletion</h4>
                   <p>Deleting a BOM removes the alternative from SAP master records. Review carefully before confirming.</p>
                 </div>
               </div>

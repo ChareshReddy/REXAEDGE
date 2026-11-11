@@ -21,6 +21,7 @@ import { Badge } from './ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '../context/ToastContext';
 import { FIELD_RULES, validateField, sanitizeValidFromInput } from '@shared/fieldRules.js';
+import { checkFieldExistence, getActiveServerId } from '../services/fieldValidationService';
 
 function getTodayFormatted() {
   const today = new Date();
@@ -37,8 +38,10 @@ export default function CreateBomForm({
   isSubmitting = false,
   formId = 'copy-bom-form',
   onValuesChange,
-  style = {}
+  style = {},
+  systemKey
 }) {
+  const currentServerId = systemKey || getActiveServerId();
   const toast = useToast();
   const [formData, setFormData] = useState({
     sourceMaterial: initialValues.sourceMaterial || initialValues.material || '',
@@ -63,10 +66,31 @@ export default function CreateBomForm({
   const [touched, setTouched] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const userInteractedRef = React.useRef({});
+  const validationSeqRef = React.useRef({});
 
   const handleUserInteraction = (field) => {
     userInteractedRef.current[field] = true;
   };
+
+  useEffect(() => {
+    setFieldErrors({});
+    setTouched({});
+    setIsSubmitted(false);
+    userInteractedRef.current = {};
+    validationSeqRef.current = {};
+  }, [currentServerId]);
+
+  useEffect(() => {
+    const handleServerChanged = () => {
+      setFieldErrors({});
+      setTouched({});
+      setIsSubmitted(false);
+      userInteractedRef.current = {};
+      validationSeqRef.current = {};
+    };
+    window.addEventListener('sap-server-changed', handleServerChanged);
+    return () => window.removeEventListener('sap-server-changed', handleServerChanged);
+  }, []);
 
   // Source BOM SAP validation states
   const [isValidating, setIsValidating] = useState(false);
@@ -75,6 +99,7 @@ export default function CreateBomForm({
 
   const handleChange = (field, value) => {
     userInteractedRef.current[field] = true;
+    validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
     setTouched((prev) => ({ ...prev, [field]: true }));
     const finalVal = field === 'validFrom' ? sanitizeValidFromInput(value) : value;
     setFormData((prev) => ({ ...prev, [field]: finalVal }));
@@ -90,15 +115,31 @@ export default function CreateBomForm({
     }
   };
 
-  const handleBlur = (field, ruleKey, isRequired) => {
-    if (!userInteractedRef.current[field]) return;
+  const handleBlur = async (field, ruleKey, isRequired) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     const val = formData[field];
     const res = validateField(ruleKey, val, isRequired);
     if (!res.valid) {
       setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
-    } else {
-      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: false }));
+
+    if (val && val.trim() && (ruleKey === 'material' || ruleKey === 'plant')) {
+      const curVal = val.trim();
+      validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
+      const seq = validationSeqRef.current[field];
+      const plant = field.startsWith('source') ? formData.sourcePlant : formData.targetPlant;
+      const existRes = await checkFieldExistence({
+        kind: ruleKey,
+        value: curVal,
+        plant,
+        serverId: currentServerId
+      });
+      if (validationSeqRef.current[field] !== seq || formData[field]?.trim() !== curVal) return;
+      if (!existRes.valid && existRes.error) {
+        setFieldErrors((prev) => ({ ...prev, [field]: existRes.error }));
+      }
     }
   };
 
@@ -129,6 +170,31 @@ export default function CreateBomForm({
       missing.push(`Source: ${srcAltRes.error}`);
     }
 
+    // Check existence if format passed
+    if (!errors.sourceMaterial && formData.sourceMaterial.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: formData.sourceMaterial.trim(),
+        plant: formData.sourcePlant,
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.sourceMaterial = existRes.error;
+        missing.push(`Source: ${existRes.error}`);
+      }
+    }
+    if (!errors.sourcePlant && formData.sourcePlant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: formData.sourcePlant.trim(),
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.sourcePlant = existRes.error;
+        missing.push(`Source: ${existRes.error}`);
+      }
+    }
+
     if (missing.length > 0) {
       setFieldErrors((prev) => ({ ...prev, ...errors }));
       const msg = 'Please enter valid Source Material, Plant, and BOM Usage to validate.';
@@ -136,9 +202,9 @@ export default function CreateBomForm({
       toast.error(msg, { messages: missing });
 
       const fieldIdMap = {
-        sourceMaterial: 'srcMaterial',
-        sourcePlant: 'srcPlant',
-        sourceUsage: 'srcUsage',
+        sourceMaterial: 'sourceMaterial',
+        sourcePlant: 'sourcePlant',
+        sourceUsage: 'sourceUsage',
         sourceAltBom: 'sourceAltBom'
       };
       const firstInvalid = ['sourceMaterial', 'sourcePlant', 'sourceUsage', 'sourceAltBom'].find((f) => errors[f]);
@@ -184,7 +250,7 @@ export default function CreateBomForm({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitted(true);
     setTouched({
@@ -242,15 +308,63 @@ export default function CreateBomForm({
       missing.push(vfRes.error);
     }
 
+    // Check existence if format passed
+    if (!errors.sourceMaterial && formData.sourceMaterial.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: formData.sourceMaterial.trim(),
+        plant: formData.sourcePlant,
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.sourceMaterial = existRes.error;
+        missing.push(`Source: ${existRes.error}`);
+      }
+    }
+    if (!errors.sourcePlant && formData.sourcePlant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: formData.sourcePlant.trim(),
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.sourcePlant = existRes.error;
+        missing.push(`Source: ${existRes.error}`);
+      }
+    }
+    if (!errors.targetMaterial && formData.targetMaterial.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: formData.targetMaterial.trim(),
+        plant: formData.targetPlant,
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.targetMaterial = existRes.error;
+        missing.push(`Target: ${existRes.error}`);
+      }
+    }
+    if (!errors.targetPlant && formData.targetPlant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: formData.targetPlant.trim(),
+        serverId: currentServerId
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.targetPlant = existRes.error;
+        missing.push(`Target: ${existRes.error}`);
+      }
+    }
+
     if (missing.length > 0) {
       setFieldErrors(errors);
       setValidationError('Please correct errors before proceeding.');
       toast.error('Please fill in valid required fields', { messages: missing });
 
       const fieldIdMap = {
-        sourceMaterial: 'srcMaterial',
-        sourcePlant: 'srcPlant',
-        sourceUsage: 'srcUsage',
+        sourceMaterial: 'sourceMaterial',
+        sourcePlant: 'sourcePlant',
+        sourceUsage: 'sourceUsage',
         sourceAltBom: 'sourceAltBom',
         targetMaterial: 'targetMaterial',
         targetPlant: 'targetPlant',
@@ -731,8 +845,14 @@ export default function CreateBomForm({
               <button
                 type="button"
                 className="rx-btn rx-btn-secondary"
-                onClick={onCancel}
-                
+                onClick={() => {
+                  setFieldErrors({});
+                  setTouched({});
+                  setIsSubmitted(false);
+                  userInteractedRef.current = {};
+                  validationSeqRef.current = {};
+                  if (onCancel) onCancel();
+                }}
               >
                 <X size={14} />
                 <span>Cancel</span>

@@ -11,7 +11,8 @@ import {
   rfcBatchCopyBoms,
   rfcGetBomDisplayData,
   verifyCopiedBomHierarchy,
-  pingRfcServer
+  pingRfcServer,
+  RFC_PRIORITY
 } from '../services/sapRfcClient.js';
 import { getServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
 import { validateSourceBom as validateSourceBomGui } from '../services/sapGuiClient.js';
@@ -106,7 +107,7 @@ router.post('/validate-source', requireAppPermission(['bom.validate', 'bom.copy'
     const isMock = process.env.USE_MOCK_SAP === 'true';
     const useRfc = process.env.SAP_BOM_MODE === 'RFC' || (!isMock && process.env.SAP_BOM_MODE !== 'GUI');
     let result;
-    if (useRfc && !isMock) {
+    if (useRfc) {
       result = await rfcValidateSourceBom({
         material,
         plant,
@@ -407,7 +408,10 @@ router.post('/verify-copy', requireAppPermission('bom.copy'), async (req, res) =
       targetPlant,
       targetUsage,
       targetAlternative,
-      server: req.selectedServer
+      server: req.selectedServer,
+      user: req.user,
+      priority: RFC_PRIORITY.INTERACTIVE,
+      timeoutMs: 60000
     });
 
     auditLogger.logAction({
@@ -1126,7 +1130,7 @@ router.post('/jobs/start', requireAppPermission((req) => {
       ? boms
       : [];
 
-    const startResult = bomJobManager.startJob({
+    const startResult = await bomJobManager.startJob({
       type,
       user: req.user,
       server: req.selectedServer,

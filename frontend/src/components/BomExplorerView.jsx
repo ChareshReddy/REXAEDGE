@@ -32,6 +32,7 @@ import TableLoadingState from './TableLoadingState';
 import { extractErrorInfo } from '../utils/friendlyError';
 import { PageContainer } from './layout';
 import { FIELD_RULES, validateField } from '@shared/fieldRules.js';
+import { checkFieldExistence } from '../services/fieldValidationService';
 
 /**
  * Trims leading zeros only on purely numeric material numbers.
@@ -92,6 +93,7 @@ export default function BomExplorerView({
   const [touched, setTouched] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const userInteractedRef = React.useRef({});
+  const validationSeqRef = React.useRef({});
 
   const handleUserInteraction = (field) => {
     userInteractedRef.current[field] = true;
@@ -102,17 +104,45 @@ export default function BomExplorerView({
     setTouched({});
     setIsSubmitted(false);
     userInteractedRef.current = {};
+    validationSeqRef.current = {};
   }, [systemKey]);
 
-  const handleBlur = (field, ruleKey, isRequired) => {
-    if (!userInteractedRef.current[field]) return;
+  useEffect(() => {
+    const handleServerChanged = () => {
+      setFieldErrors({});
+      setTouched({});
+      setIsSubmitted(false);
+      userInteractedRef.current = {};
+      validationSeqRef.current = {};
+    };
+    window.addEventListener('sap-server-changed', handleServerChanged);
+    return () => window.removeEventListener('sap-server-changed', handleServerChanged);
+  }, []);
+
+  const handleBlur = async (field, ruleKey, isRequired) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     const val = searchParams[field];
     const res = validateField(ruleKey, val, isRequired);
     if (!res.valid) {
       setFieldErrors((prev) => ({ ...prev, [field]: res.error }));
-    } else {
-      setFieldErrors((prev) => ({ ...prev, [field]: false }));
+      return;
+    }
+    setFieldErrors((prev) => ({ ...prev, [field]: false }));
+
+    if (val && val.trim() && (ruleKey === 'material' || ruleKey === 'plant')) {
+      const curVal = val.trim();
+      validationSeqRef.current[field] = (validationSeqRef.current[field] || 0) + 1;
+      const seq = validationSeqRef.current[field];
+      const existRes = await checkFieldExistence({
+        kind: ruleKey,
+        value: curVal,
+        plant: searchParams.plant,
+        serverId: systemKey
+      });
+      if (validationSeqRef.current[field] !== seq || searchParams[field]?.trim() !== curVal) return;
+      if (!existRes.valid && existRes.error) {
+        setFieldErrors((prev) => ({ ...prev, [field]: existRes.error }));
+      }
     }
   };
 
@@ -163,13 +193,38 @@ export default function BomExplorerView({
     const altRes = validateField('alternativeBom', searchParams.alternativeBom, false);
     if (!altRes.valid) errors.alternativeBom = altRes.error;
 
+    // Check existence if format passed
+    if (!errors.material && searchParams.material.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'material',
+        value: searchParams.material.trim(),
+        plant: searchParams.plant,
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.material = existRes.error;
+      }
+    }
+    if (!errors.plant && searchParams.plant.trim()) {
+      const existRes = await checkFieldExistence({
+        kind: 'plant',
+        value: searchParams.plant.trim(),
+        serverId: systemKey
+      });
+      if (!existRes.valid && existRes.error) {
+        errors.plant = existRes.error;
+      }
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       if (!searchParams.material.trim() || !searchParams.plant.trim()) {
         setErrorMessage('Please enter both Material and Plant to inspect the BOM.');
       } else {
-        setErrorMessage(matRes.error || plantRes.error || usageRes.error || altRes.error);
+        setErrorMessage(errors.material || errors.plant || matRes.error || plantRes.error || usageRes.error || altRes.error);
       }
+      if (errors.material) document.getElementById('searchMaterial')?.focus();
+      else if (errors.plant) document.getElementById('searchPlant')?.focus();
       return;
     }
 
@@ -573,7 +628,7 @@ export default function BomExplorerView({
                   <Input
                     id="expAlternativeBom"
                     type="text"
-                    placeholder="Ex. 01 (optional)"
+                    placeholder="Ex. 01"
                     maxLength={FIELD_RULES.alternativeBom.maxLength}
                     value={searchParams.alternativeBom}
                     onChange={(e) => setSearchParams((prev) => ({ ...prev, alternativeBom: e.target.value }))}

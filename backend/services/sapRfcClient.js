@@ -37,6 +37,13 @@ function loadMockBoms() {
 }
 loadMockBoms();
 
+export function getActiveMockBoms() {
+  if (!activeMockBoms || activeMockBoms.length === 0) {
+    loadMockBoms();
+  }
+  return activeMockBoms;
+}
+
 import { supabaseService, getPersistedCredential } from './supabaseClient.js';
 import { decryptPassword } from '../utils/crypto.js';
 import { getSapConnectionPool, RFC_PRIORITY, getAllPoolStats } from './sapConnectionPool.js';
@@ -58,10 +65,52 @@ export function getActiveRfcServer() {
 }
 
 /**
+ * Asserts that a call to an RFC function includes an explicit resolved SAP server context.
+ * Throws a loud internal error naming the function if missing and logs it to console.error.
+ *
+ * @param {object|null} serverOrParams - Target server object or options/params containing .server
+ * @param {string} functionName - Name of the calling RFC function
+ * @param {object|null} [client=null] - Already-connected or mock RFC client instance
+ * @returns {object} The resolved server
+ */
+export function assertResolvedServer(serverOrParams, functionName, client = null) {
+  if (process.env.USE_MOCK_SAP === 'true') {
+    return serverOrParams?.server || serverOrParams || { id: 'MOCK_SERVER', name: 'Mock SAP' };
+  }
+
+  const providedClient = client || (serverOrParams && typeof serverOrParams === 'object' ? serverOrParams.client : null);
+  if (providedClient && typeof providedClient.call === 'function') {
+    return serverOrParams?.server || serverOrParams || {};
+  }
+
+  let server = serverOrParams;
+  if (serverOrParams && typeof serverOrParams === 'object') {
+    if (serverOrParams.server) {
+      server = serverOrParams.server;
+    }
+  }
+
+  const isResolved =
+    Boolean(server) &&
+    typeof server === 'object' &&
+    Boolean(server.id || server.serverId || server.ashost || server.host || server.name || server.system_id || server.sap_username);
+
+  if (!isResolved) {
+    const errorMsg = `[sapRfcClient.${functionName}] Called without a resolved SAP server context. Explicit per-request server is required.`;
+    console.error(errorMsg);
+    const err = new Error(errorMsg);
+    err.code = 'SAP_SERVER_REQUIRED';
+    throw err;
+  }
+  return server;
+}
+
+/**
  * Retrieves normalized RFC connection parameters dynamically from sap_servers.
  * Requires stored SAP credentials; never falls back to .env or 'LEELAM_EXT'.
  */
 export function getRfcConnectionParams(customOverrides = {}) {
+  assertResolvedServer(customOverrides, 'getRfcConnectionParams');
   let server = customOverrides?.server || customOverrides || {};
 
   if (typeof customOverrides.serverId === 'string' && !server.ashost) {
@@ -147,6 +196,7 @@ export const DEFAULT_RFC_CLIENT_OPTIONS = Object.freeze({
  * @param {typeof Client} [ClientClass=Client] - Client constructor (can be injected for testing)
  */
 export async function openRfcClient(customOverrides = {}, ClientClass = Client) {
+  assertResolvedServer(customOverrides, 'openRfcClient');
   const params = getRfcConnectionParams(customOverrides);
   const client = new ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
   await client.open();
@@ -206,6 +256,7 @@ export function createBasisPrerequisiteError(operation) {
  * Stub: throws Basis prerequisite error until NetWeaver SDK is installed.
  */
 export async function rfcRetryJob(jobId, credentials = null) {
+  assertResolvedServer(credentials, 'rfcRetryJob');
   throw createBasisPrerequisiteError(`Job retry for ${jobId}`);
 }
 
@@ -214,6 +265,7 @@ export async function rfcRetryJob(jobId, credentials = null) {
  * Stub: throws Basis prerequisite error until NetWeaver SDK is installed.
  */
 export async function rfcReprocessIdoc(idocNumber, credentials = null) {
+  assertResolvedServer(credentials, 'rfcReprocessIdoc');
   throw createBasisPrerequisiteError(`IDoc reprocessing for ${idocNumber}`);
 }
 
@@ -227,6 +279,7 @@ export async function rfcReprocessIdoc(idocNumber, credentials = null) {
  * @returns {Promise<object>}
  */
 export async function executeRfcFunction(functionName, parameters = {}, customCredentials = {}) {
+  assertResolvedServer(customCredentials, 'executeRfcFunction');
   if (
     functionName.startsWith('BAPI_XBP_') ||
     functionName.startsWith('EDI_') ||
@@ -259,6 +312,7 @@ export async function executeRfcFunction(functionName, parameters = {}, customCr
  * @returns {Promise<{ success: boolean, message: string, latencyMs?: number }>}
  */
 export async function pingRfcServer(customCredentials = {}) {
+  assertResolvedServer(customCredentials, 'pingRfcServer');
   const startTime = Date.now();
   try {
     const params = getRfcConnectionParams(customCredentials);
@@ -298,6 +352,7 @@ export async function pingRfcServer(customCredentials = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcReadBom(params = {}) {
+  assertResolvedServer(params, 'rfcReadBom', params.client);
   const {
     material,
     plant,
@@ -692,6 +747,7 @@ export async function rfcReadBom(params = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcValidateSourceBom(params = {}) {
+  assertResolvedServer(params, 'rfcValidateSourceBom', params.client);
   const { material, plant, bomUsage = '1', alternativeBom = '' } = params;
 
   const cleanMat = String(material || '').trim().toUpperCase();
@@ -801,6 +857,7 @@ export async function rfcValidateSourceBom(params = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcCreateBom(params = {}) {
+  assertResolvedServer(params, 'rfcCreateBom', params.client);
   const {
     material,
     plant,
@@ -883,6 +940,15 @@ export async function rfcCreateBom(params = {}) {
         isTestRun: true,
         code: 'OK',
         message: 'BOM creation simulation passed.'
+      };
+    }
+
+    if (cleanMat.includes('FAIL') || cleanMat.includes('REJECT') || params.simulateError) {
+      return {
+        success: false,
+        verified: false,
+        code: 'RFC_MOCK_ERROR',
+        message: `SAP rejected BOM creation for material ${cleanMat}.`
       };
     }
 
@@ -1007,7 +1073,7 @@ export async function rfcCreateBom(params = {}) {
       } catch {}
     }
     if (!targetBaseUnit) {
-      targetBaseUnit = 'PAA';
+      throw new Error('Base unit of measure of the material could not be determined');
     }
 
     const variantObj = {
@@ -1190,7 +1256,8 @@ function callWithTimeout(promise, timeoutMs, description) {
  * @param {object} client - RFC client or null
  * @returns {Promise<{ exists: boolean, alternative: string, bomNumber?: string }>}
  */
-export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client = null) {
+export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client = null, server = null, options = {}) {
+  assertResolvedServer(server, 'isSubAssemblyBomExistingInTarget', client);
   if (!item || item.level === 0) {
     return { exists: false, alternative: '' };
   }
@@ -1201,6 +1268,11 @@ export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client
   const targetAlt = item.alternativeBom
     ? String(item.alternativeBom).trim().padStart(2, '0')
     : '01';
+
+  const cacheKey = `${toSapMatnr(cleanMat)}_${cleanPlt}_${cleanUsage}_${targetAlt}`;
+  if (options?.cache?.subAssemblyExists?.has(cacheKey)) {
+    return options.cache.subAssemblyExists.get(cacheKey);
+  }
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
 
@@ -1213,11 +1285,15 @@ export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client
         String(b.bomUsage || '1').trim() === cleanUsage &&
         String(b.alternativeBom || '01').trim().padStart(2, '0') === targetAlt
     );
-    return {
+    const result = {
       exists: Boolean(found),
       alternative: targetAlt,
       bomNumber: found ? (found.bomNumber || `MOCK_${cleanMat}_${cleanPlt}`) : undefined
     };
+    if (options?.cache?.subAssemblyExists) {
+      options.cache.subAssemblyExists.set(cacheKey, result);
+    }
+    return result;
   }
 
   // Live RFC check in MAST
@@ -1242,17 +1318,25 @@ export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client
       const stlnrIdx = fieldNames.indexOf('STLNR');
       const parts = mastRes.DATA[0].WA.split('|');
       const bomNum = stlnrIdx >= 0 ? parts[stlnrIdx]?.trim() : parts[0]?.trim();
-      return {
+      const result = {
         exists: true,
         alternative: targetAlt,
         bomNumber: bomNum
       };
+      if (options?.cache?.subAssemblyExists) {
+        options.cache.subAssemblyExists.set(cacheKey, result);
+      }
+      return result;
     }
   } catch (_) {
     // If table read fails, treat as not existing
   }
 
-  return { exists: false, alternative: targetAlt };
+  const notFoundResult = { exists: false, alternative: targetAlt };
+  if (options?.cache?.subAssemblyExists) {
+    options.cache.subAssemblyExists.set(cacheKey, notFoundResult);
+  }
+  return notFoundResult;
 }
 
 /**
@@ -1264,6 +1348,7 @@ export async function isSubAssemblyBomExistingInTarget(item, targetPlant, client
  * @returns {Promise<object>}
  */
 export async function rfcSimulateCopyBom(params = {}) {
+  assertResolvedServer(params, 'rfcSimulateCopyBom', params.client);
   const {
     sourceMaterial,
     sourcePlant,
@@ -1285,8 +1370,8 @@ export async function rfcSimulateCopyBom(params = {}) {
   const cleanSrcUsage = String(sourceUsage || '1').trim();
   const cleanTgtUsage = String(targetUsage || cleanSrcUsage).trim();
 
-  // 1. Read source BOM
-  const sourceBom = await rfcReadBom({
+  // 1. Read source BOM (or reuse preloaded source BOM from batch validation)
+  const sourceBom = params.preloadedSourceBom || await rfcReadBom({
     material: cleanSrcMat,
     plant: cleanSrcPlt,
     bomUsage: cleanSrcUsage,
@@ -1331,7 +1416,8 @@ export async function rfcSimulateCopyBom(params = {}) {
         plant: cleanSrcPlt,
         bomUsage: cleanSrcUsage,
         alternativeBom: sourceBom.alternativeBom || sourceAlternative || '01',
-        client: rfcClient
+        client: rfcClient,
+        server: server || params.server
       });
 
       if (hierRes.success && hierRes.items && hierRes.items.length > 0) {
@@ -1349,7 +1435,7 @@ export async function rfcSimulateCopyBom(params = {}) {
 
           // If sub-assembly already exists in target plant, reuse it! Do NOT simulate creation!
           if (!isRoot) {
-            const existingCheck = await isSubAssemblyBomExistingInTarget(itm, cleanTgtPlt, rfcClient);
+            const existingCheck = await isSubAssemblyBomExistingInTarget(itm, cleanTgtPlt, rfcClient, server || params.server, params);
             if (existingCheck.exists) {
               reusedBoms.push({
                 material: itm.material,
@@ -1585,6 +1671,7 @@ export async function rfcSimulateCopyBom(params = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcDeleteBom(params = {}) {
+  assertResolvedServer(params, 'rfcDeleteBom', params.client);
   const { material, plant, bomUsage = '1', alternativeBom = '1' } = params;
 
   const cleanMat = String(material || '').trim().toUpperCase();
@@ -1737,14 +1824,16 @@ export async function rfcDeleteBom(params = {}) {
  * @returns {Promise<{ success: boolean, rootMaterial: string, plant: string, totalLevels: number, totalBoms: number, items: Array<object> }>}
  */
 export async function rfcExplodeBomHierarchy(params = {}) {
+  assertResolvedServer(params, 'rfcExplodeBomHierarchy', params.client);
   const {
     material,
     plant,
     bomUsage = '1',
     alternativeBom = '1',
-    maxDepth = 10
+    maxDepth: reqMaxDepth = 10
   } = params;
 
+  const maxDepth = Math.min(Math.max(Number(reqMaxDepth) || 10, 0), 10);
   const isMock = process.env.USE_MOCK_SAP === 'true';
 
   if (!isMock && !params.client) {
@@ -1753,7 +1842,7 @@ export async function rfcExplodeBomHierarchy(params = {}) {
     const userId = params.userId || params.user?.id || 'anonymous';
     const priority = params.priority || RFC_PRIORITY.READ;
     return pool.run(priority, userId, (pooledClient) => {
-      return rfcExplodeBomHierarchy({ ...params, client: pooledClient });
+      return rfcExplodeBomHierarchy({ ...params, client: pooledClient, maxDepth });
     }, { signal: params.signal, req: params.req });
   }
 
@@ -1765,10 +1854,11 @@ export async function rfcExplodeBomHierarchy(params = {}) {
 
   async function traverse(currentMat, currentPlt, currentUsg, currentAlt, level, parentMat = null) {
     if (level > maxDepth) return;
+    if (visited.size >= 200) return; // Prevent runaway hierarchy explosion
     const cleanMat = String(currentMat || '').trim().toUpperCase();
     const cleanPlt = String(currentPlt || '').trim().toUpperCase();
     const cleanAlt = String(currentAlt || '1').trim();
-    const key = `${cleanMat}_${cleanPlt}_${cleanAlt}`;
+    const key = `${cleanMat}_${cleanPlt}_${currentUsg}_${cleanAlt}`;
 
     if (visited.has(key)) return;
     visited.add(key);
@@ -1778,7 +1868,8 @@ export async function rfcExplodeBomHierarchy(params = {}) {
       plant: cleanPlt,
       bomUsage: currentUsg,
       alternativeBom: cleanAlt,
-      client
+      client,
+      server: params.server || params
     });
 
     if (!bomData.success || !bomData.bomExists) return;
@@ -1914,7 +2005,8 @@ export function formatSapDate(rawDate) {
  * Batches MAKT queries in chunks of ~25 materials.
  * Selects description in target language (or falls back to any language, then '-').
  */
-export async function batchQueryMakt(client, materials, targetLang = 'E') {
+export async function batchQueryMakt(client, materials, targetLang = 'E', server = null) {
+  assertResolvedServer(server, 'batchQueryMakt', client);
   if (!materials || materials.length === 0) return {};
   loadMockBoms();
   const uniqueMats = [...new Set(materials.map((m) => String(m).trim().toUpperCase()).filter(Boolean))];
@@ -2016,7 +2108,8 @@ export async function batchQueryMakt(client, materials, targetLang = 'E') {
  * Batches MAST queries in chunks of ~25 materials for a specific plant.
  * Returns a Set of materials that have a sub-BOM in that plant.
  */
-export async function batchQuerySubBom(client, materials, plant) {
+export async function batchQuerySubBom(client, materials, plant, server = null) {
+  assertResolvedServer(server, 'batchQuerySubBom', client);
   if (!materials || materials.length === 0) return new Set();
   loadMockBoms();
   const cleanPlt = String(plant || '').trim().toUpperCase();
@@ -2076,7 +2169,8 @@ export async function batchQuerySubBom(client, materials, plant) {
 /**
  * Reads single-level direct BOM records (MAST -> STAS -> STPO -> STKO) for a material.
  */
-export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt) {
+export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt, server = null) {
+  assertResolvedServer(server, 'fetchDirectBom', client);
   loadMockBoms();
   if (!client) {
     const trimmed = formatMaterialNumber(cleanMat);
@@ -2327,6 +2421,7 @@ export async function fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, clean
  * @returns {Promise<object>} Display-ready BOM data structure
  */
 export async function rfcGetBomDisplayData(params = {}) {
+  assertResolvedServer(params, 'rfcGetBomDisplayData', params.client);
   const {
     material,
     plant,
@@ -2398,11 +2493,11 @@ export async function rfcGetBomDisplayData(params = {}) {
 
   try {
     // 1. Fetch root BOM
-    const rootBom = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt);
+    const rootBom = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, cleanAlt, server || params.server);
     if (!rootBom) {
       if (cleanAlt) {
         // User typed an alternative. Check if any alternatives exist for this BOM.
-        const checkAnyAlt = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, '');
+        const checkAnyAlt = await fetchDirectBom(client, cleanMat, cleanPlt, cleanUsg, '', server || params.server);
         if (checkAnyAlt && checkAnyAlt.availableAlternatives && checkAnyAlt.availableAlternatives.length > 0) {
           // Requirement 2: BOM exists, but specified alternative does not exist
           return {
@@ -2478,14 +2573,14 @@ export async function rfcGetBomDisplayData(params = {}) {
 
         const currentBom = (parentMat === cleanMat)
           ? rootBom
-          : await fetchDirectBom(client, parentMat, cleanPlt, cleanUsg, '');
+          : await fetchDirectBom(client, parentMat, cleanPlt, cleanUsg, '', server || params.server);
 
         if (!currentBom || !currentBom.components) return;
 
         const compMats = currentBom.components.map((c) => String(c.component || '').trim().toUpperCase()).filter(Boolean);
         compMats.forEach((m) => materialsToEnrich.add(m));
 
-        const subBomSet = await batchQuerySubBom(client, compMats, cleanPlt);
+        const subBomSet = await batchQuerySubBom(client, compMats, cleanPlt, server || params.server);
 
         for (let idx = 0; idx < currentBom.components.length; idx++) {
           const c = currentBom.components[idx];
@@ -2528,8 +2623,8 @@ export async function rfcGetBomDisplayData(params = {}) {
     // 2. Batched enrichment for MAKT descriptions and MAST sub-BOMs
     const allMaterialsArray = Array.from(materialsToEnrich);
     const [descMap, subBomMap] = await Promise.all([
-      batchQueryMakt(client, allMaterialsArray, targetLang),
-      batchQuerySubBom(client, allMaterialsArray, cleanPlt)
+      batchQueryMakt(client, allMaterialsArray, targetLang, server || params.server),
+      batchQuerySubBom(client, allMaterialsArray, cleanPlt, server || params.server)
     ]);
 
     const finalComponents = flatTree.map((item) => {
@@ -2615,10 +2710,16 @@ export function findLowestFreeAlternative(existingAlternatives = []) {
  * @param {object} [server=null]
  * @returns {Promise<number[]>} array of alternative numbers e.g. [1, 2]
  */
-export async function getExistingAlternatives(material, plant, bomUsage = '1', client = null, server = null) {
+export async function getExistingAlternatives(material, plant, bomUsage = '1', client = null, server = null, options = {}) {
+  assertResolvedServer(server, 'getExistingAlternatives', client);
   const cleanMat = String(material || '').trim().toUpperCase();
   const cleanPlt = String(plant || '').trim().toUpperCase();
   const cleanUsg = String(bomUsage || '1').trim();
+
+  const cacheKey = `${toSapMatnr(cleanMat)}_${cleanPlt}_${cleanUsg}`;
+  if (options?.cache?.existingAlternatives?.has(cacheKey)) {
+    return options.cache.existingAlternatives.get(cacheKey);
+  }
 
   if (process.env.USE_MOCK_SAP === 'true') {
     const existing = activeMockBoms.filter(
@@ -2627,9 +2728,13 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
         String(b.plant) === cleanPlt &&
         String(b.bomUsage || '1') === cleanUsg
     );
-    return existing
+    const result = existing
       .map((b) => parseInt(b.alternativeBom || '1', 10))
       .filter((n) => !isNaN(n) && n > 0);
+    if (options?.cache?.existingAlternatives) {
+      options.cache.existingAlternatives.set(cacheKey, result);
+    }
+    return result;
   }
 
   const shouldClose = !client;
@@ -2644,9 +2749,13 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
       DATA: []
     });
 
-    return (mastRes.DATA || [])
+    const result = (mastRes.DATA || [])
       .map((r) => parseInt(r.WA.split('|')[0]?.trim(), 10))
       .filter((n) => !isNaN(n) && n > 0);
+    if (options?.cache?.existingAlternatives) {
+      options.cache.existingAlternatives.set(cacheKey, result);
+    }
+    return result;
   } catch (err) {
     console.warn(`[sapRfcClient] getExistingAlternatives error for ${cleanMat}:`, err.message);
     return [];
@@ -2671,6 +2780,7 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
  * @returns {Promise<string>} e.g. '01', '02', '03'
  */
 export async function getNextAvailableAlternative(material, plant, bomUsage = '1', client = null, server = null) {
+  assertResolvedServer(server, 'getNextAvailableAlternative', client);
   const existingAlts = await getExistingAlternatives(material, plant, bomUsage, client, server);
   return findLowestFreeAlternative(existingAlts);
 }
@@ -2702,6 +2812,7 @@ export async function getNextAvailableAlternative(material, plant, bomUsage = '1
  * }>}
  */
 export async function resolveTargetAlternativeForCopy(params = {}) {
+  assertResolvedServer(params, 'resolveTargetAlternativeForCopy', params.client);
   const {
     targetMaterial,
     targetPlant,
@@ -2718,7 +2829,7 @@ export async function resolveTargetAlternativeForCopy(params = {}) {
   const rawSpecified = String(targetAlternative || '').trim();
 
   // 1. Query existing alternatives from SAP
-  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server);
+  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server || params.server, params);
 
   // 2. Normalize allocated alternatives from current batch
   const allocatedSet = new Set(
@@ -2777,6 +2888,7 @@ export async function resolveTargetAlternativeForCopy(params = {}) {
  * }>}
  */
 export async function resolveSourceAlternativeForCopy(params = {}) {
+  assertResolvedServer(params, 'resolveSourceAlternativeForCopy', params.client);
   const {
     sourceMaterial,
     sourcePlant,
@@ -2800,7 +2912,7 @@ export async function resolveSourceAlternativeForCopy(params = {}) {
     };
   }
 
-  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server);
+  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server || params.server);
   if (existingAlts.includes(1)) {
     return {
       sourceAlternative: '01',
@@ -2831,13 +2943,15 @@ export async function resolveSourceAlternativeForCopy(params = {}) {
  * @returns {Promise<object>}
  */
 export async function getSubAssemblyComponents(params = {}) {
-  const { material, plant, bomUsage = '1', alternativeBom = '1', client = null } = params;
+  assertResolvedServer(params, 'getSubAssemblyComponents', params.client);
+  const { material, plant, bomUsage = '1', alternativeBom = '1', client = null, server = null } = params;
   const readRes = await rfcReadBom({
     material,
     plant,
     bomUsage,
     alternativeBom,
-    client
+    client,
+    server: server || params.server
   });
 
   if (!readRes.success || !readRes.bomExists) {
@@ -2886,13 +3000,15 @@ export async function getSubAssemblyComponents(params = {}) {
  * @returns {Promise<object>}
  */
 export async function verifyBomComponents(params = {}) {
+  assertResolvedServer(params, 'verifyBomComponents', params.client);
   const {
     material,
     plant,
     bomUsage = '1',
     alternativeBom = '1',
     expectedComponents = [],
-    client = null
+    client = null,
+    server = null
   } = params;
 
   const readRes = await rfcReadBom({
@@ -2900,7 +3016,8 @@ export async function verifyBomComponents(params = {}) {
     plant,
     bomUsage,
     alternativeBom,
-    client
+    client,
+    server: server || params.server
   });
 
   if (!readRes.success || !readRes.bomExists) {
@@ -2971,6 +3088,7 @@ export async function verifyBomComponents(params = {}) {
  * @returns {Promise<object>}
  */
 export async function inspectAndVerifyHierarchy(params = {}) {
+  assertResolvedServer(params, 'inspectAndVerifyHierarchy', params.client);
   const {
     material,
     targetPlant,
@@ -3079,6 +3197,7 @@ export async function inspectAndVerifyHierarchy(params = {}) {
  * @returns {Promise<object>}
  */
 export async function repairHierarchyBottomUp(params = {}) {
+  assertResolvedServer(params, 'repairHierarchyBottomUp', params.client);
   const {
     sourceMaterial,
     sourcePlant,
@@ -3102,7 +3221,7 @@ export async function repairHierarchyBottomUp(params = {}) {
     const srcAlt = String(sourceAlternative || '1').trim();
 
     // 1. Determine NEXT available alternative for root target material (highest + 1)
-    const nextRootAlt = await getNextAvailableAlternative(cleanTgtMat, cleanTgtPlt, bomUsage, rfc);
+    const nextRootAlt = await getNextAvailableAlternative(cleanTgtMat, cleanTgtPlt, bomUsage, rfc, params.server || params);
     let resolvedRootAlt = nextRootAlt;
 
     const cleanSpecifiedAltMatch = String(targetAlternative || '').match(/\b(\d{1,2})\b/);
@@ -3140,7 +3259,8 @@ export async function repairHierarchyBottomUp(params = {}) {
       plant: cleanSrcPlt,
       bomUsage,
       alternativeBom: srcAlt,
-      client: rfc
+      client: rfc,
+      server: params.server || params
     });
 
     if (!hierarchyRes.success || hierarchyRes.items.length === 0) {
@@ -3186,7 +3306,7 @@ export async function repairHierarchyBottomUp(params = {}) {
 
       // Check if this sub-assembly BOM already exists in target plant -> REUSE IT
       if (!isRoot) {
-        const existingCheck = await isSubAssemblyBomExistingInTarget(item, cleanTgtPlt, rfc);
+        const existingCheck = await isSubAssemblyBomExistingInTarget(item, cleanTgtPlt, rfc, params.server || params);
         if (existingCheck.exists) {
           executionLog.push({
             level: item.level,
@@ -3208,7 +3328,7 @@ export async function repairHierarchyBottomUp(params = {}) {
       if (isRoot) {
         currentTargetAlt = resolvedRootAlt;
       } else {
-        const nextAlt = await getNextAvailableAlternative(currentTargetMat, cleanTgtPlt, currentUsage, rfc);
+        const nextAlt = await getNextAvailableAlternative(currentTargetMat, cleanTgtPlt, currentUsage, rfc, params.server || params);
         const allocated = inMemoryAllocatedAlts.get(currentTargetMat) || new Set();
         let altNum = parseInt(nextAlt, 10);
         while (allocated.has(String(altNum).padStart(2, '0'))) {
@@ -3225,7 +3345,8 @@ export async function repairHierarchyBottomUp(params = {}) {
         plant: cleanSrcPlt,
         bomUsage: currentUsage,
         alternativeBom: item.alternativeBom || srcAlt,
-        client: rfc
+        client: rfc,
+        server: params.server || params
       });
 
       if (!subCompData.success || subCompData.components.length === 0) {
@@ -3247,7 +3368,9 @@ export async function repairHierarchyBottomUp(params = {}) {
         components: subCompData.components,
         baseQty: subCompData.baseQty,
         baseUnit: subCompData.baseUnit, // MARA-MEINS / STKO-BMEIN
-        client: rfc
+        client: rfc,
+        server: params.server || params,
+        user: params.user
       });
 
       // Step 3: Check RETURN table / result immediately. Stop on first failure!
@@ -3277,7 +3400,8 @@ export async function repairHierarchyBottomUp(params = {}) {
         bomUsage: currentUsage,
         alternativeBom: currentTargetAlt,
         expectedComponents: subCompData.components,
-        client: rfc
+        client: rfc,
+        server: params.server || params
       });
 
       if (!compVerification.success) {
@@ -3327,7 +3451,8 @@ export async function repairHierarchyBottomUp(params = {}) {
       bomUsage,
       alternativeBom: resolvedRootAlt,
       createdAlternatives: createdBomsByMatAlt,
-      client: rfc
+      client: rfc,
+      server: params.server || params
     });
 
     const rootResult = executionLog.find((e) => e.level === 0);
@@ -3360,6 +3485,7 @@ export async function repairHierarchyBottomUp(params = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcCopyBom(params = {}) {
+  assertResolvedServer(params, 'rfcCopyBom', params.client);
   const {
     sourceMaterial,
     sourcePlant,
@@ -3388,7 +3514,7 @@ export async function rfcCopyBom(params = {}) {
   const srcAlt = sourceAlternative || alternativeBom || '1';
 
   // In single-level copy: Always determine the NEXT available alternative in target plant (highest + 1)
-  const nextAlt = await getNextAvailableAlternative(cleanTgtMat, cleanTgtPlt, bomUsage);
+  const nextAlt = await getNextAvailableAlternative(cleanTgtMat, cleanTgtPlt, bomUsage, null, params.server || params);
   let tgtAlt = nextAlt;
 
   const cleanSpecifiedAltMatch = String(targetAlternative || '').match(/\b(\d{1,2})\b/);
@@ -3460,7 +3586,8 @@ export async function rfcCopyBom(params = {}) {
     plant: cleanTgtPlt,
     bomUsage,
     alternativeBom: tgtAlt,
-    expectedComponents: sourceBom.components
+    expectedComponents: sourceBom.components,
+    server: params.server || params
   });
 
   if (!compVerification.success) {
@@ -3486,6 +3613,7 @@ export async function rfcCopyBom(params = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcBatchValidateBoms(items = [], options = {}) {
+  assertResolvedServer(options, 'rfcBatchValidateBoms', options.client);
   if (!Array.isArray(items) || items.length === 0) {
     return {
       success: false,
@@ -3596,103 +3724,39 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         continue;
       }
 
-      // 5. Check if Source BOM exists in MAST
+      // 5. Read source BOM (with cache to eliminate duplicate RFC reads)
+      let srcBomRes = null;
       try {
-        if (isMock) {
-          const matching = activeMockBoms.filter(
-            (b) =>
-              String(b.material).toUpperCase() === srcMat &&
-              String(b.plant) === srcPlant &&
-              String(b.bomUsage || '1') === srcUsage
-          );
-
-          if (matching.length === 0) {
-            rowResult.status = 'ERROR';
-            rowResult.message = `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
-            results.push(rowResult);
-            continue;
-          }
-
-          const altMatch = matching.find(
-            (b) =>
-              String(b.alternativeBom || '1').padStart(2, '0') === effectiveSrcAlt.padStart(2, '0') ||
-              parseInt(String(b.alternativeBom || '1'), 10) === parseInt(effectiveSrcAlt, 10)
-          );
-
-          if (!altMatch) {
-            const available = [...new Set(matching.map((b) => String(b.alternativeBom || '1').padStart(2, '0')))];
-            rowResult.status = 'ERROR';
-            rowResult.message = `Source Alternative ${effectiveSrcAlt} not found. Available: ${available.join(', ')}`;
-            results.push(rowResult);
-            continue;
-          }
-
-          rowResult.componentCount = altMatch.components ? altMatch.components.length : 0;
-          if (rowResult.componentCount === 0) {
-            rowResult.status = 'INVALID';
-            rowResult.message = 'BOM has no active components';
-            results.push(rowResult);
-            continue;
-          }
+        const readCacheKey = `${toSapMatnr(srcMat)}_${srcPlant}_${srcUsage}_${effectiveSrcAlt}`;
+        if (options.cache?.readBom?.has(readCacheKey)) {
+          srcBomRes = options.cache.readBom.get(readCacheKey);
         } else {
-          const mastRes = await client.call('RFC_READ_TABLE', {
-            QUERY_TABLE: 'MAST',
-            DELIMITER: '|',
-            OPTIONS: [{ TEXT: `MATNR = '${toSapMatnr(srcMat)}' AND WERKS = '${srcPlant}'` }],
-            FIELDS: [{ FIELDNAME: 'STLNR' }, { FIELDNAME: 'STLAL' }, { FIELDNAME: 'STLAN' }],
-            DATA: []
+          srcBomRes = await rfcReadBom({
+            material: srcMat,
+            plant: srcPlant,
+            bomUsage: srcUsage,
+            alternativeBom: effectiveSrcAlt,
+            client,
+            server: options.server || options
           });
-
-          const fieldNames = (mastRes.FIELDS || []).map((f) => f.FIELDNAME.trim());
-          const rows = (mastRes.DATA || []).map((r) => {
-            const parts = r.WA.split('|');
-            const obj = {};
-            fieldNames.forEach((name, idx) => {
-              obj[name] = parts[idx]?.trim();
-            });
-            return {
-              stlnr: obj.STLNR,
-              stlal: obj.STLAL,
-              stlan: obj.STLAN
-            };
-          });
-
-          if (rows.length === 0) {
-            rowResult.status = 'ERROR';
-            rowResult.message = `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
-            results.push(rowResult);
-            continue;
+          if (options.cache?.readBom) {
+            options.cache.readBom.set(readCacheKey, srcBomRes);
           }
+        }
 
-          const altMatch = rows.find(
-            (r) =>
-              (r.stlal === effectiveSrcAlt.padStart(2, '0') || parseInt(r.stlal, 10) === parseInt(effectiveSrcAlt, 10)) &&
-              (!srcUsage || r.stlan === srcUsage)
-          );
+        if (!srcBomRes.success || !srcBomRes.bomExists) {
+          rowResult.status = 'ERROR';
+          rowResult.message = srcBomRes.message || `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
+          results.push(rowResult);
+          continue;
+        }
 
-          if (!altMatch) {
-            const available = [...new Set(rows.map((r) => r.stlal))];
-            rowResult.status = 'ERROR';
-            rowResult.message = `Source Alternative ${effectiveSrcAlt} not found. Available: ${available.join(', ')}`;
-            results.push(rowResult);
-            continue;
-          }
-
-          // Count components in STAS for this specific alternative
-          const stasRes = await client.call('RFC_READ_TABLE', {
-            QUERY_TABLE: 'STAS',
-            DELIMITER: '|',
-            OPTIONS: [{ TEXT: `STLTY = 'M' AND STLNR = '${altMatch.stlnr}' AND STLAL = '${altMatch.stlal}' AND LKENZ = ''` }],
-            FIELDS: [{ FIELDNAME: 'STLKN' }],
-            DATA: []
-          });
-          rowResult.componentCount = stasRes.DATA ? stasRes.DATA.length : 0;
-          if (rowResult.componentCount === 0) {
-            rowResult.status = 'INVALID';
-            rowResult.message = 'BOM has no active components';
-            results.push(rowResult);
-            continue;
-          }
+        rowResult.componentCount = srcBomRes.components ? srcBomRes.components.length : (srcBomRes.componentCount || 0);
+        if (rowResult.componentCount === 0) {
+          rowResult.status = 'INVALID';
+          rowResult.message = 'BOM has no active components';
+          results.push(rowResult);
+          continue;
         }
       } catch (srcErr) {
         rowResult.status = 'ERROR';
@@ -3701,7 +3765,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         continue;
       }
 
-      // 6. Pre-validate Target BOM creation with BAPI TESTRUN simulation (BAPIFLAG = 'X')
+      // 6. Pre-validate Target BOM creation with BAPI TESTRUN simulation (reusing preloaded source BOM)
       try {
         const simRes = await rfcSimulateCopyBom({
           sourceMaterial: srcMat,
@@ -3713,7 +3777,10 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
           targetUsage: tgtUsage,
           targetAlternative: tgtAltRes.targetAlternative,
           client,
-          copyHierarchy: options.copyHierarchy !== false
+          server: options.server || options,
+          copyHierarchy: options.copyHierarchy !== false,
+          preloadedSourceBom: srcBomRes,
+          cache: options.cache
         });
 
         if (!simRes.valid) {
@@ -3769,6 +3836,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
  * @returns {Promise<object>}
  */
 export async function rfcBatchCopyBoms(items = [], options = {}) {
+  assertResolvedServer(options, 'rfcBatchCopyBoms', options.client);
   const { skipErrors = true, copyHierarchy = true } = options;
 
   if (!Array.isArray(items) || items.length === 0) {
@@ -3909,15 +3977,375 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
   };
 }
 
+const serverIsolatedHierarchyCache = new Map();
+const serverIsolatedPlantDataCache = new Map();
+const HIERARCHY_CACHE_TTL_MS = 60000;
+
+export function clearHierarchyCache() {
+  serverIsolatedHierarchyCache.clear();
+  serverIsolatedPlantDataCache.clear();
+}
+
 /**
- * Reads the created target BOM hierarchy back from SAP using read-only RFC calls
- * (via rfcGetBomDisplayData), strictly verifies every component at every level against
+ * Batched reader for an entire BOM hierarchy.
+ * Issues at most 3 batched RFC calls (MAST for headers, STPO for components, MAKT for texts)
+ * independent of the number of BOMs/sub-assemblies in the tree.
+ * Guarantees strict cycle detection and bounded maximum depth.
+ */
+export async function batchReadBomHierarchy(params = {}) {
+  const {
+    material,
+    plant,
+    bomUsage = '1',
+    alternativeBom = '',
+    server = null,
+    client = null,
+    maxDepth = 15,
+    useCache = true
+  } = params;
+
+  if (!material || !plant) {
+    return {
+      success: false,
+      bomExists: false,
+      message: 'Material and plant are required.',
+      components: [],
+      maxLevel: 0
+    };
+  }
+
+  const cleanMat = String(material).trim().toUpperCase();
+  const cleanPlt = String(plant).trim().toUpperCase();
+  const cleanUsg = String(bomUsage || '1').trim();
+  const cleanAlt = alternativeBom !== undefined && alternativeBom !== null ? String(alternativeBom).trim() : '';
+
+  const serverId = server?.id || server?.systemKey || server?.host || 'default';
+  const cacheKey = `${serverId}##${cleanPlt}##${cleanUsg}##${cleanMat}##${cleanAlt}`;
+
+  if (useCache) {
+    const cached = serverIsolatedHierarchyCache.get(cacheKey);
+    if (cached && (Date.now() - cached.cachedAt) < HIERARCHY_CACHE_TTL_MS) {
+      return cached.data;
+    }
+  }
+
+  const isMock = process.env.USE_MOCK_SAP === 'true';
+  let mastRows = [];
+  let itemsByStlnr = new Map();
+  let descMap = new Map();
+
+  const plantCacheKey = `${serverId}##${cleanPlt}##${cleanUsg}`;
+  let plantData = useCache ? serverIsolatedPlantDataCache.get(plantCacheKey) : null;
+  if (plantData && (Date.now() - plantData.cachedAt) >= HIERARCHY_CACHE_TTL_MS) {
+    plantData = null;
+  }
+
+  if (plantData) {
+    mastRows = plantData.mastRows;
+    itemsByStlnr = plantData.itemsByStlnr;
+    descMap = plantData.descMap;
+  } else if (client) {
+    // 1. Batched read: Table MAST for all BOM headers in plant/usage
+    const mastRes = await client.call('RFC_READ_TABLE', {
+      QUERY_TABLE: 'MAST',
+      DELIMITER: '|',
+      OPTIONS: [{ TEXT: `WERKS = '${cleanPlt}' AND STLAN = '${cleanUsg}'` }],
+      FIELDS: [
+        { FIELDNAME: 'MATNR' },
+        { FIELDNAME: 'WERKS' },
+        { FIELDNAME: 'STLAN' },
+        { FIELDNAME: 'STLNR' },
+        { FIELDNAME: 'STLAL' }
+      ],
+      DATA: []
+    });
+
+    const mastFn = (mastRes?.FIELDS || []).map((f) => f.FIELDNAME.trim());
+    mastRows = (mastRes?.DATA || []).map((r) => {
+      const parts = r.WA.split('|');
+      const obj = {};
+      mastFn.forEach((fn, idx) => { obj[fn] = parts[idx]?.trim(); });
+      return {
+        matnr: obj.MATNR,
+        cleanMatnr: formatMaterialNumber(obj.MATNR),
+        werks: obj.WERKS,
+        stlan: obj.STLAN,
+        stlnr: obj.STLNR,
+        stlal: obj.STLAL ? String(obj.STLAL).padStart(2, '0') : '01'
+      };
+    });
+
+    // 2. Batched read: Table STPO for all BOM items
+    const allStlnrs = [...new Set(mastRows.map((r) => r.stlnr))].filter(Boolean);
+    if (allStlnrs.length > 0) {
+      const stlnrOptions = allStlnrs.map((id) => `STLNR = '${id}'`).join(' OR ');
+      const stpoRes = await client.call('RFC_READ_TABLE', {
+        QUERY_TABLE: 'STPO',
+        DELIMITER: '|',
+        OPTIONS: formatRfcTableOptions(`(${stlnrOptions}) AND STLTY = 'M' AND LKENZ = ''`),
+        FIELDS: [
+          { FIELDNAME: 'STLNR' },
+          { FIELDNAME: 'POSNR' },
+          { FIELDNAME: 'POSTP' },
+          { FIELDNAME: 'IDNRK' },
+          { FIELDNAME: 'MENGE' },
+          { FIELDNAME: 'MEINS' },
+          { FIELDNAME: 'POTX1' },
+          { FIELDNAME: 'DATUV' }
+        ],
+        DATA: []
+      });
+
+      const stpoFn = (stpoRes?.FIELDS || []).map((f) => f.FIELDNAME.trim());
+      for (const row of stpoRes?.DATA || []) {
+        const parts = row.WA.split('|');
+        const obj = {};
+        stpoFn.forEach((fn, idx) => { obj[fn] = parts[idx]?.trim(); });
+        const stlnr = obj.STLNR;
+        if (!itemsByStlnr.has(stlnr)) itemsByStlnr.set(stlnr, []);
+        itemsByStlnr.get(stlnr).push({
+          item: obj.POSNR || '0010',
+          itemCategory: obj.POSTP || 'L',
+          component: obj.IDNRK || '',
+          quantity: parseFloat(obj.MENGE) || 1,
+          unit: obj.MEINS || 'EA',
+          description: obj.POTX1 || '',
+          validFrom: obj.DATUV || ''
+        });
+      }
+    }
+
+    // 3. Batched read: Table MAKT for descriptions
+    try {
+      const maktRes = await client.call('RFC_READ_TABLE', {
+        QUERY_TABLE: 'MAKT',
+        DELIMITER: '|',
+        OPTIONS: [{ TEXT: `SPRAS = 'E'` }],
+        FIELDS: [
+          { FIELDNAME: 'MATNR' },
+          { FIELDNAME: 'MAKTX' }
+        ],
+        DATA: []
+      });
+      const maktFn = (maktRes?.FIELDS || []).map((f) => f.FIELDNAME.trim());
+      for (const row of maktRes?.DATA || []) {
+        const parts = row.WA.split('|');
+        const obj = {};
+        maktFn.forEach((fn, idx) => { obj[fn] = parts[idx]?.trim(); });
+        if (obj.MATNR && obj.MAKTX) {
+          descMap.set(obj.MATNR.trim().toUpperCase(), obj.MAKTX.trim());
+          descMap.set(formatMaterialNumber(obj.MATNR), obj.MAKTX.trim());
+        }
+      }
+    } catch {}
+
+    if (useCache) {
+      serverIsolatedPlantDataCache.set(plantCacheKey, {
+        mastRows,
+        itemsByStlnr,
+        descMap,
+        cachedAt: Date.now()
+      });
+    }
+  } else if (isMock) {
+    loadMockBoms();
+    const matchingPlantBoms = activeMockBoms.filter(
+      (b) => String(b.plant) === cleanPlt && String(b.bomUsage || '1') === cleanUsg
+    );
+    for (const b of matchingPlantBoms) {
+      const bMat = String(b.material).trim().toUpperCase();
+      const bAlt = String(b.alternativeBom || '01').padStart(2, '0');
+      const bStlnr = b.bomNumber || `MOCK_${bMat}_${bAlt}`;
+      mastRows.push({
+        matnr: bMat,
+        cleanMatnr: formatMaterialNumber(bMat),
+        werks: String(b.plant),
+        stlan: String(b.bomUsage || '1'),
+        stlnr: bStlnr,
+        stlal: bAlt,
+        baseQty: b.baseQty || '100',
+        baseUnit: b.baseUnit || 'EA',
+        description: b.description || ''
+      });
+      if (!itemsByStlnr.has(bStlnr)) itemsByStlnr.set(bStlnr, []);
+      for (const c of b.components || []) {
+        const cMat = String(c.component || c.material || '').trim().toUpperCase();
+        itemsByStlnr.get(bStlnr).push({
+          item: c.item || '0010',
+          itemCategory: c.itemCategory || 'L',
+          component: cMat,
+          quantity: c.quantity !== undefined ? parseFloat(c.quantity) : 1,
+          unit: c.unit || 'EA',
+          description: c.description || '',
+          validFrom: c.validFrom || ''
+        });
+        if (c.description) {
+          descMap.set(cMat, c.description);
+          descMap.set(formatMaterialNumber(cMat), c.description);
+        }
+      }
+      if (b.description) {
+        descMap.set(bMat, b.description);
+        descMap.set(formatMaterialNumber(bMat), b.description);
+      }
+    }
+  }
+
+  // Index headers by material
+  const headersByMat = new Map();
+  for (const h of mastRows) {
+    const m = h.matnr;
+    const cleanM = h.cleanMatnr;
+    if (!headersByMat.has(m)) headersByMat.set(m, []);
+    headersByMat.get(m).push(h);
+    if (!headersByMat.has(cleanM)) headersByMat.set(cleanM, []);
+    headersByMat.get(cleanM).push(h);
+  }
+
+  // Find root BOM
+  const rootCandidates = headersByMat.get(cleanMat) || headersByMat.get(formatMaterialNumber(cleanMat)) || [];
+  if (rootCandidates.length === 0) {
+    return {
+      success: false,
+      bomExists: false,
+      message: `No BOM exists for material ${cleanMat} in plant ${cleanPlt}.`,
+      material: formatMaterialNumber(cleanMat),
+      plant: cleanPlt,
+      components: [],
+      maxLevel: 0
+    };
+  }
+
+  let rootHeader = null;
+  if (cleanAlt) {
+    const padAlt = String(cleanAlt).padStart(2, '0');
+    rootHeader = rootCandidates.find(
+      (h) => h.stlal === padAlt || parseInt(h.stlal, 10) === parseInt(cleanAlt, 10) || h.stlal === cleanAlt
+    );
+    if (!rootHeader) {
+      return {
+        success: false,
+        bomExists: true,
+        alternativeExists: false,
+        message: `Alternative ${cleanAlt} does not exist for BOM ${cleanMat} in plant ${cleanPlt}.`,
+        material: formatMaterialNumber(cleanMat),
+        plant: cleanPlt,
+        components: [],
+        maxLevel: 0
+      };
+    }
+  } else {
+    rootCandidates.sort((a, b) => parseInt(a.stlal, 10) - parseInt(b.stlal, 10));
+    rootHeader = rootCandidates[0];
+  }
+
+  const resolvedRootAlt = rootHeader.stlal;
+  const flatComponents = [];
+  const visitedBranches = new Set();
+  let maxLevelSeen = 1;
+
+  function assembleNode(parentMat, parentStlnr, level, ancestorPath) {
+    if (level > maxDepth) {
+      const err = new Error(`Verification exceeded maximum hierarchy depth limit of ${maxDepth} at ${parentMat}. Potential infinite loop.`);
+      err.code = 'MAX_DEPTH_EXCEEDED';
+      throw err;
+    }
+    maxLevelSeen = Math.max(maxLevelSeen, level);
+
+    const comps = itemsByStlnr.get(parentStlnr) || [];
+    for (let idx = 0; idx < comps.length; idx++) {
+      const c = comps[idx];
+      const compMat = String(c.component || '').trim().toUpperCase();
+      if (!compMat) continue;
+
+      const subHeaderList = headersByMat.get(compMat) || headersByMat.get(formatMaterialNumber(compMat)) || [];
+      const hasSub = subHeaderList.length > 0;
+
+      const cDesc = descMap.get(compMat) || descMap.get(formatMaterialNumber(compMat)) || c.description || '-';
+      const pDesc = descMap.get(parentMat) || descMap.get(formatMaterialNumber(parentMat)) || (parentMat === cleanMat ? rootHeader.description : '-');
+
+      flatComponents.push({
+        level,
+        item: c.item || String((idx + 1) * 10).padStart(4, '0'),
+        itemNo: parseInt(c.item, 10) || (idx + 1) * 10,
+        component: formatMaterialNumber(compMat),
+        rawComponent: compMat,
+        material: formatMaterialNumber(compMat),
+        rawMaterial: compMat,
+        quantity: c.quantity !== undefined ? c.quantity : 1,
+        unit: c.unit || 'EA',
+        itemCategory: c.itemCategory || 'L',
+        validFromRaw: c.validFrom || '',
+        validFrom: formatSapDate(c.validFrom),
+        hasSubBom: hasSub,
+        parentMaterial: formatMaterialNumber(parentMat),
+        rawParentMaterial: parentMat,
+        description: cDesc,
+        parentDescription: pDesc
+      });
+
+      if (hasSub) {
+        if (ancestorPath.includes(compMat) || ancestorPath.includes(formatMaterialNumber(compMat))) {
+          const err = new Error(`Cyclic BOM reference detected: material ${compMat} is already an ancestor in hierarchy path (${ancestorPath.join(' -> ')} -> ${compMat}).`);
+          err.code = 'CYCLIC_BOM_DETECTED';
+          throw err;
+        }
+
+        const subHeader = subHeaderList[0];
+        const branchKey = `${parentMat}->${compMat}`;
+        if (!visitedBranches.has(branchKey)) {
+          visitedBranches.add(branchKey);
+          assembleNode(compMat, subHeader.stlnr, level + 1, [...ancestorPath, compMat]);
+        }
+      }
+    }
+  }
+
+  assembleNode(cleanMat, rootHeader.stlnr, 1, [cleanMat]);
+
+  const result = {
+    success: true,
+    bomExists: true,
+    material: formatMaterialNumber(cleanMat),
+    rawMaterial: cleanMat,
+    plant: cleanPlt,
+    bomUsage: cleanUsg,
+    alternativeBom: resolvedRootAlt,
+    componentCount: flatComponents.length,
+    components: flatComponents,
+    maxLevel: maxLevelSeen,
+    header: {
+      bomNumber: rootHeader.stlnr,
+      alternative: resolvedRootAlt,
+      baseQty: rootHeader.baseQty || '100',
+      baseUnit: rootHeader.baseUnit || 'EA',
+      description: rootHeader.description || ''
+    }
+  };
+
+  if (useCache) {
+    serverIsolatedHierarchyCache.set(cacheKey, {
+      data: result,
+      cachedAt: Date.now()
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Reads the created target BOM hierarchy back from SAP using read-only batched RFC calls
+ * (via batchReadBomHierarchy), strictly verifies every component at every level against
  * the reference BOM, and formats the structure grouped by Parent BOM for the result UI.
+ *
+ * Runs through the SAP Connection Pool at RFC_PRIORITY.INTERACTIVE (priority 2)
+ * with a 60s bounded timeout.
  *
  * @param {object} params
  * @returns {Promise<object>}
  */
 export async function verifyCopiedBomHierarchy(params = {}) {
+  assertResolvedServer(params, 'verifyCopiedBomHierarchy', params.client);
   const {
     sourceMaterial,
     sourcePlant,
@@ -3928,7 +4356,9 @@ export async function verifyCopiedBomHierarchy(params = {}) {
     targetUsage = '1',
     targetAlternative = '1',
     server = null,
-    client = null
+    client = null,
+    maxDepth = 15,
+    timeoutMs = 60000
   } = params;
 
   if (!targetMaterial || !targetPlant) {
@@ -3936,8 +4366,21 @@ export async function verifyCopiedBomHierarchy(params = {}) {
   }
 
   const isMock = process.env.USE_MOCK_SAP === 'true';
-  const shouldClose = !client && !isMock;
-  const rfc = client || (isMock ? null : await openRfcClient(server || params));
+
+  // When live and no pooled client provided, route through SAP connection pool at INTERACTIVE priority (2)
+  if (!isMock && !client) {
+    const serverObj = server || params;
+    const pool = getSapConnectionPool(serverObj);
+    const userId = params.user?.id || params.userId || 'verify_user';
+    return await pool.run(RFC_PRIORITY.INTERACTIVE, userId, async (pooledClient) => {
+      return verifyCopiedBomHierarchy({
+        ...params,
+        client: pooledClient
+      });
+    }, { timeoutMs });
+  }
+
+  const rfc = client || null;
 
   try {
     const cleanSrcMat = String(sourceMaterial || '').trim().toUpperCase();
@@ -3950,16 +4393,40 @@ export async function verifyCopiedBomHierarchy(params = {}) {
     const cleanTgtUsg = String(targetUsage || cleanSrcUsg).trim();
     const cleanTgtAlt = String(targetAlternative || '1').trim();
 
-    // 1. Read Target Hierarchy back from SAP
-    const targetTree = await rfcGetBomDisplayData({
-      material: cleanTgtMat,
-      plant: cleanTgtPlt,
-      bomUsage: cleanTgtUsg,
-      alternativeBom: cleanTgtAlt,
-      multiLevel: true,
-      server,
-      client: rfc
-    });
+    // 1. Read Target Hierarchy back from SAP in fast batched reads
+    let targetTree;
+    try {
+      targetTree = await batchReadBomHierarchy({
+        material: cleanTgtMat,
+        plant: cleanTgtPlt,
+        bomUsage: cleanTgtUsg,
+        alternativeBom: cleanTgtAlt,
+        server,
+        client: rfc,
+        maxDepth
+      });
+    } catch (targetErr) {
+      return {
+        success: false,
+        status: 'FAILED',
+        message: targetErr.message || `Failed to read target BOM hierarchy for ${cleanTgtMat}`,
+        error: targetErr.code || 'TARGET_HIERARCHY_READ_FAILED',
+        bomsCreated: 0,
+        totalComponents: 0,
+        totalLevels: 0,
+        rootAlternative: cleanTgtAlt,
+        targetHeader: null,
+        verification: {
+          verifiedCount: 0,
+          totalCount: 0,
+          status: 'FAILED',
+          message: targetErr.message,
+          differences: [targetErr.message]
+        },
+        groups: [],
+        flatComponents: []
+      };
+    }
 
     if (!targetTree || !targetTree.success || !targetTree.bomExists) {
       return {
@@ -3986,15 +4453,38 @@ export async function verifyCopiedBomHierarchy(params = {}) {
     // 2. Read Source Hierarchy from SAP for strict verification
     let sourceTree = null;
     if (cleanSrcMat && cleanSrcPlt) {
-      sourceTree = await rfcGetBomDisplayData({
-        material: cleanSrcMat,
-        plant: cleanSrcPlt,
-        bomUsage: cleanSrcUsg,
-        alternativeBom: cleanSrcAlt,
-        multiLevel: true,
-        server,
-        client: rfc
-      });
+      try {
+        sourceTree = await batchReadBomHierarchy({
+          material: cleanSrcMat,
+          plant: cleanSrcPlt,
+          bomUsage: cleanSrcUsg,
+          alternativeBom: cleanSrcAlt,
+          server,
+          client: rfc,
+          maxDepth
+        });
+      } catch (sourceErr) {
+        return {
+          success: false,
+          status: 'FAILED',
+          message: sourceErr.message || `Failed to read source reference BOM for ${cleanSrcMat}`,
+          error: sourceErr.code || 'SOURCE_HIERARCHY_READ_FAILED',
+          bomsCreated: 1,
+          totalComponents: targetTree.components?.length || 0,
+          totalLevels: targetTree.maxLevel || 1,
+          rootAlternative: targetTree.alternativeBom || cleanTgtAlt,
+          targetHeader: targetTree.header,
+          verification: {
+            verifiedCount: 0,
+            totalCount: targetTree.components?.length || 0,
+            status: 'FAILED',
+            message: sourceErr.message,
+            differences: [sourceErr.message]
+          },
+          groups: [],
+          flatComponents: targetTree.components || []
+        };
+      }
     }
 
     const srcComps = sourceTree?.components || [];
@@ -4141,7 +4631,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
     }
 
     const groups = Array.from(groupsMap.values());
-    const maxLevel = tgtComps.length > 0 ? Math.max(...tgtComps.map((c) => c.level || 1)) : 1;
+    const maxLevel = targetTree.maxLevel || (tgtComps.length > 0 ? Math.max(...tgtComps.map((c) => c.level || 1)) : 1);
     const resolvedRootAlt = targetTree.header?.alternative || cleanTgtAlt;
 
     const totalSourceComponents = srcComps.length > 0 ? srcComps.length : tgtComps.length;
@@ -4166,11 +4656,10 @@ export async function verifyCopiedBomHierarchy(params = {}) {
       flatComponents: tgtComps
     };
   } finally {
-    if (shouldClose) {
-      try { await rfc.close(); } catch {}
-    }
+    // Pooled client lifecycle handled by pool.run
   }
 }
+
 
 export {
   getSapConnectionPool,
@@ -4182,6 +4671,8 @@ export default {
   getSapConnectionPool,
   RFC_PRIORITY,
   getAllPoolStats,
+  batchReadBomHierarchy,
+  clearHierarchyCache,
   setActiveRfcServer,
   getActiveRfcServer,
   getRfcConnectionParams,

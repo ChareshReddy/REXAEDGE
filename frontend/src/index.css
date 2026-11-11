@@ -92,10 +92,10 @@
   --sap-warning-bg: #fffbeb;
   --sap-warning-border: #fcd34d;
 
-  --sap-error: #d97706;
-  --sap-error-text: #b45309;
-  --sap-error-bg: #fffbeb;
-  --sap-error-border: #fcd34d;
+  --sap-error: var(--color-danger, #B42318);
+  --sap-error-text: var(--color-danger, #B42318);
+  --sap-error-bg: var(--color-danger-bg, #FEF3F2);
+  --sap-error-border: var(--color-danger-border, #FECDCA);
 
   /* Admin Badge / Role Accent */
   --sap-admin: #02579A;
@@ -131,8 +131,8 @@
   --sap-btn-ghost-hover-text: #05396B;
 
   /* Card Symbol / Icon Badge Palette */
-  --sap-card-icon-bg: #ffd099;
-  --sap-card-icon-border: rgba(180, 83, 9, 0.2);
+  --sap-card-icon-bg: var(--color-blue-100, #EEF4F9);
+  --sap-card-icon-border: var(--color-blue-300, #B3CDE0);
 
   /* Soft Light Shadows Scale with warm tint */
   --sap-shadow-sm: 0 1px 2px rgba(2, 87, 154, 0.04);
@@ -2967,9 +2967,9 @@ select:-webkit-autofill:focus {
 }
 
 .sap-badge-danger {
-  background: var(--sap-error-bg);
-  color: var(--sap-error-text);
-  border: 1px solid var(--sap-error-border);
+  background: var(--color-danger-bg, #FEF3F2);
+  color: var(--color-danger, #B42318);
+  border: 1px solid var(--color-danger-border, #FECDCA);
 }
 
 .sap-badge-success {
@@ -2979,9 +2979,9 @@ select:-webkit-autofill:focus {
 }
 
 .sap-badge-timer {
-  background: #fffbeb;
-  color: #b45309;
-  border: 1px solid #fde68a;
+  background: var(--color-blue-50, #EEF4F9);
+  color: var(--color-blue-700, #034375);
+  border: 1px solid var(--color-blue-200, #B3CDE0);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3091,9 +3091,9 @@ select:-webkit-autofill:focus {
 }
 
 .sap-confirm-danger-banner strong {
-  display: block;
+  display: inline;
   font-size: 13px;
-  color: var(--sap-error-text);
+  color: inherit;
 }
 
 .sap-confirm-delete-preview {
@@ -3105,6 +3105,14 @@ select:-webkit-autofill:focus {
   background: var(--sap-card-nested-bg, #EEF4F9);
   border: 1px solid var(--sap-border-subtle);
   border-radius: var(--radius-sm);
+}
+
+.rx-delete-bom-table-wrapper,
+[data-testid="delete-bom-param-container"] {
+  min-height: auto !important;
+  height: auto !important;
+  flex: none !important;
+  flex-grow: 0 !important;
 }
 
 .sap-delete-checkbox-container {
@@ -3936,9 +3944,9 @@ input[type="checkbox"]:disabled {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-md);
-  background: #ffd099 !important;
-  border: 1px solid rgba(180, 83, 9, 0.2);
-  color: var(--sap-primary);
+  background: var(--color-blue-100, #EEF4F9) !important;
+  border: 1px solid var(--color-blue-300, #B3CDE0) !important;
+  color: var(--color-blue-600, #02579A) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4214,9 +4222,9 @@ input[type="checkbox"]:disabled {
 }
 
 .status-stat.warning {
-  background: var(--sap-warning-bg);
-  color: var(--sap-warning-text);
-  border: 1px solid var(--sap-warning-border);
+  background: var(--color-blue-50, #EEF4F9);
+  color: var(--color-text-secondary, #4A5F77);
+  border: 1px solid var(--color-border, #D9E2EC);
 }
 
 .status-stat.error {
@@ -4272,18 +4280,24 @@ input[type="checkbox"]:disabled {
 
 .sap-bulk-table tr.row-status-error,
 .sap-bulk-table tr.row-status-failed {
-  background: rgba(245, 158, 11, 0.04);
-  border-left: 3px solid var(--sap-error, #d97706);
+  background: transparent;
+  border-left: 3px solid var(--color-danger, #B42318);
+}
+
+.sap-bulk-table tr.row-status-error > td:first-child,
+.sap-bulk-table tr.row-status-failed > td:first-child {
+  border-left: 3px solid var(--color-danger, #B42318);
 }
 
 .sap-bulk-table tr.row-status-valid,
 .sap-bulk-table tr.row-status-success {
-  background: rgba(16, 185, 129, 0.02);
+  background: transparent;
 }
 
-.sap-bulk-table tr.row-status-warning {
-  background: rgba(245, 158, 11, 0.035);
-  border-left: 3px solid var(--sap-warning, #f59e0b);
+.sap-bulk-table tr.row-status-warning,
+.sap-bulk-table tr.row-status-skipped {
+  background: transparent;
+  border-left: none;
 }
 
 .bom-identity-cell {
@@ -4336,10 +4350,12 @@ input[type="checkbox"]:disabled {
   border: 1px solid var(--sap-success-border);
 }
 
-.chip-warning {
-  background: var(--sap-warning-bg);
-  color: var(--sap-warning-text);
-  border: 1px solid var(--sap-warning-border);
+.chip-warning,
+.chip-skipped,
+.chip-not_processed {
+  background: var(--color-blue-50, #EEF4F9);
+  color: var(--color-text-secondary, #4A5F77);
+  border: 1px solid var(--color-border, #D9E2EC);
 }
 
 .chip-error,
@@ -4930,21 +4946,21 @@ input[type="checkbox"]:disabled {
 }
 
 .sap-fiori-view-icon-badge.copy {
-  background: #ffd099 !important;
+  background: var(--color-blue-100, #EEF4F9) !important;
   color: var(--sap-brand-navy, #00204E);
-  border: 1px solid rgba(180, 83, 9, 0.2);
+  border: 1px solid var(--color-blue-300, #B3CDE0);
 }
 
 .sap-fiori-view-icon-badge.delete {
-  background: #ffd099 !important;
-  color: #1e293b;
-  border: 1px solid rgba(30, 41, 59, 0.2);
+  background: var(--color-blue-100, #EEF4F9) !important;
+  color: var(--color-blue-600, #02579A);
+  border: 1px solid var(--color-blue-300, #B3CDE0);
 }
 
 .sap-fiori-view-icon-badge.explorer {
-  background: #ffd099 !important;
+  background: var(--color-blue-100, #EEF4F9) !important;
   color: var(--sap-brand-navy, #00204E);
-  border: 1px solid rgba(180, 83, 9, 0.2);
+  border: 1px solid var(--color-blue-300, #B3CDE0);
 }
 
 .sap-fiori-view-title {
@@ -6120,7 +6136,9 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
   background: #ffffff;
 }
 
-.preflight-preview-table .bom-messages-row td {
+.preflight-preview-table .bom-messages-row td,
+.sap-bulk-table .bom-messages-row td,
+.bom-messages-row td {
   white-space: normal !important;
   background: var(--sap-card-nested-bg, #EEF4F9);
   border-top: 1px dashed var(--sap-border, #D9E2EC);
@@ -6135,19 +6153,26 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
   white-space: nowrap;
 }
 
-.preflight-preview-table .col-result {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.preflight-preview-table .col-result,
+.sap-bulk-table .col-result {
+  overflow: visible;
+  text-overflow: clip;
   white-space: nowrap;
   text-align: center;
 }
 
-.preflight-preview-table .col-result .sap-badge {
+.preflight-preview-table .col-result .sap-badge,
+.sap-bulk-table .col-result .sap-badge {
   display: inline-block;
   white-space: nowrap;
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
+}
+
+.sap-table td.bulk-execution-msg-cell,
+.bulk-execution-msg-cell {
+  font-family: var(--font-family, sans-serif) !important;
 }
 
 .bom-mat-code {
@@ -6406,11 +6431,9 @@ button.fiori-op-card.fiori-op-card-destructive:hover:not(.disabled) .fiori-op-ic
    ========================================================================== */
 
 .sap-password-modal-card {
-  width: 440px !important;
-  max-width: calc(100vw - 32px) !important;
-  padding: 20px !important;
+  width: 100% !important;
+  max-width: 500px !important;
   box-sizing: border-box !important;
-  border-radius: var(--radius-xl, 12px) !important;
   margin: 0 auto !important;
 }
 
@@ -7518,9 +7541,23 @@ td.sap-code {
   }
 }
 
-/* Colors (Sentence case, strictly no red) */
-/* Warning / Validation / Error in Amber */
-.sap-toast-error,
+/* Error in Danger Red (design tokens) */
+.sap-toast-error {
+  background-color: var(--color-danger-bg, #FEF3F2);
+  border: 1px solid var(--color-danger-border, #FECDCA);
+  border-left: 3px solid var(--color-danger, #B42318);
+  color: var(--color-danger-text, #7A271A);
+}
+
+.sap-toast-error .sap-toast-icon {
+  color: var(--color-danger, #B42318);
+}
+
+.sap-toast-error .sap-toast-title {
+  color: var(--color-danger-text, #7A271A);
+}
+
+/* Warning in Amber */
 .sap-toast-warning {
   background-color: #FFFBEB; /* Amber-50 */
   border: 1px solid #FCD34D; /* Amber-300 */
@@ -7528,12 +7565,10 @@ td.sap-code {
   color: #78350F;            /* Amber-900 */
 }
 
-.sap-toast-error .sap-toast-icon,
 .sap-toast-warning .sap-toast-icon {
   color: #B45309;            /* Amber-700 */
 }
 
-.sap-toast-error .sap-toast-title,
 .sap-toast-warning .sap-toast-title {
   color: #78350F;
 }

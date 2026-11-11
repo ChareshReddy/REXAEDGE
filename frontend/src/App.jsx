@@ -61,6 +61,7 @@ import rexaEdgeFullColourLogo from './assets/rexaedge_full_colour.png';
 import HomePage from './components/HomePage';
 import activityTracker from './services/activityTracker';
 import { formatEnvironment, formatDisplayName } from './utils/textFormatters';
+import { getNewestActiveServer } from './utils/serverUtils';
 import { RouterProvider, useRouter, Link } from './context/RouterContext';
 import {
   ROUTES,
@@ -510,12 +511,16 @@ function AppContent({
         setAvailableServers(servers || []);
 
         if (servers && servers.length > 0) {
-          // If previously saved server exists and is in available list, pick it; otherwise select first
-          const savedId = localStorage.getItem('selected_server_id');
-          const matched = servers.find((s) => s.id === savedId) || servers[0];
-          setSelectedServer(matched);
-          setSelectedServerHeader(matched.id);
-          setCurrentSystem(matched.environment || 'DEV');
+          // On load, select the most recently added active server the user has access to
+          const defaultServer = getNewestActiveServer(servers);
+          if (defaultServer) {
+            setSelectedServer(defaultServer);
+            setSelectedServerHeader(defaultServer.id);
+            setCurrentSystem(defaultServer.environment || 'DEV');
+          } else {
+            setSelectedServer(null);
+            setSelectedServerHeader(null);
+          }
         } else {
           setSelectedServer(null);
           setSelectedServerHeader(null);

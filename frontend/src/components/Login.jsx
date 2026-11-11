@@ -7,7 +7,7 @@ import {
   EyeOff,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2,
+  ClipboardList,
   Layers,
   Package,
   ShoppingCart,
@@ -145,52 +145,35 @@ export default function Login({ onLoginSuccess }) {
             </div>
           </div>
 
-          {/* Floating Product Preview Card (CSS/SVG only, aria-hidden) */}
-          <div className="lg-preview-container" aria-hidden="true">
-            {/* Background card with table rows */}
-            <div className="lg-preview-card-back">
-              <div className="lg-preview-mock-row">
-                <span className="lg-preview-mock-cell lg-cell-lg" />
-                <span className="lg-preview-mock-cell lg-cell-sm" />
-                <span className="lg-preview-mock-cell lg-cell-md" />
+          {/* Capabilities List */}
+          <div className="lg-capabilities-list" role="list" aria-label="Key Capabilities">
+            <div className="lg-capability-row" role="listitem">
+              <div className="lg-capability-badge" aria-hidden="true">
+                <ShieldCheck size={16} strokeWidth={2} className="lg-capability-icon" />
               </div>
-              <div className="lg-preview-mock-row">
-                <span className="lg-preview-mock-cell lg-cell-md" />
-                <span className="lg-preview-mock-cell lg-cell-lg" />
-                <span className="lg-preview-mock-cell lg-cell-sm" />
-              </div>
-              <div className="lg-preview-mock-row">
-                <span className="lg-preview-mock-cell lg-cell-sm" />
-                <span className="lg-preview-mock-cell lg-cell-md" />
-                <span className="lg-preview-mock-cell lg-cell-lg" />
+              <div className="lg-capability-text">
+                <div className="lg-capability-title">Validated before every create</div>
+                <div className="lg-capability-desc">Every BOM is checked against SAP master data first.</div>
               </div>
             </div>
 
-            {/* Foreground glassy BOM flow card */}
-            <div className="lg-preview-card-front">
-              <div className="lg-preview-header">
-                <span className="lg-preview-title">BOM creation workflow</span>
-                <span className="lg-preview-badge">
-                  <CheckCircle2 size={12} strokeWidth={2.5} />
-                  <span>Completed</span>
-                </span>
+            <div className="lg-capability-row" role="listitem">
+              <div className="lg-capability-badge" aria-hidden="true">
+                <Lock size={16} strokeWidth={2} className="lg-capability-icon" />
               </div>
-              <div className="lg-preview-progress-track">
-                <div className="lg-preview-progress-fill" />
+              <div className="lg-capability-text">
+                <div className="lg-capability-title">Access you control</div>
+                <div className="lg-capability-desc">Permissions per user and per SAP server.</div>
               </div>
-              <div className="lg-preview-steps">
-                <div className="lg-preview-step">
-                  <span className="lg-preview-step-dot lg-step-done" />
-                  <span>Upload</span>
-                </div>
-                <div className="lg-preview-step">
-                  <span className="lg-preview-step-dot lg-step-done" />
-                  <span>Validate</span>
-                </div>
-                <div className="lg-preview-step">
-                  <span className="lg-preview-step-dot lg-step-done" />
-                  <span>Create</span>
-                </div>
+            </div>
+
+            <div className="lg-capability-row" role="listitem">
+              <div className="lg-capability-badge" aria-hidden="true">
+                <ClipboardList size={16} strokeWidth={2} className="lg-capability-icon" />
+              </div>
+              <div className="lg-capability-text">
+                <div className="lg-capability-title">Complete audit trail</div>
+                <div className="lg-capability-desc">Every action is logged for review.</div>
               </div>
             </div>
           </div>

@@ -1,7 +1,12 @@
 import crypto from 'crypto';
 import { auditLogger } from './auditLog.js';
 import { parseBomSpreadsheet } from './bomSpreadsheetParser.js';
-import { createBomFromData, rfcPreflightCreateBoms } from './bomCreateEngine.js';
+import {
+  createBomFromData,
+  rfcPreflightCreateBoms,
+  resolveBomGroups,
+  applyGroupValidationRules
+} from './bomCreateEngine.js';
 import {
   rfcCopyBom,
   rfcBatchValidateBoms,
@@ -12,6 +17,7 @@ import {
 import { getCircuitBreaker } from './serverHealthService.js';
 import { bomJobRepository } from './bomJobRepository.js';
 import { bomLockService } from './bomLockService.js';
+import { jobPerformanceTracker } from './jobPerformanceTracker.js';
 
 export const DEFAULT_MAX_BOMS = 500;
 export const MAX_BOMS = 500; // Strict Stage 4 limit: max 500 rows per job
@@ -52,9 +58,61 @@ class BomJobManager {
   constructor() {
     this.jobs = new Map(); // jobId -> Job Object (in-memory cache)
     this.queuedJobs = []; // Queue of jobIds waiting for capacity (FIFO)
+    this.activeRunners = new Map(); // jobId -> { startedAt, heartbeatTimer, jobTimeoutTimer }
     this.repository = bomJobRepository;
     this.initialized = false;
     this.init();
+
+    // Background interval to continuously reap stale jobs without heartbeat (> 2 min)
+    this.staleCheckerInterval = setInterval(() => {
+      try {
+        this.cleanStaleJobs();
+      } catch (err) {
+        console.warn('[bomJobManager] Stale check error:', err.message);
+      }
+    }, 15000);
+    if (this.staleCheckerInterval?.unref) {
+      this.staleCheckerInterval.unref();
+    }
+  }
+
+  cleanStaleJobs() {
+    const now = Date.now();
+    let cleaned = false;
+
+    for (const job of this.jobs.values()) {
+      if (job.status === 'RUNNING' || job.status === 'running') {
+        const jobId = job.jobId || job.id;
+        const hasRunner = this.activeRunners.has(jobId);
+        const lastHeartbeat = new Date(job.updatedAt || job.startedAt || job.createdAt || 0).getTime();
+        const createdAge = now - new Date(job.createdAt || 0).getTime();
+        const isHeartbeatStale = (now - lastHeartbeat) > 120000; // > 2 minutes
+        const isRunnerMissingAndNotStarting = !hasRunner && createdAge > 10000; // 10s grace period for event loop spinup
+
+        if (isHeartbeatStale || isRunnerMissingAndNotStarting) {
+          console.warn(`[bomJobManager] Marking stale job ${jobId} as INTERRUPTED (hasRunner=${hasRunner}, age=${now - lastHeartbeat}ms, createdAge=${createdAge}ms)`);
+          job.status = 'INTERRUPTED';
+          job.message = 'The job was interrupted. Please upload again.';
+          job.error = job.message;
+          job.updatedAt = new Date().toISOString();
+          job.completedAt = job.completedAt || new Date().toISOString();
+
+          if (hasRunner) {
+            const runnerInfo = this.activeRunners.get(jobId);
+            if (runnerInfo?.heartbeatTimer) clearInterval(runnerInfo.heartbeatTimer);
+            if (runnerInfo?.jobTimeoutTimer) clearTimeout(runnerInfo.jobTimeoutTimer);
+            this.activeRunners.delete(jobId);
+          }
+
+          this.repository.saveJob(job).catch(() => {});
+          cleaned = true;
+        }
+      }
+    }
+
+    if (cleaned) {
+      this.processQueue().catch(() => {});
+    }
   }
 
   async init() {
@@ -71,6 +129,7 @@ class BomJobManager {
           this.queuedJobs.push(job.jobId);
         }
       }
+      this.cleanStaleJobs();
       this.initialized = true;
       // 4. Try processing queued jobs if any
       this.processQueue();
@@ -112,6 +171,7 @@ class BomJobManager {
       }
       this.jobs.set(summary.jobId || summary.id, { ...summary });
     }
+    this.cleanStaleJobs();
     return list;
   }
 
@@ -132,6 +192,12 @@ class BomJobManager {
       .filter((r) => r.status === 'FAILED' || r.status === 'ERROR')
       .map((r) => r.input || r);
 
+    const isCompleted = ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED', 'CANCELLED', 'INTERRUPTED'].includes(job.status);
+    const calculatedPercent = isCompleted ? 100 : (job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0);
+    const progressPercent = typeof job.progress_percent === 'number'
+      ? (isCompleted ? 100 : job.progress_percent)
+      : calculatedPercent;
+
     return {
       jobId: job.jobId || job.id,
       id: job.jobId || job.id,
@@ -142,10 +208,15 @@ class BomJobManager {
       serverId: job.serverId || job.server_id,
       serverName: job.serverName,
       status: job.status,
+      queuedReason: job.queuedReason || null,
       total: job.total || job.total_rows || 0,
       total_rows: job.total || job.total_rows || 0,
       processed: job.processed || job.processed_rows || 0,
       processed_rows: job.processed || job.processed_rows || 0,
+      progress_percent: progressPercent,
+      current_step: job.current_step || null,
+      completed_steps: job.completed_steps ?? job.processed ?? 0,
+      total_steps: job.total_steps ?? (job.total || 0),
       successCount: job.successCount || job.success_count || 0,
       success_count: job.successCount || job.success_count || 0,
       failedCount: job.failedCount || job.error_count || 0,
@@ -165,15 +236,25 @@ class BomJobManager {
   }
 
   getJob(jobId, requestingUser = null) {
-    const job = this.jobs.get(jobId);
-    if (!job) return null;
+    this.cleanStaleJobs();
+    let job = this.jobs.get(jobId);
+    if (!job) {
+      // Async fallback to repository (dual-written DB or file store) if in-memory cache missed
+      return this.repository.getJob(jobId).then((found) => {
+        if (found) {
+          this.jobs.set(found.jobId || found.id, found);
+          return this.toCleanSummary(found);
+        }
+        return null;
+      });
+    }
 
     if (requestingUser) {
       const userObj = typeof requestingUser === 'object' ? requestingUser : { id: requestingUser, email: requestingUser };
       const isAdmin = userObj?.role === 'admin';
       const uId = userObj?.id || userObj?.email;
       const uEmail = userObj?.email;
-      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId;
+      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId || job.user_id === uEmail;
 
       if (!isAdmin && !isOwner) {
         const err = new Error('Forbidden: You do not have permission to access this job.');
@@ -299,7 +380,8 @@ class BomJobManager {
       throw err;
     }
 
-    // 3. Count currently running jobs for user & server
+    // 3. Count currently running jobs for user & server (after reaping any stale jobs)
+    this.cleanStaleJobs();
     let userRunning = 0;
     let serverRunning = 0;
     for (const j of this.jobs.values()) {
@@ -310,6 +392,14 @@ class BomJobManager {
     }
 
     const shouldQueue = userRunning >= MAX_RUNNING_PER_USER || serverRunning >= MAX_RUNNING_PER_SERVER;
+    let queuedReason = null;
+    if (shouldQueue) {
+      if (userRunning >= MAX_RUNNING_PER_USER) {
+        queuedReason = 'Waiting for your running job to finish';
+      } else {
+        queuedReason = 'Waiting for server capacity';
+      }
+    }
     const initialStatus = shouldQueue ? 'QUEUED' : 'RUNNING';
 
     // 4. Create Job Record
@@ -326,6 +416,7 @@ class BomJobManager {
       server_id: server?.id || null,
       serverName,
       status: initialStatus,
+      queuedReason,
       total: processedItems.length,
       total_rows: processedItems.length,
       processed: 0,
@@ -357,7 +448,9 @@ class BomJobManager {
     };
 
     this.jobs.set(jobId, job);
-    this.repository.saveJob(job).catch((e) => console.warn('[bomJobManager] Save error:', e.message));
+    const savePromise = this.repository.saveJob(job).catch((e) => {
+      console.warn('[bomJobManager] Save error:', e.message);
+    });
 
     if (shouldQueue) {
       this.queuedJobs.push(jobId);
@@ -367,18 +460,24 @@ class BomJobManager {
       });
     }
 
-    return {
+    const startData = {
       success: true,
       jobId,
       total: job.total,
       status: job.status,
+      queuedReason: job.queuedReason || null,
       message: shouldQueue
-        ? 'Capacity reached (max 1 running per user, 3 per server). Job queued for execution.'
+        ? `Capacity reached (${queuedReason}). Job queued for execution.`
         : 'Background job initialized successfully.'
     };
+
+    // Return Promise with attached sync properties: supports both synchronous property reads and `await` for persistence
+    const startPromise = savePromise.then(() => startData);
+    return Object.assign(startPromise, startData);
   }
 
   async processQueue() {
+    this.cleanStaleJobs();
     if (this.queuedJobs.length === 0) return;
 
     for (let i = 0; i < this.queuedJobs.length; i++) {
@@ -405,6 +504,7 @@ class BomJobManager {
         this.queuedJobs.splice(i, 1);
         i--;
         job.status = 'RUNNING';
+        job.queuedReason = null;
         job.startedAt = new Date().toISOString();
         job.updatedAt = new Date().toISOString();
         await this.repository.saveJob(job);
@@ -412,6 +512,10 @@ class BomJobManager {
         setImmediate(() => {
           this.executeJob(job.jobId, job.serverRef, job.userRef);
         });
+      } else {
+        job.queuedReason = userRunning >= MAX_RUNNING_PER_USER
+          ? 'Waiting for your running job to finish'
+          : 'Waiting for server capacity';
       }
     }
   }
@@ -423,8 +527,56 @@ class BomJobManager {
     job.status = 'RUNNING';
     job.startedAt = job.startedAt || new Date().toISOString();
     job.updatedAt = new Date().toISOString();
+    job.current_step = 'Initializing operation...';
+    job.completed_steps = 0;
+    job.progress_percent = 3; // Active running segment (min 3%)
 
     const items = job.items || [];
+    const rowsCount = Math.max(items.length, 1);
+    // Max job time: max(10 minutes, rows x 2 minutes), capped at 30 minutes for validation and create
+    const maxJobTimeMs = Math.min(30 * 60 * 1000, Math.max(10 * 60 * 1000, rowsCount * 2 * 60 * 1000));
+
+    jobPerformanceTracker.startJob(jobId, {
+      type: job.type,
+      rowCount: rowsCount,
+      serverId: job.serverId
+    });
+
+    const runnerInfo = {
+      startedAt: Date.now(),
+      heartbeatTimer: null,
+      jobTimeoutTimer: null
+    };
+
+    // Heartbeat every 10 seconds during in-flight operations (at least every 15s)
+    runnerInfo.heartbeatTimer = setInterval(() => {
+      const currentJob = this.jobs.get(jobId);
+      if (currentJob && currentJob.status === 'RUNNING') {
+        currentJob.updatedAt = new Date().toISOString();
+      }
+    }, 10000);
+    if (runnerInfo.heartbeatTimer.unref) runnerInfo.heartbeatTimer.unref();
+
+    // Maximum job time watchdog: fails after max(10m, rows x 2m) capped at 30m
+    runnerInfo.jobTimeoutTimer = setTimeout(() => {
+      const currentJob = this.jobs.get(jobId);
+      if (currentJob && currentJob.status === 'RUNNING') {
+        currentJob.cancelRequested = true;
+        currentJob.timedOut = true;
+        currentJob.status = 'FAILED';
+        const elapsedMinutes = Math.max(1, Math.round((Date.now() - runnerInfo.startedAt) / 60000));
+        const maxMinutes = Math.round(maxJobTimeMs / 60000);
+        const opName = (currentJob.type || '').includes('validate') || (currentJob.type || '').includes('preflight') ? 'Validation' : 'Execution';
+        currentJob.error = `${opName} timed out after running for ${maxMinutes} minutes. Please upload again.`;
+        currentJob.message = currentJob.error;
+        currentJob.updatedAt = new Date().toISOString();
+        currentJob.completedAt = new Date().toISOString();
+        this.repository.saveJob(currentJob).catch(() => {});
+      }
+    }, maxJobTimeMs);
+    if (runnerInfo.jobTimeoutTimer.unref) runnerInfo.jobTimeoutTimer.unref();
+
+    this.activeRunners.set(jobId, runnerInfo);
 
     try {
       if (job.type === 'create_preflight') {
@@ -445,12 +597,20 @@ class BomJobManager {
         job.error = err.message;
       }
     } finally {
+      if (runnerInfo.heartbeatTimer) clearInterval(runnerInfo.heartbeatTimer);
+      if (runnerInfo.jobTimeoutTimer) clearTimeout(runnerInfo.jobTimeoutTimer);
+      this.activeRunners.delete(jobId);
+      jobPerformanceTracker.finishJob(jobId);
+
       job.currentBom = null;
       job.completedAt = new Date().toISOString();
       job.updatedAt = new Date().toISOString();
 
       if (job.status === 'RUNNING') {
         job.status = job.failedCount > 0 ? 'COMPLETED_WITH_ERRORS' : 'COMPLETED';
+        job.progress_percent = 100;
+        job.completed_steps = job.total_steps || job.processed || rowsCount;
+        job.current_step = 'Operation complete';
       }
 
       // Free items memory from RAM
@@ -494,19 +654,29 @@ class BomJobManager {
     const serverId = server?.id || server?.name || 'default';
     const breaker = getCircuitBreaker(serverId);
 
+    job.total_steps = Math.max(1, boms.length * 2);
+    job.completed_steps = 0;
+    job.progress_percent = 3;
+
     for (let i = 0; i < boms.length; i += CHUNK_SIZE) {
-      if (job.cancelRequested) {
+      if (job.cancelRequested || job.status === 'FAILED') {
         this._cancelRemaining(job, boms, i);
         break;
       }
 
       const chunk = boms.slice(i, i + CHUNK_SIZE);
+      const startIdx = i + 1;
+      const endIdx = Math.min(boms.length, i + chunk.length);
+
       job.currentBom = {
-        index: i + 1,
+        index: startIdx,
         total: boms.length,
         material: chunk[0].material,
         plant: chunk[0].plant
       };
+      job.current_step = `Validating BOMs ${startIdx} to ${endIdx} of ${boms.length}...`;
+      job.completed_steps = Math.max(job.completed_steps || 0, i * 2 + 1);
+      job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
 
       // Read/Validate: circuit breaker / SERVER_BUSY with short backoff (max 3 tries)
       let preflightRes = null;
@@ -521,11 +691,17 @@ class BomJobManager {
         }
 
         try {
+          const callStart = Date.now();
           preflightRes = await rfcPreflightCreateBoms({
             boms: chunk,
             server,
             source: 'bulk',
             priority: RFC_PRIORITY.BULK
+          });
+          jobPerformanceTracker.recordCall(job.jobId || job.id, {
+            functionName: 'rfcPreflightCreateBoms',
+            durationMs: Date.now() - callStart,
+            rowsInvolved: chunk.length
           });
           lastErr = null;
           break;
@@ -543,66 +719,143 @@ class BomJobManager {
         for (let idx = 0; idx < preflightRes.boms.length; idx++) {
           const vBom = preflightRes.boms[idx];
           const orig = chunk[idx];
+          const overallIndex = i + idx + 1;
           const outcome = {
             ...vBom,
+            message: vBom.reason || (vBom.errors && vBom.errors.length > 0 ? vBom.errors.join(' | ') : ''),
             input: orig,
-            retryable: vBom.status !== 'Ready' && vBom.status !== 'Already exists - skipped'
+            retryable: vBom.status !== 'Ready' && vBom.status !== 'Already exists - skipped' && vBom.status !== 'Skipped'
           };
           job.results.push(outcome);
-          if (vBom.status === 'Ready') job.successCount++;
-          else if (vBom.status === 'Already exists - skipped') job.skippedCount++;
+          if (outcome.status === 'Ready') job.successCount++;
+          else if (outcome.status === 'Already exists - skipped' || outcome.status === 'Skipped') job.skippedCount++;
           else job.failedCount++;
+
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.completed_steps = Math.max(job.completed_steps || 0, overallIndex * 2);
+          job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
+          job.updatedAt = new Date().toISOString();
         }
       } else {
         // Failed chunk after backoff: mark rows failed with retryable flag
-        for (const c of chunk) {
+        console.error('[bomJobManager] Chunk preflight execution failed:', lastErr);
+        const isInternalCodeError = lastErr instanceof ReferenceError || lastErr instanceof TypeError;
+        const userMsg = isInternalCodeError
+          ? 'Validation could not be completed for this row.'
+          : (lastErr?.message || 'Pre-flight check failed.');
+        for (let idx = 0; idx < chunk.length; idx++) {
+          const c = chunk[idx];
+          const overallIndex = i + idx + 1;
           job.results.push({
             sequenceNum: c.sequenceNum,
             material: c.material,
             plant: c.plant,
             status: 'FAILED',
-            retryable: true,
-            message: lastErr?.message || 'Pre-flight check failed.',
+            retryable: !isInternalCodeError,
+            message: userMsg,
             input: c
           });
           job.failedCount++;
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.completed_steps = Math.max(job.completed_steps || 0, overallIndex * 2);
+          job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
+          job.updatedAt = new Date().toISOString();
         }
       }
-
-      job.processed = Math.min(boms.length, i + chunk.length);
-      job.processed_rows = job.processed;
-      job.updatedAt = new Date().toISOString();
 
       // Persist after every chunk of 10 rows
       await this.repository.saveJob(job);
     }
+
+    // Re-apply group validation across full job results in case groups crossed chunks
+    if (Array.isArray(job.results) && job.results.length > 0) {
+      applyGroupValidationRules(job.results);
+      job.results.forEach((r) => {
+        r.message = r.reason || (r.errors && r.errors.length > 0 ? r.errors.join(' | ') : '');
+      });
+      job.successCount = job.results.filter((r) => r.status === 'Ready').length;
+      job.skippedCount = job.results.filter((r) => r.status === 'Already exists - skipped' || r.status === 'Skipped').length;
+      job.failedCount = job.results.filter((r) => r.status === 'Invalid' || r.status === 'FAILED').length;
+      job.current_step = 'Validation complete';
+      job.completed_steps = job.total_steps;
+      job.progress_percent = 100;
+      await this.repository.saveJob(job);
+    }
+
+    job.current_step = 'Copy complete';
+    job.completed_steps = job.total_steps;
+    job.progress_percent = 100;
   }
 
   async runCreateBulk(job, boms, server, user) {
     const serverId = server?.id || server?.name || 'default';
     const breaker = getCircuitBreaker(serverId);
 
-    for (let i = 0; i < boms.length; i += CHUNK_SIZE) {
-      if (job.cancelRequested) {
-        this._cancelRemaining(job, boms, i);
+    // Group-aware bottom-up ordering
+    const groups = resolveBomGroups(boms);
+    const orderedBoms = [];
+    groups.forEach((g) => {
+      orderedBoms.push(...g.orderedBoms);
+    });
+
+    job.total_steps = Math.max(1, orderedBoms.length);
+    job.completed_steps = 0;
+    job.progress_percent = 3;
+
+    for (let i = 0; i < orderedBoms.length; i += CHUNK_SIZE) {
+      if (job.cancelRequested || job.status === 'FAILED') {
+        this._cancelRemaining(job, orderedBoms, i);
         break;
       }
 
-      const chunk = boms.slice(i, i + CHUNK_SIZE);
+      const chunk = orderedBoms.slice(i, i + CHUNK_SIZE);
 
       for (let j = 0; j < chunk.length; j++) {
+        if (job.cancelRequested || job.status === 'FAILED') {
+          this._cancelRemaining(job, orderedBoms, i + j);
+          break;
+        }
+
         const bom = chunk[j];
         const overallIndex = i + j + 1;
+        const group = groups.find((g) => g.members.includes(bom)) || { parent: bom, children: [], createdSubBoms: [] };
+        group.createdSubBoms = group.createdSubBoms || [];
 
         job.currentBom = {
           index: overallIndex,
-          total: boms.length,
+          total: orderedBoms.length,
           sequenceNum: bom.sequenceNum,
           material: bom.material,
           plant: bom.plant
         };
+        job.current_step = `Creating BOM ${overallIndex} of ${orderedBoms.length} (${bom.material})...`;
+        job.completed_steps = overallIndex;
+        job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((overallIndex / job.total_steps) * 100)));
 
-        if (bom.status === 'Already exists - skipped') {
+        // If an earlier sub-BOM in this group failed, skip remaining members of the group
+        if (group.failedMaterial) {
+          job.skippedCount++;
+          job.results.push({
+            sequenceNum: bom.sequenceNum,
+            material: bom.material,
+            plant: bom.plant,
+            bomUsage: bom.bomUsage,
+            alternativeBom: bom.alternativeBom,
+            bomNumber: '-',
+            status: 'SKIPPED',
+            retryable: true,
+            message: `Not created because ${group.failedMaterial} failed earlier in this group`,
+            input: bom
+          });
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.updatedAt = new Date().toISOString();
+          continue;
+        }
+
+        if (bom.status === 'Already exists - skipped' || bom.status === 'Skipped') {
           job.skippedCount++;
           job.results.push({
             sequenceNum: bom.sequenceNum,
@@ -615,6 +868,9 @@ class BomJobManager {
             message: bom.reason || 'BOM already exists in plant; skipped.',
             input: bom
           });
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.updatedAt = new Date().toISOString();
           continue;
         }
 
@@ -634,6 +890,9 @@ class BomJobManager {
             message: 'SAP server circuit breaker is open. Write operation not attempted.',
             input: bom
           });
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.updatedAt = new Date().toISOString();
           continue;
         }
 
@@ -664,6 +923,9 @@ class BomJobManager {
               message: 'This BOM is being changed by another user. Please try again in a moment.',
               input: bom
             });
+            job.processed = overallIndex;
+            job.processed_rows = overallIndex;
+            job.updatedAt = new Date().toISOString();
             continue;
           }
           throw lockErr;
@@ -681,6 +943,9 @@ class BomJobManager {
           });
 
           if (createResult.success) {
+            if (bom !== group.parent) {
+              group.createdSubBoms.push(bom.material);
+            }
             job.successCount++;
             job.results.push({
               sequenceNum: bom.sequenceNum,
@@ -697,23 +962,58 @@ class BomJobManager {
             });
           } else {
             job.failedCount++;
-            job.results.push({
-              sequenceNum: bom.sequenceNum,
-              material: bom.material,
-              plant: bom.plant,
-              bomUsage: bom.bomUsage,
-              alternativeBom: bom.alternativeBom,
-              bomNumber: '-',
-              status: 'FAILED',
-              retryable: false, // Business rejection is not retryable
-              message: createResult.message || 'SAP rejected BOM creation.',
-              discrepancies: createResult.discrepancies || [],
-              input: bom
-            });
+            const isParent = bom === group.parent;
+            if (!isParent) {
+              group.failedMaterial = bom.material;
+              job.results.push({
+                sequenceNum: bom.sequenceNum,
+                material: bom.material,
+                plant: bom.plant,
+                bomUsage: bom.bomUsage,
+                alternativeBom: bom.alternativeBom,
+                bomNumber: '-',
+                status: 'FAILED',
+                retryable: false, // Business rejection is not retryable
+                message: createResult.message || 'SAP rejected BOM creation.',
+                discrepancies: createResult.discrepancies || [],
+                input: bom
+              });
+            } else {
+              let msg = createResult.message || 'SAP rejected BOM creation.';
+              if (group.createdSubBoms.length > 0) {
+                msg = `${msg} | Partially created: ${group.createdSubBoms.join(', ')}`;
+              }
+              job.results.push({
+                sequenceNum: bom.sequenceNum,
+                material: bom.material,
+                plant: bom.plant,
+                bomUsage: bom.bomUsage,
+                alternativeBom: bom.alternativeBom,
+                bomNumber: '-',
+                status: 'FAILED',
+                retryable: false,
+                message: msg,
+                discrepancies: createResult.discrepancies || [],
+                input: bom
+              });
+            }
           }
         } catch (err) {
+          console.error('[bomJobManager] Create BOM row execution failed:', err);
+          const isInternalCodeError = err instanceof ReferenceError || err instanceof TypeError;
           const isConn = isSapConnectionDrop(err);
+          const userMsg = isInternalCodeError
+            ? 'Validation could not be completed for this row.'
+            : (isConn ? `SAP connection dropped: ${err.message}` : err.message);
           job.failedCount++;
+          const isParent = bom === group.parent;
+          if (!isParent) {
+            group.failedMaterial = bom.material;
+          }
+          let finalUserMsg = userMsg;
+          if (isParent && group.createdSubBoms.length > 0) {
+            finalUserMsg = `${finalUserMsg} | Partially created: ${group.createdSubBoms.join(', ')}`;
+          }
           job.results.push({
             sequenceNum: bom.sequenceNum,
             material: bom.material,
@@ -722,8 +1022,8 @@ class BomJobManager {
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
             status: 'FAILED',
-            retryable: isConn, // Connection error marked retryable for user to re-run
-            message: isConn ? `SAP connection dropped: ${err.message}` : err.message,
+            retryable: !isInternalCodeError && isConn,
+            message: finalUserMsg,
             input: bom
           });
         } finally {
@@ -731,73 +1031,100 @@ class BomJobManager {
             rowLock.release();
           }
         }
-      }
 
-      job.processed = Math.min(boms.length, i + chunk.length);
-      job.processed_rows = job.processed;
-      job.updatedAt = new Date().toISOString();
+        job.processed = overallIndex;
+        job.processed_rows = overallIndex;
+        job.updatedAt = new Date().toISOString();
+      }
 
       // Persist progress after each chunk of 10 rows
       await this.repository.saveJob(job);
     }
+
+    job.current_step = 'Creation complete';
+    job.completed_steps = job.total_steps;
+    job.progress_percent = 100;
   }
 
   async runCopyValidate(job, items, server) {
     const allocatedByTargetKey = new Map();
     const serverId = server?.id || server?.name || 'default';
     const breaker = getCircuitBreaker(serverId);
+    const validationCache = {
+      readBom: new Map(),
+      existingAlternatives: new Map(),
+      subAssemblyExists: new Map()
+    };
+
+    job.total_steps = Math.max(1, items.length * 3);
+    job.completed_steps = 0;
+    job.progress_percent = 3;
 
     for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-      if (job.cancelRequested) {
+      if (job.cancelRequested || job.status === 'FAILED') {
         this._cancelRemaining(job, items, i);
         break;
       }
 
       const chunk = items.slice(i, i + CHUNK_SIZE);
+      const startIdx = i + 1;
+      const endIdx = Math.min(items.length, i + chunk.length);
 
-      for (let j = 0; j < chunk.length; j++) {
-        const item = chunk[j];
-        const overallIndex = i + j + 1;
+      job.current_step = `Validating BOMs ${startIdx} to ${endIdx} of ${items.length}...`;
+      job.completed_steps = Math.max(job.completed_steps || 0, i * 3 + 1);
+      job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
 
-        job.currentBom = {
-          index: overallIndex,
-          total: items.length,
-          sourceMaterial: item.sourceMaterial,
-          targetMaterial: item.targetMaterial || item.sourceMaterial,
-          plant: item.targetPlant || item.sourcePlant
-        };
+      // Reads: circuit breaker / SERVER_BUSY with short backoff (max 3 tries)
+      let valRes = null;
+      let lastErr = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const canExec = breaker.canExecute();
+        if (!canExec.allowed) {
+          lastErr = new Error('SAP server is busy or circuit breaker open.');
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+          continue;
+        }
 
-        // Reads: circuit breaker / SERVER_BUSY with short backoff (max 3 tries)
-        let valRes = null;
-        let lastErr = null;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const canExec = breaker.canExecute();
-          if (!canExec.allowed) {
-            lastErr = new Error('SAP server is busy or circuit breaker open.');
+        try {
+          const callStart = Date.now();
+          valRes = await rfcBatchValidateBoms(chunk, {
+            server,
+            allocatedByTargetKey,
+            priority: RFC_PRIORITY.BULK,
+            jobId: job.jobId || job.id,
+            cache: validationCache
+          });
+          jobPerformanceTracker.recordCall(job.jobId || job.id, {
+            functionName: 'rfcBatchValidateBoms',
+            durationMs: Date.now() - callStart,
+            rowsInvolved: chunk.length
+          });
+          lastErr = null;
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (err.code === 'SERVER_BUSY' || isSapConnectionDrop(err)) {
             await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
             continue;
           }
-
-          try {
-            valRes = await rfcBatchValidateBoms([item], {
-              server,
-              allocatedByTargetKey,
-              priority: RFC_PRIORITY.BULK
-            });
-            lastErr = null;
-            break;
-          } catch (err) {
-            lastErr = err;
-            if (err.code === 'SERVER_BUSY' || isSapConnectionDrop(err)) {
-              await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
-              continue;
-            }
-            break;
-          }
+          break;
         }
+      }
 
-        if (valRes && valRes.results && valRes.results[0]) {
-          const row = valRes.results[0];
+      if (valRes && valRes.results && Array.isArray(valRes.results)) {
+        for (let j = 0; j < valRes.results.length; j++) {
+          const row = valRes.results[j];
+          const item = chunk[j] || {};
+          const overallIndex = i + j + 1;
+
+          job.currentBom = {
+            index: overallIndex,
+            total: items.length,
+            sourceMaterial: item.sourceMaterial,
+            targetMaterial: item.targetMaterial || item.sourceMaterial,
+            plant: item.targetPlant || item.sourcePlant
+          };
+
           job.results.push({
             ...row,
             input: item,
@@ -805,7 +1132,23 @@ class BomJobManager {
           });
           if (row.status === 'VALID' || row.status === 'WARNING') job.successCount++;
           else job.failedCount++;
-        } else {
+
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.completed_steps = Math.max(job.completed_steps || 0, overallIndex * 3);
+          job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
+          job.updatedAt = new Date().toISOString();
+        }
+      } else {
+        console.error('[bomJobManager] Copy validate chunk failed:', lastErr);
+        const isInternalCodeError = lastErr instanceof ReferenceError || lastErr instanceof TypeError;
+        const userMsg = isInternalCodeError
+          ? 'Validation could not be completed for this row.'
+          : (lastErr?.message || 'Validation failed.');
+
+        for (let j = 0; j < chunk.length; j++) {
+          const item = chunk[j];
+          const overallIndex = i + j + 1;
           job.results.push({
             id: item.id || overallIndex,
             sourceMaterial: item.sourceMaterial,
@@ -813,20 +1156,25 @@ class BomJobManager {
             targetMaterial: item.targetMaterial,
             targetPlant: item.targetPlant,
             status: 'ERROR',
-            retryable: true,
-            message: lastErr?.message || 'Validation failed.',
+            retryable: !isInternalCodeError,
+            message: userMsg,
             input: item
           });
           job.failedCount++;
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.completed_steps = Math.max(job.completed_steps || 0, overallIndex * 3);
+          job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((job.completed_steps / job.total_steps) * 100)));
+          job.updatedAt = new Date().toISOString();
         }
       }
 
-      job.processed = Math.min(items.length, i + chunk.length);
-      job.processed_rows = job.processed;
-      job.updatedAt = new Date().toISOString();
-
       await this.repository.saveJob(job);
     }
+
+    job.current_step = 'Validation complete';
+    job.completed_steps = job.total_steps;
+    job.progress_percent = 100;
   }
 
   async runCopyBulk(job, items, server, user) {
@@ -835,8 +1183,12 @@ class BomJobManager {
     const serverId = server?.id || server?.name || 'default';
     const breaker = getCircuitBreaker(serverId);
 
+    job.total_steps = Math.max(1, items.length);
+    job.completed_steps = 0;
+    job.progress_percent = 3;
+
     for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-      if (job.cancelRequested) {
+      if (job.cancelRequested || job.status === 'FAILED') {
         this._cancelRemaining(job, items, i);
         break;
       }
@@ -844,16 +1196,13 @@ class BomJobManager {
       const chunk = items.slice(i, i + CHUNK_SIZE);
 
       for (let j = 0; j < chunk.length; j++) {
+        if (job.cancelRequested || job.status === 'FAILED') {
+          this._cancelRemaining(job, items, i + j);
+          break;
+        }
+
         const item = chunk[j];
         const overallIndex = i + j + 1;
-
-        job.currentBom = {
-          index: overallIndex,
-          total: items.length,
-          sourceMaterial: item.sourceMaterial,
-          targetMaterial: item.targetMaterial || item.sourceMaterial,
-          plant: item.targetPlant || item.sourcePlant
-        };
 
         const srcMat = String(item.sourceMaterial || '').trim().toUpperCase();
         const srcPlant = String(item.sourcePlant || '').trim().toUpperCase();
@@ -861,9 +1210,20 @@ class BomJobManager {
         const srcAlt = String(item.sourceAltBom || item.sourceAlternative || '').trim();
 
         const tgtMat = String(item.targetMaterial || srcMat).trim().toUpperCase();
-        const tgtPlant = String(item.targetPlant || '').trim().toUpperCase();
+        const tgtPlant = String(item.targetPlant || srcPlant).trim().toUpperCase();
         const tgtUsage = String(item.targetUsage || item.targetBomUsage || '1').trim();
         const tgtAlt = String(item.targetAltBom || item.targetAlternative || '').trim();
+
+        job.currentBom = {
+          index: overallIndex,
+          total: items.length,
+          sourceMaterial: item.sourceMaterial,
+          targetMaterial: tgtMat,
+          plant: tgtPlant
+        };
+        job.current_step = `Copying BOM ${overallIndex} of ${items.length} (${item.sourceMaterial} -> ${tgtMat})...`;
+        job.completed_steps = overallIndex;
+        job.progress_percent = Math.max(job.progress_percent || 0, Math.min(99, Math.round((overallIndex / job.total_steps) * 100)));
 
         // Check circuit breaker: Writes NEVER RETRIED
         const canExec = breaker.canExecute();
@@ -880,6 +1240,9 @@ class BomJobManager {
             message: 'SAP server circuit breaker is open. Copy operation not attempted.',
             input: item
           });
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.updatedAt = new Date().toISOString();
           continue;
         }
 
@@ -929,6 +1292,9 @@ class BomJobManager {
               message: `Cannot copy: Alternative ${parseInt(resolvedTgtAlt, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`,
               input: item
             });
+            job.processed = overallIndex;
+            job.processed_rows = overallIndex;
+            job.updatedAt = new Date().toISOString();
             if (!skipErrors) break;
             continue;
           }
@@ -961,6 +1327,9 @@ class BomJobManager {
                 message: 'This BOM is being changed by another user. Please try again in a moment.',
                 input: item
               });
+              job.processed = overallIndex;
+              job.processed_rows = overallIndex;
+              job.updatedAt = new Date().toISOString();
               if (!skipErrors) break;
               continue;
             }
@@ -1017,7 +1386,12 @@ class BomJobManager {
             }
           }
         } catch (err) {
+          console.error('[bomJobManager] Copy bulk row execution failed:', err);
+          const isInternalCodeError = err instanceof ReferenceError || err instanceof TypeError;
           const isConn = isSapConnectionDrop(err);
+          const userMsg = isInternalCodeError
+            ? 'Validation could not be completed for this row.'
+            : (isConn ? `SAP connection dropped: ${err.message}` : err.message);
           job.failedCount++;
           job.results.push({
             id: item.id || overallIndex,
@@ -1027,22 +1401,27 @@ class BomJobManager {
             targetPlant: tgtPlant,
             bomNumber: '-',
             status: 'FAILED',
-            retryable: isConn,
-            message: isConn ? `SAP connection dropped: ${err.message}` : err.message,
+            retryable: !isInternalCodeError && isConn,
+            message: userMsg,
             input: item
           });
         }
-      }
 
-      job.processed = Math.min(items.length, i + chunk.length);
-      job.processed_rows = job.processed;
-      job.updatedAt = new Date().toISOString();
+        job.processed = overallIndex;
+        job.processed_rows = overallIndex;
+        job.updatedAt = new Date().toISOString();
+      }
 
       await this.repository.saveJob(job);
     }
+
+    job.current_step = 'Copy complete';
+    job.completed_steps = job.total_steps;
+    job.progress_percent = 100;
   }
 
   _cancelRemaining(job, items, startIndex) {
+    const isTimeout = !!job.timedOut;
     for (let k = startIndex; k < items.length; k++) {
       job.results.push({
         id: items[k].id || k + 1,
@@ -1050,12 +1429,16 @@ class BomJobManager {
         material: items[k].material || items[k].sourceMaterial,
         plant: items[k].plant || items[k].sourcePlant,
         status: 'NOT_PROCESSED',
-        message: 'Cancelled by user before processing chunk.',
+        message: isTimeout
+          ? 'Execution timed out before processing row.'
+          : 'Cancelled by user before processing chunk.',
         input: items[k]
       });
     }
     job.notProcessedCount = items.length - startIndex;
-    job.status = 'CANCELLED';
+    if (job.status === 'RUNNING' || !job.status) {
+      job.status = isTimeout ? 'FAILED' : 'CANCELLED';
+    }
   }
 }
 
