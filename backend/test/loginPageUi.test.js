@@ -31,22 +31,17 @@ assert.match(loginCss, /\.login-page\s+\.lg-geometric-overlay\s*\{[^}]*fill-opac
 console.log('   ✓ Split layout (55%/45%), no baked images, and geometric SVG pattern verified\n');
 
 // ============================================================================
-// TEST 2: BRAND COPY, 3 CHIPS, & PRODUCT PREVIEW CARD
+// TEST 2: BRAND COPY & HERO ILLUSTRATION
 // ============================================================================
-console.log('Test 2: Verify brand copy, 3 feature chips, and product preview card...');
+console.log('Test 2: Verify brand copy and hero illustration...');
 assert(loginContent.includes('SAP operations hub'), 'Headline must be "SAP operations hub"');
 assert(loginContent.includes('Automate. Integrate. Execute.'), 'Tagline must be "Automate. Integrate. Execute."');
-assert(loginContent.includes('Production planning'), 'Chip: Production planning');
-assert(loginContent.includes('Master data'), 'Chip: Master data');
-assert(loginContent.includes('Procurement'), 'Chip: Procurement');
+assert(loginContent.includes('HeroIllustration'), 'HeroIllustration component imported');
+assert(loginContent.includes('<HeroIllustration'), 'HeroIllustration rendered');
 
-assert(loginContent.includes('lg-preview-container'), 'Preview card container present');
-assert(loginContent.includes('BOM creation workflow'), 'Preview card title present');
-assert(loginContent.includes('Upload') && loginContent.includes('Validate') && loginContent.includes('Create'), 'Preview 3 steps present');
-
-assert.match(loginCss, /\.login-page\s+\.lg-chips-row\s*\{[^}]*display:\s*flex;/s, 'Chips must be flex row');
-assert.match(loginCss, /\.login-page\s+\.lg-preview-card-front\s*\{/s, 'Front glassy card style present');
-console.log('   ✓ Headline, tagline, 3 chips, and CSS/SVG preview card verified\n');
+assert.match(loginCss, /\.login-page\s+\.lg-illustration-wrap\s*\{[^}]*display:\s*flex;/s, 'Illustration wrapper must be flex');
+assert.match(loginCss, /\.login-page\s+\.lg-hero-svg\s*\{/s, 'Hero SVG style present');
+console.log('   ✓ Headline, tagline, and hero illustration verified\n');
 
 // ============================================================================
 // TEST 3: FORM CARD, REAL LABELS, 44PX INPUTS, & NO EMOJIS

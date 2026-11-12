@@ -1774,12 +1774,28 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
 
       const resolvedAlt = result?.alternativeBom || result?.alternative || action?.payload?.target?.alternativeBom || action?.payload?.targetAltBom || result?.after?.alternativeBom || result?.after?.alternative;
 
+      const totalBoms = result?.totalBoms ?? result?.bomsCreated ?? result?.totalBomsCreated ?? result?.copiedCount ?? (Array.isArray(data) ? data.length : 1);
+      const totalLevels = result?.totalLevels ?? result?.hierarchyDepth ?? 1;
+      const totalComponents = result?.totalComponents !== undefined
+        ? result.totalComponents
+        : (Array.isArray(result?.hierarchy) && result.hierarchy.length > 0
+            ? result.hierarchy.reduce((sum, h) => sum + (h.componentCount || 0), 0)
+            : (Array.isArray(data) && data.length > 0
+                ? data.reduce((sum, h) => sum + (h.componentCount || h.components?.length || 0), 0)
+                : null));
+
       return res.status(200).json({
         reply: `✅ ${executedMessage}`,
         data,
         error: false,
         createdAlternative: resolvedAlt,
         targetAlternative: resolvedAlt,
+        totalBoms,
+        bomsCreated: totalBoms,
+        totalLevels,
+        totalComponents,
+        hierarchy: result?.hierarchy || data,
+        verification: result?.verification || null,
         actionExecuted: {
           actionId,
           type: action.type,
@@ -1795,6 +1811,10 @@ router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
         },
         actionResult: {
           ...result,
+          totalBoms,
+          bomsCreated: totalBoms,
+          totalLevels,
+          totalComponents,
           createdAlternative: resolvedAlt,
           targetAlternative: resolvedAlt,
           createdSubBoms: action.type === 'copy_bom' && Array.isArray(data) && data.length > 1 ? data.slice(0, -1) : []

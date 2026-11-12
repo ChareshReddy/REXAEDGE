@@ -21,7 +21,8 @@ import {
   FileCheck,
   Loader2,
   FileSpreadsheet,
-  Info
+  Info,
+  MinusCircle
 } from 'lucide-react';
 import Modal from './Modal';
 import BulkUploadPanel from './BulkUploadPanel';
@@ -32,6 +33,7 @@ import {
   BulkJobProgressCard,
   CREATE_BULK_COLUMNS,
   BulkStatTiles,
+  BulkDataPreviewSection,
   normalizeBomStatus,
   getBomStatusCounts,
   filterBoms,
@@ -42,7 +44,9 @@ import {
   BulkExecutionResultBadge,
   normalizeExecutionStatus,
   getExecutionRowMessages,
-  resolveBomGroups
+  resolveBomGroups,
+  renderMessageContent,
+  BulkExecutionResultsView
 } from './BulkBomShared';
 import { parseBomSpreadsheetClient } from '../utils/bomSpreadsheetParser';
 import { SearchInput } from './ui/search-input';
@@ -80,7 +84,6 @@ export default function BulkCreateBomView({
   const [fileName, setFileName] = useState(
     initialExecutionReport ? 'Sample_BOM_File.xlsx' : initialPreflightReport ? 'Sample_BOM_File.xlsx' : ''
   );
-  const [fileBase64, setFileBase64] = useState('');
   const [parsedBoms, setParsedBoms] = useState(
     initialExecutionReport?.boms || initialPreflightReport?.boms || []
   );
@@ -489,10 +492,11 @@ export default function BulkCreateBomView({
     updateJobUrl(null);
     setFile(null);
     setFileName('');
-    setFileBase64('');
     setParsedBoms([]);
     setPreflightReport(null);
     setParseError('');
+    setStatusFilter('all');
+    setSearchTerm('');
     setExpandedMessageBoms(new Set());
     setExpandedResultRows(new Set());
     setCurrentPage(1);
@@ -581,6 +585,9 @@ export default function BulkCreateBomView({
   const handleFileProcess = (fileObj) => {
     if (isLocked) return;
     setParseError('');
+    setStatusFilter('all');
+    setSearchTerm('');
+    setCurrentPage(1);
     setPreflightReport(null);
     setExecutionReport(null);
     setParsedBoms([]);
@@ -602,14 +609,6 @@ export default function BulkCreateBomView({
         }
 
         setParsedBoms(res.boms);
-
-        // Convert to base64 for background validation job when user clicks Validate
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        setFileBase64(btoa(binary));
       } catch (err) {
         console.error('Failed to parse file client-side:', err);
         setParseError(`Failed to parse file: ${err.message}`);
@@ -630,7 +629,6 @@ export default function BulkCreateBomView({
     try {
       const res = await startBomJob({
         type: 'create_preflight',
-        fileContent: fileBase64 || null,
         boms: parsedBoms,
         fileName: file?.name || fileName
       });
@@ -651,7 +649,11 @@ export default function BulkCreateBomView({
         setIsValidating(false);
       }
     } catch (err) {
-      setParseError(err.response?.data?.message || err.message || 'Error processing validation job.');
+      const errMsg = err.response?.data?.message || err.message || 'Error processing validation job.';
+      setParseError(errMsg);
+      if (err.response?.status === 413 || err.response?.data?.code === 'PAYLOAD_TOO_LARGE') {
+        toast.error(errMsg, { title: 'Upload error' });
+      }
       setIsValidating(false);
     }
   };
@@ -723,7 +725,11 @@ export default function BulkCreateBomView({
         setIsExecuting(false);
       }
     } catch (err) {
-      setParseError(err.response?.data?.message || err.message || 'Failed to start bulk creation job.');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to start bulk creation job.';
+      setParseError(errMsg);
+      if (err.response?.status === 413 || err.response?.data?.code === 'PAYLOAD_TOO_LARGE') {
+        toast.error(errMsg, { title: 'Upload error' });
+      }
       setIsExecuting(false);
     }
   };
@@ -775,8 +781,8 @@ export default function BulkCreateBomView({
   const pageSize = 50;
 
   const filteredBoms = useMemo(
-    () => filterBoms(allBoms, { statusFilter, searchTerm }),
-    [allBoms, statusFilter, searchTerm]
+    () => filterBoms(allBoms, { statusFilter, searchTerm, hasValidated }),
+    [allBoms, statusFilter, searchTerm, hasValidated]
   );
 
   const totalPages = isPaginated ? Math.ceil(filteredBoms.length / pageSize) : 1;
@@ -803,301 +809,16 @@ export default function BulkCreateBomView({
         <BulkWorkflowSteps activeStep={activeStep} type="create" />
         {/* RESULTS SCREEN */}
         {executionReport ? (
-          <div>
-            {/* Success / Partial / Failed Banner */}
-            {executionReport.failedCount > 0 ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--color-danger-bg, #FEF3F2)',
-                  border: '1px solid var(--color-danger-border, #FECDCA)',
-                  color: 'var(--color-danger, #B42318)',
-                  marginBottom: 24
-                }}
-              >
-                <AlertCircle size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed with Issues</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Created {executionReport.bomsCreated} BOM(s); {executionReport.failedCount} failed and {executionReport.skippedCount} were skipped.
-                  </p>
-                </div>
-              </div>
-            ) : executionReport.skippedCount > 0 ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--color-info-bg, #F0F9FF)',
-                  border: '1px solid var(--color-info-border, #B9E6FE)',
-                  color: 'var(--color-blue-600, #02579A)',
-                  marginBottom: 24
-                }}
-              >
-                <Info size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed with Skipped Rows</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Created {executionReport.bomsCreated} BOM(s); {executionReport.skippedCount} were skipped.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--sap-success-bg)',
-                  border: '1px solid var(--sap-success-border)',
-                  color: 'var(--sap-success)',
-                  marginBottom: 24
-                }}
-              >
-                <CheckCircle2 size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Batch Creation Completed Successfully</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Created {executionReport.bomsCreated} BOM(s) and {executionReport.componentsCreated} component(s) across {executionReport.totalProcessed} total entries.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Summary Cards */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: 16,
-                marginBottom: 28
-              }}
-            >
-              <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>BOMs Created</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-success)' }}>
-                  {executionReport.bomsCreated}
-                </div>
-              </div>
-              <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Total Components</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-blue-600, #02579A)' }}>
-                  {executionReport.componentsCreated}
-                </div>
-              </div>
-              <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Skipped (Existing)</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-secondary, #4A5F77)' }}>
-                  {executionReport.skippedCount}
-                </div>
-              </div>
-              <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Failed</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-error)' }}>
-                  {executionReport.failedCount}
-                </div>
-              </div>
-              {executionReport.notProcessedCount > 0 && (
-                <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Not Processed</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#02579A' }}>
-                    {executionReport.notProcessedCount}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Results Table */}
-            <FormSection
-              title={`Execution Details (${executionReport.results?.length || 0})`}
-              description="Batch processing results and itemized execution status"
-              tintedHeader
-              actions={
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  {executionReport.failedCount > 0 && (
-                    <button
-                      type="button"
-                      className="sap-button sap-btn sap-btn-secondary"
-                      onClick={handleRetryFailedRows}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
-                    >
-                      <RefreshCw size={15} />
-                      <span>Retry Failed Rows ({executionReport.failedCount})</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="sap-button sap-btn sap-btn-secondary"
-                    onClick={handleExportResults}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
-                  >
-                    <Download size={15} />
-                    <span>Export Results</span>
-                  </button>
-                </div>
-              }
-              className="mb-6"
-            >
-              <div
-                className="sap-table-container fiori-table-wrapper"
-                data-testid="execution-details-table-container"
-                style={{ maxHeight: 380, overflowX: 'hidden' }}
-              >
-                <table
-                  className="sap-table"
-                  data-testid="execution-details-table"
-                  style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
-                >
-                  <colgroup>
-                    <col style={{ width: 50 }} />
-                    <col style={{ width: 140 }} />
-                    <col style={{ width: 70 }} />
-                    <col style={{ width: 55 }} />
-                    <col style={{ width: 50 }} />
-                    <col style={{ width: 120 }} />
-                    <col style={{ width: 105 }} />
-                    <col style={{ width: 'auto' }} />
-                  </colgroup>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 50, textAlign: 'center' }}>Seq</th>
-                      <th style={{ width: 140 }}>Material</th>
-                      <th style={{ width: 70 }}>Plant</th>
-                      <th style={{ width: 55, textAlign: 'center' }}>Usage</th>
-                      <th style={{ width: 50, textAlign: 'center' }}>Alt</th>
-                      <th style={{ width: 120 }}>BOM Number</th>
-                      <th style={{ width: 105, textAlign: 'center' }}>Status</th>
-                      <th style={{ width: 'auto' }}>Message / Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(executionReport.results || []).map((row, idx) => {
-                      const rowKey = String(row.sequenceNum || row.id || idx);
-                      const normStatus = normalizeExecutionStatus(row);
-                      const messages = getExecutionRowMessages(row);
-                      const isExpanded = expandedResultRows.has(rowKey);
-                      const visibleMessages = isExpanded ? messages : messages.slice(0, 3);
-                      const hiddenCount = messages.length - 3;
-
-                      return (
-                        <tr key={rowKey} data-testid={`execution-row-${idx}`}>
-                          <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)', verticalAlign: 'top', paddingTop: 10 }}>
-                            {row.sequenceNum || idx + 1}
-                          </td>
-                          <td style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: 10, wordBreak: 'break-all' }}>
-                            {row.material}
-                          </td>
-                          <td style={{ verticalAlign: 'top', paddingTop: 10 }}>{row.plant}</td>
-                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.bomUsage}</td>
-                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.alternativeBom}</td>
-                          <td style={{ verticalAlign: 'top', paddingTop: 10, fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
-                            {row.bomNumber || '-'}
-                          </td>
-                          <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }}>
-                            <BulkExecutionResultBadge status={normStatus} />
-                          </td>
-                          <td
-                            className="bulk-execution-msg-cell"
-                            style={{
-                              verticalAlign: 'top',
-                              paddingTop: 8,
-                              paddingBottom: 8,
-                              whiteSpace: 'normal',
-                              wordBreak: 'break-word',
-                              overflowWrap: 'anywhere'
-                            }}
-                          >
-                            <div className="bulk-execution-msg-container" style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                              {visibleMessages.map((m, mIdx) => (
-                                <div
-                                  key={mIdx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: 6,
-                                    fontSize: 12,
-                                    lineHeight: 1.45,
-                                    color:
-                                      m.type === 'error'
-                                        ? 'var(--color-danger)'
-                                        : (normStatus === 'FAILED' || normStatus === 'INVALID')
-                                        ? 'var(--sap-text-muted, #64748B)'
-                                        : 'var(--sap-text)'
-                                  }}
-                                >
-                                  {m.type === 'error' ? (
-                                    <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-danger)' }} />
-                                  ) : m.type === 'warning' ? (
-                                    <AlertTriangle size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-warning, #d97706)' }} />
-                                  ) : (normStatus === 'FAILED' || normStatus === 'INVALID' || m.type === 'info') ? (
-                                    <Info size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--sap-text-muted, #7A8CA3)' }} />
-                                  ) : (
-                                    <CheckCircle2 size={13} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-success)' }} />
-                                  )}
-                                  <span style={{ flex: 1, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{m.text}</span>
-                                </div>
-                              ))}
-
-                              {messages.length > 3 && (
-                                <button
-                                  type="button"
-                                  onClick={() => toggleResultRowExpand(rowKey)}
-                                  className="sap-link"
-                                  style={{
-                                    alignSelf: 'flex-start',
-                                    marginTop: 2,
-                                    fontSize: 11,
-                                    fontWeight: 600,
-                                    color: 'var(--color-primary, var(--sap-brand))',
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: 0,
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline'
-                                  }}
-                                >
-                                  {isExpanded ? 'Show less' : `Show ${hiddenCount} more`}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </FormSection>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                type="button"
-                className="sap-button primary"
-                onClick={onBack}
-                style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
-              >
-                Return to Launchpad
-              </button>
-              <button
-                type="button"
-                className="sap-button"
-                onClick={handleReset}
-                style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
-              >
-                Upload Another File
-              </button>
-            </div>
-          </div>
+          <BulkExecutionResultsView
+            mode="create"
+            report={executionReport}
+            rows={executionReport.results || []}
+            onBack={onBack}
+            onReset={handleReset}
+            onRetryFailedRows={handleRetryFailedRows}
+            onExportResults={handleExportResults}
+            renderMessageContent={renderMessageContent}
+          />
         ) : (
           /* UPLOAD & PREVIEW VIEW */
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: allBoms.length > 0 ? 16 : 24 }}>
@@ -1221,8 +942,8 @@ export default function BulkCreateBomView({
                   </div>
                 )}
 
-                {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
-                {hasValidated && activeStep > 1 && (
+                {/* Summary Stat Tiles - Interactive Filter Strip (visible only after validation) */}
+                {hasValidated && !isValidating && preflightReport && (
                   <BulkStatTiles
                     total={statusCounts.all}
                     valid={statusCounts.ready}
@@ -1237,113 +958,27 @@ export default function BulkCreateBomView({
                       setStatusFilter(filter);
                       setCurrentPage(1);
                     }}
-                    style={{ marginBottom: 16 }}
                   />
                 )}
 
                 {/* PRE-FLIGHT PREVIEW TABLE */}
-                <FormSection
+                <BulkDataPreviewSection
                   title="Data Preview"
-                  description={`${allBoms.length} BOM(s) found across ${totalComponentRows} component row(s)`}
-                  tintedHeader
+                  subtitle={`${allBoms.length} BOM(s) found across ${totalComponentRows} component row(s)`}
+                  fileName={fileName}
+                  showingCount={filteredBoms.length}
+                  totalCount={allBoms.length}
+                  searchTerm={searchTerm}
+                  onSearchChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  onSearchClear={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
                   className="w-full"
                 >
-                  {/* Controls Toolbar: Search left, Tabs center, Showing x of y + File chip right */}
-                  <div className="sap-toolbar rx-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 12 }}>
-                    {/* Left: Search Bar */}
-                    <div style={{ flex: '0 0 auto' }}>
-                      <SearchInput
-                        placeholder="Search material or plant..."
-                        value={searchTerm}
-                        onChange={(e) => {
-                          setSearchTerm(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        onClear={() => {
-                          setSearchTerm('');
-                          setCurrentPage(1);
-                        }}
-                        isTable
-                        wrapperStyle={{ width: 220 }}
-                      />
-                    </div>
-
-                    {/* Center: Filter Tabs */}
-                    <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center' }}>
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px',
-                          backgroundColor: 'var(--color-blue-200)',
-                          borderRadius: 'var(--radius-md, 8px)',
-                          border: '1px solid var(--color-border, #D9E2EC)'
-                        }}
-                      >
-                        {[
-                          { id: 'all', label: `All (${statusCounts.all})` },
-                          { id: 'ready', label: `Ready (${statusCounts.ready})` },
-                          { id: 'errors', label: `Errors (${statusCounts.errors})` },
-                          { id: 'skipped', label: `Skipped (${statusCounts.skipped})` }
-                        ].map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => {
-                              setStatusFilter(f.id);
-                              setCurrentPage(1);
-                            }}
-                            style={{
-                              height: 26,
-                              padding: '0 10px',
-                              borderRadius: 'var(--radius-sm, 6px)',
-                              border: 'none',
-                              fontSize: '11.5px',
-                              fontWeight: statusFilter === f.id ? 600 : 500,
-                              backgroundColor: statusFilter === f.id ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-                              color: statusFilter === f.id ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
-                              boxShadow: statusFilter === f.id ? 'var(--shadow-sm)' : 'none',
-                              cursor: 'pointer',
-                              transition: 'all var(--transition-fast, 150ms ease)'
-                            }}
-                          >
-                            {f.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Right: Record count & File chip */}
-                    <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
-                        Showing {filteredBoms.length} of {allBoms.length}
-                      </span>
-                      {fileName && (
-                        <span
-                          className="sap-file-badge"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '4px 10px',
-                            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
-                            border: '1px solid var(--color-border, #D9E2EC)',
-                            borderRadius: 'var(--radius-sm, 6px)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: 'var(--color-navy-900, #00204E)'
-                          }}
-                          title={fileName}
-                        >
-                          <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
-                          <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {fileName}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Pagination Controls if > 300 component rows */}
                   {isPaginated && totalPages > 1 && (
                     <div
@@ -1386,7 +1021,21 @@ export default function BulkCreateBomView({
                   )}
 
                   {/* Table: natural height, fits card width without horizontal scroll */}
-                  <div className="sap-table-container fiori-table-wrapper sap-card-table-scroll" style={{ width: '100%', marginBottom: 0, maxHeight: 480, minHeight: 0, height: 'auto', overflowX: 'auto', overflowY: 'auto' }}>
+                  <div
+                    className="sap-table-container fiori-table-wrapper sap-card-table-scroll"
+                    style={{
+                      width: '100%',
+                      marginBottom: 0,
+                      maxHeight: 480,
+                      minHeight: 0,
+                      height: 'auto',
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border, #D9E2EC)',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      boxSizing: 'border-box'
+                    }}
+                  >
                     <table
                       className="sap-table preflight-preview-table"
                       style={{
@@ -1429,17 +1078,47 @@ export default function BulkCreateBomView({
                         </tr>
                       </thead>
                       <tbody>
-                        {displayedBoms.map((bom, bIdx) => {
-                          const bomKey = bom.sequenceNum || String(bIdx);
+                        {filteredBoms.length === 0 ? (
+                          <tr>
+                            <td colSpan={11} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: '13px', fontWeight: 500 }}>No rows match this filter.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStatusFilter('all');
+                                    setSearchTerm('');
+                                    setCurrentPage(1);
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    color: 'var(--color-blue-600, #02579A)',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  Clear filter
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          displayedBoms.map((bom, bIdx) => {
+                          const groupId = bom.groupKey || `${bom.material || ''}_${bom.plant || ''}_${bom.bomUsage || '1'}_${bom.alternativeBom || '01'}`;
+                          const bomKey = bom.id != null ? String(bom.id) : `${groupId}_${bom.sequenceNum || ''}_${bIdx}`;
                           const compList = Array.isArray(bom.components) && bom.components.length > 0 ? bom.components : [{}];
                           const span = compList.length;
-                          const normStatus = normalizeBomStatus(bom);
+                          const normStatus = normalizeBomStatus(bom, hasValidated);
                           const messages = getBomMessages(bom);
                           const allErrors = messages.errors.length > 0
                             ? messages.errors
                             : (bom.reason ? [bom.reason] : (bom.message ? [bom.message] : []));
                           const primaryReason = allErrors[0] || bom.reason || bom.message || 'Validation failed';
-                          const isMessagesExpanded = expandedMessageBoms.has(bomKey);
+                          const isMessagesExpanded = expandedMessageBoms.has(bomKey) || expandedMessageBoms.has(groupId);
 
                           return (
                             <React.Fragment key={`bom-group-${bomKey}`}>
@@ -1720,6 +1399,7 @@ export default function BulkCreateBomView({
 
                               {/* Message Row if BOM has errors, warnings, or an existence note */}
                               <BulkBomMessageRow
+                                key={`bom-${bomKey}-messages`}
                                 messages={messages}
                                 bomKey={bomKey}
                                 isExpanded={isMessagesExpanded}
@@ -1728,7 +1408,7 @@ export default function BulkCreateBomView({
                               />
                             </React.Fragment>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   </div>
@@ -1833,7 +1513,7 @@ export default function BulkCreateBomView({
                     </button>
                   </div>
                 </div>
-              </FormSection>
+              </BulkDataPreviewSection>
             </>
           )}
           </div>

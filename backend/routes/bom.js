@@ -23,6 +23,7 @@ import {
   rfcBatchCreateBoms
 } from '../services/bomCreateEngine.js';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
+import { supabaseService } from '../services/supabaseClient.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
@@ -1095,12 +1096,31 @@ router.get('/create-template', requireAppPermission('bom.create'), (req, res) =>
 // BACKGROUND JOB ENDPOINTS (Safe Bulk Processing for Hundreds of BOMs)
 // =========================================================================
 
+// Route-level JSON parser for bulk jobs: 5MB payload limit with user-friendly 413 error
+const jobsStartJsonParser = express.json({ limit: '5mb' });
+
+const parseJobsStartBody = (req, res, next) => {
+  jobsStartJsonParser(req, res, (err) => {
+    if (err) {
+      if (err.status === 413 || err.statusCode === 413 || err.type === 'entity.too.large') {
+        return res.status(413).json({
+          success: false,
+          code: 'PAYLOAD_TOO_LARGE',
+          message: 'The uploaded file/payload exceeds the 5 MB limit. Please split your data into smaller batches.'
+        });
+      }
+      return next(err);
+    }
+    next();
+  });
+};
+
 /**
  * POST /api/bom/jobs/start
  * Starts an asynchronous background job for Bulk Create/Copy BOM (Pre-flight, Validation, or Execution).
  * Returns immediately with { jobId } so the client can poll progress.
  */
-router.post('/jobs/start', requireAppPermission((req) => {
+router.post('/jobs/start', parseJobsStartBody, requireAppPermission((req) => {
   const type = String(req.body?.type || '').toLowerCase();
   if (type.startsWith('copy')) return 'bom.copy';
   if (type.startsWith('create')) return 'bom.create';
@@ -1118,7 +1138,6 @@ router.post('/jobs/start', requireAppPermission((req) => {
     const {
       items = [],
       boms = [],
-      fileContent = null,
       fileName = '',
       copyHierarchy = true,
       skipErrors = true
@@ -1130,12 +1149,19 @@ router.post('/jobs/start', requireAppPermission((req) => {
       ? boms
       : [];
 
+    if (jobItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        code: 'EMPTY_PAYLOAD',
+        message: 'No BOM items provided. Bulk jobs accept parsed rows only (items or boms array).'
+      });
+    }
+
     const startResult = await bomJobManager.startJob({
       type,
       user: req.user,
       server: req.selectedServer,
       items: jobItems,
-      fileContent,
       fileName,
       options: { copyHierarchy, skipErrors }
     });
@@ -1191,8 +1217,28 @@ router.get('/jobs/active', requireAppPermission(['bom.create', 'bom.copy', 'bom.
 });
 
 /**
+ * GET /api/bom/jobs
+ * Lists jobs for the requesting user (or all jobs for admin).
+ */
+router.get('/jobs', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), async (req, res) => {
+  try {
+    const jobs = await bomJobManager.listJobs(req.user, { serverId: req.selectedServer?.id });
+    return res.status(200).json({
+      success: true,
+      jobs
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+});
+
+/**
  * GET /api/bom/jobs/:jobId
  * Returns the status, progress counters, current BOM, and per-BOM results.
+ * Returns 404 for jobs the user may not see or if server access is denied.
  */
 router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), async (req, res) => {
   try {
@@ -1203,15 +1249,31 @@ router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy', 'bom.
         message: `Job ${req.params.jobId} not found.`
       });
     }
+
+    // Verify job's server matches user's allowed servers (admin bypass)
+    if (req.user?.role !== 'admin' && job.serverId) {
+      const accessCheck = await supabaseService.checkUserServerAccess(
+        req.user.id,
+        job.serverId,
+        req.user.role
+      );
+      if (!accessCheck?.permitted) {
+        return res.status(404).json({
+          success: false,
+          message: `Job ${req.params.jobId} not found.`
+        });
+      }
+    }
+
     return res.status(200).json({
       success: true,
       job
     });
   } catch (err) {
-    if (err.code === 'FORBIDDEN') {
-      return res.status(403).json({
+    if (err.code === 'NOT_FOUND' || err.status === 404 || err.code === 'FORBIDDEN') {
+      return res.status(404).json({
         success: false,
-        message: err.message
+        message: `Job ${req.params.jobId} not found.`
       });
     }
     return res.status(500).json({
@@ -1224,22 +1286,47 @@ router.get('/jobs/:jobId', requireAppPermission(['bom.create', 'bom.copy', 'bom.
 /**
  * POST /api/bom/jobs/:jobId/cancel
  * Requests cancellation of a running background job.
+ * Returns 404 for jobs the user may not see or if server access is denied.
  */
 router.post('/jobs/:jobId/cancel', requireAppPermission(['bom.create', 'bom.copy', 'bom.validate']), async (req, res) => {
   try {
+    const targetJob = await bomJobManager.getJob(req.params.jobId, req.user);
+    if (!targetJob) {
+      return res.status(404).json({
+        success: false,
+        message: `Job ${req.params.jobId} not found.`
+      });
+    }
+
+    // Verify job's server matches user's allowed servers (admin bypass)
+    if (req.user?.role !== 'admin' && targetJob.serverId) {
+      const accessCheck = await supabaseService.checkUserServerAccess(
+        req.user.id,
+        targetJob.serverId,
+        req.user.role
+      );
+      if (!accessCheck?.permitted) {
+        return res.status(404).json({
+          success: false,
+          message: `Job ${req.params.jobId} not found.`
+        });
+      }
+    }
+
     const cancelResult = await bomJobManager.cancelJob(
       req.params.jobId,
       req.user
     );
     if (!cancelResult.success) {
-      return res.status(400).json(cancelResult);
+      const status = cancelResult.status || (cancelResult.message?.includes('not found') ? 404 : 400);
+      return res.status(status).json(cancelResult);
     }
     return res.status(200).json(cancelResult);
   } catch (err) {
-    if (err.code === 'FORBIDDEN') {
-      return res.status(403).json({
+    if (err.code === 'NOT_FOUND' || err.status === 404 || err.code === 'FORBIDDEN') {
+      return res.status(404).json({
         success: false,
-        message: err.message
+        message: `Job ${req.params.jobId} not found.`
       });
     }
     return res.status(500).json({

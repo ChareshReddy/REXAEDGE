@@ -124,7 +124,7 @@ test.describe('Part A: Full-Bleed Tinted Header Bands Everywhere & Part B: Creat
     expect(await ths.count()).toBe(9);
     const expectedHeaders = [
       'Itm no.',
-      'Component',
+      'Components',
       'Quantity',
       'Item category',
       'Storage location',

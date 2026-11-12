@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { SearchInput } from './ui/search-input';
 import {
   ArrowRight,
   Check,
@@ -12,13 +14,34 @@ import {
   RefreshCw,
   Loader2
 } from 'lucide-react';
-import { cleanDiagnosticMessage } from './BlockedReasonsList';
+import {
+  cleanDiagnosticMessage,
+  deriveMessageSeverity,
+  getBomRowMessages,
+  FOLLOW_ON_TECHNICAL_REGEX,
+  classifyBomStatus,
+  normalizeBomStatus,
+  getBomStatusCounts,
+  filterBoms
+} from '../utils/bulkBomStatusUtils.js';
+
+export {
+  cleanDiagnosticMessage,
+  deriveMessageSeverity,
+  getBomRowMessages,
+  FOLLOW_ON_TECHNICAL_REGEX,
+  classifyBomStatus,
+  normalizeBomStatus,
+  getBomStatusCounts,
+  filterBoms
+};
 import { getBomJob, cancelBomJob } from '../services/api';
 import BulkLayout, { BulkWorkflowSteps as ModernBulkWorkflowSteps } from './bulk/BulkLayout';
 import BulkUploadCard from './bulk/BulkUploadCard';
 import BulkStatTiles from './bulk/BulkStatTiles';
+import BulkExecutionResultsView from './bulk/BulkExecutionResultsView';
 
-export { BulkLayout, BulkUploadCard, BulkStatTiles };
+export { BulkLayout, BulkUploadCard, BulkStatTiles, BulkExecutionResultsView };
 
 /**
  * Shared layout wrapper for bulk flows.
@@ -41,7 +64,7 @@ export function BulkFlowContainer({ children, className = '', style = {} }) {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'stretch',
-        gap: 20,
+        gap: 16,
         ...style
       }}
     >
@@ -243,6 +266,200 @@ export function BulkFileInfoBar({
             <span>Change File</span>
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shared Enterprise Data Preview Section for Bulk Create & Copy BOMs
+ * Replaces the separate toolbar row with a unified single-row blue header band:
+ * - Left side: Title ("Data Preview"), File Name chip (with icon, ellipsis, title tooltip), "Showing X of Y" text
+ * - Subtitle line directly under title: "${count} BOM(s) found across..."
+ * - Right side: Search box (280px fixed width, vertically centered, shared SearchInput component)
+ * Preserves search and filter bindings without layout shifting.
+ */
+export function BulkDataPreviewSection({
+  title = 'Data Preview',
+  subtitle = '',
+  fileName = '',
+  showingCount = 0,
+  totalCount = 0,
+  searchTerm = '',
+  onSearchChange,
+  onSearchClear,
+  searchPlaceholder = 'Search material or plant...',
+  className = '',
+  style = {},
+  children
+}) {
+  return (
+    <div
+      className={cn(
+        'rx-card rx-bulk-preview-section bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] relative text-left !p-0 overflow-hidden w-full',
+        className
+      )}
+      style={style}
+    >
+      <div
+        data-full-bleed-band="true"
+        data-testid="rx-bulk-preview-header"
+        className="rx-bulk-preview-header flex flex-col justify-center !m-0 w-full box-border"
+        style={{
+          padding: 'var(--space-16, 16px) var(--space-20, 20px)',
+          backgroundColor: 'var(--color-blue-100, #EEF4F9)',
+          borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}
+      >
+        {/* Row 1: Title + File chip + Showing count left; Search box right */}
+        <div
+          className="rx-preview-header-main-row"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-12, 12px)',
+            width: '100%',
+            minWidth: 0
+          }}
+        >
+          <div
+            className="rx-preview-header-left"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-10, 10px)',
+              minWidth: 0,
+              flex: '1 1 auto'
+            }}
+          >
+            <h3
+              className="rx-form-section-title"
+              data-testid="rx-preview-title"
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: 'var(--font-size-18, 18px)',
+                fontWeight: 'var(--font-weight-semibold, 600)',
+                color: 'var(--color-navy-900, #00204E)',
+                lineHeight: 'var(--line-height-tight, 1.25)',
+                whiteSpace: 'nowrap',
+                margin: 0,
+                flexShrink: 0
+              }}
+            >
+              {title}
+            </h3>
+
+            {fileName && (
+              <span
+                className="sap-file-badge rx-file-chip"
+                title={fileName}
+                data-testid="rx-preview-file-chip"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-6, 6px)',
+                  padding: '3px 9px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                  border: '1px solid var(--color-blue-300, #B3CDE0)',
+                  borderRadius: 'var(--radius-sm, 6px)',
+                  fontSize: 'var(--font-size-12, 12px)',
+                  fontWeight: 600,
+                  color: 'var(--color-navy-900, #00204E)',
+                  maxWidth: 240,
+                  minWidth: 0,
+                  flexShrink: 1
+                }}
+              >
+                <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
+                <span
+                  className="rx-file-chip-name"
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {fileName}
+                </span>
+              </span>
+            )}
+
+            <span
+              className="rx-preview-showing-text"
+              data-testid="rx-preview-showing-text"
+              style={{
+                fontSize: 'var(--font-size-12, 12px)',
+                fontWeight: 500,
+                color: 'var(--color-text-secondary, #4A5F77)',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              Showing {showingCount} of {totalCount}
+            </span>
+          </div>
+
+          {/* Search Box on right edge */}
+          <div
+            className="rx-preview-search-wrap"
+            data-testid="rx-preview-search-wrap"
+            style={{
+              width: 280,
+              flex: '0 0 280px',
+              maxWidth: 280,
+              display: 'flex',
+              alignItems: 'center',
+              flexShrink: 0
+            }}
+          >
+            <SearchInput
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={onSearchChange}
+              onClear={onSearchClear}
+              isTable
+              wrapperStyle={{ width: 280, height: 36 }}
+              style={{ height: 36, fontSize: 'var(--font-size-13, 13px)' }}
+              aria-label="Search Data Preview table"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Subtitle directly under title */}
+        {subtitle && (
+          <p
+            className="rx-form-section-desc"
+            data-testid="rx-preview-subtitle"
+            style={{
+              fontFamily: 'var(--font-sans)',
+              fontSize: 'var(--font-size-13, 13px)',
+              color: 'var(--color-text-secondary, #4A5F77)',
+              marginTop: 'var(--space-4, 4px)',
+              marginBottom: 0,
+              lineHeight: 'var(--line-height-normal, 1.4)'
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
+      </div>
+
+      <div
+        className="rx-preview-body"
+        data-testid="rx-bulk-preview-body"
+        style={{
+          padding: 'var(--space-20, 20px)',
+          boxSizing: 'border-box',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-16, 16px)'
+        }}
+      >
+        {children}
       </div>
     </div>
   );
@@ -709,101 +926,6 @@ export function useBulkBomJobPolling() {
 }
 
 /**
- * Normalizes validation status into one of: 'ready', 'error', 'skipped', 'not_validated'
- */
-export function normalizeBomStatus(bom) {
-  if (!bom) return 'not_validated';
-  const statusStr = String(bom.status || '').trim().toLowerCase();
-
-  if (
-    statusStr === 'failed' ||
-    statusStr === 'error' ||
-    statusStr === 'invalid' ||
-    (Array.isArray(bom.errors) && bom.errors.length > 0) ||
-    (Array.isArray(bom.problems) && bom.problems.length > 0)
-  ) {
-    return 'error';
-  }
-  if (
-    statusStr === 'ready' ||
-    statusStr === 'valid' ||
-    statusStr === 'success'
-  ) {
-    return 'ready';
-  }
-  if (
-    statusStr.includes('skipped') ||
-    statusStr.includes('exist') ||
-    statusStr === 'not_processed' ||
-    statusStr === 'warning'
-  ) {
-    return 'skipped';
-  }
-  if (statusStr === 'pending' || !statusStr) {
-    return 'not_validated';
-  }
-  return 'not_validated';
-}
-
-/**
- * Single source of truth for BOM counts across All, Ready, Errors, and Skipped.
- */
-export function getBomStatusCounts(boms = [], hasValidated = true) {
-  let ready = 0;
-  let errors = 0;
-  let skipped = 0;
-  let notValidated = 0;
-
-  (boms || []).forEach((b) => {
-    if (!hasValidated) {
-      notValidated++;
-      return;
-    }
-    const s = normalizeBomStatus(b);
-    if (s === 'ready') ready++;
-    else if (s === 'error') errors++;
-    else if (s === 'skipped') skipped++;
-    else notValidated++;
-  });
-
-  return {
-    all: (boms || []).length,
-    ready,
-    errors,
-    skipped,
-    notValidated
-  };
-}
-
-/**
- * Filter BOMs by normalized status tab and search term together.
- */
-export function filterBoms(boms = [], { statusFilter = 'all', searchTerm = '' } = {}) {
-  const term = String(searchTerm || '').trim().toLowerCase();
-
-  return (boms || []).filter((bom) => {
-    const norm = normalizeBomStatus(bom);
-    if (statusFilter === 'ready' && norm !== 'ready') return false;
-    if (statusFilter === 'errors' && norm !== 'error') return false;
-    if (statusFilter === 'skipped' && norm !== 'skipped') return false;
-
-    if (term) {
-      const matchMat = (bom.material || bom.sourceMaterial || '').toLowerCase().includes(term);
-      const matchPlant = (bom.plant || bom.sourcePlant || bom.targetPlant || '').toLowerCase().includes(term);
-      const matchTgtMat = (bom.targetMaterial || '').toLowerCase().includes(term);
-      const matchComp = Array.isArray(bom.components) && bom.components.some((c) =>
-        (c.component || '').toLowerCase().includes(term)
-      );
-      if (!matchMat && !matchPlant && !matchTgtMat && !matchComp) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-}
-
-/**
  * Safely merges validation outcomes into original parsed BOMs without overwriting parsed fields or dropping component rows.
  */
 export function mergeValidationIntoBoms(originalBoms = [], validationResults = []) {
@@ -912,92 +1034,73 @@ export function mergeValidationIntoBoms(originalBoms = [], validationResults = [
 }
 
 /**
+ * Renders message text in standard UI font, with code elements (materials, plants, table names)
+ * formatted in the design system inline code style.
+ */
+export function renderMessageContent(text) {
+  if (!text || typeof text !== 'string') return text;
+  const regex = /(`[^`]+`|\([A-Z]{4}\))/g;
+  if (!regex.test(text)) return text;
+
+  const parts = text.split(regex);
+  return parts.map((part, i) => {
+    if (!part) return null;
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const code = part.slice(1, -1);
+      return (
+        <code
+          key={i}
+          className="sap-code-pill"
+          style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '0.9em',
+            padding: '1px 4px',
+            borderRadius: 'var(--radius-sm, 4px)',
+            backgroundColor: 'rgba(0, 32, 78, 0.06)',
+            color: 'inherit'
+          }}
+        >
+          {code}
+        </code>
+      );
+    }
+    if (/^\([A-Z]{4}\)$/.test(part)) {
+      return (
+        <code
+          key={i}
+          className="sap-code-pill"
+          style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: '0.9em',
+            padding: '1px 4px',
+            borderRadius: 'var(--radius-sm, 4px)',
+            backgroundColor: 'rgba(0, 32, 78, 0.06)',
+            color: 'inherit'
+          }}
+        >
+          {part}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
+/**
  * Extracts and deduplicates error and warning messages from any bulk BOM object
  * (supports both Create BOM and Copy BOM schemas).
  */
 export function getBomMessages(bom) {
-  if (!bom) return { errors: [], warnings: [], total: 0, all: [] };
-  const errorList = [];
-  const warningList = [];
-  const seen = new Set();
-
-  const addMsg = (raw, isWarning = false) => {
-    if (!raw) return;
-    const text = typeof raw === 'string' ? raw : (raw.text || raw.message || JSON.stringify(raw));
-    if (!text || typeof text !== 'string') return;
-    if (text.includes(' | ')) {
-      text.split(/\s*\|\s*/).forEach((sub) => addMsg(sub, isWarning));
-      return;
-    }
-    const cleaned = cleanDiagnosticMessage(text);
-    if (cleaned && !seen.has(cleaned)) {
-      seen.add(cleaned);
-      if (isWarning) warningList.push(cleaned);
-      else errorList.push(cleaned);
-    }
-  };
-
-  const addError = (msg) => addMsg(msg, false);
-  const addWarning = (msg) => addMsg(msg, true);
-
-  // 1. Process individual errors and warnings from bom
-  if (Array.isArray(bom.errors)) {
-    bom.errors.forEach(addError);
-  }
-  if (Array.isArray(bom.warnings)) {
-    bom.warnings.forEach(addWarning);
-  }
-
-  // 2. Process problems (commonly used in Bulk Copy)
-  if (Array.isArray(bom.problems)) {
-    bom.problems.forEach((p) => {
-      if (typeof p === 'string') addError(p);
-      else if (p && (p.text || p.message)) {
-        const isWarn = p.type === 'warning' || p.severity === 'warning' || p.isWarning;
-        if (isWarn) addWarning(p.text || p.message);
-        else addError(p.text || p.message);
-      }
-    });
-  }
-
-  // 3. Process component level errors and warnings
-  if (Array.isArray(bom.components)) {
-    bom.components.forEach((c) => {
-      if (Array.isArray(c.errors)) c.errors.forEach(addError);
-      if (c.error) addError(c.error);
-      if (Array.isArray(c.warnings)) c.warnings.forEach(addWarning);
-      if (c.warning) addWarning(c.warning);
-    });
-  }
-
-  // 4. Process reason / message (split if joined, deduplicated against seen)
-  const isSkipped = normalizeBomStatus(bom) === 'skipped';
-  const isError = normalizeBomStatus(bom) === 'error';
-  if (bom.reason) {
-    if (isSkipped) addWarning(bom.reason);
-    else if (isError) addError(bom.reason);
-  }
-  if (bom.message && bom.message !== bom.reason) {
-    if (isSkipped) addWarning(bom.message);
-    else if (isError) addError(bom.message);
-  }
-
-  const all = [
-    ...errorList.map((text) => ({ text, type: 'error' })),
-    ...warningList.map((text) => ({ text, type: 'warning' }))
-  ];
-
-  return {
-    errors: errorList,
-    warnings: warningList,
-    total: all.length,
-    all
-  };
+  return getBomRowMessages(bom);
 }
 
 /**
  * Shared message row rendered beneath a failed BOM row in preview tables.
- * Spans across table columns, lists errors first (red) then warnings (amber),
+ * Spans across table columns, lists messages with severity-based icons, text, and tints:
+ * - error: red danger icon (AlertCircle) and red text, very light red row tint
+ * - warning: amber warning triangle icon (AlertTriangle) and amber color, normal dark text, very light amber tint
+ * - skipped: neutral slate icon (MinusCircle), muted slate text, very light slate tint
+ * - info: neutral icon (Info) and muted text, no tint
  * collapses by default to 3 items with an accessible toggle button.
  */
 export function BulkBomMessageRow({
@@ -1007,7 +1110,11 @@ export function BulkBomMessageRow({
   onToggleExpand,
   colSpan = 12
 }) {
-  if (!messages || messages.total === 0) return null;
+  if (!messages || messages.total === 0 || !messages.all || messages.all.length === 0) return null;
+
+  // Never render success notes as message lines
+  const displayItems = messages.all.filter((item) => item && item.severity !== 'success');
+  if (displayItems.length === 0) return null;
 
   return (
     <tr className="bom-messages-row" key={`bom-${bomKey}-messages`}>
@@ -1024,37 +1131,65 @@ export function BulkBomMessageRow({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {(isExpanded ? messages.all : messages.all.slice(0, 3)).map((item, mIdx) => (
-            <div
-              key={mIdx}
-              className={`bom-msg-item bom-msg-${item.type}`}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 6
-              }}
-            >
-              <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
-                {item.type === 'error' ? (
-                  <AlertCircle size={13} style={{ color: 'var(--sap-error, var(--color-danger, #b42318))' }} />
-                ) : item.type === 'warning' ? (
-                  <AlertTriangle size={13} style={{ color: 'var(--color-warning, #d97706)' }} />
-                ) : (
-                  <Info size={13} style={{ color: 'var(--sap-text-muted, #7a8ca3)' }} />
-                )}
-              </span>
-              <span
+          {(isExpanded ? displayItems : displayItems.slice(0, 3)).map((item, mIdx) => {
+            const severity = item.severity || item.type || 'info';
+            return (
+              <div
+                key={mIdx}
+                className={`bom-msg-item bom-msg-${severity}`}
                 style={{
-                  wordBreak: 'break-word',
-                  overflowWrap: 'anywhere',
-                  color: item.type === 'info' ? 'var(--sap-text-muted, #64748b)' : 'var(--sap-text-dark, #0f172a)'
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 6,
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-sm, 6px)',
+                  backgroundColor:
+                    severity === 'error'
+                      ? 'var(--color-danger-bg, #FEF3F2)'
+                      : severity === 'warning'
+                      ? 'var(--color-warning-bg, #FFFBEB)'
+                      : severity === 'skipped'
+                      ? 'var(--color-blue-50, #EEF4F9)'
+                      : 'transparent',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 12,
+                  lineHeight: 1.45
                 }}
               >
-                {item.text}
-              </span>
-            </div>
-          ))}
-          {messages.all.length > 3 && (
+                <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
+                  {severity === 'error' ? (
+                    <AlertCircle size={13} style={{ color: 'var(--color-danger, #b42318)' }} />
+                  ) : severity === 'warning' ? (
+                    <AlertTriangle size={13} style={{ color: 'var(--color-warning, #D97706)' }} />
+                  ) : severity === 'skipped' ? (
+                    <MinusCircle size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
+                  ) : (
+                    <Info size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
+                  )}
+                </span>
+                <span
+                  className="bom-msg-text"
+                  style={{
+                    flex: 1,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    fontFamily: 'var(--font-sans)',
+                    color:
+                      severity === 'error'
+                        ? 'var(--color-danger, #B42318)'
+                        : severity === 'warning'
+                        ? 'var(--color-text, #0F2742)'
+                        : severity === 'skipped'
+                        ? 'var(--color-text-secondary, #4A5F77)'
+                        : 'var(--color-text-secondary, #4A5F77)'
+                  }}
+                >
+                  {renderMessageContent(item.text)}
+                </span>
+              </div>
+            );
+          })}
+          {displayItems.length > 3 && (
             <div style={{ marginTop: 2 }}>
               <button
                 type="button"
@@ -1073,7 +1208,7 @@ export function BulkBomMessageRow({
                   textDecoration: 'underline'
                 }}
               >
-                {isExpanded ? 'Show less' : `Show ${messages.all.length - 3} more`}
+                {isExpanded ? 'Show less' : `Show ${displayItems.length - 3} more`}
               </button>
             </div>
           )}
@@ -1366,31 +1501,19 @@ export function resolveBomGroups(boms = []) {
 
 /**
  * Shared badge for Execution Details table.
- * Created = Green, Failed = Red, Skipped = Amber
+ * Created / Copied = Green, Failed = Red, Skipped / Not Attempted = Neutral
  */
-export function BulkExecutionResultBadge({ status }) {
+export function BulkExecutionResultBadge({ status, subStatus, message, mode = 'create' }) {
   const norm = typeof status === 'string' ? status.toUpperCase() : 'FAILED';
+  const normSub = typeof subStatus === 'string' ? subStatus.toUpperCase() : '';
+  const msg = typeof message === 'string' ? message.toLowerCase() : '';
+  const isNotAttempted =
+    norm === 'NOT_ATTEMPTED' ||
+    normSub === 'NOT_ATTEMPTED' ||
+    msg.includes('failed earlier in this group') ||
+    msg.includes('not created because');
 
-  if (norm === 'CREATED' || norm === 'SUCCESS') {
-    return (
-      <span
-        className="sap-badge sap-badge-success"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 5,
-          fontSize: 11,
-          padding: '3px 8px',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} />
-        <span>Created</span>
-      </span>
-    );
-  }
-
-  if (norm === 'SKIPPED') {
+  if (isNotAttempted) {
     return (
       <span
         className="sap-badge sap-badge-neutral"
@@ -1407,6 +1530,48 @@ export function BulkExecutionResultBadge({ status }) {
         }}
       >
         <MinusCircle size={13} style={{ color: 'var(--color-text-secondary, #4A5F77)' }} />
+        <span>Not attempted</span>
+      </span>
+    );
+  }
+
+  if (norm === 'CREATED' || norm === 'SUCCESS' || norm === 'COPIED') {
+    const label = mode === 'copy' ? 'Copied' : 'Created';
+    return (
+      <span
+        className="sap-badge sap-badge-success"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 11,
+          padding: '3px 8px',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} />
+        <span>{label}</span>
+      </span>
+    );
+  }
+
+  if (norm === 'SKIPPED' || norm === 'NOT_PROCESSED') {
+    return (
+      <span
+        className="sap-badge sap-badge-neutral sap-badge-skipped"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 11,
+          padding: '3px 8px',
+          whiteSpace: 'nowrap',
+          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+          color: 'var(--color-blue-700, #034375)',
+          border: '1px solid var(--color-blue-200, #B3CDE0)'
+        }}
+      >
+        <MinusCircle size={13} style={{ color: 'var(--color-blue-700, #034375)' }} />
         <span>Skipped</span>
       </span>
     );
@@ -1422,12 +1587,12 @@ export function BulkExecutionResultBadge({ status }) {
         fontSize: 11,
         padding: '3px 8px',
         whiteSpace: 'nowrap',
-        backgroundColor: 'var(--color-danger-bg)',
-        color: 'var(--color-danger)',
-        border: '1px solid var(--color-danger-border)'
+        backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+        color: 'var(--color-danger, #B42318)',
+        border: '1px solid var(--color-danger-border, #FECDCA)'
       }}
     >
-      <AlertCircle size={13} />
+      <AlertCircle size={13} style={{ color: 'var(--color-danger, #B42318)' }} />
       <span>Failed</span>
     </span>
   );
@@ -1435,37 +1600,23 @@ export function BulkExecutionResultBadge({ status }) {
 
 /**
  * Extracts normalized itemized messages for an execution row.
- * Primary errors are ordered first, followed by technical cascade messages (e.g. consistency check, no instance),
- * then warnings and neutral information.
+ * Assigns severities:
+ * - created: neutral/success info line (severity 'info')
+ * - skipped: skipped style (severity 'skipped')
+ * - failed: error style for primary error ('error'), follow-on technical messages stay 'info', non-blocking warnings stay 'warning'
  */
 export function getExecutionRowMessages(row) {
-  const primaryErrors = [];
-  const followOnInfo = [];
-  const warnings = [];
-  const otherInfo = [];
+  if (!row) return [];
+  const status = normalizeExecutionStatus(row);
+  const rawList = [];
   const seen = new Set();
-
-  const isFollowOnTechnical = (text) =>
-    /consistency check when creating bom item|no instance of object type bomgroup/i.test(text);
 
   const addMsg = (text, defaultType = 'error') => {
     if (!text || typeof text !== 'string') return;
     const clean = text.trim();
     if (!clean || seen.has(clean)) return;
     seen.add(clean);
-
-    if (isFollowOnTechnical(clean)) {
-      followOnInfo.push({ text: clean, type: 'info' });
-      return;
-    }
-
-    if (defaultType === 'warning') {
-      warnings.push({ text: clean, type: 'warning' });
-    } else if (defaultType === 'info') {
-      otherInfo.push({ text: clean, type: 'info' });
-    } else {
-      primaryErrors.push({ text: clean, type: 'error' });
-    }
+    rawList.push({ text: clean, defaultType });
   };
 
   if (Array.isArray(row?.errors) && row.errors.length > 0) {
@@ -1484,7 +1635,7 @@ export function getExecutionRowMessages(row) {
     for (const w of row.warnings) addMsg(w, 'warning');
   }
 
-  const isRowFailed = ['failed', 'invalid', 'error'].includes(String(row?.status || '').trim().toLowerCase());
+  const isRowFailed = status === 'FAILED' || ['failed', 'invalid', 'error'].includes(String(row?.status || '').trim().toLowerCase());
 
   if (Array.isArray(row?.messages) && row.messages.length > 0) {
     for (const m of row.messages) {
@@ -1502,18 +1653,37 @@ export function getExecutionRowMessages(row) {
     }
   }
 
-  const list = [...primaryErrors, ...followOnInfo, ...warnings, ...otherInfo];
-
-  if (list.length === 0) {
-    const status = normalizeExecutionStatus(row);
-    if (status === 'CREATED') {
-      list.push({ text: 'BOM created and verified in SAP.', type: 'info' });
+  if (rawList.length === 0) {
+    if (status === 'CREATED' || status === 'COPIED' || status === 'SUCCESS') {
+      rawList.push({ text: 'BOM operation completed and verified in SAP.', defaultType: 'info' });
     } else if (status === 'SKIPPED') {
-      list.push({ text: 'BOM already exists in plant; skipped.', type: 'warning' });
+      rawList.push({ text: 'BOM already exists in plant; skipped.', defaultType: 'skipped' });
     } else {
-      list.push({ text: 'BOM creation failed.', type: 'error' });
+      rawList.push({ text: 'BOM operation failed.', defaultType: 'error' });
     }
   }
 
-  return list;
+  return rawList.map((item) => {
+    let severity;
+    if (status === 'SKIPPED') {
+      severity = 'skipped';
+    } else if (status === 'CREATED' || status === 'COPIED' || status === 'SUCCESS') {
+      severity = 'info';
+    } else {
+      // status === 'FAILED'
+      if (FOLLOW_ON_TECHNICAL_REGEX.test(item.text)) {
+        severity = 'info';
+      } else if (item.defaultType === 'warning') {
+        severity = 'warning';
+      } else {
+        severity = 'error';
+      }
+    }
+
+    return {
+      text: item.text,
+      severity,
+      type: severity // alias for backward compatibility
+    };
+  });
 }

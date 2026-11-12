@@ -14,12 +14,9 @@ if (!fs.existsSync(screenshotsDir)) {
 }
 
 test.describe('Copy BOM Post-Verification Refinements', () => {
-  test('Post-copy verification states, numbers, and retry flow at 1366x768', async ({ page }, testInfo) => {
-    if (testInfo.project.name !== '1366x768') {
-      test.skip();
-    }
-
-    await page.setViewportSize({ width: 1366, height: 768 });
+  test('Post-copy verification states, numbers, and retry flow', async ({ page }) => {
+    const vp = page.viewportSize() || { width: 1366, height: 768 };
+    const vpSuffix = `${vp.width}x${vp.height}`;
     await setupMocks(page, { authenticated: true });
 
     let verifyResolver;
@@ -207,16 +204,18 @@ test.describe('Copy BOM Post-Verification Refinements', () => {
     await expect(levelsVal).toBeVisible();
     await expect(levelsVal).toHaveText('4');
 
-    // Success banner text: after success, verifying message is removed cleanly
-    await expect(bannerMessage).not.toBeVisible();
+    // Success banner text: shows real Alternative, material, BOMs count and levels
+    await expect(bannerMessage).toBeVisible();
+    await expect(bannerMessage).toHaveText('Created Alternative 02 for A1BH0214C: 34 BOMs across 4 levels.');
 
-    // Banner title
+    // Banner title: green success banner, no warning/amber
     const bannerTitle = page.locator('.sap-result-success-title');
     await expect(bannerTitle).toHaveText('BOM Copied Successfully');
+    await expect(page.locator('[data-testid="warning-icon"]')).not.toBeVisible();
 
-    // Take screenshot of successful verified state
-    const shotVerified = path.resolve(screenshotsDir, 'copy-bom-verified-1366x768.png');
-    const artifactVerified = path.resolve(artifactDir, 'copy-bom-verified-1366x768.png');
+    // Take screenshot of successful verified state (no differences)
+    const shotVerified = path.resolve(screenshotsDir, `copy-bom-success-${vpSuffix}.png`);
+    const artifactVerified = path.resolve(artifactDir, `copy-bom-success-${vpSuffix}.png`);
     await page.screenshot({ path: shotVerified, fullPage: true });
     if (fs.existsSync(shotVerified)) fs.copyFileSync(shotVerified, artifactVerified);
 
@@ -247,14 +246,15 @@ test.describe('Copy BOM Post-Verification Refinements', () => {
     const verifyAgainBtn = page.locator('.sap-result-meta-item:has-text("Total Components Copied") button:has-text("Verify again")');
     await expect(verifyAgainBtn).toBeVisible();
 
-    // Banner says "Copy completed. Verification could not finish."
-    await expect(page.locator('.sap-result-success-message')).toHaveText('Copy completed. Verification could not finish.');
-    // Copy itself stays shown as successful
+    // Banner says "Copy completed. Verification could not be completed." in neutral/info style
+    await expect(page.locator('.sap-result-success-message')).toHaveText('Copy completed. Verification could not be completed.');
+    // Copy itself stays shown as successful with green/neutral icon, not as an amber difference
     await expect(page.locator('.sap-result-success-title')).toHaveText('BOM Copied Successfully');
+    await expect(page.locator('[data-testid="warning-icon"]')).not.toBeVisible();
 
     // Take screenshot of Not Verified state
-    const shotNotVerified = path.resolve(screenshotsDir, 'copy-bom-not-verified-1366x768.png');
-    const artifactNotVerified = path.resolve(artifactDir, 'copy-bom-not-verified-1366x768.png');
+    const shotNotVerified = path.resolve(screenshotsDir, `copy-bom-not-verified-${vpSuffix}.png`);
+    const artifactNotVerified = path.resolve(artifactDir, `copy-bom-not-verified-${vpSuffix}.png`);
     await page.screenshot({ path: shotNotVerified, fullPage: true });
     if (fs.existsSync(shotNotVerified)) fs.copyFileSync(shotNotVerified, artifactNotVerified);
 
@@ -267,6 +267,7 @@ test.describe('Copy BOM Post-Verification Refinements', () => {
     // On mismatch: Warning title and details toggle
     const mismatchTitle = page.locator('.sap-result-success-title');
     await expect(mismatchTitle).toHaveText('BOM copied with 1 difference from the source');
+    await expect(page.locator('[data-testid="warning-icon"]')).toBeVisible();
 
     const viewDetailsBtn = page.getByRole('button', { name: /view details/i });
     await expect(viewDetailsBtn).toBeVisible();
@@ -275,9 +276,9 @@ test.describe('Copy BOM Post-Verification Refinements', () => {
     const diffListItem = page.locator('text=Missing component 11021735');
     await expect(diffListItem).toBeVisible();
 
-    // Take screenshot of Mismatch state
-    const shotMismatch = path.resolve(screenshotsDir, 'copy-bom-mismatch-1366x768.png');
-    const artifactMismatch = path.resolve(artifactDir, 'copy-bom-mismatch-1366x768.png');
+    // Take screenshot of Mismatch state (with View details open)
+    const shotMismatch = path.resolve(screenshotsDir, `copy-bom-difference-${vpSuffix}.png`);
+    const artifactMismatch = path.resolve(artifactDir, `copy-bom-difference-${vpSuffix}.png`);
     await page.screenshot({ path: shotMismatch, fullPage: true });
     if (fs.existsSync(shotMismatch)) fs.copyFileSync(shotMismatch, artifactMismatch);
   });

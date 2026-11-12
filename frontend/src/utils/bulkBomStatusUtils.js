@@ -4,40 +4,95 @@
  */
 
 /**
- * Normalizes validation status into one of: 'ready', 'error', 'skipped', 'not_validated'
+ * Single source of truth for classifying any BOM object or BOM group.
+ * Guarantees exactly one status: 'ready', 'error', 'skipped', or 'not_validated'.
+ *
+ * Rules:
+ * - If hasValidated is false or unvalidated/pending -> 'not_validated'
+ * - An error anywhere on the BOM (header or any component row) -> 'error' (even if it also has warnings)
+ * - If not error, a skipped status or existing alternative -> 'skipped'
+ * - If not error and not skipped -> 'ready' (even if it has warnings)
+ * - Guarantees: Ready + Errors + Skipped = Total BOMs (for validated BOMs)
  */
-export function normalizeBomStatus(bom) {
+export function classifyBomStatus(bom, hasValidated = true) {
   if (!bom) return 'not_validated';
-  const statusStr = String(bom.status || '').trim().toLowerCase();
 
-  if (
-    statusStr === 'failed' ||
-    statusStr === 'error' ||
-    statusStr === 'invalid' ||
-    (Array.isArray(bom.errors) && bom.errors.length > 0) ||
-    (Array.isArray(bom.problems) && bom.problems.length > 0)
-  ) {
-    return 'error';
-  }
-  if (
-    statusStr === 'ready' ||
-    statusStr === 'valid' ||
-    statusStr === 'success'
-  ) {
-    return 'ready';
-  }
-  if (
-    statusStr.includes('skipped') ||
-    statusStr.includes('exist') ||
-    statusStr === 'not_processed' ||
-    statusStr === 'warning'
-  ) {
-    return 'skipped';
-  }
-  if (statusStr === 'pending' || !statusStr) {
+  // If validation has not run, rows are 'not_validated'
+  if (!hasValidated) {
     return 'not_validated';
   }
-  return 'not_validated';
+
+  const rawStatus = String(bom.status || '').trim().toLowerCase();
+  const rawMsg = String(bom.message || bom.reason || '').trim().toLowerCase();
+
+  // If status is explicitly pending or not validated
+  if (
+    rawStatus === 'pending' ||
+    rawStatus === 'not_validated' ||
+    rawStatus === 'not validated' ||
+    rawStatus === 'unvalidated' ||
+    (!rawStatus && !bom.errors && !bom.problems && !bom.warnings && !bom.components)
+  ) {
+    return 'not_validated';
+  }
+
+  // 1. ERROR CHECK: Error takes precedence over warnings and skipped
+  const hasHeaderErrors =
+    rawStatus === 'failed' ||
+    rawStatus === 'error' ||
+    rawStatus === 'invalid' ||
+    bom.failed === true ||
+    bom.messageType === 'error' ||
+    bom.reasonType === 'error' ||
+    (Array.isArray(bom.errors) && bom.errors.length > 0) ||
+    (Array.isArray(bom.problems) && bom.problems.length > 0);
+
+  // Check component rows for errors (for grouped BOMs in Bulk Create)
+  const hasComponentErrors =
+    Array.isArray(bom.components) &&
+    bom.components.some((c) => {
+      if (!c) return false;
+      const cStatus = String(c.status || '').trim().toLowerCase();
+      return (
+        cStatus === 'failed' ||
+        cStatus === 'error' ||
+        cStatus === 'invalid' ||
+        c.error ||
+        (Array.isArray(c.errors) && c.errors.length > 0)
+      );
+    });
+
+  if (hasHeaderErrors || hasComponentErrors) {
+    return 'error';
+  }
+
+  // 2. SKIPPED CHECK: Skipped takes precedence over ready
+  const isSkipped =
+    rawStatus === 'skipped' ||
+    rawStatus.includes('skipped') ||
+    rawStatus.includes('exist') ||
+    rawStatus === 'not_processed' ||
+    bom.skipped === true ||
+    bom.messageType === 'skipped' ||
+    rawMsg.includes('already exist') ||
+    rawMsg.includes('already exists') ||
+    rawMsg.includes('exists in plant');
+
+  if (isSkipped) {
+    return 'skipped';
+  }
+
+  // 3. READY CHECK: If not error and not skipped, row is Ready (even with warnings)
+  // Ready rows with warnings (e.g. MARC plant extension) remain 'ready'
+  return 'ready';
+}
+
+/**
+ * Normalizes validation status into one of: 'ready', 'error', 'skipped', 'not_validated'.
+ * Delegates directly to the single shared classifyBomStatus function.
+ */
+export function normalizeBomStatus(bom, hasValidated = true) {
+  return classifyBomStatus(bom, hasValidated);
 }
 
 /**
@@ -50,11 +105,7 @@ export function getBomStatusCounts(boms = [], hasValidated = true) {
   let notValidated = 0;
 
   (boms || []).forEach((b) => {
-    if (!hasValidated) {
-      notValidated++;
-      return;
-    }
-    const s = normalizeBomStatus(b);
+    const s = classifyBomStatus(b, hasValidated);
     if (s === 'ready') ready++;
     else if (s === 'error') errors++;
     else if (s === 'skipped') skipped++;
@@ -71,16 +122,18 @@ export function getBomStatusCounts(boms = [], hasValidated = true) {
 }
 
 /**
- * Filter BOMs by normalized status tab and search term together.
+ * Filter BOMs by normalized status and search term together.
+ * Uses the exact same classification function as getBomStatusCounts.
  */
-export function filterBoms(boms = [], { statusFilter = 'all', searchTerm = '' } = {}) {
+export function filterBoms(boms = [], { statusFilter = 'all', searchTerm = '', hasValidated = true } = {}) {
   const term = String(searchTerm || '').trim().toLowerCase();
+  const normalizedFilter = String(statusFilter || 'all').toLowerCase();
 
   return (boms || []).filter((bom) => {
-    const norm = normalizeBomStatus(bom);
-    if (statusFilter === 'ready' && norm !== 'ready') return false;
-    if (statusFilter === 'errors' && norm !== 'error') return false;
-    if (statusFilter === 'skipped' && norm !== 'skipped') return false;
+    const norm = classifyBomStatus(bom, hasValidated);
+    if (normalizedFilter === 'ready' && norm !== 'ready') return false;
+    if ((normalizedFilter === 'errors' || normalizedFilter === 'error') && norm !== 'error') return false;
+    if (normalizedFilter === 'skipped' && norm !== 'skipped') return false;
 
     if (term) {
       const matchMat = (bom.material || bom.sourceMaterial || '').toLowerCase().includes(term);
@@ -88,7 +141,14 @@ export function filterBoms(boms = [], { statusFilter = 'all', searchTerm = '' } 
       const matchTgtMat = String(bom.targetMaterial || '').toLowerCase().includes(term);
       const matchTgtPlant = String(bom.targetPlant || '').toLowerCase().includes(term);
       const matchSeq = String(bom.sequenceNum || bom.id || '').toLowerCase().includes(term);
-      return matchMat || matchPlant || matchTgtMat || matchTgtPlant || matchSeq;
+      const matchComp =
+        Array.isArray(bom.components) &&
+        bom.components.some(
+          (c) =>
+            String(c.component || '').toLowerCase().includes(term) ||
+            String(c.description || '').toLowerCase().includes(term)
+        );
+      return matchMat || matchPlant || matchTgtMat || matchTgtPlant || matchSeq || matchComp;
     }
     return true;
   });
@@ -368,4 +428,308 @@ export function resolveBomGroups(boms = []) {
   });
 
   return groups;
+}
+
+/**
+ * Cleans up and applies plain-language formatting to diagnostic messages:
+ * - "Alternative 14 already exists in BOM A1BH0214C/1012/1" -> "Alternative 14 already exists for A1BH0214C in plant 1012."
+ * - Removes internal keys like material/plant/usage joined with slashes.
+ * - For sub-assemblies (level 1 or deeper), prefixes with "<material>: <message>".
+ * - Level 0 errors have NO prefix.
+ */
+export function cleanDiagnosticMessage(raw, fallbackLevel = 0, fallbackParent = '') {
+  if (!raw) return '';
+  let str = String(raw).trim();
+
+  // Strip technical prefixes
+  str = str.replace(/^Cannot copy(?: BOM)?:\s*/i, '');
+  str = str.replace(/^SAP BAPI Error:\s*/i, '');
+
+  let level = fallbackLevel;
+  let parentMat = fallbackParent;
+
+  // Extract level and BOM parent if present, Ex. "(BOM of B1BH0214C, level 1)"
+  const bomOfMatch = str.match(/\(BOM of ([^,\)]+),\s*level\s*(\d+)\)/i);
+  if (bomOfMatch) {
+    parentMat = bomOfMatch[1].trim();
+    level = parseInt(bomOfMatch[2], 10);
+    str = str.replace(/\s*\(BOM of [^,\)]+,\s*level\s*\d+\)/i, '').trim();
+  } else {
+    const lvlOnlyMatch = str.match(/\(?\blevel\s*(\d+)\)?/i);
+    if (lvlOnlyMatch) {
+      level = parseInt(lvlOnlyMatch[1], 10);
+      str = str.replace(/\s*\(?\blevel\s*\d+\)?/i, '').trim();
+    }
+  }
+
+  const parentOnlyMatch = str.match(/\(BOM of ([^,\)]+)\)/i);
+  if (parentOnlyMatch) {
+    if (!parentMat) parentMat = parentOnlyMatch[1].trim();
+    str = str.replace(/\s*\(BOM of [^,\)]+\)/i, '').trim();
+  }
+
+  // Plain wording transformations
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists in BOM\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'Alternative $1 already exists for $2 in plant $3.'
+  );
+
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists for\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'Alternative $1 already exists for $2 in plant $3.'
+  );
+
+  str = str.replace(
+    /BOM\s+Alternative\s+(\d+)\s+already exists in plant\s+([A-Za-z0-9]+)\s*\(STLAN=\d+\)[^\.]*/i,
+    'Alternative $1 already exists in plant $2.'
+  );
+
+  str = str.replace(
+    /Alternative\s+(\d+)\s+already exists in plant\s+([A-Za-z0-9]+)\s*\(STLAN=\d+\)[^\.]*/i,
+    'Alternative $1 already exists in plant $2.'
+  );
+
+  str = str.replace(
+    /\bin BOM\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)\/(\d+)\.?/i,
+    'for $1 in plant $2.'
+  );
+
+  str = str.replace(
+    /\bfor material\s+([A-Za-z0-9_\-\.\/]+)\/([A-Za-z0-9]+)(?:\/(\d+))?\.?/i,
+    'for material $1 in plant $2.'
+  );
+
+  str = str.replace(/\s+with BOM usage\s+\d+/i, '');
+
+  str = str.trim();
+
+  if (level >= 1 && parentMat) {
+    if (!str.startsWith(`${parentMat}:`)) {
+      str = `${parentMat}: ${str}`;
+    }
+  }
+
+  if (str && !/[.!?:;]$/.test(str)) {
+    str += '.';
+  }
+
+  return str;
+}
+
+/**
+ * Known technical cascade / follow-on messages on failed rows.
+ */
+export const FOLLOW_ON_TECHNICAL_REGEX =
+  /consistency check when creating bom item|no instance of object type bomgroup|cascade|subsequent error|internal error occurred/i;
+
+/**
+ * Shared helper to derive severity ('error' | 'warning' | 'skipped' | 'info') for a message line.
+ *
+ * Rules:
+ * - All messages of a row whose status is Skipped are severity 'skipped'.
+ * - Messages that make a row Failed are 'error'.
+ * - Non-blocking messages on a Ready row (or on a row that will still be created) are 'warning'.
+ * - Follow-on technical messages on failed rows stay 'info'.
+ * - Confirmation/informational messages on created execution rows are 'info'.
+ */
+export function deriveMessageSeverity(message, rowOrStatus = {}, options = {}) {
+  // If message itself is null/empty
+  if (!message && !options.defaultSeverity && !options.type) {
+    return 'info';
+  }
+
+  // 1. Check explicit type on message object, options.type, or row.messageType
+  const explicitType = typeof message === 'object' && message !== null && (message.type || message.severity)
+    ? (message.type || message.severity)
+    : (options.type || (typeof rowOrStatus === 'object' && rowOrStatus && rowOrStatus.messageType));
+
+  if (explicitType) {
+    const cleanType = String(explicitType).trim().toLowerCase();
+    if (['error', 'warning', 'skipped', 'info', 'success'].includes(cleanType)) {
+      return cleanType;
+    }
+  }
+
+  const msgText = typeof message === 'string' ? message : (message?.text || message?.message || '');
+  const cleanText = msgText.trim();
+
+  // 2. Success notes (e.g. "Ready to copy...", "Ready for creation...", "Source BOM verified...")
+  if (/^ready\s+(?:to|for)\b/i.test(cleanText) || /^source bom verified/i.test(cleanText) || /^copied successfully/i.test(cleanText) || /^created successfully/i.test(cleanText)) {
+    return 'success';
+  }
+
+  // 3. Not validated placeholder
+  if (/^not validated yet\.?$/i.test(cleanText)) {
+    return 'info';
+  }
+
+  const normStatus = typeof rowOrStatus === 'string'
+    ? rowOrStatus.trim().toLowerCase()
+    : normalizeBomStatus(rowOrStatus);
+
+  const isExecution = Boolean(
+    options.isExecution ||
+    (typeof rowOrStatus === 'object' && rowOrStatus && (rowOrStatus.bomNumber || rowOrStatus.success !== undefined || rowOrStatus.completed !== undefined))
+  );
+
+  const execStatus = (isExecution && typeof rowOrStatus === 'object')
+    ? normalizeExecutionStatus(rowOrStatus)
+    : null;
+
+  // 4. All messages of a row whose status is Skipped are severity 'skipped'
+  if (normStatus === 'skipped' || execStatus === 'SKIPPED') {
+    return 'skipped';
+  }
+
+  // 5. Ready row:
+  if (normStatus === 'ready' || execStatus === 'CREATED') {
+    if (execStatus === 'CREATED' || options.isSuccessInfo) {
+      return 'info';
+    }
+    // Only real warnings that need attention (e.g. MARC extension) are 'warning'
+    if (options.isWarning || /not extended to plant|marc\b/i.test(cleanText)) {
+      return 'warning';
+    }
+    // Ready row with no real warning is success
+    return 'success';
+  }
+
+  // 6. Not validated row
+  if (normStatus === 'not_validated') {
+    return 'info';
+  }
+
+  // 7. Failed / error row
+  if (options.isFollowOn || FOLLOW_ON_TECHNICAL_REGEX.test(cleanText)) {
+    return 'info';
+  }
+
+  if (options.defaultSeverity === 'warning' || options.isNonBlockingWarning) {
+    return 'warning';
+  }
+
+  if (normStatus === 'error' || execStatus === 'FAILED') {
+    return 'error';
+  }
+
+  if (options.defaultSeverity && ['error', 'warning', 'skipped', 'info', 'success'].includes(options.defaultSeverity)) {
+    return options.defaultSeverity;
+  }
+
+  // Unknown or missing type falls back to info
+  return 'info';
+}
+
+/**
+ * Extracts and normalizes all message lines for a row with assigned severities.
+ */
+export function getBomRowMessages(bom, options = {}) {
+  if (!bom) {
+    return { errors: [], warnings: [], skipped: [], info: [], success: [], total: 0, all: [] };
+  }
+
+  const normStatus = normalizeBomStatus(bom);
+  // Unvalidated row shows NO message line
+  if (normStatus === 'not_validated') {
+    return { errors: [], warnings: [], skipped: [], info: [], success: [], total: 0, all: [] };
+  }
+
+  const isSkipped = normStatus === 'skipped';
+  const isReady = normStatus === 'ready';
+  const isError = normStatus === 'error';
+
+  const rawMessages = [];
+  const seen = new Set();
+
+  const addRaw = (raw, defaultSeverity = 'error') => {
+    if (!raw) return;
+    const rawType = typeof raw === 'object' && raw !== null ? (raw.type || raw.severity) : null;
+    const text = typeof raw === 'string' ? raw : (raw.text || raw.message || JSON.stringify(raw));
+    if (!text || typeof text !== 'string') return;
+    if (text.includes(' | ')) {
+      text.split(/\s*\|\s*/).forEach((sub) => addRaw(sub, defaultSeverity));
+      return;
+    }
+    const cleanRaw = text.trim();
+    if (/^not validated yet\.?$/i.test(cleanRaw)) {
+      return; // Never render placeholder
+    }
+    const cleaned = cleanDiagnosticMessage(cleanRaw);
+    if (cleaned && !seen.has(cleaned)) {
+      seen.add(cleaned);
+      rawMessages.push({ text: cleaned, explicitType: rawType, defaultSeverity });
+    }
+  };
+
+  // 1. Process individual errors and warnings from bom
+  if (Array.isArray(bom.errors)) {
+    bom.errors.forEach((e) => addRaw(e, 'error'));
+  }
+  if (Array.isArray(bom.warnings)) {
+    bom.warnings.forEach((w) => addRaw(w, 'warning'));
+  }
+
+  // 2. Process problems (used in Bulk Copy)
+  if (Array.isArray(bom.problems)) {
+    bom.problems.forEach((p) => {
+      if (typeof p === 'string') addRaw(p, 'error');
+      else if (p && (p.text || p.message)) {
+        const isWarn = p.type === 'warning' || p.severity === 'warning' || p.isWarning;
+        addRaw(p.text || p.message, isWarn ? 'warning' : 'error');
+      }
+    });
+  }
+
+  // 3. Process component level errors and warnings
+  if (Array.isArray(bom.components)) {
+    bom.components.forEach((c) => {
+      if (Array.isArray(c.errors)) c.errors.forEach((e) => addRaw(e, 'error'));
+      if (c.error) addRaw(c.error, 'error');
+      if (Array.isArray(c.warnings)) c.warnings.forEach((w) => addRaw(w, 'warning'));
+      if (c.warning) addRaw(c.warning, 'warning');
+    });
+  }
+
+  // 4. Process reason / message
+  if (bom.reason) {
+    const isSuccessMsg = /^ready\s+(?:to|for)\b/i.test(bom.reason.trim());
+    addRaw(bom.reason, isSkipped ? 'skipped' : (isReady ? (isSuccessMsg ? 'success' : 'warning') : 'error'));
+  }
+  if (bom.message && bom.message !== bom.reason) {
+    const isSuccessMsg = /^ready\s+(?:to|for)\b/i.test(bom.message.trim());
+    addRaw(bom.message, isSkipped ? 'skipped' : (isReady ? (isSuccessMsg ? 'success' : 'warning') : 'error'));
+  }
+
+  // Map to severity objects using deriveMessageSeverity
+  const allItems = rawMessages.map((item) => {
+    const severity = deriveMessageSeverity(
+      item.explicitType ? { text: item.text, type: item.explicitType } : item.text,
+      bom,
+      { defaultSeverity: item.defaultSeverity }
+    );
+    return {
+      text: item.text,
+      severity,
+      type: severity
+    };
+  });
+
+  // Success messages are NOT rendered as lines
+  const displayLines = allItems.filter((m) => m.severity !== 'success');
+
+  const errors = displayLines.filter((m) => m.severity === 'error').map((m) => m.text);
+  const warnings = displayLines.filter((m) => m.severity === 'warning').map((m) => m.text);
+  const skipped = displayLines.filter((m) => m.severity === 'skipped').map((m) => m.text);
+  const info = displayLines.filter((m) => m.severity === 'info').map((m) => m.text);
+  const success = allItems.filter((m) => m.severity === 'success').map((m) => m.text);
+
+  return {
+    errors,
+    warnings,
+    skipped,
+    info,
+    success,
+    total: displayLines.length,
+    all: displayLines
+  };
 }

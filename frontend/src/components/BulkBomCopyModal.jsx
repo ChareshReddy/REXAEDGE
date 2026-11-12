@@ -165,7 +165,7 @@ export default function BulkBomCopyModal({
               id: index + 1,
               ...norm,
               status: 'PENDING',
-              message: 'Not validated yet'
+              message: ''
             };
           })
           .filter((r) => r.sourceMaterial || r.sourcePlant || r.targetPlant || r.targetAltBom);

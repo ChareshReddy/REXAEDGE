@@ -7,15 +7,12 @@ import {
   EyeOff,
   ArrowRight,
   ShieldCheck,
-  ClipboardList,
-  Layers,
-  Package,
-  ShoppingCart,
   Loader2
 } from 'lucide-react';
 import { loginUser, warmupAuth } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import rexaedgeLogo from '../assets/rexaedge_logo.png';
+import HeroIllustration from './HeroIllustration';
 import './Login.css';
 
 export default function Login({ onLoginSuccess }) {
@@ -123,64 +120,20 @@ export default function Login({ onLoginSuccess }) {
         </div>
 
         <div className="lg-brand-content">
-          <h1 className="lg-headline">SAP operations hub</h1>
-          <div className="lg-tagline">Automate. Integrate. Execute.</div>
-          <p className="lg-description">
-            Unified enterprise gateway for streamlined SAP workflows and intelligent master data management.
-          </p>
-
-          {/* Compact Feature Chips Row */}
-          <div className="lg-chips-row" role="list">
-            <div className="lg-chip" role="listitem">
-              <Layers size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
-              <span>Production planning</span>
-            </div>
-            <div className="lg-chip" role="listitem">
-              <Package size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
-              <span>Master data</span>
-            </div>
-            <div className="lg-chip" role="listitem">
-              <ShoppingCart size={14} strokeWidth={2} className="lg-chip-icon" aria-hidden="true" />
-              <span>Procurement</span>
-            </div>
+          <div className="lg-heading-block">
+            <h1 className="lg-headline">SAP operations hub</h1>
+            <div className="lg-tagline">Automate. Integrate. Execute.</div>
+            <p className="lg-description">
+              Unified enterprise gateway for streamlined SAP workflows and intelligent master data management.
+            </p>
           </div>
 
-          {/* Capabilities List */}
-          <div className="lg-capabilities-list" role="list" aria-label="Key Capabilities">
-            <div className="lg-capability-row" role="listitem">
-              <div className="lg-capability-badge" aria-hidden="true">
-                <ShieldCheck size={16} strokeWidth={2} className="lg-capability-icon" />
-              </div>
-              <div className="lg-capability-text">
-                <div className="lg-capability-title">Validated before every create</div>
-                <div className="lg-capability-desc">Every BOM is checked against SAP master data first.</div>
-              </div>
-            </div>
-
-            <div className="lg-capability-row" role="listitem">
-              <div className="lg-capability-badge" aria-hidden="true">
-                <Lock size={16} strokeWidth={2} className="lg-capability-icon" />
-              </div>
-              <div className="lg-capability-text">
-                <div className="lg-capability-title">Access you control</div>
-                <div className="lg-capability-desc">Permissions per user and per SAP server.</div>
-              </div>
-            </div>
-
-            <div className="lg-capability-row" role="listitem">
-              <div className="lg-capability-badge" aria-hidden="true">
-                <ClipboardList size={16} strokeWidth={2} className="lg-capability-icon" />
-              </div>
-              <div className="lg-capability-text">
-                <div className="lg-capability-title">Complete audit trail</div>
-                <div className="lg-capability-desc">Every action is logged for review.</div>
-              </div>
-            </div>
-          </div>
+          {/* Hero Illustration: Laptop on glowing platform with 5 floating glass tiles */}
+          <HeroIllustration />
         </div>
 
         <div className="lg-brand-footer">
-          RexaEdge ERP Platform · Next IT Point Enterprise Systems
+          RexaEdge a product of - Next IT Point
         </div>
       </section>
 

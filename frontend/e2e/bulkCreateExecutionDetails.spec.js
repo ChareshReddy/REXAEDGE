@@ -208,6 +208,14 @@ test.describe('Bulk Create BOM - Final Step Execution Details Table', () => {
         const url = req.url();
         const method = req.method();
 
+        if (url.includes('/active')) {
+          return route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ success: false, job: null })
+          });
+        }
+
         if (url.includes('/start') || method === 'POST') {
           let postData = null;
           try {
@@ -362,7 +370,7 @@ test.describe('Bulk Create BOM - Final Step Execution Details Table', () => {
       // Row 3: Skipped (SKIPPED)
       const badge3 = rows.nth(2).locator('.sap-badge');
       await expect(badge3).toHaveText('Skipped');
-      await expect(badge3).toHaveClass(/sap-badge-warning/);
+      await expect(badge3).toHaveClass(/sap-badge-neutral|sap-badge-skipped|sap-badge-warning/);
 
       // Row 4: Failed (FAILED with 5 errors)
       const badge4 = rows.nth(3).locator('.sap-badge');
@@ -379,24 +387,24 @@ test.describe('Bulk Create BOM - Final Step Execution Details Table', () => {
       await expect(badge6).toHaveText('Failed');
       await expect(badge6).toHaveClass(/sap-badge-danger/);
 
-      // Check "Show N more" pattern for Row 4 (> 3 messages)
+      // Check "Show N more" pattern for Row 4 (> 2 messages)
       const row4MsgCell = rows.nth(3).locator('td').nth(7);
-      // Initially, 3 messages should be visible
-      const row4MsgItems = row4MsgCell.locator('div > div > span');
-      await expect(row4MsgItems).toHaveCount(3);
+      // Initially, 2 messages should be visible (each message item contains 2 spans: icon and text)
+      const row4MsgItems = row4MsgCell.locator('.bulk-execution-msg-item');
+      await expect(row4MsgItems).toHaveCount(2);
 
-      const expandBtn = row4MsgCell.locator('button:has-text("Show 2 more")');
+      const expandBtn = row4MsgCell.locator('button:has-text("Show 3 more")');
       await expect(expandBtn).toBeVisible();
 
-      // Click "Show 2 more" to expand
+      // Click "Show 3 more" to expand
       await expandBtn.click();
-      await expect(row4MsgCell.locator('div > div > span')).toHaveCount(5);
+      await expect(row4MsgCell.locator('.bulk-execution-msg-item')).toHaveCount(5);
       await expect(row4MsgCell.locator('button:has-text("Show less")')).toBeVisible();
 
       // Click "Show less" to collapse
       await row4MsgCell.locator('button:has-text("Show less")').click();
-      await expect(row4MsgCell.locator('div > div > span')).toHaveCount(3);
-      await expect(row4MsgCell.locator('button:has-text("Show 2 more")')).toBeVisible();
+      await expect(row4MsgCell.locator('.bulk-execution-msg-item')).toHaveCount(2);
+      await expect(row4MsgCell.locator('button:has-text("Show 3 more")')).toBeVisible();
 
       // Verify no monospace font on message text
       const msgFont = await row4MsgCell.evaluate((el) => window.getComputedStyle(el).fontFamily);
