@@ -438,11 +438,10 @@ export default function CreateBomForm({
           {/* SOURCE / REFERENCE BOM SECTION */}
           <FormSection
             title="Reference BOM"
-            description="Select the existing bill of materials to copy from"
             badge={
               <Badge
                 variant="outline"
-                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge,4px)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
               >
                 Source
               </Badge>
@@ -589,11 +588,10 @@ export default function CreateBomForm({
           {/* TARGET BOM SECTION */}
           <FormSection
             title="New BOM Destination"
-            description="Target material and plant configuration"
             badge={
               <Badge
                 variant="outline"
-                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-full bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge,4px)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
               >
                 Target
               </Badge>

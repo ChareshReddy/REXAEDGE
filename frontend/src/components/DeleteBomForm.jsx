@@ -195,7 +195,6 @@ export default function DeleteBomForm({
       <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-6">
         <FormSection
           title="Delete Bill of Materials"
-          description="Specify the material, plant, alternative and usage to delete"
           className="w-full"
         >
           <div className="grid grid-cols-1 min-[600px]:grid-cols-2 min-[900px]:grid-cols-3 xl:grid-cols-4 gap-4">

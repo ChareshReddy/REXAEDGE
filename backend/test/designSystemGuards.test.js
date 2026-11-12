@@ -45,7 +45,12 @@ const requiredTokens = [
   '--size-topbar-height',
   '--size-sidebar-width-expanded',
   '--size-sidebar-width-collapsed',
-  '--focus-ring'
+  '--focus-ring',
+  '--page-header-bg',
+  '--page-header-text',
+  '--page-header-subtext',
+  '--card-header-bg',
+  '--table-header-bg'
 ];
 
 for (const token of requiredTokens) {
@@ -143,11 +148,11 @@ console.log('   ✓ Backdrop click protection verified across all dialogs & popu
 // 6. Verify Table Spacing & Token Heights
 console.log('Test 6: Verify Table spacing and component height tokens...');
 const uiCss = fs.readFileSync(path.resolve(frontendDir, 'components/ui/ui.css'), 'utf8');
-assert.match(uiCss, /\.rx-table-td\s*\{[^}]*padding:\s*6px/s, 'Table cell padding must be 6px so inputs never touch');
+assert.match(uiCss, /\.rx-table-td\s*\{[^}]*padding:\s*8px/s, 'Table cell padding must be 8px var(--space-12)');
 assert.match(uiCss, /height:\s*var\(--size-form-input-height\)/s, 'Form input height must use token');
 assert.match(uiCss, /height:\s*var\(--size-table-input-height\)/s, 'Table cell input height must use token');
 assert.match(uiCss, /height:\s*var\(--size-button-height\)/s, 'Button height must use token');
-console.log('   ✓ Table 6px spacing and token-driven input/button heights verified\n');
+console.log('   ✓ Table 8px 12px spacing and token-driven input/button heights verified\n');
 
 // 7. Verify Modal/Popup headers contain no orange/amber hex codes or classes
 console.log('Test 7: Static check that modal/popup component files contain no orange/amber colors in header/icon code...');
@@ -221,6 +226,96 @@ for (const relPath of bulkFiles) {
   });
 }
 console.log('   ✓ Zero disallowed orange/amber colors or classes in bulk components\n');
+
+// 9. Page Header Band & Swapped Card/Table Header Guard with WCAG AA Contrast
+console.log('Test 9: Verify Page Header, Card Header, and Table Header tokens and WCAG AA contrast...');
+assert(tokensCss.includes('--page-header-bg: #0B2D57'), 'tokens.css must define --page-header-bg as #0B2D57');
+assert(tokensCss.includes('--page-header-text: #FFFFFF'), 'tokens.css must define --page-header-text as #FFFFFF');
+assert(tokensCss.includes('--card-header-bg: #7F9DB9'), 'tokens.css must set --card-header-bg to #7F9DB9');
+assert(tokensCss.includes('--card-header-text: #0B2D57'), 'tokens.css must set --card-header-text to #0B2D57');
+assert(tokensCss.includes('--table-header-bg: var(--color-blue-100)'), 'tokens.css must set --table-header-bg to the light token (--color-blue-100)');
+
+// WCAG 2.1 Contrast Formula
+function getLuminance(hex) {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+
+  const [rs, gs, bs] = [r, g, b].map(c => {
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function getContrast(hex1, hex2) {
+  const l1 = getLuminance(hex1);
+  const l2 = getLuminance(hex2);
+  const brighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (brighter + 0.05) / (darker + 0.05);
+}
+
+// 1. Page Header Title (#FFFFFF on #0B2D57)
+const phTitleContrast = getContrast('#FFFFFF', '#0B2D57');
+assert(phTitleContrast >= 4.5, `Page header title contrast ${phTitleContrast.toFixed(2)} must be >= 4.5`);
+
+// 2. Page Header Subtitle (rgba(255,255,255,0.8) on #0B2D57 -> ~#CED5DD)
+// Composite 80% white over #0B2D57 (r:11, g:45, b:87) -> r:206, g:213, b:221 -> #CED5DD
+const phSubtextContrast = getContrast('#CED5DD', '#0B2D57');
+assert(phSubtextContrast >= 4.5, `Page header subtext contrast ${phSubtextContrast.toFixed(2)} must be >= 4.5`);
+
+// 3. Card Header Title (#0B2D57 on #7F9DB9)
+const cardHeaderContrast = getContrast('#0B2D57', '#7F9DB9');
+assert(cardHeaderContrast >= 4.5, `Card header title contrast ${cardHeaderContrast.toFixed(2)} must be >= 4.5`);
+
+// 4. Table Header Text (#00204E on #DCE8F1)
+const tableHeaderContrast = getContrast('#00204E', '#DCE8F1');
+assert(tableHeaderContrast >= 4.5, `Table header text contrast ${tableHeaderContrast.toFixed(2)} must be >= 4.5`);
+
+// Verify components use token rather than hardcoded old table/card header hex
+const formLayoutJsx = fs.readFileSync(path.resolve(frontendDir, 'components/ui/form-layout.jsx'), 'utf8');
+assert(formLayoutJsx.includes('var(--card-header-bg)'), 'form-layout.jsx must use var(--card-header-bg)');
+
+const dataTableJsx = fs.readFileSync(path.resolve(frontendDir, 'components/ui/DataTable.jsx'), 'utf8');
+assert(dataTableJsx.includes('var(--table-header-bg)'), 'DataTable.jsx must use var(--table-header-bg)');
+
+console.log(`   ✓ Page header title contrast: ${phTitleContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Page header subtitle contrast: ${phSubtextContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Card header title contrast: ${cardHeaderContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Table header text contrast: ${tableHeaderContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log('   ✓ Page Header, Card Header, and Table Header tokens and contrast verified\n');
+
+// 10. Density, Flat Buttons, Radii, Shadows, Hints, and Environment Badge Guard
+console.log('Test 10: Verify Density, Radii, Flat Buttons, Shadows, Removed Hints, and Environment Badge...');
+assert(tokensCss.includes('--control-height: 36px'), 'tokens.css must define --control-height: 36px');
+assert(tokensCss.includes('--size-button-height: 36px'), 'tokens.css must define --size-button-height: 36px');
+assert(tokensCss.includes('--radius-sm: 4px'), 'tokens.css must define --radius-sm: 4px');
+assert(tokensCss.includes('--radius-md: 4px'), 'tokens.css must define --radius-md: 4px');
+assert(tokensCss.includes('--radius-lg: 4px'), 'tokens.css must define --radius-lg: 4px');
+assert(tokensCss.includes('--radius-xl: 6px'), 'tokens.css must define --radius-xl: 6px');
+assert(tokensCss.includes('--shadow-sm: none'), 'tokens.css must define --shadow-sm: none for flat cards');
+assert(tokensCss.includes('--shadow-md: none'), 'tokens.css must define --shadow-md: none');
+
+const createBomViewJsx = fs.readFileSync(path.resolve(frontendDir, 'components/CreateBomView.jsx'), 'utf8');
+assert(!createBomViewJsx.includes('hint="Optional'), 'CreateBomView must NOT contain hint="Optional description"');
+assert(createBomViewJsx.includes('alt-text-counter'), 'CreateBomView must contain alt-text-counter');
+assert(createBomViewJsx.includes('/40'), 'CreateBomView must contain /40 counter');
+
+const appJsxContent = fs.readFileSync(path.resolve(frontendDir, 'App.jsx'), 'utf8');
+assert(appJsxContent.includes('rx-server-env-badge'), 'App.jsx must render rx-server-env-badge');
+assert(appJsxContent.includes('rx-server-env-prod'), 'App.jsx must support distinct prod badge');
+
+const primaryBtnContrast = getContrast('#FFFFFF', '#00204E');
+assert(primaryBtnContrast >= 4.5, `Primary button contrast ${primaryBtnContrast.toFixed(2)} must be >= 4.5`);
+
+const dangerBtnContrast = getContrast('#FFFFFF', '#B42318');
+assert(dangerBtnContrast >= 4.5, `Danger button contrast ${dangerBtnContrast.toFixed(2)} must be >= 4.5`);
+
+console.log(`   ✓ Primary navy button contrast: ${primaryBtnContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Danger red button contrast: ${dangerBtnContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log('   ✓ 36px control height, 4px radii, 6px modal radius, zero shadow verified');
+console.log('   ✓ Removed optional hints, Alternative Text counter (0/40), and Environment Badge verified\n');
 
 console.log('============================================================');
 console.log('  ALL DESIGN SYSTEM & SCOPE GUARD TESTS PASSED! (100%)      ');

@@ -122,8 +122,8 @@ export const Card = forwardRef(function Card(
     <ShadcnCard
       ref={ref}
       className={cn(
-        'rx-card rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm text-left',
-        isTinted ? 'rx-card-tinted-header !p-0 overflow-hidden' : 'p-5 xl:p-6',
+        'rx-card rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-none text-left',
+        isTinted ? 'rx-card-tinted-header !p-0 overflow-hidden' : 'p-4',
         className
       )}
       {...props}
@@ -131,32 +131,33 @@ export const Card = forwardRef(function Card(
       {hasHeader && (
         <div
           data-full-bleed-band={isTinted ? 'true' : undefined}
+          data-testid="rx-card-header"
           className={cn(
-            'rx-card-header rx-form-section-header flex flex-col sm:flex-row sm:items-center justify-between gap-2',
+            'rx-card-header rx-form-section-header flex flex-row items-center justify-between gap-2',
             isTinted
-              ? 'rx-form-section-header-tinted !m-0 px-6 py-4 bg-[var(--color-blue-100)] border-b border-[var(--color-blue-200)] w-full'
+              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] w-full'
               : 'border-b border-[var(--color-border-subtle)] pb-4 mb-4'
           )}
         >
-          <div className="flex flex-col">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {title && (
               <h3 className={cn(
-                'rx-card-title rx-form-section-title leading-tight text-[var(--color-navy-900)]',
-                isTinted ? 'text-[18px] font-semibold' : 'text-base font-semibold'
+                'rx-card-title rx-form-section-title text-[16px] font-semibold text-[var(--card-header-text,#0B2D57)] leading-none shrink-0',
+                !isTinted && 'text-base'
               )}>
                 {title}
               </h3>
             )}
             {description && (
-              <p className="rx-form-section-desc text-xs text-[var(--color-text-secondary)] mt-1 leading-normal">
+              <span className="rx-card-header-data text-[13px] text-[var(--card-header-text,#0B2D57)] font-normal truncate">
                 {description}
-              </p>
+              </span>
             )}
           </div>
-          {action && <div className="rx-card-action flex items-center gap-2">{action}</div>}
+          {action && <div className="rx-card-action flex items-center gap-2 shrink-0">{action}</div>}
         </div>
       )}
-      <CardContent className={cn('rx-card-body rx-form-section-body', isTinted ? 'rx-form-section-body-tinted' : 'p-6')}>
+      <CardContent className={cn('rx-card-body rx-form-section-body', isTinted ? 'rx-form-section-body-tinted' : 'p-4')}>
         {children}
       </CardContent>
     </ShadcnCard>

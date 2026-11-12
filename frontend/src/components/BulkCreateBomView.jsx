@@ -841,7 +841,7 @@ export default function BulkCreateBomView({
                   disabled: isLocked
                 }}
                 columns={CREATE_BULK_COLUMNS}
-                rowLimitText="Maximum 500 BOMs per job (batch)."
+                rowLimitText="Maximum 100 BOMs per job (batch)."
                 tipText="Materials and components must exist in SAP. Plant codes must be 4 digits. Item category defaults to L (Stock)."
                 error={parseError}
                 onClear={handleReset}
@@ -1060,7 +1060,7 @@ export default function BulkCreateBomView({
                         <col style={{ width: '22%' }} />
                       </colgroup>
                       <thead>
-                        <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--color-blue-200)' }}>
+                        <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--table-header-bg)' }}>
                           <th className="col-seq" title="Sequence Number" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Seq</th>
                           <th className="col-material" title="Material Number" style={{ width: '14%', textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Material</th>
                           <th className="col-plant" title="Plant" style={{ width: '5%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Plant</th>

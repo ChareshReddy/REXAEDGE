@@ -20,8 +20,8 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-[var(--size-button-height,40px)] px-4 py-2",
-        md: "h-[var(--size-button-height,40px)] px-4 py-2",
+        default: "h-[var(--size-button-height,36px)] px-3.5 py-1.5",
+        md: "h-[var(--size-button-height,36px)] px-3.5 py-1.5",
         sm: "rx-btn-sm h-[var(--size-button-sm-height,32px)] px-3 text-xs",
         xs: "h-6 px-2 text-xs",
         lg: "rx-btn-lg h-11 px-6 text-base",

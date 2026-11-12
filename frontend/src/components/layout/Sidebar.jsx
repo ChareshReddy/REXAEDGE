@@ -361,8 +361,8 @@ export function Sidebar({
 
           {/* Section Divider */}
           {!isCollapsed && (
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-secondary, #4A5F77)', padding: '12px 14px 4px', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-              Operations
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #7A8CA3)', padding: '12px 14px 4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              OPERATIONS
             </div>
           )}
 

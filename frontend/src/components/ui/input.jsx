@@ -67,9 +67,9 @@ const Input = React.forwardRef(function Input(
       disabled={disabled}
       readOnly={readOnly}
       className={cn(
-        "rx-input flex w-full min-w-0 rounded-[var(--radius-md)] border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+        "rx-input flex w-full min-w-0 rounded-[var(--radius-md)] border border-input bg-transparent px-3 py-1 text-sm shadow-none transition-colors outline-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
         "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring",
-        isTable ? "rx-input-table h-[var(--size-table-input-height,32px)]" : isPopup ? "rx-search-input-popup h-[var(--size-popup-input-height,34px)]" : "h-[var(--size-form-input-height,40px)]",
+        isTable ? "rx-input-table h-[var(--size-table-input-height,32px)]" : isPopup ? "rx-search-input-popup h-[var(--size-popup-input-height,32px)]" : "h-[var(--size-form-input-height,36px)]",
         isMono && "rx-input-mono font-mono text-xs",
         hasError && "rx-input-error border-destructive focus-visible:ring-destructive/30",
         className

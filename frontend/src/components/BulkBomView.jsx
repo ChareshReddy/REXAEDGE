@@ -1037,7 +1037,7 @@ export default function BulkBomView({
                   disabled: isExecuting
                 }}
                 columns={COPY_BULK_COLUMNS}
-                rowLimitText="Maximum 500 BOM copy rows per batch."
+                rowLimitText="Maximum 100 BOM copy rows per batch."
                 tipText="Source BOMs must exist in SAP. Target alternative should be numeric (Ex. 02, 12)."
                 error={parseError}
                 onClear={resetAll}
@@ -1196,7 +1196,7 @@ export default function BulkBomView({
                         <col style={{ width: '16%' }} />
                       </colgroup>
                       <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
-                        <tr style={{ backgroundColor: 'var(--color-blue-200)' }}>
+                        <tr style={{ backgroundColor: 'var(--table-header-bg)' }}>
                           <th style={{ width: '5%', textAlign: 'center' }}>#</th>
                           <th style={{ width: '35%' }}>Source BOM</th>
                           <th style={{ width: '35%' }}>Target BOM</th>

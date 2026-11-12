@@ -35,7 +35,7 @@ export function DataTable({
     <div className={cn('rx-table-container rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)]', className)}>
       <Table className="rx-table w-full">
         <TableHeader>
-          <TableRow className="rx-table-header-row bg-[var(--color-blue-200)] hover:bg-[var(--color-blue-200)]">
+          <TableRow className="rx-table-header-row bg-[var(--table-header-bg)] hover:bg-[var(--table-header-bg)]">
             {columns.map((col, idx) => {
               const isActions = col.key === 'actions' || col.id === 'actions' || String(col.title || '').trim().toLowerCase() === 'actions';
               const align = col.align || (isActions ? 'center' : 'left');

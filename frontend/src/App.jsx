@@ -876,42 +876,100 @@ function AppContent({
           })()}
 
           {/* 3. Server selector dropdown */}
-          <div className="sap-system-select-wrapper">
+          <div className="sap-system-select-wrapper" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span className="sap-system-label sap-label">Server</span>
-            {availableServers.length === 1 ? (
-              // Single server: read-only label in header style with neutral env tag
-              <span
-                className="sap-system-static-label"
-                title={`${selectedServer?.name || ''}${selectedServer?.environment ? ` (${selectedServer.environment})` : ''}`}
-              >
-                <span className="sap-system-static-name">{selectedServer?.name}</span>
-                {selectedServer?.environment && (
-                  <span className="sap-system-env-tag">
-                    ({formatEnvironment(selectedServer.environment)})
-                  </span>
-                )}
-              </span>
-            ) : availableServers.length > 1 ? (
-              // Multiple permitted servers: render dropdown selector
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <select
-                  value={selectedServer?.id || ''}
-                  onChange={(e) => handleServerChange(e.target.value)}
-                  className="sap-system-select"
-                  aria-label="Select SAP Server"
-                >
-                  {availableServers.map((srv) => (
-                    <option key={srv.id} value={srv.id}>
-                      {srv.name} ({formatEnvironment(srv.environment)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <span className="sap-badge sap-badge-warning" style={{ fontSize: '11px', padding: '3px 8px' }}>
-                No Permitted Servers
-              </span>
-            )}
+            {(() => {
+              const currentServerType = selectedServer?.type || selectedServer?.environment;
+              const isCurrentProd = currentServerType && /^(prod|production)$/i.test(String(currentServerType).trim());
+
+              if (availableServers.length === 1) {
+                return (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span
+                      className="sap-system-static-label"
+                      title={`${selectedServer?.name || ''}${currentServerType ? ` (${currentServerType})` : ''}`}
+                    >
+                      <span className="sap-system-static-name">{selectedServer?.name}</span>
+                      {currentServerType && (
+                        <span className="sap-system-env-tag" style={{ display: 'none' }}>
+                          ({formatEnvironment(currentServerType)})
+                        </span>
+                      )}
+                    </span>
+                    {currentServerType && (
+                      <span
+                        data-testid="server-environment-badge"
+                        className={`rx-server-env-badge ${isCurrentProd ? 'rx-server-env-prod' : 'rx-server-env-neutral'}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-badge, 4px)',
+                          lineHeight: '1.2',
+                          letterSpacing: '0.02em',
+                          backgroundColor: isCurrentProd ? 'var(--color-danger, #B42318)' : 'var(--color-blue-100, #DCE8F1)',
+                          color: isCurrentProd ? '#FFFFFF' : 'var(--color-navy-900, #00204E)',
+                          border: isCurrentProd ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-blue-300, #98B5CE)'
+                        }}
+                      >
+                        {formatEnvironment(currentServerType)}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              if (availableServers.length > 1) {
+                return (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <select
+                      value={selectedServer?.id || ''}
+                      onChange={(e) => handleServerChange(e.target.value)}
+                      className="sap-system-select"
+                      aria-label="Select SAP Server"
+                    >
+                      {availableServers.map((srv) => {
+                        const srvType = srv.type || srv.environment;
+                        return (
+                          <option key={srv.id} value={srv.id}>
+                            {srv.name}{srvType ? ` (${formatEnvironment(srvType)})` : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {currentServerType && (
+                      <span
+                        data-testid="server-environment-badge"
+                        className={`rx-server-env-badge ${isCurrentProd ? 'rx-server-env-prod' : 'rx-server-env-neutral'}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-badge, 4px)',
+                          lineHeight: '1.2',
+                          letterSpacing: '0.02em',
+                          backgroundColor: isCurrentProd ? 'var(--color-danger, #B42318)' : 'var(--color-blue-100, #DCE8F1)',
+                          color: isCurrentProd ? '#FFFFFF' : 'var(--color-navy-900, #00204E)',
+                          border: isCurrentProd ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-blue-300, #98B5CE)'
+                        }}
+                      >
+                        {formatEnvironment(currentServerType)}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <span className="sap-badge sap-badge-warning" style={{ fontSize: '11px', padding: '3px 8px' }}>
+                  No Permitted Servers
+                </span>
+              );
+            })()}
           </div>
 
           {/* 4. User profile avatar (accessible click toggle, keyboard accessible) */}

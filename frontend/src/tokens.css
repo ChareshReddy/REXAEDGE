@@ -70,9 +70,9 @@
   --font-size-18: 18px;
   --font-size-20: 20px;
   --font-size-24: 24px;
-  --font-size-28: 28px;
-  --font-size-30: 30px;
-  --font-size-36: 36px;
+  --font-size-28: 24px;
+  --font-size-30: 26px;
+  --font-size-36: 30px;
 
   --line-height-tight: 1.25;
   --line-height-normal: 1.4;
@@ -91,6 +91,7 @@
   --space-4: 4px;
   --space-6: 6px;
   --space-8: 8px;
+  --space-10: 10px;
   --space-12: 12px;
   --space-14: 14px;
   --space-16: 16px;
@@ -103,43 +104,48 @@
   --space-64: 64px;
 
   /* ==========================================================================
-     4. RADII
+     4. RADII (Compact Corporate SAP: 4px standard, 6px modals, 3px checkboxes)
      ========================================================================== */
-  --radius-sm: 6px;    /* Table cell controls, small tags */
-  --radius-md: 8px;    /* Standard inputs, standard buttons */
-  --radius-lg: 12px;   /* Cards, content panels */
-  --radius-xl: 16px;   /* Modals, dialogs */
-  --radius-full: 9999px; /* Badges, pill indicators, avatars */
+  --radius-sm: 4px;    /* Table cell controls, small tags, buttons, inputs */
+  --radius-md: 4px;    /* Standard inputs, standard buttons, cards */
+  --radius-lg: 4px;    /* Cards, content panels */
+  --radius-xl: 6px;    /* Modals, dialogs */
+  --radius-badge: 4px; /* Badges (not pill) */
+  --radius-toggle: 4px;/* Toggle switch (not pill) */
+  --radius-full: 9999px; /* Status dots only */
 
   /* ==========================================================================
-     5. SHADOWS (Subtle navy-tinted)
+     5. SHADOWS (Flat corporate: cards & inputs have no shadow; modals/dropdowns soft)
      ========================================================================== */
-  --shadow-sm: 0 1px 2px rgba(0, 32, 78, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 32, 78, 0.08);
-  --shadow-lg: 0 12px 28px rgba(0, 32, 78, 0.12);
-  --shadow-modal: 0 20px 48px rgba(0, 32, 78, 0.18);
-  --shadow-card-hover: 0 8px 24px rgba(2, 87, 154, 0.12);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-card-hover: none;
+  --shadow-modal: 0 12px 32px rgba(0, 32, 78, 0.16);
+  --shadow-dropdown: 0 4px 16px rgba(0, 32, 78, 0.12);
 
   /* ==========================================================================
-     6. COMPONENT SIZES (Optimized for 125% Windows scaling & touch coarse fallback)
+     6. COMPONENT SIZES (Dense Corporate SAP 36px inputs/buttons, 40px table rows)
      ========================================================================== */
-  --size-form-input-height: 40px;
+  --control-height: 36px;
+  --size-form-input-height: var(--control-height, 36px);
   --size-table-input-height: 32px;
-  --size-popup-input-height: 34px;
-  --popup-header-height: 60px;
-  --size-popup-header-height: 60px;
-  --size-table-row-height: 44px;
+  --size-popup-input-height: 32px;
+  --popup-header-height: 48px;
+  --size-popup-header-height: 48px;
+  --size-table-row-height: 40px;
   --size-table-header-height: 40px;
-  --size-button-height: 40px;
+  --size-button-height: 36px;
   --size-button-sm-height: 32px;
-  --size-f4-form-button: 28px;
-  --size-f4-table-button: 24px;
-  --size-topbar-height: 64px;
+  --size-card-header-height: 48px;
+  --size-f4-form-button: 26px;
+  --size-f4-table-button: 22px;
+  --size-topbar-height: 56px;
   --size-sidebar-width-expanded: 240px;
   --size-sidebar-width-collapsed: 72px;
-  --size-hero-min-height: 120px;
-  --input-icon-pad: 40px;
-  --input-clear-pad: 36px;
+  --size-hero-min-height: 88px;
+  --input-icon-pad: 36px;
+  --input-clear-pad: 32px;
 
   /* ==========================================================================
      7. FOCUS & MOTION
@@ -150,6 +156,24 @@
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;
   --transition-slow: 250ms ease;
+
+  /* Page Header Band Tokens */
+  --page-header-bg: #0B2D57;
+  --page-header-text: #FFFFFF;
+  --page-header-subtext: rgba(255, 255, 255, 0.8);
+  --page-header-toggle-track: rgba(255, 255, 255, 0.12);
+  --page-header-toggle-track-border: rgba(255, 255, 255, 0.2);
+  --page-header-toggle-inactive: rgba(255, 255, 255, 0.8);
+  --page-header-toggle-active-bg: #FFFFFF;
+  --page-header-toggle-active-text: var(--color-navy-900);
+
+  /* Card Header Bands vs Table Header Rows */
+  --card-header-bg: #7F9DB9;                /* #7F9DB9 calm mid blue-gray */
+  --card-header-border: #6B8B9E;            /* Subdued border for mid blue-gray band */
+  --card-header-text: #0B2D57;              /* Deep navy text (contrast >= 4.5:1) */
+  --table-header-bg: var(--color-blue-100);  /* #DCE8F1 light tint */
+  --table-header-border: var(--color-border);
+  --table-header-text: var(--color-navy-900);
 
   /* ==========================================================================
      8. BACKWARD COMPATIBILITY BRIDGES (Aliasing to Beautiful Blues tokens)
@@ -165,7 +189,8 @@
   --sap-text-muted: var(--color-text-muted);
   --sap-navy: var(--color-navy-900);
   --sap-card-bg: var(--color-surface);
-  --sap-table-header-bg: var(--color-blue-50);
+  --sap-page-header-bg: var(--page-header-bg);
+  --sap-table-header-bg: var(--table-header-bg);
   --sap-table-header-border: var(--color-border);
   --sap-table-row-hover: var(--color-blue-50);
   --sap-table-row-selected: var(--color-blue-100);

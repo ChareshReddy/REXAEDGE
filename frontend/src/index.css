@@ -9,7 +9,7 @@
 
   /* Master Warm Theme Design Tokens */
   --sap-topbar-bg: #FFFFFF;
-  --sap-page-header-bg: #FFFFFF;
+  --sap-page-header-bg: var(--page-header-bg, #0B2D57);
   --sap-page-bg: var(--color-page-bg, #F5F8FB);
   --sap-card-bg: #FFFFFF;
   --sap-card-nested-bg: #EEF4F9;
@@ -141,12 +141,14 @@
   --sap-shadow-md: 0 4px 6px -1px rgba(2, 87, 154, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --sap-shadow-lg: 0 10px 25px -5px rgba(15, 39, 68, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
 
-  /* Radius Scale: 12px for cards, panels, tables, modals, dropdowns */
+  /* Radius Scale: 4px for inputs/buttons/cards, 6px for modals */
   --radius-xs: 3px;
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-badge: 4px;
+  --radius-toggle: 4px;
   --radius-full: 9999px;
 
   /* Focus Ring */
@@ -959,26 +961,28 @@ select:-webkit-autofill:focus {
 }
 
 /* Explicit Add Component Button in Table Toolbars */
-.sap-btn-add-component {
-  background: #02579A !important;
-  background-color: #02579A !important;
-  color: #ffffff !important;
-  border: 1px solid #02579A !important;
-  border-color: #02579A !important;
-  box-shadow: 0 1px 3px rgba(2, 87, 154, 0.25) !important;
+.sap-btn-add-component,
+.rx-btn-add-component {
+  background: var(--color-navy-900, #00204E) !important;
+  background-color: var(--color-navy-900, #00204E) !important;
+  color: var(--color-text-inverse, #FFFFFF) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.sap-btn-add-component:hover:not(:disabled) {
-  background: #05396B !important;
-  background-color: #05396B !important;
-  border-color: #05396B !important;
-  box-shadow: 0 2px 6px rgba(0, 32, 78, 0.35) !important;
+.sap-btn-add-component:hover:not(:disabled),
+.rx-btn-add-component:hover:not(:disabled) {
+  background: var(--color-navy-800, #05396B) !important;
+  background-color: var(--color-navy-800, #05396B) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-.sap-btn-add-component:active:not(:disabled) {
-  background: #00204E !important;
-  background-color: #00204E !important;
-  border-color: #00204E !important;
+.sap-btn-add-component:active:not(:disabled),
+.rx-btn-add-component:active:not(:disabled) {
+  background: var(--color-navy-900, #00204E) !important;
+  background-color: var(--color-navy-900, #00204E) !important;
+  border: none !important;
 }
 
 .sap-btn:disabled {
@@ -5374,12 +5378,13 @@ input[type="checkbox"]:disabled {
   margin-top: 6px;
 }
 
-/* Page Header Band (flat solid #FFFFFF, no gradient, bottom border 1px #D9E2EC) */
+/* Page Header Band (flat solid #0B2D57, text #FFFFFF) */
 .fiori-ph {
-  background: var(--sap-page-header-bg, #FFFFFF) !important;
+  background: var(--page-header-bg, #0B2D57) !important;
+  color: var(--page-header-text, #FFFFFF) !important;
   padding: 0 !important;
   margin: 0 !important;
-  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
+  border-bottom: 1px solid var(--color-navy-800, #05396B) !important;
   box-shadow: none !important;
   flex-shrink: 0;
   position: relative;
@@ -5393,10 +5398,11 @@ input[type="checkbox"]:disabled {
 }
 
 .sap-layout-header {
-  background: var(--sap-page-header-bg, #FFFFFF) !important;
+  background: var(--page-header-bg, #0B2D57) !important;
+  color: var(--page-header-text, #FFFFFF) !important;
   padding: 0 !important;
   margin: 0 !important;
-  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
+  border-bottom: 1px solid var(--color-navy-800, #05396B) !important;
   box-shadow: none !important;
   flex-shrink: 0;
   position: relative;
@@ -5414,7 +5420,7 @@ input[type="checkbox"]:disabled {
   max-width: 100% !important;
   margin: 0 !important;
   box-sizing: border-box !important;
-  padding: 16px var(--page-gutter) 16px !important;
+  padding: 20px var(--page-gutter) 22px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
@@ -5423,8 +5429,8 @@ input[type="checkbox"]:disabled {
 
 @media (min-width: 1366px) {
   .sap-layout-header-inner {
-    padding-top: 20px !important;
-    padding-bottom: 20px !important;
+    padding-top: 22px !important;
+    padding-bottom: 24px !important;
   }
 }
 
@@ -5449,7 +5455,7 @@ input[type="checkbox"]:disabled {
   margin: 0;
   font-size: 28px;
   font-weight: 700;
-  color: #00204E;
+  color: var(--page-header-text, #FFFFFF) !important;
   letter-spacing: -0.02em;
   line-height: 1.25;
   text-align: left;
@@ -5465,7 +5471,7 @@ input[type="checkbox"]:disabled {
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
-  color: #475569 !important;
+  color: var(--page-header-subtext, rgba(255, 255, 255, 0.8)) !important;
   line-height: 1.5 !important;
   text-align: left !important;
   align-self: flex-start !important;
@@ -5478,6 +5484,7 @@ input[type="checkbox"]:disabled {
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
+  color: var(--page-header-subtext, rgba(255, 255, 255, 0.8)) !important;
   color: #475569 !important;
   line-height: 1.5 !important;
   text-align: left !important;
@@ -5554,6 +5561,60 @@ button.fiori-bc-link.sap-button:hover {
   font-size: 13px !important;
   font-weight: 600 !important;
   letter-spacing: 1px;
+}
+
+/* Controls & Buttons on Dark Page Header Band */
+.fiori-ph .sap-btn,
+.fiori-ph .sap-button,
+.fiori-ph button.fiori-ph-btn {
+  background-color: #FFFFFF !important;
+  color: var(--color-navy-900, #00204E) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  font-weight: 600 !important;
+}
+
+.fiori-ph .sap-btn:hover,
+.fiori-ph .sap-button:hover,
+.fiori-ph button.fiori-ph-btn:hover {
+  background-color: var(--color-blue-50, #EEF4F9) !important;
+  color: var(--color-navy-800, #05396B) !important;
+}
+
+/* Inactive / Active navigation tabs on dark header band */
+.fiori-ph .fiori-home-tab,
+.fiori-ph .sap-admin-nav-tab {
+  color: var(--page-header-subtext, rgba(255, 255, 255, 0.8)) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.fiori-ph .fiori-home-tab:hover,
+.fiori-ph .sap-admin-nav-tab:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.fiori-ph .fiori-home-tab.active,
+.fiori-ph .sap-admin-nav-tab.active {
+  background-color: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+  color: var(--color-navy-900, #00204E) !important;
+  font-weight: 700 !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.fiori-ph .fiori-home-tab.active .fiori-home-tab-badge,
+.fiori-ph .sap-admin-nav-tab.active .sap-admin-tab-badge {
+  background: var(--color-blue-100, #DCE8F1) !important;
+  color: var(--color-navy-900, #00204E) !important;
+}
+
+.fiori-ph .fiori-home-tab:not(.active) .fiori-home-tab-badge,
+.fiori-ph .sap-admin-nav-tab:not(.active) .sap-admin-tab-badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
 }
 
 @media (max-width: 768px) {
@@ -8128,7 +8189,7 @@ a.fiori-ph-orange-back:focus-visible {
 .sap-f4-search-area input,
 .sap-f4-search-row input {
   border: 1px solid var(--color-border-input, #C7D4E1) !important;
-  border-radius: var(--radius-md, 8px) !important;
+  border-radius: var(--radius-md, 4px) !important;
   height: 36px !important;
 }
 

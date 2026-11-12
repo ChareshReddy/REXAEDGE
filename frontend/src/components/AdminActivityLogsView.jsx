@@ -770,7 +770,6 @@ export default function AdminActivityLogsView({
       {/* Main Table Card with Full-Bleed Tinted Header Band */}
       <FormSection
         title={activeSubTab === 'audit' ? 'Audit Trail Records' : 'Error Log Records'}
-        description={activeSubTab === 'audit' ? 'Chronological record of user actions and system events' : 'Detailed system exception and failure log'}
         badge={<span className="sap-badge sap-badge-neutral">{totalCount} records</span>}
         className="w-full mt-4"
       >
@@ -815,7 +814,7 @@ export default function AdminActivityLogsView({
               <col style={{ width: 90, minWidth: 90 }} />
               <col style={{ width: 110, minWidth: 110 }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--color-blue-200)', borderBottom: '1px solid var(--color-border)' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--table-header-bg)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '0 12px', height: 40 }}>
                   <Tooltip text="Timestamp when action occurred">
@@ -1093,7 +1092,7 @@ export default function AdminActivityLogsView({
               <col style={{ width: 160, minWidth: 160 }} />
               <col style={{ width: 100, minWidth: 100 }} />
             </colgroup>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--color-blue-200)', borderBottom: '1px solid var(--color-border)' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 3, backgroundColor: 'var(--table-header-bg)', borderBottom: '1px solid var(--color-border)' }}>
               <tr>
                 <th style={{ padding: '0 8px', height: 36 }}>
                   <Tooltip text="Timestamp when error occurred">

@@ -27,7 +27,7 @@ export function FieldWrapper({
         </label>
       )}
       {children}
-      {hint && !error && !warning && (
+      {hint && !error && !warning && !/optional/i.test(hint) && (
         <div className="rx-field-hint text-xs text-[var(--color-text-secondary)] mt-0.5">{hint}</div>
       )}
       {warning && !error && (
