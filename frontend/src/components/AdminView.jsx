@@ -44,6 +44,7 @@ import { useToast } from '../context/ToastContext';
 import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
 import AdminActivityLogsView from './AdminActivityLogsView';
+import FioriPageHeader from './FioriPageHeader';
 import { FormSection } from './ui/form-layout';
 import { FieldWrapper } from './ui/FieldWrapper';
 import { formatEnvironment } from '../utils/textFormatters';
@@ -783,78 +784,80 @@ export default function AdminView({
     );
   };
 
+  const adminTabTitles = {
+    users: 'Users',
+    servers: 'Servers',
+    permissions: 'Permissions',
+    'activity-logs': 'Logs'
+  };
+  const currentAdminTitle = adminTabTitles[activeTab] || 'System & User Management';
+
   return (
     <div className="fiori-app-view-root" style={{ height: '100%', overflowY: 'auto' }}>
-      {/* Fiori Standard Redesigned Header (Breadcrumbs > Title > Subtitle > Tabs) */}
-      <div className="fiori-ph" style={{ padding: '0' }}>
-        <div className="sap-layout-header-inner">
-          <nav className="fiori-bc" aria-label="Breadcrumb">
-            <button type="button" className="fiori-bc-link" onClick={onNavigateHome || onBack}>
-              Home
-            </button>
-            <span className="fiori-bc-sep">›</span>
-            <span className="fiori-bc-current">Enterprise Administration</span>
-          </nav>
+      {/* Shared Fiori Page Header */}
+      <FioriPageHeader
+        title={currentAdminTitle}
+        subtitle="Manage users, SAP servers, access permissions and activity logs."
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome || onBack },
+          { label: 'Enterprise Administration', onClick: () => handleAdminTabChange('users', ROUTE_IDS.ADMIN_USERS) },
+          { label: currentAdminTitle }
+        ]}
+        extraTitleContent={
+          <button
+            type="button"
+            className="sap-btn sap-btn-secondary fiori-ph-btn"
+            onClick={handleRefresh}
+            title="Refresh Administration Data"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
+          >
+            <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+        }
+      >
+        {/* Admin Navigation Tabs */}
+        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={() => handleAdminTabChange('users', ROUTE_IDS.ADMIN_USERS)}
+            className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
+          >
+            <Users size={14} />
+            <span>Users</span>
+            <span className="sap-admin-tab-badge">{users.length}</span>
+          </button>
 
-          <div className="fiori-ph-title-row">
-            <h1 className="fiori-ph-title">System &amp; User Management</h1>
-            <button
-              type="button"
-              className="sap-btn sap-btn-secondary"
-              onClick={handleRefresh}
-              title="Refresh Administration Data"
-              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, height: 32 }}
-            >
-              <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
-              <span>Refresh</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => handleAdminTabChange('servers', ROUTE_IDS.ADMIN_SERVERS)}
+            className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
+          >
+            <Server size={14} />
+            <span>SAP Servers</span>
+            <span className="sap-admin-tab-badge">{servers.length}</span>
+          </button>
 
-          <p className="fiori-ph-subtitle">Manage users, SAP servers, access permissions and activity logs.</p>
+          <button
+            type="button"
+            onClick={() => handleAdminTabChange('permissions', ROUTE_IDS.ADMIN_PERMISSIONS)}
+            className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
+          >
+            <KeyRound size={14} />
+            <span>Access Permissions</span>
+            <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
+          </button>
 
-          {/* Admin Navigation Tabs */}
-          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button
-              type="button"
-              onClick={() => handleAdminTabChange('users', ROUTE_IDS.ADMIN_USERS)}
-              className={`sap-admin-nav-tab ${activeTab === 'users' ? 'active' : ''}`}
-            >
-              <Users size={14} />
-              <span>Users</span>
-              <span className="sap-admin-tab-badge">{users.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAdminTabChange('servers', ROUTE_IDS.ADMIN_SERVERS)}
-              className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
-            >
-              <Server size={14} />
-              <span>SAP Servers</span>
-              <span className="sap-admin-tab-badge">{servers.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAdminTabChange('permissions', ROUTE_IDS.ADMIN_PERMISSIONS)}
-              className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
-            >
-              <KeyRound size={14} />
-              <span>Access Permissions</span>
-              <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAdminTabChange('activity-logs', ROUTE_IDS.ADMIN_LOGS_AUDIT)}
-              className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
-            >
-              <Activity size={14} />
-              <span>Activity Logs</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => handleAdminTabChange('activity-logs', ROUTE_IDS.ADMIN_LOGS_AUDIT)}
+            className={`sap-admin-nav-tab ${activeTab === 'activity-logs' ? 'active' : ''}`}
+          >
+            <Activity size={14} />
+            <span>Activity Logs</span>
+          </button>
         </div>
-      </div>
+      </FioriPageHeader>
 
       {/* Main Content Area */}
       <div className="sap-page-container" style={{ marginTop: 20 }}>
@@ -996,10 +999,10 @@ export default function AdminView({
                               ) : (
                                 <button
                                   type="button"
-                                  className="sap-btn sap-btn-ghost"
+                                  className="rx-table-action-delete"
                                   onClick={() => handleDeleteUser(u)}
                                   title="Deactivate / Remove User"
-                                  style={{ color: 'var(--sap-error)', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  aria-label="Deactivate / Remove User"
                                 >
                                   <Trash2 size={13} />
                                 </button>
@@ -1170,11 +1173,10 @@ export default function AdminView({
                               </button>
                               <button
                                 type="button"
-                                className="sap-btn sap-btn-ghost"
+                                className="rx-table-action-delete"
                                 onClick={() => handleDeleteServer(s)}
                                 title="Delete Server"
                                 aria-label={`Delete ${s.name}`}
-                                style={{ color: 'var(--sap-error)', padding: '4px' }}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -1410,10 +1412,10 @@ export default function AdminView({
                               </button>
                               <button
                                 type="button"
-                                className="sap-btn sap-btn-ghost"
+                                className="rx-table-action-delete"
                                 onClick={() => handleRevokePermission(p)}
                                 title="Revoke Permission"
-                                style={{ color: 'var(--sap-error)', padding: '4px' }}
+                                aria-label="Revoke Permission"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1521,7 +1523,7 @@ export default function AdminView({
               autoComplete="new-password"
               leftIcon={<KeyRound size={16} />}
               className="rx-input"
-              style={{ height: 38, fontFamily: 'var(--font-sans)' }}
+              style={{ height: 'var(--size-form-input-height, 36px)', fontFamily: 'var(--font-sans)' }}
             />
           </FieldWrapper>
 

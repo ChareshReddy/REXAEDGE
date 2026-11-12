@@ -23,6 +23,7 @@ import Modal from './Modal';
 import FioriPageHeader from './FioriPageHeader';
 import ValueHelpInput from './ValueHelpInput';
 import Tooltip from './Tooltip';
+import { Button } from './ui/button';
 import { FormSection, FormGrid, FormActions } from './ui/form-layout';
 import { FieldWrapper } from './ui/FieldWrapper';
 import { BOM_FIELD_TOOLTIPS } from '../constants/sapFieldHelp';
@@ -824,7 +825,6 @@ export default function CreateBomView({
             {/* Header Data Card */}
             <FormSection
               title="BOM Header Data"
-              description="Material and plant specification for single-level BOM"
               tintedHeader
             >
               <FormGrid>
@@ -989,7 +989,7 @@ export default function CreateBomView({
                           handleHeaderChange('baseQty', sanitized);
                         }}
                         onBlur={() => handleHeaderBlur('baseQty')}
-                        style={{ height: 40 }}
+                        style={{ height: 'var(--size-form-input-height, 36px)' }}
                       />
                     </FieldWrapper>
                   </div>
@@ -1009,7 +1009,7 @@ export default function CreateBomView({
                         value={resolvedBaseUnit || ''}
                         placeholder=""
                         style={{
-                          height: 40,
+                          height: 'var(--size-form-input-height, 36px)',
                           backgroundColor: 'var(--color-blue-50)',
                           borderColor: 'var(--color-border)',
                           color: 'var(--color-text-secondary)',
@@ -1042,7 +1042,6 @@ export default function CreateBomView({
                 <FieldWrapper
                   label="Alternative Text"
                   htmlFor="createBomAltText"
-                  hint="Optional description (up to 40 characters)"
                   error={headerErrors.altText || null}
                   className="md:col-span-2 xl:col-span-2"
                 >
@@ -1051,13 +1050,18 @@ export default function CreateBomView({
                     type="text"
                     className={`rx-input ${headerErrors.altText ? 'rx-input-error' : ''}`}
                     placeholder=""
-                    maxLength={FIELD_RULES.altText.maxLength}
+                    maxLength={40}
                     disabled={isLocked}
                     value={headerData.altText}
                     onChange={(e) => handleHeaderChange('altText', e.target.value)}
                     onBlur={() => handleHeaderBlur('altText')}
                     aria-label="Alternative Text"
                   />
+                  <div className="flex justify-end mt-0.5">
+                    <span className="text-[12px] text-[var(--color-text-muted)]" data-testid="alt-text-counter">
+                      {(headerData.altText || '').length}/40
+                    </span>
+                  </div>
                 </FieldWrapper>
               </FormGrid>
             </FormSection>
@@ -1065,33 +1069,34 @@ export default function CreateBomView({
             {/* Components Card */}
             <FormSection
               title={`Component Items (${components.length})`}
-              description="Components and item quantities for this bill of materials"
               tintedHeader
               actions={
-                <button
+                <Button
                   type="button"
-                  className="sap-button sap-btn-primary sap-btn-add-component rx-btn rx-btn-primary rx-btn-sm"
+                  variant="primary"
+                  size="sm"
+                  className="rx-btn-add-component sap-btn-add-component"
                   disabled={isLocked}
                   onClick={handleAddComponent}
                   style={{
+                    height: 'var(--size-button-sm-height, 32px)',
+                    padding: '0 var(--space-12, 12px)',
+                    borderRadius: 'var(--radius-sm, 4px)',
+                    backgroundColor: 'var(--color-navy-900, #00204E)',
+                    color: 'var(--color-text-inverse, #FFFFFF)',
+                    border: 'none',
+                    boxShadow: 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
+                    gap: 'var(--space-6, 6px)',
                     fontSize: 13,
-                    fontWeight: 600,
-                    padding: '7px 16px',
-                    borderRadius: 'var(--sap-radius, 6px)',
-                    background: 'var(--sap-primary, #0a6ed1)',
-                    color: '#ffffff',
-                    border: '1px solid var(--sap-primary, #0a6ed1)',
-                    boxShadow: '0 2px 4px rgba(10, 110, 209, 0.25)',
-                    cursor: isLocked ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s ease'
+                    fontWeight: 500,
+                    cursor: isLocked ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  <Plus size={15} strokeWidth={2.4} />
+                  <Plus size={15} strokeWidth={2.4} style={{ color: 'var(--color-text-inverse, #FFFFFF)', stroke: 'var(--color-text-inverse, #FFFFFF)' }} />
                   <span>Add Component</span>
-                </button>
+                </Button>
               }
             >
               <div className="sap-table-container fiori-table-wrapper rounded-[var(--radius-md)] border border-[var(--color-border)] rx-components-table-container" style={{ maxHeight: 420, minHeight: 0, height: 'auto' }}>
@@ -1108,13 +1113,13 @@ export default function CreateBomView({
                     <col style={{ width: '6%' }} />
                   </colgroup>
                   <thead>
-                    <tr className="bg-[var(--color-blue-200)] border-b border-[var(--color-border)] min-h-[56px] h-[56px] sticky top-0 z-10">
-                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
+                    <tr className="bg-[var(--table-header-bg)] border-b border-[var(--color-border)] min-h-[56px] h-[56px] sticky top-0 z-10">
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemNo || 'Item number'}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Item no.</span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Components, required">
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Components, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.component}>
                           <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                             <span className="rx-header-label-text">Components</span>
@@ -1122,7 +1127,7 @@ export default function CreateBomView({
                           </span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Quantity, required">
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Quantity, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.quantity}>
                           <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                             <span className="rx-header-label-text">Quantity</span>
@@ -1130,12 +1135,12 @@ export default function CreateBomView({
                           </span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemCategory || 'Item category'}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.itemCategory || 'Item category'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.itemCategory}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Item <br />category</span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Storage location, required">
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Storage location, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.storageLocation}>
                           <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                             <span>Storage</span>
@@ -1146,22 +1151,22 @@ export default function CreateBomView({
                           </span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.referenceNumber || 'Reference number'}>
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.referenceNumber || 'Reference number'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.referenceNumber}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Reference number</span>
                         </Tooltip>
                       </th>
-                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.costingRelevancy || 'Costing relevant'}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.costingRelevancy || 'Costing relevant'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.costingRelevancy}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Costing <br />relevant</span>
                         </Tooltip>
                       </th>
-                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.engineering || 'Engineering relevant'}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.engineering || 'Engineering relevant'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.engineering}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Engineering <br />relevant</span>
                         </Tooltip>
                       </th>
-                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.action || 'Action'}>
+                      <th style={{ textAlign: 'center', height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--table-header-bg)' }} className="px-2 font-semibold text-[var(--color-navy-900)] sticky top-0 z-10" aria-label={BOM_FIELD_TOOLTIPS.action || 'Action'}>
                         <Tooltip text={BOM_FIELD_TOOLTIPS.action}>
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', textAlign: 'center' }}>Action</span>
                         </Tooltip>
@@ -1270,19 +1275,13 @@ export default function CreateBomView({
                           <td style={{ textAlign: 'center' }} className="px-2 py-1.5">
                             <button
                               type="button"
+                              className="rx-table-action-delete"
                               disabled={isLocked || components.length <= 1}
                               onClick={() => handleRemoveComponent(comp.id)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: (isLocked || components.length <= 1) ? 'not-allowed' : 'pointer',
-                                color: (isLocked || components.length <= 1) ? 'var(--sap-border, #cbd5e1)' : 'var(--sap-text-muted, #64748b)',
-                                padding: 4,
-                                transition: 'color 0.15s ease'
-                              }}
-                              aria-label={`Remove component ${idx + 1}`}
+                              title={`Delete component ${idx + 1}`}
+                              aria-label={`Delete component ${idx + 1}`}
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </td>
                         </tr>

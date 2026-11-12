@@ -542,7 +542,6 @@ export default function BomExplorerView({
           {/* Small Compact Search Card */}
           <FormSection
             title="BOM Explorer Parameters"
-            description="Material and plant specification for BOM explosion"
             className="mb-4"
           >
             <form onSubmit={handleSearch}>

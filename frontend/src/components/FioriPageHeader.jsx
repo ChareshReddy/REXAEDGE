@@ -50,10 +50,18 @@ export default function FioriPageHeader({
   };
 
   return (
-    <div className={`fiori-ph ${className}`} style={style}>
-      <div className="sap-layout-header-inner">
-        {/* 1. Breadcrumbs Trail on top */}
-        {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
+    <div className={`fiori-ph-container ${className}`} style={{ width: '100%', ...style }}>
+      {/* 1. Breadcrumbs Trail on normal page background (above the dark band) */}
+      {Array.isArray(breadcrumbs) && breadcrumbs.length > 0 && (
+        <div
+          className="fiori-ph-breadcrumbs-bar"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '12px var(--page-gutter, 32px) 8px',
+            backgroundColor: 'transparent'
+          }}
+        >
           <nav className="fiori-bc" aria-label="Breadcrumb">
             {breadcrumbs.length <= 2 ? (
               breadcrumbs.map((b, idx) => (
@@ -87,27 +95,31 @@ export default function FioriPageHeader({
               </>
             )}
           </nav>
-        )}
-
-        {/* 2. Title Row below breadcrumbs */}
-        <div className="fiori-ph-title-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''}`}>
-              {title}
-            </h1>
-            {/* 3. Description below title */}
-            {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle">{subtitle}</p>}
-          </div>
-          {extraTitleContent && (
-            <div className="fiori-ph-actions-right" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-              {extraTitleContent}
-            </div>
-          )}
         </div>
+      )}
 
-        {/* 4. Tabs / Children (if provided) */}
-        {children}
-      </div>
+      {/* 2. Full-width Dark Header Band */}
+      <header className="fiori-ph fiori-ph-band" data-testid="page-header" style={{ width: '100%', boxSizing: 'border-box' }}>
+        <div className="sap-layout-header-inner" style={{ width: '100%', boxSizing: 'border-box' }}>
+          {/* Title Row */}
+          <div className="fiori-ph-title-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, width: '100%' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''} rx-welcome-title`} style={{ fontSize: 24, fontWeight: 600 }}>
+                {title}
+              </h1>
+              {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle" style={{ fontSize: 14, color: 'var(--page-header-subtext, rgba(255, 255, 255, 0.8))' }}>{subtitle}</p>}
+            </div>
+            {extraTitleContent && (
+              <div className="fiori-ph-actions-right" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                {extraTitleContent}
+              </div>
+            )}
+          </div>
+
+          {/* Children (tabs, toolbar, etc.) */}
+          {children}
+        </div>
+      </header>
     </div>
   );
 }

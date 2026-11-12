@@ -235,7 +235,6 @@ export default function ValidateBomView({
               {/* Validation Parameters Card */}
               <FormSection
                 title="BOM Validation Parameters"
-                description="Specify material, plant and BOM usage to check BOM status in SAP"
                 className="mb-4"
               >
                 <form onSubmit={handleValidate}>

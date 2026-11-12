@@ -317,7 +317,6 @@ export function BulkExecutionResultsView({
       {/* 3. Execution Details Card */}
       <FormSection
         title={`Execution Details (${displayRows.length})`}
-        description="Batch processing results and itemized execution status"
         tintedHeader
         actions={
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -326,9 +325,22 @@ export function BulkExecutionResultsView({
                 type="button"
                 className="sap-button sap-btn sap-btn-secondary"
                 onClick={onRetryFailedRows}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  height: 32,
+                  padding: '0 12px',
+                  backgroundColor: '#FFFFFF',
+                  color: 'var(--color-navy-900, #00204E)',
+                  border: '1px solid var(--color-blue-400, #6699B8)',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  boxShadow: 'none'
+                }}
               >
-                <RefreshCw size={15} />
+                <RefreshCw size={14} />
                 <span>Retry Failed Rows ({failedCount})</span>
               </button>
             )}
@@ -337,9 +349,22 @@ export function BulkExecutionResultsView({
                 type="button"
                 className="sap-button sap-btn sap-btn-secondary"
                 onClick={onExportResults}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  height: 32,
+                  padding: '0 12px',
+                  backgroundColor: '#FFFFFF',
+                  color: 'var(--color-navy-900, #00204E)',
+                  border: '1px solid var(--color-blue-400, #6699B8)',
+                  borderRadius: 'var(--radius-sm, 4px)',
+                  boxShadow: 'none'
+                }}
               >
-                <Download size={15} />
+                <Download size={14} />
                 <span>Export Results</span>
               </button>
             )}

@@ -25,11 +25,20 @@ export function FormSection({
   const hasHeader = Boolean(title || description || badge || actions);
   const isTinted = Boolean(tintedHeader && hasHeader);
 
+  // If description carries data (counts, numbers, showing/found), display inline on same row in 13px muted.
+  // Purely descriptive subtitles (e.g. "Material and plant specification...") are omitted on card headers.
+  const hasDataDesc = Boolean(
+    description && (
+      /\d/.test(description) ||
+      /BOM\(s\)|component\(s\)|item\(s\)|row\(s\)|showing|found/i.test(description)
+    )
+  );
+
   return (
     <div
       className={cn(
-        'rx-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] relative text-left',
-        isTinted ? 'rx-card-tinted-header !p-0 overflow-hidden' : 'p-5 xl:p-6',
+        'rx-card bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-none relative text-left',
+        isTinted ? 'rx-card-tinted-header !p-0 overflow-hidden' : 'p-4',
         className
       )}
       style={accentTop ? { borderTop: accentTop } : undefined}
@@ -37,35 +46,34 @@ export function FormSection({
       {hasHeader && (
         <div
           data-full-bleed-band={isTinted ? 'true' : undefined}
+          data-testid="rx-card-header"
           className={cn(
-            'rx-form-section-header flex flex-col sm:flex-row sm:items-center justify-between gap-2',
+            'rx-form-section-header flex flex-row items-center justify-between gap-2',
             isTinted
-              ? 'rx-form-section-header-tinted !m-0 px-6 py-4 bg-[var(--color-blue-100)] border-b border-[var(--color-blue-200)] w-full'
+              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] w-full'
               : 'pb-3 mb-4 border-b border-[var(--color-border)]'
           )}
           style={isTinted && accentTop ? { margin: '0 -1px 0 -1px', width: 'calc(100% + 2px)' } : undefined}
         >
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              {title && (
-                <h3
-                  className={cn(
-                    'rx-form-section-title leading-tight text-[var(--color-navy-900)]',
-                    isTinted ? 'text-[18px] font-semibold' : 'text-base font-semibold'
-                  )}
-                >
-                  {title}
-                </h3>
-              )}
-              {badge && <div className="inline-flex items-center">{badge}</div>}
-            </div>
-            {description && (
-              <p className="rx-form-section-desc text-xs text-[var(--color-text-secondary)] mt-1 leading-normal">
-                {description}
-              </p>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {title && (
+              <h3
+                className={cn(
+                  'rx-form-section-title text-[16px] font-semibold text-[var(--card-header-text,#0B2D57)] leading-none shrink-0',
+                  !isTinted && 'text-base'
+                )}
+              >
+                {title}
+              </h3>
             )}
+            {hasDataDesc && (
+              <span className="rx-card-header-data text-[13px] text-[var(--card-header-text,#0B2D57)] font-normal truncate">
+                {description}
+              </span>
+            )}
+            {badge && <div className="inline-flex items-center shrink-0">{badge}</div>}
           </div>
-          {actions && <div className="flex items-center gap-2 self-start sm:self-center">{actions}</div>}
+          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       )}
       <div

@@ -296,7 +296,7 @@ export function BulkDataPreviewSection({
   return (
     <div
       className={cn(
-        'rx-card rx-bulk-preview-section bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-lg)] shadow-[var(--shadow-sm)] relative text-left !p-0 overflow-hidden w-full',
+        'rx-card rx-bulk-preview-section bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] shadow-none relative text-left !p-0 overflow-hidden w-full',
         className
       )}
       style={style}
@@ -304,16 +304,19 @@ export function BulkDataPreviewSection({
       <div
         data-full-bleed-band="true"
         data-testid="rx-bulk-preview-header"
-        className="rx-bulk-preview-header flex flex-col justify-center !m-0 w-full box-border"
+        className="rx-bulk-preview-header flex items-center justify-between !m-0 w-full box-border"
         style={{
-          padding: 'var(--space-16, 16px) var(--space-20, 20px)',
-          backgroundColor: 'var(--color-blue-100, #EEF4F9)',
-          borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
+          height: 48,
+          minHeight: 48,
+          maxHeight: 48,
+          padding: '0 16px',
+          backgroundColor: 'var(--card-header-bg, #7F9DB9)',
+          borderBottom: '1px solid var(--card-header-border, #6B8B9E)',
           width: '100%',
           boxSizing: 'border-box'
         }}
       >
-        {/* Row 1: Title + File chip + Showing count left; Search box right */}
+        {/* Title + File chip + Showing count + Inline Data Subtitle left; Search box right */}
         <div
           className="rx-preview-header-main-row"
           style={{
@@ -340,10 +343,10 @@ export function BulkDataPreviewSection({
               data-testid="rx-preview-title"
               style={{
                 fontFamily: 'var(--font-sans)',
-                fontSize: 'var(--font-size-18, 18px)',
-                fontWeight: 'var(--font-weight-semibold, 600)',
-                color: 'var(--color-navy-900, #00204E)',
-                lineHeight: 'var(--line-height-tight, 1.25)',
+                fontSize: '16px',
+                fontWeight: 600,
+                color: 'var(--card-header-text, #0B2D57)',
+                lineHeight: 1,
                 whiteSpace: 'nowrap',
                 margin: 0,
                 flexShrink: 0
@@ -361,13 +364,14 @@ export function BulkDataPreviewSection({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 'var(--space-6, 6px)',
-                  padding: '3px 9px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                  border: '1px solid var(--color-blue-300, #B3CDE0)',
-                  borderRadius: 'var(--radius-sm, 6px)',
+                  height: 28,
+                  padding: '0 8px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid var(--color-blue-400, #6699B8)',
+                  borderRadius: 'var(--radius-sm, 4px)',
                   fontSize: 'var(--font-size-12, 12px)',
                   fontWeight: 600,
-                  color: 'var(--color-navy-900, #00204E)',
+                  color: 'var(--card-header-text, #0B2D57)',
                   maxWidth: 240,
                   minWidth: 0,
                   flexShrink: 1
@@ -391,25 +395,42 @@ export function BulkDataPreviewSection({
               className="rx-preview-showing-text"
               data-testid="rx-preview-showing-text"
               style={{
-                fontSize: 'var(--font-size-12, 12px)',
-                fontWeight: 500,
-                color: 'var(--color-text-secondary, #4A5F77)',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'var(--card-header-text, #0B2D57)',
                 whiteSpace: 'nowrap',
                 flexShrink: 0
               }}
             >
               Showing {showingCount} of {totalCount}
             </span>
+
+            {subtitle && (
+              <span
+                className="rx-preview-subtitle-inline"
+                data-testid="rx-preview-subtitle"
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--card-header-text, #0B2D57)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                • {subtitle}
+              </span>
+            )}
           </div>
 
-          {/* Search Box on right edge */}
+          {/* Search Box on right edge: 32px height */}
           <div
             className="rx-preview-search-wrap"
             data-testid="rx-preview-search-wrap"
             style={{
-              width: 280,
-              flex: '0 0 280px',
-              maxWidth: 280,
+              width: 260,
+              flex: '0 0 260px',
+              maxWidth: 260,
               display: 'flex',
               alignItems: 'center',
               flexShrink: 0
@@ -421,30 +442,12 @@ export function BulkDataPreviewSection({
               onChange={onSearchChange}
               onClear={onSearchClear}
               isTable
-              wrapperStyle={{ width: 280, height: 36 }}
-              style={{ height: 36, fontSize: 'var(--font-size-13, 13px)' }}
+              wrapperStyle={{ width: 260, height: 32 }}
+              style={{ height: 32, fontSize: 'var(--font-size-13, 13px)' }}
               aria-label="Search Data Preview table"
             />
           </div>
         </div>
-
-        {/* Row 2: Subtitle directly under title */}
-        {subtitle && (
-          <p
-            className="rx-form-section-desc"
-            data-testid="rx-preview-subtitle"
-            style={{
-              fontFamily: 'var(--font-sans)',
-              fontSize: 'var(--font-size-13, 13px)',
-              color: 'var(--color-text-secondary, #4A5F77)',
-              marginTop: 'var(--space-4, 4px)',
-              marginBottom: 0,
-              lineHeight: 'var(--line-height-normal, 1.4)'
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
       </div>
 
       <div
@@ -1147,7 +1150,7 @@ export function BulkBomMessageRow({
                     severity === 'error'
                       ? 'var(--color-danger-bg, #FEF3F2)'
                       : severity === 'warning'
-                      ? 'var(--color-warning-bg, #FFFBEB)'
+                      ? 'var(--color-warning-bg)'
                       : severity === 'skipped'
                       ? 'var(--color-blue-50, #EEF4F9)'
                       : 'transparent',
@@ -1160,7 +1163,7 @@ export function BulkBomMessageRow({
                   {severity === 'error' ? (
                     <AlertCircle size={13} style={{ color: 'var(--color-danger, #b42318)' }} />
                   ) : severity === 'warning' ? (
-                    <AlertTriangle size={13} style={{ color: 'var(--color-warning, #D97706)' }} />
+                    <AlertTriangle size={13} style={{ color: 'var(--color-warning, #d97706)' }} />
                   ) : severity === 'skipped' ? (
                     <MinusCircle size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
                   ) : (

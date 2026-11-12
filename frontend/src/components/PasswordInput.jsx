@@ -122,7 +122,7 @@ const PasswordInput = forwardRef(function PasswordInput(
         className={`${className || 'sap-input'} ${leftIcon ? 'sap-input-with-icon' : ''}`.trim()}
         style={{
           width: '100%',
-          height: style.height || inputStyle.height || 38,
+          height: style.height || inputStyle.height || 'var(--size-form-input-height, 36px)',
           paddingLeft: leftIcon ? 40 : 10,
           paddingRight: 40,
           boxSizing: 'border-box',
