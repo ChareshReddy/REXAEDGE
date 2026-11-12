@@ -584,7 +584,7 @@ export async function rfcPreflightCreateBoms(params = {}) {
 
       // Header MARC plant extension reported as warning
       if (!marcMap.has(`${plant}|${matSap}`)) {
-        warnings.push(`Header material "${mat}" is not extended to plant ${plant} (MARC)`);
+        warnings.push({ text: `Header material "${mat}" is not extended to plant ${plant} (MARC)`, type: 'warning' });
       }
 
       // C. BOM Status Check in T415S
@@ -620,7 +620,7 @@ export async function rfcPreflightCreateBoms(params = {}) {
 
         // Component MARC plant extension reported as warning
         if (!marcMap.has(`${plant}|${compSap}`)) {
-          warnings.push(`Component "${compMat}" is not extended to plant ${plant} (MARC)`);
+          warnings.push({ text: `Component "${compMat}" is not extended to plant ${plant} (MARC)`, type: 'warning' });
         }
 
         // Storage location validity check
@@ -651,7 +651,9 @@ export async function rfcPreflightCreateBoms(params = {}) {
         status,
         errors,
         warnings,
-        reason: errors.length > 0 ? errors.join(' | ') : 'Ready for creation'
+        messageType: errors.length > 0 ? 'error' : (warnings.length > 0 ? 'warning' : 'success'),
+        reason: errors.length > 0 ? errors.join(' | ') : 'Ready for creation',
+        reasonType: errors.length > 0 ? 'error' : 'success'
       };
     });
 
@@ -708,6 +710,8 @@ function mockPreflightCreateBoms(boms) {
         ...bom,
         status: 'Already exists - skipped',
         reason: `BOM Alternative ${bom.alternativeBom || '1'} already exists in plant ${plant} (STLAN=${usage}) — skipped (strict no-overwrite)`,
+        reasonType: 'skipped',
+        messageType: 'skipped',
         errors,
         warnings
       };
@@ -794,7 +798,9 @@ function mockPreflightCreateBoms(boms) {
       status,
       errors,
       warnings,
-      reason: errors.length > 0 ? errors.join(' | ') : 'Ready for creation'
+      messageType: errors.length > 0 ? 'error' : (warnings.length > 0 ? 'warning' : 'success'),
+      reason: errors.length > 0 ? errors.join(' | ') : 'Ready for creation',
+      reasonType: errors.length > 0 ? 'error' : 'success'
     };
   });
 
@@ -1095,6 +1101,8 @@ export async function createBomFromData({
       const mockEntry = (mp.mara || []).find((m) => m.MATNR === mat || toSapMatnr(m.MATNR) === matSap);
       if (mockEntry?.MEINS) {
         resolvedBaseUnit = mockEntry.MEINS;
+      } else if (process.env.USE_MOCK_SAP === 'true') {
+        resolvedBaseUnit = 'EA';
       }
     }
   }

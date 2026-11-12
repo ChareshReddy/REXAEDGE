@@ -79,7 +79,7 @@ test.describe('Create Single BOM and Create Bulk BOM Layout & Flow Suite', () =>
     // 4. Component column width > Reference number column width
     const tableContainer = page.locator('.rx-components-table-container');
     await expect(tableContainer).toBeVisible();
-    const compTh = page.locator('th:has-text("Component")');
+    const compTh = page.locator('th:has-text("Components")');
     const refTh = page.locator('th:has-text("Reference number")');
     const compWidth = await compTh.evaluate((el) => el.getBoundingClientRect().width);
     const refWidth = await refTh.evaluate((el) => el.getBoundingClientRect().width);

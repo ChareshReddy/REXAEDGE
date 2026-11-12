@@ -4290,13 +4290,21 @@ input[type="checkbox"]:disabled {
 }
 
 .sap-bulk-table tr.row-status-valid,
+.sap-bulk-table tr.row-status-ready,
 .sap-bulk-table tr.row-status-success {
   background: transparent;
 }
 
 .sap-bulk-table tr.row-status-warning,
-.sap-bulk-table tr.row-status-skipped {
+.sap-bulk-table tr.row-status-skipped,
+.sap-bulk-table tr.row-status-not_validated,
+.sap-bulk-table tr.row-status-pending {
   background: transparent;
+  border-left: none;
+}
+
+.sap-bulk-table tr.row-status-not_validated > td:first-child,
+.sap-bulk-table tr.row-status-pending > td:first-child {
   border-left: none;
 }
 
@@ -4369,11 +4377,16 @@ input[type="checkbox"]:disabled {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .cell-msg-text {
   font-size: 12px;
   color: var(--sap-text-body);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .bom-num-tag {
@@ -8124,4 +8137,22 @@ a.fiori-ph-orange-back:focus-visible {
   border-color: var(--color-blue-600, #02579A) !important;
   box-shadow: var(--focus-ring-soft, 0 0 0 3px rgba(2, 87, 154, 0.18)) !important;
   outline: none !important;
+}
+
+/* Bulk Summary Stat Tile Filter Cards */
+.rx-stat-tile {
+  outline: none;
+  text-align: left;
+  user-select: none;
+}
+.rx-stat-tile:focus-visible {
+  outline: 2px solid var(--color-blue-600, #02579A);
+  outline-offset: 2px;
+}
+.rx-stat-tile:not(:disabled):hover {
+  filter: brightness(0.97);
+}
+.rx-stat-tile:disabled {
+  opacity: 0.55;
+  cursor: not-allowed !important;
 }

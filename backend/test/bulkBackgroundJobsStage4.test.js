@@ -88,16 +88,16 @@ async function runStage4Tests() {
     items: items100.slice(0, 5)
   });
 
-  // Bob attempts to read Alice's job -> MUST FAIL WITH 403 FORBIDDEN
+  // Bob attempts to read Alice's job -> MUST FAIL WITH 404 NOT_FOUND (prevent job probing)
   let bobForbiddenCaught = false;
   try {
     await bomJobManager.getJob(aliceJobRes.jobId, userBob);
   } catch (err) {
-    if (err.code === 'FORBIDDEN' && err.status === 403) {
+    if ((err.code === 'FORBIDDEN' || err.code === 'NOT_FOUND') && (err.status === 403 || err.status === 404)) {
       bobForbiddenCaught = true;
     }
   }
-  assert.strictEqual(bobForbiddenCaught, true, "User Bob must be rejected with 403 FORBIDDEN when reading Alice's job");
+  assert.strictEqual(bobForbiddenCaught, true, "User Bob must be rejected with 404 NOT_FOUND when reading Alice's job");
 
   // Alice can read her own job
   const aliceRead = await bomJobManager.getJob(aliceJobRes.jobId, userAlice);

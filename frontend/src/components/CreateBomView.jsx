@@ -30,6 +30,7 @@ import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
+import { formatWarnings } from '../utils/warningUtils';
 import { PageContainer } from './layout';
 import { FIELD_RULES, validateField, sanitizeValidFromInput, sanitizeBaseQuantityInput, isValidQuantity } from '@shared/fieldRules.js';
 import { checkFieldExistence } from '../services/fieldValidationService';
@@ -487,24 +488,30 @@ export default function CreateBomView({
         setPreflightData(validatedBom);
 
         if (validatedBom.status === 'Ready') {
+          const cleanWarnings = formatWarnings(validatedBom.warnings || []);
           setPreflightPassed(true);
           setValidationErrors([]);
-          setValidationWarnings(validatedBom.warnings || []);
-          toast.success('Pre-flight passed. Material master data, units, and SAP simulation verified.');
-          if (validatedBom.warnings?.length > 0) {
-            toast.warning(validatedBom.warnings.join('\n'), { title: 'Validation warnings' });
+          setValidationWarnings(cleanWarnings);
+
+          if (cleanWarnings.length > 0) {
+            toast.warning('', {
+              title: 'Pre-flight passed with warnings',
+              messages: cleanWarnings
+            });
+          } else {
+            toast.success('Pre-flight passed. Material master data, units and SAP simulation verified.');
           }
         } else if (validatedBom.status === 'Already exists - skipped') {
           const errList = [validatedBom.reason || 'BOM already exists in this plant. Overwriting is strictly prohibited.'];
           setPreflightPassed(false);
           setValidationErrors(errList);
-          setValidationWarnings(validatedBom.warnings || []);
+          setValidationWarnings(formatWarnings(validatedBom.warnings || []));
           toast.validation(errList, 'Validation notice');
         } else {
           const errList = validatedBom.errors?.length > 0 ? validatedBom.errors : [validatedBom.reason || 'Pre-flight validation failed.'];
           setPreflightPassed(false);
           setValidationErrors(errList);
-          setValidationWarnings(validatedBom.warnings || []);
+          setValidationWarnings(formatWarnings(validatedBom.warnings || []));
           toast.validation(errList, 'Validation notice');
         }
       } else {
@@ -1107,10 +1114,10 @@ export default function CreateBomView({
                           <span style={{ display: 'inline-block', whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>Item no.</span>
                         </Tooltip>
                       </th>
-                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Component, required">
+                      <th style={{ height: 56, minHeight: 56, verticalAlign: 'middle', lineHeight: 1.25, whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip', backgroundColor: 'var(--color-blue-200)' }} className="px-2 font-semibold text-[var(--color-navy-900)] text-left sticky top-0 z-10" aria-label="Components, required">
                         <Tooltip text={BOM_FIELD_TOOLTIPS.component}>
                           <span className="rx-header-label-group" style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                            <span className="rx-header-label-text">Component</span>
+                            <span className="rx-header-label-text">Components</span>
                             <span className="text-[var(--color-danger)] font-bold rx-header-star" style={{ marginLeft: 3, lineHeight: 1 }} aria-hidden="true">*</span>
                           </span>
                         </Tooltip>
@@ -1355,127 +1362,129 @@ export default function CreateBomView({
             if (!isExecuting) setIsConfirmModalOpen(false);
           }}
           title="Confirm BOM Creation"
-          maxWidth="min(920px, calc(100vw - 48px))"
-          width="min(920px, calc(100vw - 48px))"
+          maxWidth={560}
+          width="min(560px, calc(100vw - 32px))"
+          cardClassName="confirm-bom-creation-modal-card"
         >
-          <div style={{ padding: 4 }}>
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--sap-text-dark)' }}>
-              You are about to create a new Bill of Materials in SAP:
+          <div style={{ padding: '4px 0' }} data-testid="confirm-bom-modal-content">
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-body, #334155)', lineHeight: 1.5 }}>
+              You are about to create a new Bill of Materials in SAP.
             </p>
 
-            {/* BOM Header Overview Table */}
+            {/* Compact Two-Column Details Block */}
             <div
-              className="sap-table-container fiori-table-wrapper"
-              data-testid="confirm-bom-header-container"
+              className="confirm-bom-details-grid"
+              data-testid="confirm-bom-details"
               style={{
-                overflowX: 'hidden',
-                border: '1px solid var(--sap-border-color)',
-                borderRadius: 'var(--sap-radius-sm)',
-                marginBottom: 16
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '10px 16px',
+                padding: '12px 14px',
+                background: 'var(--sap-surface-subtle, #f8fafc)',
+                border: '1px solid var(--sap-border-color, #e2e8f0)',
+                borderRadius: 'var(--sap-radius-sm, 6px)',
+                marginBottom: 16,
+                fontSize: 12.5
               }}
             >
-              <table
-                className="sap-table"
-                data-testid="confirm-bom-header-table"
-                style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
-              >
-                <colgroup>
-                  <col style={{ width: '20%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '12%' }} />
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '16%' }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>Material</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Plant</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>BOM usage</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Alternative</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Valid from</th>
-                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Base qty</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>UoM</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Components</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'left', fontWeight: 600 }}>{headerData.material || '-'}</td>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{headerData.plant || '-'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{headerData.bomUsage || '-'}</td>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{headerData.alternativeBom || '-'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{headerData.validFrom || '-'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'right' }}>{headerData.baseQty || '1'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{resolvedBaseUnit || preflightData?.baseUnit || '-'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'center', fontWeight: 600 }}>{components.length}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Material</span>
+                <span data-testid="confirm-detail-material" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.material || '-'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Plant</span>
+                <span data-testid="confirm-detail-plant" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.plant || '-'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM usage</span>
+                <span data-testid="confirm-detail-usage" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.bomUsage || '-'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Alternative</span>
+                <span data-testid="confirm-detail-alternative" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.alternativeBom || '-'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Valid from</span>
+                <span data-testid="confirm-detail-validfrom" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.validFrom || '-'}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Base quantity</span>
+                <span data-testid="confirm-detail-baseqty" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {`${headerData.baseQty || '1'} ${resolvedBaseUnit || preflightData?.baseUnit || ''}`.trim()}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM status</span>
+                <span data-testid="confirm-detail-status" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.bomStatus || '01'}
+                </span>
+              </div>
             </div>
 
-            {/* Components Table (max 5 rows visible with scroll) */}
-            {components && components.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: 'var(--color-navy-900, #00204E)',
-                    marginBottom: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <span>Components ({components.length})</span>
-                </div>
-                <div
-                  className="sap-table-container fiori-table-wrapper"
-                  data-testid="confirm-bom-components-container"
-                  style={{
-                    maxHeight: 205,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    border: '1px solid var(--sap-border-color)',
-                    borderRadius: 'var(--sap-radius-sm)'
-                  }}
-                >
-                  <table
-                    className="sap-table"
-                    data-testid="confirm-bom-components-table"
-                    style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 13 }}
-                  >
-                    <colgroup>
-                      <col style={{ width: '38%' }} />
-                      <col style={{ width: '18%' }} />
-                      <col style={{ width: '20%' }} />
-                      <col style={{ width: '24%' }} />
-                    </colgroup>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                      <tr>
-                        <th style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>Component</th>
-                        <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Quantity</th>
-                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Item category</th>
-                        <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Storage location</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {components.map((c, idx) => (
-                        <tr key={c.id || idx}>
-                          <td className="rx-table-cell-code" style={{ textAlign: 'left', fontWeight: 600 }}>{c.component || '-'}</td>
-                          <td className="rx-table-cell-text" style={{ textAlign: 'right' }}>{c.quantity || '1'}</td>
-                          <td className="rx-table-cell-text" style={{ textAlign: 'center' }}>{c.itemCategory || 'L'}</td>
-                          <td className="rx-table-cell-code" style={{ textAlign: 'center' }}>{c.storageLocation || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Components list as short monospace rows (max 6 visible with scroll inside) */}
+            <div style={{ marginBottom: 16 }}>
+              <div
+                data-testid="confirm-components-heading"
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: 'var(--sap-text-dark, #0F172A)',
+                  marginBottom: 6
+                }}
+              >
+                Components ({components.length})
               </div>
-            )}
+              <div
+                className="confirm-bom-components-container"
+                data-testid="confirm-bom-components-container"
+                style={{
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  border: '1px solid var(--sap-border-color, #e2e8f0)',
+                  borderRadius: 'var(--sap-radius-sm, 6px)',
+                  background: 'var(--sap-surface-subtle, #f8fafc)',
+                  padding: 4
+                }}
+              >
+                {components.map((c, idx) => {
+                  const itemNo = c.itemNo || String((idx + 1) * 10).padStart(4, '0');
+                  const compMat = (c.component || '-').trim();
+                  const qty = (c.quantity || '1').trim();
+                  const cat = (c.itemCategory || 'L').trim();
+                  const loc = (c.storageLocation || '-').trim();
+                  return (
+                    <div
+                      key={c.id || idx}
+                      data-testid={`confirm-component-row-${idx}`}
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 12,
+                        padding: '5px 8px',
+                        borderRadius: 'var(--sap-radius-xs, 4px)',
+                        background: idx % 2 === 0 ? 'var(--sap-card-bg, #ffffff)' : 'transparent',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        color: 'var(--sap-text-dark, #0f172a)'
+                      }}
+                    >
+                      {`${itemNo}  ${compMat}  Qty ${qty}  Cat ${cat}  Loc ${loc}`}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {isProd && (
               <div
@@ -1520,7 +1529,7 @@ export default function CreateBomView({
               </div>
             )}
 
-            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
               <button
                 type="button"
                 className="sap-button"
@@ -1528,7 +1537,7 @@ export default function CreateBomView({
                 onClick={() => {
                   if (!isExecuting) setIsConfirmModalOpen(false);
                 }}
-                style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
+                style={{ height: 32, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
               >
                 Cancel
               </button>
@@ -1540,7 +1549,7 @@ export default function CreateBomView({
                 className="sap-button primary"
                 disabled={isExecuting}
                 onClick={handleExecuteCreate}
-                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
+                style={{ height: 32, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
               >
                 {isExecuting ? (
                   <>
@@ -1558,3 +1567,6 @@ export default function CreateBomView({
     </div>
   );
 }
+
+export { formatWarnings };
+

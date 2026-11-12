@@ -531,6 +531,10 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       });
     }
 
+    if (url.includes('/api/bom-jobs/active') || url.includes('/api/bom/jobs/active')) {
+      return respondJson({ success: false, job: null });
+    }
+
     if (url.includes('/api/bom-jobs/') || url.includes('/api/bom/jobs/')) {
       const isPreflight = activeMockJobType === 'create_preflight';
       return respondJson({
@@ -546,8 +550,8 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
           skippedCount: 0,
           notProcessedCount: 0,
           results: [
-            { sequenceNum: '1', material: 'A1BH0214C', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001001', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', componentsCount: 1 },
-            { sequenceNum: '2', material: 'B2CH0315D', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001002', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', componentsCount: 1 }
+            { sequenceNum: '1', material: 'A1BH0214C', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001001', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', messageType: 'success', type: 'success', componentsCount: 1 },
+            { sequenceNum: '2', material: 'B2CH0315D', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001002', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', messageType: 'success', type: 'success', componentsCount: 1 }
           ]
         }
       });
@@ -559,8 +563,8 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
         success: true,
         summary: { total: 2, valid: 2, invalid: 0, warnings: 0 },
         results: [
-          { id: 1, sourceMaterial: 'A1BH0214C', sourcePlant: '1010', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'A1BH0214C', targetPlant: '1001', targetUsage: '1', targetAltBom: '02', status: 'VALID', message: 'Ready to copy' },
-          { id: 2, sourceMaterial: 'B2CH0315D', sourcePlant: '1010', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'B2CH0315D', targetPlant: '1001', targetUsage: '1', targetAltBom: '02', status: 'VALID', message: 'Ready to copy' }
+          { id: 1, sourceMaterial: 'A1BH0214C', sourcePlant: '1010', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'A1BH0214C', targetPlant: '1001', targetUsage: '1', targetAltBom: '02', status: 'VALID', message: 'Ready to copy', messageType: 'success', type: 'success' },
+          { id: 2, sourceMaterial: 'B2CH0315D', sourcePlant: '1010', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'B2CH0315D', targetPlant: '1001', targetUsage: '1', targetAltBom: '02', status: 'VALID', message: 'Ready to copy', messageType: 'success', type: 'success' }
         ]
       });
     }
@@ -572,8 +576,8 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
         failedCount: 0,
         skippedCount: 0,
         results: [
-          { id: 1, sourceMaterial: 'A1BH0214C', sourcePlant: '1010', targetMaterial: 'A1BH0214C', targetPlant: '1001', status: 'SUCCESS', bomNumber: '00001001', message: 'Copied successfully' },
-          { id: 2, sourceMaterial: 'B2CH0315D', sourcePlant: '1010', targetMaterial: 'B2CH0315D', targetPlant: '1001', status: 'SUCCESS', bomNumber: '00001002', message: 'Copied successfully' }
+          { id: 1, sourceMaterial: 'A1BH0214C', sourcePlant: '1010', targetMaterial: 'A1BH0214C', targetPlant: '1001', status: 'SUCCESS', bomNumber: '00001001', message: 'Copied successfully', messageType: 'success', type: 'success' },
+          { id: 2, sourceMaterial: 'B2CH0315D', sourcePlant: '1010', targetMaterial: 'B2CH0315D', targetPlant: '1001', status: 'SUCCESS', bomNumber: '00001002', message: 'Copied successfully', messageType: 'success', type: 'success' }
         ]
       });
     }

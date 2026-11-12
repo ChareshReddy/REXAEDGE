@@ -25,6 +25,7 @@ import { recordRouteError } from './utils/auditHelper.js';
 import { sendFriendlyError } from './utils/friendlyError.js';
 import { requireAuth } from './middleware/auth.js';
 import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
+import { bomJobManager } from './services/bomJobManager.js';
 import dns from 'dns';
 
 // Ensure IPv4 resolution takes precedence to avoid dual-stack/IPv6 lookup delays
@@ -66,7 +67,17 @@ app.set('trust proxy', 1);
 app.use(requestIdMiddleware);
 app.use(enforceHttps);
 app.use(safeLogger);
-app.use(express.json());
+
+// Global express.json parser leaves default 100kb limit unchanged;
+// /api/bom/jobs/start is handled exclusively by its route-level 5mb parser.
+const defaultJsonParser = express.json();
+app.use((req, res, next) => {
+  if (req.originalUrl?.startsWith('/api/bom/jobs/start') || req.path === '/api/bom/jobs/start') {
+    return next();
+  }
+  defaultJsonParser(req, res, next);
+});
+
 app.use(cookieParser());
 
 // Allowed CORS origins (supporting default HTTP port 80 where port is omitted by browsers)
@@ -211,7 +222,22 @@ app.use((req, res) => {
 
 // Global Error Handler (never leak stack trace or credentials in response)
 app.use((err, req, res, next) => {
+  if (err.status === 413 || err.statusCode === 413 || err.type === 'entity.too.large') {
+    return res.status(413).json({
+      success: false,
+      code: 'PAYLOAD_TOO_LARGE',
+      message: 'The request payload is too large. Body exceeds allowed size limit.'
+    });
+  }
   sendFriendlyError(res, req, err);
+});
+
+// Clean up background timers on server shutdown
+process.on('SIGTERM', () => {
+  bomJobManager.stopCleanupTimer();
+});
+process.on('SIGINT', () => {
+  bomJobManager.stopCleanupTimer();
 });
 
 // HTTP keep-alive resilience configuration

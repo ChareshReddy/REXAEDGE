@@ -26,7 +26,8 @@ const __dirname = path.dirname(__filename);
 const mockBomsPath = path.resolve(__dirname, '..', 'mock', 'boms.json');
 let activeMockBoms = [];
 
-function loadMockBoms() {
+function loadMockBoms(force = false) {
+  if (activeMockBoms && activeMockBoms.length > 0 && !force) return;
   try {
     if (fs.existsSync(mockBomsPath)) {
       activeMockBoms = JSON.parse(fs.readFileSync(mockBomsPath, 'utf8'));
@@ -886,7 +887,7 @@ export async function rfcCreateBom(params = {}) {
 
   // Normalize components for SAP T_STPO
   const normalizedComponents = (Array.isArray(components) ? components : []).map((c, idx) => ({
-    ITEM_NO: c.ITEM_NO || c.itemNo || String((idx + 1) * 10).padStart(4, '0'),
+    ITEM_NO: c.ITEM_NO || c.itemNo || c.item || String((idx + 1) * 10).padStart(4, '0'),
     ITEM_CATEG: c.ITEM_CATEG || c.itemCategory || 'L',
     COMPONENT: toSapMatnr(c.COMPONENT || c.component || c.material || c.id || ''),
     COMP_QTY: String(c.COMP_QTY || c.quantity || c.qty || '1'),
@@ -975,6 +976,7 @@ export async function rfcCreateBom(params = {}) {
         altText: altText || '',
         changeNo: changeNo || '',
         components: normalizedComponents.map((c) => ({
+          item: c.ITEM_NO,
           itemNo: c.ITEM_NO,
           itemCategory: c.ITEM_CATEG,
           component: c.COMPONENT,
@@ -990,6 +992,7 @@ export async function rfcCreateBom(params = {}) {
       activeMockBoms.push(target);
     } else {
       target.components = normalizedComponents.map((c) => ({
+        item: c.ITEM_NO,
         itemNo: c.ITEM_NO,
         itemCategory: c.ITEM_CATEG,
         component: c.COMPONENT,
@@ -1937,7 +1940,8 @@ export async function rfcExplodeBomHierarchy(params = {}) {
         await traverse(sub.material, cleanPlt, sub.usage || currentUsg, sub.alt || '01', level + 1, cleanMat);
       }
     } catch (err) {
-      console.warn(`[sapRfcClient] Sub-assembly lookup warning for ${cleanMat}:`, err.message);
+      const matStr = process.env.LOG_LEVEL?.toLowerCase() === 'debug' ? ` for ${cleanMat}` : '';
+      console.warn(`[sapRfcClient] Sub-assembly lookup warning${matStr}:`, err.message);
     }
   }
 
@@ -2757,7 +2761,8 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
     }
     return result;
   } catch (err) {
-    console.warn(`[sapRfcClient] getExistingAlternatives error for ${cleanMat}:`, err.message);
+    const matStr = process.env.LOG_LEVEL?.toLowerCase() === 'debug' ? ` for ${cleanMat}` : '';
+    console.warn(`[sapRfcClient] getExistingAlternatives error${matStr}:`, err.message);
     return [];
   } finally {
     if (shouldClose) {
@@ -2904,15 +2909,26 @@ export async function resolveSourceAlternativeForCopy(params = {}) {
   const rawSpecified = String(sourceAlternative || '').trim();
 
   const cleanMatch = rawSpecified.match(/\b(\d{1,2})\b/);
+  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server || params.server);
+
   if (cleanMatch) {
+    const specifiedNum = parseInt(cleanMatch[1], 10);
+    if (existingAlts.includes(specifiedNum)) {
+      return {
+        sourceAlternative: cleanMatch[1].padStart(2, '0'),
+        isAutoSelected: false,
+        availableAlternatives: existingAlts
+      };
+    }
     return {
-      sourceAlternative: cleanMatch[1].padStart(2, '0'),
-      isAutoSelected: false,
-      availableAlternatives: []
+      sourceAlternative: null,
+      exists: false,
+      error: 'SOURCE_ALT_NOT_FOUND',
+      message: `Source alternative ${specifiedNum} does not exist for ${cleanMat} in plant ${cleanPlt}`,
+      availableAlternatives: existingAlts
     };
   }
 
-  const existingAlts = await getExistingAlternatives(cleanMat, cleanPlt, cleanUsg, client, server || params.server);
   if (existingAlts.includes(1)) {
     return {
       sourceAlternative: '01',
@@ -3253,6 +3269,23 @@ export async function repairHierarchyBottomUp(params = {}) {
       resolvedRootAlt = exists ? nextRootAlt : specifiedAlt;
     }
 
+    // Strictly verify source alternative exists before proceeding
+    const srcAltRes = await resolveSourceAlternativeForCopy({
+      sourceMaterial: cleanSrcMat,
+      sourcePlant: cleanSrcPlt,
+      sourceUsage: bomUsage,
+      sourceAlternative: srcAlt,
+      client: rfc,
+      server: params.server || params
+    });
+    if (!srcAltRes.sourceAlternative) {
+      return {
+        success: false,
+        code: 'SOURCE_ALTERNATIVE_NOT_FOUND',
+        message: srcAltRes.message || `Source alternative ${srcAlt} does not exist for ${cleanSrcMat} in plant ${cleanSrcPlt}`
+      };
+    }
+
     // 2. Explode source hierarchy
     const hierarchyRes = await rfcExplodeBomHierarchy({
       material: cleanSrcMat,
@@ -3457,6 +3490,7 @@ export async function repairHierarchyBottomUp(params = {}) {
 
     const rootResult = executionLog.find((e) => e.level === 0);
     const copiedCount = executionLog.filter((e) => e.status === 'COPIED').length;
+    const totalComponents = executionLog.reduce((sum, e) => sum + (e.componentCount || 0), 0);
 
     return {
       success: rootResult ? (rootResult.status === 'COPIED') : true,
@@ -3465,6 +3499,8 @@ export async function repairHierarchyBottomUp(params = {}) {
       hierarchical: true,
       totalLevels: hierarchyRes.totalLevels,
       totalBoms: hierarchyRes.totalBoms,
+      bomsCreated: copiedCount,
+      totalComponents,
       copiedCount,
       hierarchy: executionLog,
       verification,
@@ -3668,6 +3704,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
       if (!srcMat || !srcPlant || !tgtPlant) {
         rowResult.status = 'ERROR';
         rowResult.message = 'Missing required fields (Source Material, Source Plant, or Target Plant)';
+        rowResult.messageType = 'error';
         results.push(rowResult);
         continue;
       }
@@ -3689,6 +3726,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         } else {
           rowResult.status = 'ERROR';
           rowResult.message = `Alternative BOM was not specified and alternative 01 does not exist for material ${srcMat} in plant ${srcPlant}. Available alternatives: ${(srcAltRes.availableAlternatives || []).join(', ')}`;
+          rowResult.messageType = 'error';
           results.push(rowResult);
           continue;
         }
@@ -3719,6 +3757,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
       if (tgtAltRes.exists) {
         rowResult.status = 'ERROR';
         rowResult.message = `Cannot copy: Alternative ${parseInt(tgtAltRes.targetAlternative, 10)} already exists in BOM ${tgtMat}/${tgtPlant}/${tgtUsage}`;
+        rowResult.messageType = 'error';
         rowResult.problems = [rowResult.message];
         results.push(rowResult);
         continue;
@@ -3747,6 +3786,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         if (!srcBomRes.success || !srcBomRes.bomExists) {
           rowResult.status = 'ERROR';
           rowResult.message = srcBomRes.message || `Source BOM does not exist for ${srcMat} in plant ${srcPlant}`;
+          rowResult.messageType = 'error';
           results.push(rowResult);
           continue;
         }
@@ -3755,12 +3795,14 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         if (rowResult.componentCount === 0) {
           rowResult.status = 'INVALID';
           rowResult.message = 'BOM has no active components';
+          rowResult.messageType = 'error';
           results.push(rowResult);
           continue;
         }
       } catch (srcErr) {
         rowResult.status = 'ERROR';
         rowResult.message = `Failed to check source BOM: ${srcErr.message}`;
+        rowResult.messageType = 'error';
         results.push(rowResult);
         continue;
       }
@@ -3786,6 +3828,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         if (!simRes.valid) {
           rowResult.status = 'ERROR';
           rowResult.message = simRes.message;
+          rowResult.messageType = 'error';
           rowResult.problems = simRes.problems || [simRes.message];
           rowResult.totalBomsSimulated = simRes.totalBomsSimulated;
           rowResult.totalBomsInHierarchy = simRes.totalBomsInHierarchy;
@@ -3796,6 +3839,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
       } catch (simErr) {
         rowResult.status = 'ERROR';
         rowResult.message = `Cannot copy: ${simErr.message}`;
+        rowResult.messageType = 'error';
         results.push(rowResult);
         continue;
       }
@@ -3804,6 +3848,8 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
       rowResult.message = tgtAltRes.isAutoSelected
         ? `Ready to copy (Alternative ${tgtAltRes.targetAlternative} auto-selected, ${rowResult.componentCount} components)`
         : `Ready to copy (${rowResult.componentCount} components)`;
+      rowResult.messageType = 'success';
+      rowResult.messages = [{ text: rowResult.message, type: 'success' }];
       results.push(rowResult);
     }
   } finally {
@@ -4155,7 +4201,7 @@ export async function batchReadBomHierarchy(params = {}) {
     for (const b of matchingPlantBoms) {
       const bMat = String(b.material).trim().toUpperCase();
       const bAlt = String(b.alternativeBom || '01').padStart(2, '0');
-      const bStlnr = b.bomNumber || `MOCK_${bMat}_${bAlt}`;
+      const bStlnr = `MOCK_${bMat}_${cleanPlt}_${bAlt}_${b.bomNumber || ''}`;
       mastRows.push({
         matnr: bMat,
         cleanMatnr: formatMaterialNumber(bMat),
@@ -4171,7 +4217,7 @@ export async function batchReadBomHierarchy(params = {}) {
       for (const c of b.components || []) {
         const cMat = String(c.component || c.material || '').trim().toUpperCase();
         itemsByStlnr.get(bStlnr).push({
-          item: c.item || '0010',
+          item: c.item || c.itemNo || '0010',
           itemCategory: c.itemCategory || 'L',
           component: cMat,
           quantity: c.quantity !== undefined ? parseFloat(c.quantity) : 1,
@@ -4198,8 +4244,10 @@ export async function batchReadBomHierarchy(params = {}) {
     const cleanM = h.cleanMatnr;
     if (!headersByMat.has(m)) headersByMat.set(m, []);
     headersByMat.get(m).push(h);
-    if (!headersByMat.has(cleanM)) headersByMat.set(cleanM, []);
-    headersByMat.get(cleanM).push(h);
+    if (cleanM && cleanM !== m) {
+      if (!headersByMat.has(cleanM)) headersByMat.set(cleanM, []);
+      headersByMat.get(cleanM).push(h);
+    }
   }
 
   // Find root BOM
@@ -4403,7 +4451,8 @@ export async function verifyCopiedBomHierarchy(params = {}) {
         alternativeBom: cleanTgtAlt,
         server,
         client: rfc,
-        maxDepth
+        maxDepth,
+        useCache: false
       });
     } catch (targetErr) {
       return {
@@ -4421,7 +4470,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
           totalCount: 0,
           status: 'FAILED',
           message: targetErr.message,
-          differences: [targetErr.message]
+          differences: []
         },
         groups: [],
         flatComponents: []
@@ -4443,7 +4492,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
           totalCount: 0,
           status: 'FAILED',
           message: 'Target BOM hierarchy could not be read from SAP database',
-          differences: ['Target BOM header not found in SAP database']
+          differences: []
         },
         groups: [],
         flatComponents: []
@@ -4461,7 +4510,8 @@ export async function verifyCopiedBomHierarchy(params = {}) {
           alternativeBom: cleanSrcAlt,
           server,
           client: rfc,
-          maxDepth
+          maxDepth,
+          useCache: false
         });
       } catch (sourceErr) {
         return {
@@ -4479,7 +4529,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
             totalCount: targetTree.components?.length || 0,
             status: 'FAILED',
             message: sourceErr.message,
-            differences: [sourceErr.message]
+            differences: []
           },
           groups: [],
           flatComponents: targetTree.components || []

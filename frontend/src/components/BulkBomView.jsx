@@ -38,7 +38,6 @@ import { FormSection } from './ui/form-layout';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
-import BlockedReasonsList, { cleanDiagnosticMessage } from './BlockedReasonsList';
 import {
   BulkFlowContainer,
   BulkWorkflowSteps,
@@ -46,12 +45,15 @@ import {
   BulkJobProgressCard,
   COPY_BULK_COLUMNS,
   BulkStatTiles,
+  BulkDataPreviewSection,
   normalizeBomStatus,
   getBomStatusCounts,
   filterBoms,
   getBomMessages,
   BulkBomMessageRow,
-  BulkBomResultBadge
+  BulkBomResultBadge,
+  BulkExecutionResultBadge,
+  BulkExecutionResultsView
 } from './BulkBomShared';
 
 /**
@@ -408,6 +410,9 @@ export default function BulkBomView({
                       sourceAltBom: match.sourceAltBom || row.sourceAltBom,
                       status: match.status,
                       message: match.message,
+                      messageType: match.messageType,
+                      warnings: match.warnings || row.warnings || [],
+                      errors: match.errors || row.errors || [],
                       problems: match.problems || match.rawErrors,
                       totalBomsSimulated: match.totalBomsSimulated || match.totalBoms,
                       componentCount: match.componentCount || 0
@@ -436,18 +441,20 @@ export default function BulkBomView({
               results: job.results || []
             });
 
-            const resMap = new Map((job.results || []).map((r) => [r.id, r]));
+            const resMap = new Map((job.results || []).map((r, i) => [r.id ?? r.sequenceNum ?? (i + 1), r]));
             setParsedRows((prev) =>
               prev.map((row, idx) => {
-                const match = resMap.get(row.id) || (job.results && job.results[idx]);
+                const match = resMap.get(row.id ?? (idx + 1));
                 if (match) {
                   return {
                     ...row,
                     targetAltBom: match.targetAltBom || row.targetAltBom,
                     sourceAltBom: match.sourceAltBom || row.sourceAltBom,
-                    status: match.status === 'SUCCESS' ? 'SUCCESS' : match.status === 'NOT_PROCESSED' ? 'NOT_PROCESSED' : 'FAILED',
+                    status: match.status === 'SUCCESS' ? 'SUCCESS' : match.status === 'SKIPPED' ? 'SKIPPED' : match.status === 'NOT_PROCESSED' ? 'NOT_PROCESSED' : 'FAILED',
                     message: match.message,
                     problems: match.problems || match.rawErrors,
+                    errors: match.errors || row.errors,
+                    componentCount: match.componentCount !== undefined ? match.componentCount : row.componentCount,
                     totalBomsSimulated: match.totalBomsSimulated || match.totalBoms,
                     bomNumber: match.bomNumber || '',
                     totalLevels: match.totalLevels || 1,
@@ -546,6 +553,8 @@ export default function BulkBomView({
     setParsedRows([]);
     setExpandedMessageBoms(new Set());
     setParseError('');
+    setStatusFilter('all');
+    setSearchTerm('');
     setValidationReport(null);
     setIsExecuting(false);
     setActiveJobId(null);
@@ -591,6 +600,8 @@ export default function BulkBomView({
 
   const processFile = (fileObj) => {
     setParseError('');
+    setStatusFilter('all');
+    setSearchTerm('');
     setValidationReport(null);
     setExecutionReport(null);
 
@@ -665,7 +676,7 @@ export default function BulkBomView({
               id: index + 1,
               ...norm,
               status: 'PENDING',
-              message: 'Not validated yet'
+              message: ''
             };
           })
           .filter((r) => r.sourceMaterial || r.sourcePlant || r.targetPlant || r.targetAltBom);
@@ -848,7 +859,11 @@ export default function BulkBomView({
         return; // Cancelled by user - do not show error
       }
       console.error('Validation error:', err);
-      setParseError(err.response?.data?.message || err.message || 'Validation failed.');
+      const errMsg = err.response?.data?.message || err.message || 'Validation failed.';
+      setParseError(errMsg);
+      if (err.response?.status === 413 || err.response?.data?.code === 'PAYLOAD_TOO_LARGE') {
+        toast.error(errMsg, { title: 'Upload error' });
+      }
       setIsValidating(false);
     } finally {
       if (validationAbortControllerRef.current === controller) {
@@ -905,7 +920,11 @@ export default function BulkBomView({
       }
     } catch (err) {
       console.error('Execution error:', err);
-      setParseError(err.response?.data?.message || err.message || 'Execution failed.');
+      const errMsg = err.response?.data?.message || err.message || 'Execution failed.';
+      setParseError(errMsg);
+      if (err.response?.status === 413 || err.response?.data?.code === 'PAYLOAD_TOO_LARGE') {
+        toast.error(errMsg, { title: 'Upload error' });
+      }
       setIsExecuting(false);
     }
   };
@@ -987,215 +1006,15 @@ export default function BulkBomView({
 
         {/* RESULTS SCREEN (STEP 3) */}
         {executionReport ? (
-          <div>
-            {/* Success / Partial Banner */}
-            {(executionReport.failedCount > 0) ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--color-danger-bg, #FEF3F2)',
-                  border: '1px solid var(--color-danger-border, #FECDCA)',
-                  color: 'var(--color-danger, #B42318)',
-                  marginBottom: 20
-                }}
-              >
-                <AlertCircle size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Issues</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.failedCount ?? 0} failed out of {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total.
-                  </p>
-                </div>
-              </div>
-            ) : ((executionReport.skippedCount ?? 0) > 0) ? (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--color-info-bg, #F0F9FF)',
-                  border: '1px solid var(--color-info-border, #B9E6FE)',
-                  color: 'var(--color-blue-600, #02579A)',
-                  marginBottom: 20
-                }}
-              >
-                <Info size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed with Skipped Rows</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s); {executionReport.skippedCount} were skipped.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--sap-success-bg)',
-                  border: '1px solid var(--sap-success-border)',
-                  color: 'var(--sap-success)',
-                  marginBottom: 20
-                }}
-              >
-                <CheckCircle2 size={24} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Copy Completed Successfully</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Successfully copied {executionReport.successCount ?? executionReport.copiedCount ?? 0} BOM(s) across {executionReport.totalProcessed ?? executionReport.total ?? parsedRows.length} total entries.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Results Table Card */}
-            <FormSection
-              title="Execution Results"
-              description={`Execution report for ${parsedRows.length} BOM(s)`}
-              actions={
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  {(executionReport.failedCount > 0 || parsedRows.some((r) => r.status === 'ERROR' || r.status === 'FAILED')) && (
-                    <button
-                      type="button"
-                      className="sap-button sap-btn sap-btn-secondary"
-                      onClick={handleRetryFailedRows}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
-                    >
-                      <RefreshCw size={14} />
-                      <span>Retry Failed Rows</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="sap-button sap-btn sap-btn-secondary"
-                    onClick={handleExportResults}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
-                  >
-                    <Download size={14} />
-                    <span>Export Report (.xlsx)</span>
-                  </button>
-                </div>
-              }
-              className="mb-6"
-            >
-
-              {/* Grid Table */}
-              <div className="sap-bulk-grid-container sap-table-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Execution Results Table">
-                <table className="sap-table sap-bulk-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '12.5px' }}>
-                  <colgroup>
-                    <col style={{ width: '4%' }} />
-                    <col style={{ width: '24%' }} />
-                    <col style={{ width: '24%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '12%' }} />
-                    <col style={{ width: '30%' }} />
-                  </colgroup>
-                  <thead>
-                        <tr>
-                          <th style={{ width: '4%' }}>#</th>
-                          <th style={{ width: '24%' }}>Source BOM</th>
-                          <th style={{ width: '24%' }}>Target BOM</th>
-                          <th style={{ width: '6%', textAlign: 'center' }}>Items</th>
-                          <th style={{ width: '12%' }}>Status</th>
-                          <th style={{ width: '30%' }}>Diagnostic Message</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((row, idx) => {
-                      const isRowValid = row.status === 'VALID' || row.status === 'SUCCESS';
-                      const isRowWarn = row.status === 'WARNING';
-                      const isRowError = row.status === 'ERROR' || row.status === 'FAILED';
-
-                      return (
-                        <tr key={row.id || idx} className={`row-status-${row.status.toLowerCase()}`}>
-                          <td style={{ fontWeight: 600, color: 'var(--sap-text-muted)', fontSize: '11px' }}>{idx + 1}</td>
-                          <td>
-                            <div className="bom-identity-cell">
-                              <span className="mat-pill">{row.sourceMaterial}</span>
-                              <span className="sub-detail">Plant: <strong title={plantMap[row.sourcePlant] || row.sourcePlant}>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong></span>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="bom-identity-cell">
-                              <span className="mat-pill">{row.targetMaterial}</span>
-                              <span className="sub-detail">Plant: <strong title={plantMap[row.targetPlant] || row.targetPlant}>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--sap-primary)' }}>{row.targetAltBom}</strong></span>
-                            </div>
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {row.componentCount !== undefined && row.componentCount > 0 ? (
-                              <span className="comp-count-badge">{row.componentCount}</span>
-                            ) : (
-                              <span style={{ color: 'var(--sap-text-subtle)' }}>-</span>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`sap-status-chip chip-${row.status.toLowerCase()}`}>
-                              {isRowValid && <CheckCircle2 size={11} />}
-                              {isRowWarn && <AlertTriangle size={11} />}
-                              {isRowError && <XCircle size={11} />}
-                              {row.status === 'SUCCESS' && 'Copied'}
-                              {row.status === 'FAILED' && 'Failed'}
-                              {row.status === 'NOT_PROCESSED' && 'Skipped'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="message-cell">
-                              {isRowError ? (
-                                <BlockedReasonsList
-                                  problems={row.problems || row.message}
-                                  totalBoms={row.totalBomsSimulated}
-                                  message={row.message}
-                                />
-                              ) : isRowValid ? (
-                                <span className="cell-msg-text cell-msg-valid" style={{ color: 'var(--sap-success, #059669)', display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
-                                  <CheckCircle2 size={12} style={{ flexShrink: 0 }} />
-                                  <span>{cleanDiagnosticMessage(row.message) || 'Ready to copy.'}</span>
-                                </span>
-                              ) : (
-                                <span className="cell-msg-text">{cleanDiagnosticMessage(row.message)}</span>
-                              )}
-                              {row.bomNumber && (
-                                <span className="bom-num-tag">SAP BOM: {row.bomNumber}</span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-                <button
-                  type="button"
-                  className="sap-button primary"
-                  onClick={onBack}
-                  style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
-                >
-                  Return to Launchpad
-                </button>
-                <button
-                  type="button"
-                  className="sap-button"
-                  onClick={resetAll}
-                  style={{ height: 'var(--size-button-height, 40px)', padding: '0 20px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
-                >
-                  Upload Another File
-                </button>
-              </div>
-            </FormSection>
-          </div>
+          <BulkExecutionResultsView
+            mode="copy"
+            report={executionReport}
+            rows={parsedRows}
+            onBack={onBack}
+            onReset={resetAll}
+            onRetryFailedRows={handleRetryFailedRows}
+            onExportResults={handleExportResults}
+          />
         ) : (
           /* UPLOAD (STEP 1) OR PREVIEW (STEP 2) */
           <div style={{ display: 'flex', flexDirection: 'column', width: '100%', alignItems: 'flex-start', gap: parsedRows.length > 0 ? 16 : 24 }}>
@@ -1320,8 +1139,8 @@ export default function BulkBomView({
                   </div>
                 )}
 
-                {/* Summary Stat Tiles - Shown only after validation completes (step 2 onward) */}
-                {hasValidated && activeStep > 1 && (
+                {/* Summary Stat Tiles - Interactive Filter Strip (visible only after validation) */}
+                {hasValidated && !isValidating && validationReport && (
                   <BulkStatTiles
                     total={statusCounts.all}
                     valid={statusCounts.ready}
@@ -1333,107 +1152,41 @@ export default function BulkBomView({
                     warningsLabel="Skipped"
                     activeFilter={statusFilter}
                     onFilterChange={(filter) => setStatusFilter(filter)}
-                    style={{ marginBottom: 16 }}
                   />
                 )}
 
                 {/* PRE-FLIGHT PREVIEW TABLE CARD */}
-                <FormSection
+                <BulkDataPreviewSection
                   title="Data Preview"
-                  description={`${parsedRows.length} BOM(s) found across spreadsheet`}
-                  tintedHeader
+                  subtitle={`${parsedRows.length} BOM(s) found across spreadsheet`}
+                  fileName={file?.name}
+                  showingCount={filteredRows.length}
+                  totalCount={parsedRows.length}
+                  searchTerm={searchTerm}
+                  onSearchChange={(e) => setSearchTerm(e.target.value)}
+                  onSearchClear={() => setSearchTerm('')}
                   className="w-full"
                 >
-                  {/* Controls Toolbar: Search left, Tabs center, Options/Count right */}
-                  <div className="sap-toolbar rx-table-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                    {/* Left: Search Bar */}
-                    <div style={{ flex: '0 0 auto' }}>
-                      <SearchInput
-                        placeholder="Search material or plant..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onClear={() => setSearchTerm('')}
-                        isTable
-                        wrapperStyle={{ width: 220 }}
-                      />
-                    </div>
-
-                    {/* Center: Filter Tabs */}
-                    <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center' }}>
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '2px',
-                          backgroundColor: 'var(--color-blue-200)',
-                          borderRadius: 'var(--radius-md, 8px)',
-                          border: '1px solid var(--color-border, #D9E2EC)'
-                        }}
-                      >
-                        {[
-                          { id: 'all', label: `All (${statusCounts.all})` },
-                          { id: 'ready', label: `Ready (${statusCounts.ready})` },
-                          { id: 'errors', label: `Errors (${statusCounts.errors})` },
-                          { id: 'skipped', label: `Skipped (${statusCounts.skipped})` }
-                        ].map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            onClick={() => setStatusFilter(f.id)}
-                            style={{
-                              height: 26,
-                              padding: '0 10px',
-                              borderRadius: 'var(--radius-sm, 6px)',
-                              border: 'none',
-                              fontSize: '11.5px',
-                              fontWeight: statusFilter === f.id ? 600 : 500,
-                              backgroundColor: statusFilter === f.id ? 'var(--color-surface, #FFFFFF)' : 'transparent',
-                              color: statusFilter === f.id ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
-                              boxShadow: statusFilter === f.id ? 'var(--shadow-sm)' : 'none',
-                              cursor: 'pointer',
-                              transition: 'all var(--transition-fast, 150ms ease)'
-                            }}
-                          >
-                            {f.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Right side controls: File Badge & Hierarchy Options */}
-                    <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)' }}>
-                        Showing {filteredRows.length} of {parsedRows.length}
-                      </span>
-
-                      {file?.name && (
-                        <span
-                          className="sap-file-badge"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '4px 10px',
-                            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
-                            border: '1px solid var(--color-border, #D9E2EC)',
-                            borderRadius: 'var(--radius-sm, 6px)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: 'var(--color-navy-900, #00204E)'
-                          }}
-                          title={file.name}
-                        >
-                          <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
-                          <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {file.name}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
                   {/* Grid Table */}
-                  <div className="sap-bulk-grid-container sap-card-table-scroll" tabIndex={0} role="region" aria-label="Bulk BOM Items Table" style={{ width: '100%', boxSizing: 'border-box' }}>
+                  <div
+                    className="sap-bulk-grid-container sap-table-container fiori-table-wrapper sap-card-table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Bulk BOM Items Table"
+                    style={{
+                      width: '100%',
+                      marginBottom: 0,
+                      maxHeight: 480,
+                      minHeight: 0,
+                      height: 'auto',
+                      overflowX: 'auto',
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border, #D9E2EC)',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      boxSizing: 'border-box'
+                    }}
+                  >
                     <table className="sap-bulk-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '12.5px' }}>
                       <colgroup>
                         <col style={{ width: '5%' }} />
@@ -1452,7 +1205,35 @@ export default function BulkBomView({
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredRows.map((row, idx) => {
+                        {filteredRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: '13px', fontWeight: 500 }}>No rows match this filter.</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStatusFilter('all');
+                                    setSearchTerm('');
+                                  }}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    color: 'var(--color-blue-600, #02579A)',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontSize: '12px',
+                                    fontWeight: 600
+                                  }}
+                                >
+                                  Clear filter
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredRows.map((row, idx) => {
                           const normStatus = normalizeBomStatus(row);
                           const bomKey = row.id != null ? String(row.id) : `${row.sourceMaterial || ''}_${row.sourcePlant || ''}_${row.targetMaterial || ''}_${row.targetPlant || ''}_${idx}`;
                           const messages = getBomMessages(row);
@@ -1528,7 +1309,7 @@ export default function BulkBomView({
                               />
                             </React.Fragment>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   </div>
@@ -1644,7 +1425,7 @@ export default function BulkBomView({
                       </button>
                     </div>
                   </div>
-                </FormSection>
+                </BulkDataPreviewSection>
               </>
             )}
           </div>

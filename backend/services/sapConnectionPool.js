@@ -56,21 +56,31 @@ export function isConnectionLevelError(err) {
   const code = String(err.code || err.errorCode || '').toUpperCase();
   const msg = String(err.message || '').toLowerCase();
   return (
+    code === 'CONNECTION_LOST' ||
     code === 'RFC_COMMUNICATION_FAILURE' ||
     code === 'RFC_CONN_ERROR' ||
     code === 'RFC_CALL_TIMEOUT' ||
     code === 'ECONNRESET' ||
     code === 'ECONNREFUSED' ||
+    code === 'ECONNABORTED' ||
     code === 'EPIPE' ||
     code === 'ETIMEDOUT' ||
     code === 'MAX_CONNECTIONS_EXCEEDED' ||
+    code.includes('NIECONN') ||
+    code.includes('NI_SOCKET') ||
+    msg.includes('ni socket') ||
+    msg.includes('nieconn') ||
     msg.includes('connection refused') ||
+    msg.includes('connection reset') ||
+    msg.includes('connection closed') ||
+    msg.includes('connection lost') ||
     msg.includes('partner terminated connection') ||
     msg.includes('wsaeconnrefused') ||
     msg.includes('wsaetimedout') ||
     msg.includes('communication failure') ||
     msg.includes('broken pipe') ||
     msg.includes('connection timed out') ||
+    msg.includes('connect timeout') ||
     msg.includes('socket closed')
   );
 }
@@ -380,6 +390,30 @@ export class SapConnectionPool {
   }
 
   async _executeItem(item, clientEntry = null) {
+    if (clientEntry) {
+      const idleMs = Date.now() - (clientEntry.lastUsed || 0);
+      if (idleMs > 60000) {
+        let pingOk = false;
+        try {
+          if (typeof clientEntry.client?.call === 'function') {
+            await clientEntry.client.call('RFC_PING', {});
+            pingOk = true;
+          } else if (typeof clientEntry.client?.isAlive === 'function') {
+            pingOk = clientEntry.client.isAlive();
+          } else {
+            pingOk = true;
+          }
+        } catch (pingErr) {
+          pingOk = false;
+          console.warn(`[SapConnectionPool][${this.serverId}] Dropping stale idle connection (${Math.round(idleMs / 1000)}s idle) after ping failure:`, pingErr.message);
+        }
+        if (!pingOk) {
+          this._discardClient(clientEntry.client);
+          clientEntry = null;
+        }
+      }
+    }
+
     if (!clientEntry) {
       try {
         const client = await this._createClient();
@@ -434,6 +468,9 @@ export class SapConnectionPool {
       this.stats.totalErrors++;
 
       const isConnErr = isConnectionLevelError(err);
+      if (isConnErr) {
+        err.code = 'CONNECTION_LOST';
+      }
       this.circuitBreaker.onFailure(isConnErr, err.message);
       updateServerHealth(this.serverId, { success: false, error: err });
 

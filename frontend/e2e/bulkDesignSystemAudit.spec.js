@@ -57,7 +57,11 @@ async function assertNoDisallowedOrangeHue(page, selectorDesc) {
     const badElements = [];
 
     elements.forEach((el) => {
-      // Exclude warning icon SVGs or containers whose only content is AlertTriangle
+      // Allow amber ONLY on warning-severity message lines (warning icon and the faint amber tint)
+      if (el.closest('.bom-msg-warning, .bulk-execution-msg-warning, .bulk-msg-warning, .rx-msg-warning')) {
+        return;
+      }
+      // Exclude standalone warning icon SVGs or containers whose only content is AlertTriangle
       if (el.closest('.lucide-alert-triangle') || el.classList.contains('lucide-alert-triangle')) {
         return;
       }

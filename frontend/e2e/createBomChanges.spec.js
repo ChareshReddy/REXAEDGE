@@ -144,7 +144,7 @@ test.describe('Create BOM Single, Layout, Sidebar and Ex. Refinements Suite', ()
 
     const expectedHeaderNames = [
       'Itm no.',
-      'Component',
+      'Components',
       'Quantity',
       'Item category',
       'Storage location',

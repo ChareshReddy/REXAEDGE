@@ -190,6 +190,118 @@ async function runCopyBomResultEnrichmentTests() {
 
   console.log('   ✓ Guard test passed: copy and explosion return shapes are identical to previous baseline');
 
+  // ---------------------------------------------------------------------------
+  // TEST 7: Copy a mock BOM with 1 level and N components (BOMs Created 1, Total Comps N, Levels 1)
+  // ---------------------------------------------------------------------------
+  console.log('\n7. Testing copy 1-level BOM with N components:');
+  const singleLevelCopy = await rfcCopyBom({
+    sourceMaterial: 'MAT-BOM-200',
+    sourcePlant: '1000',
+    targetMaterial: 'MAT-BOM-200',
+    targetPlant: '1000',
+    bomUsage: '1',
+    copyHierarchy: true
+  });
+  assert.strictEqual(singleLevelCopy.success, true);
+  assert.strictEqual(singleLevelCopy.totalBoms, 1);
+  assert.strictEqual(singleLevelCopy.totalLevels, 1);
+
+  const singleLevelVerify = await verifyCopiedBomHierarchy({
+    sourceMaterial: 'MAT-BOM-200',
+    sourcePlant: '1000',
+    sourceAlternative: '1',
+    targetMaterial: 'MAT-BOM-200',
+    targetPlant: '1000',
+    targetAlternative: singleLevelCopy.alternativeBom
+  });
+  assert.strictEqual(singleLevelVerify.success, true);
+  assert.strictEqual(singleLevelVerify.status, 'SUCCESS');
+  assert.strictEqual(singleLevelVerify.bomsCreated, 1);
+  assert.strictEqual(singleLevelVerify.totalLevels, 1);
+  assert.strictEqual(singleLevelVerify.totalComponents, 2);
+  assert.strictEqual(singleLevelVerify.verification.differences.length, 0);
+  console.log('   ✓ 1-level copy verified: BOMs Created 1, Total Components 2, Levels 1, zero differences');
+
+  // ---------------------------------------------------------------------------
+  // TEST 8: Copy a mock BOM with a sub-BOM (BOMs Created 2, Levels 2)
+  // ---------------------------------------------------------------------------
+  console.log('\n8. Testing copy multi-level BOM with sub-BOM:');
+  const subBomCopy = await rfcCopyBom({
+    sourceMaterial: 'A1BH0214C',
+    sourcePlant: '1012',
+    targetMaterial: 'A1BH0214C',
+    targetPlant: '1001',
+    bomUsage: '1',
+    copyHierarchy: true
+  });
+  assert.strictEqual(subBomCopy.success, true);
+  assert.strictEqual(subBomCopy.totalBoms, 2);
+  assert.strictEqual(subBomCopy.totalLevels, 2);
+
+  const subBomVerify = await verifyCopiedBomHierarchy({
+    sourceMaterial: 'A1BH0214C',
+    sourcePlant: '1012',
+    sourceAlternative: '01',
+    targetMaterial: 'A1BH0214C',
+    targetPlant: '1001',
+    targetAlternative: subBomCopy.alternativeBom
+  });
+  assert.strictEqual(subBomVerify.success, true);
+  assert.strictEqual(subBomVerify.status, 'SUCCESS');
+  assert.strictEqual(subBomVerify.bomsCreated, 2);
+  assert.strictEqual(subBomVerify.totalLevels, 2);
+  assert.strictEqual(subBomVerify.totalComponents, 6);
+  assert.strictEqual(subBomVerify.verification.differences.length, 0);
+  console.log('   ✓ Multi-level copy verified: BOMs Created 2, Levels 2, Total Components 6, zero differences');
+
+  // ---------------------------------------------------------------------------
+  // TEST 9: Forced real difference (one component qty differs -> PARTIAL with listing)
+  // ---------------------------------------------------------------------------
+  console.log('\n9. Testing forced real difference (quantity mismatch):');
+  // Alter one component's quantity in the target BOM in mock dataset
+  const boms = (await import('../services/sapRfcClient.js')).getActiveMockBoms();
+  const targetMock = boms.find(
+    (b) => b.material === 'A1BH0214C' && b.plant === '1001' && b.alternativeBom === subBomCopy.alternativeBom
+  );
+  assert.ok(targetMock, 'Target mock must exist');
+  const originalQty = targetMock.components[0].quantity;
+  targetMock.components[0].quantity = 999.0; // Force mismatch
+
+  const diffVerify = await verifyCopiedBomHierarchy({
+    sourceMaterial: 'A1BH0214C',
+    sourcePlant: '1012',
+    sourceAlternative: '01',
+    targetMaterial: 'A1BH0214C',
+    targetPlant: '1001',
+    targetAlternative: subBomCopy.alternativeBom
+  });
+  assert.strictEqual(diffVerify.success, false);
+  assert.strictEqual(diffVerify.status, 'PARTIAL');
+  assert.ok(diffVerify.verification.differences.length > 0);
+  assert.ok(diffVerify.verification.differences[0].includes('quantity mismatch'));
+  console.log(`   ✓ Forced difference caught: status=PARTIAL, difference="${diffVerify.verification.differences[0]}"`);
+
+  // Restore quantity
+  targetMock.components[0].quantity = originalQty;
+
+  // ---------------------------------------------------------------------------
+  // TEST 10: Verification failure (target BOM not found -> neutral error, differences is empty)
+  // ---------------------------------------------------------------------------
+  console.log('\n10. Testing verification read failure (neutral failure, differences empty):');
+  const failVerify = await verifyCopiedBomHierarchy({
+    sourceMaterial: 'A1BH0214C',
+    sourcePlant: '1012',
+    sourceAlternative: '01',
+    targetMaterial: 'NON_EXISTENT_MAT_999',
+    targetPlant: '1001',
+    targetAlternative: '99'
+  });
+  assert.strictEqual(failVerify.success, false);
+  assert.strictEqual(failVerify.status, 'FAILED');
+  assert.strictEqual(failVerify.verification.differences.length, 0, 'Read failure must not produce comparison differences');
+  assert.ok(failVerify.message.includes('No BOM exists') || failVerify.message.includes('not found'));
+  console.log(`   ✓ Read failure correctly reports status=FAILED with 0 differences: "${failVerify.message}"`);
+
   console.log('\n============================================================');
   console.log('  ALL COPY BOM RESULT ENRICHMENT TESTS PASSED!              ');
   console.log('============================================================\n');

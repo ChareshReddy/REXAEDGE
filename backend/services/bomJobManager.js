@@ -9,6 +9,7 @@ import {
 } from './bomCreateEngine.js';
 import {
   rfcCopyBom,
+  rfcReadBom,
   rfcBatchValidateBoms,
   resolveTargetAlternativeForCopy,
   resolveSourceAlternativeForCopy,
@@ -34,19 +35,26 @@ export function isSapConnectionDrop(err) {
   const msg = String(err.message || '').toLowerCase();
   const code = String(err.code || '').toUpperCase();
   return (
+    code === 'CONNECTION_LOST' ||
     code === 'RFC_COMMUNICATION_FAILURE' ||
     code === 'RFC_CLOSED' ||
     code === 'ECONNRESET' ||
     code === 'ECONNABORTED' ||
+    code === 'ECONNREFUSED' ||
     code === 'ETIMEDOUT' ||
     code === 'EPIPE' ||
     code === 'SERVER_UNAVAILABLE' ||
+    code.includes('NIECONN') ||
+    code.includes('NI_SOCKET') ||
+    msg.includes('ni socket') ||
+    msg.includes('nieconn') ||
     msg.includes('saprouter rejected') ||
     msg.includes('return code -5') ||
     msg.includes('timed out') ||
     msg.includes('timeout') ||
     msg.includes('connection reset') ||
     msg.includes('connection closed') ||
+    msg.includes('connection lost') ||
     msg.includes('could not establish connection') ||
     msg.includes('partner not reached') ||
     msg.includes('broken pipe') ||
@@ -121,6 +129,7 @@ class BomJobManager {
       await this.repository.markRunningJobsInterrupted();
       // 2. Retention cleanup: keep results 30 days
       await this.repository.cleanupOldJobs(30);
+      this.startCleanupTimer();
       // 3. Populate in-memory map from repository
       const existing = await this.repository.listJobs();
       for (const job of existing) {
@@ -135,6 +144,29 @@ class BomJobManager {
       this.processQueue();
     } catch (err) {
       console.warn('[bomJobManager] Initialization warning:', err.message);
+    }
+  }
+
+  startCleanupTimer() {
+    this.stopCleanupTimer();
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+    this._cleanupInterval = setInterval(async () => {
+      try {
+        await this.repository.cleanupOldJobs(30);
+      } catch (err) {
+        console.error('[bomJobManager] Periodic cleanupOldJobs error:', err.message);
+      }
+    }, TWENTY_FOUR_HOURS_MS);
+
+    if (this._cleanupInterval && typeof this._cleanupInterval.unref === 'function') {
+      this._cleanupInterval.unref();
+    }
+  }
+
+  stopCleanupTimer() {
+    if (this._cleanupInterval) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
     }
   }
 
@@ -235,18 +267,18 @@ class BomJobManager {
     };
   }
 
-  getJob(jobId, requestingUser = null) {
+  async getJob(jobId, requestingUser = null) {
     this.cleanStaleJobs();
     let job = this.jobs.get(jobId);
     if (!job) {
       // Async fallback to repository (dual-written DB or file store) if in-memory cache missed
-      return this.repository.getJob(jobId).then((found) => {
-        if (found) {
-          this.jobs.set(found.jobId || found.id, found);
-          return this.toCleanSummary(found);
-        }
+      const found = await this.repository.getJob(jobId);
+      if (found) {
+        job = found;
+        this.jobs.set(found.jobId || found.id, found);
+      } else {
         return null;
-      });
+      }
     }
 
     if (requestingUser) {
@@ -257,9 +289,9 @@ class BomJobManager {
       const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId || job.user_id === uEmail;
 
       if (!isAdmin && !isOwner) {
-        const err = new Error('Forbidden: You do not have permission to access this job.');
-        err.code = 'FORBIDDEN';
-        err.status = 403;
+        const err = new Error(`Job ${jobId} not found.`);
+        err.code = 'NOT_FOUND';
+        err.status = 404;
         throw err;
       }
     }
@@ -281,10 +313,19 @@ class BomJobManager {
     return null;
   }
 
-  cancelJob(jobId, requestingUser = null) {
-    const job = this.jobs.get(jobId);
+  async cancelJob(jobId, requestingUser = null) {
+    let job = this.jobs.get(jobId);
     if (!job) {
-      return { success: false, message: `Job ${jobId} not found.` };
+      const found = await this.repository.getJob(jobId);
+      if (found) {
+        job = found;
+        this.jobs.set(found.jobId || found.id, found);
+      } else {
+        const err = new Error(`Job ${jobId} not found.`);
+        err.code = 'NOT_FOUND';
+        err.status = 404;
+        throw err;
+      }
     }
 
     if (requestingUser) {
@@ -292,12 +333,12 @@ class BomJobManager {
       const isAdmin = userObj?.role === 'admin';
       const uId = userObj?.id || userObj?.email;
       const uEmail = userObj?.email;
-      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId;
+      const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId || job.user_id === uEmail;
 
       if (!isAdmin && !isOwner) {
-        const err = new Error('Forbidden: You do not have permission to cancel this job.');
-        err.code = 'FORBIDDEN';
-        err.status = 403;
+        const err = new Error(`Job ${jobId} not found.`);
+        err.code = 'NOT_FOUND';
+        err.status = 404;
         throw err;
       }
     }
@@ -326,6 +367,16 @@ class BomJobManager {
     };
   }
 
+  async listJobs(requestingUser = null, filters = {}) {
+    const userObj = requestingUser && typeof requestingUser === 'object' ? requestingUser : (requestingUser ? { id: requestingUser, email: requestingUser } : null);
+    const isAdmin = userObj?.role === 'admin';
+    const uId = userObj?.id || userObj?.email;
+
+    // Non-admin can only list their own jobs
+    const queryUserId = isAdmin ? (filters.userId || null) : uId;
+    return this.repository.listJobs({ ...filters, userId: queryUserId });
+  }
+
   /**
    * Starts a background job. Returns immediately in < 1s with the created jobId.
    */
@@ -334,7 +385,6 @@ class BomJobManager {
     user,
     server,
     items = [],
-    fileContent = null,
     fileName = '',
     options = {}
   }) {
@@ -343,25 +393,9 @@ class BomJobManager {
     const serverId = server?.id || server?.name || 'default';
     const serverName = server?.name || 'SAP-BOM';
 
-    // 1. Parse file if fileContent provided
-    let processedItems = [...items];
-    if (fileContent) {
-      const raw = String(fileContent);
-      const buffer = raw.startsWith('data:')
-        ? Buffer.from(raw.split(',')[1], 'base64')
-        : Buffer.from(raw, 'base64');
-      const parseInfo = parseBomSpreadsheet(buffer);
-      fileContent = null;
+    const processedItems = Array.isArray(items) ? [...items] : [];
 
-      if (parseInfo.errors && parseInfo.errors.length > 0 && (!parseInfo.boms || parseInfo.boms.length === 0)) {
-        const err = new Error(parseInfo.errors.join(' | '));
-        err.code = 'PARSE_ERROR';
-        throw err;
-      }
-      processedItems = parseInfo.boms || [];
-    }
-
-    // 2. Strict Stage 4 limit: max 500 rows per job
+    // 1. Strict Stage 4 limit: max 500 rows per job
     if (processedItems.length > MAX_BOMS) {
       const err = new Error(
         `Uploaded file contains ${processedItems.length} BOMs, which exceeds the maximum limit of ${MAX_BOMS} BOMs. Please split your file into smaller batches of ${MAX_BOMS} or fewer.`
@@ -845,6 +879,7 @@ class BomJobManager {
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
             status: 'SKIPPED',
+            subStatus: 'NOT_ATTEMPTED',
             retryable: true,
             message: `Not created because ${group.failedMaterial} failed earlier in this group`,
             input: bom
@@ -1001,10 +1036,191 @@ class BomJobManager {
         } catch (err) {
           console.error('[bomJobManager] Create BOM row execution failed:', err);
           const isInternalCodeError = err instanceof ReferenceError || err instanceof TypeError;
-          const isConn = isSapConnectionDrop(err);
+          const isConn = !isInternalCodeError && (isSapConnectionDrop(err) || err.code === 'CONNECTION_LOST' || err.code === 'WRITE_OUTCOME_UNKNOWN');
+
+          if (isConn) {
+            // Safe Retry Protocol for Write Operations: NEVER blindly retry
+            // 1. Check read-only whether BOM already exists in SAP
+            let createdInSap = false;
+            let checkIndeterminate = false;
+            try {
+              const checkRes = await rfcReadBom({
+                material: bom.material,
+                plant: bom.plant,
+                bomUsage: bom.bomUsage || '1',
+                alternativeBom: bom.alternativeBom || '1',
+                server,
+                useCache: false,
+                priority: RFC_PRIORITY.READ
+              });
+              if (checkRes.success && checkRes.bomExists) {
+                createdInSap = true;
+              }
+            } catch (chkErr) {
+              checkIndeterminate = true;
+            }
+
+            if (createdInSap) {
+              // BOM exists in SAP (connection dropped after save)
+              if (bom !== group.parent) {
+                group.createdSubBoms.push(bom.material);
+              }
+              job.successCount++;
+              job.results.push({
+                sequenceNum: bom.sequenceNum,
+                material: bom.material,
+                plant: bom.plant,
+                bomUsage: bom.bomUsage,
+                alternativeBom: bom.alternativeBom,
+                bomNumber: bom.alternativeBom || '01',
+                status: 'SUCCESS',
+                message: 'Created (connection dropped after save, verified in SAP)',
+                componentsCount: bom.components?.length || 0,
+                input: bom
+              });
+              job.processed = overallIndex;
+              job.processed_rows = overallIndex;
+              job.updatedAt = new Date().toISOString();
+              continue;
+            } else if (!checkIndeterminate) {
+              // BOM does NOT exist in SAP: retry write once on a fresh connection
+              try {
+                const retryRes = await createBomFromData({
+                  bom,
+                  server,
+                  user,
+                  source: 'bulk',
+                  priority: RFC_PRIORITY.BULK,
+                  fileName: job.fileName
+                });
+                if (retryRes.success) {
+                  if (bom !== group.parent) {
+                    group.createdSubBoms.push(bom.material);
+                  }
+                  job.successCount++;
+                  job.results.push({
+                    sequenceNum: bom.sequenceNum,
+                    material: bom.material,
+                    plant: bom.plant,
+                    bomUsage: bom.bomUsage,
+                    alternativeBom: bom.alternativeBom,
+                    bomNumber: retryRes.bomNumber || bom.alternativeBom || '-',
+                    status: retryRes.status || 'SUCCESS',
+                    message: retryRes.message || 'BOM created and verified in SAP.',
+                    discrepancies: retryRes.discrepancies || [],
+                    componentsCount: bom.components?.length || 0,
+                    input: bom
+                  });
+                  job.processed = overallIndex;
+                  job.processed_rows = overallIndex;
+                  job.updatedAt = new Date().toISOString();
+                  continue;
+                } else {
+                  job.failedCount++;
+                  if (bom !== group.parent) group.failedMaterial = bom.material;
+                  job.results.push({
+                    sequenceNum: bom.sequenceNum,
+                    material: bom.material,
+                    plant: bom.plant,
+                    bomUsage: bom.bomUsage,
+                    alternativeBom: bom.alternativeBom,
+                    bomNumber: '-',
+                    status: 'FAILED',
+                    retryable: false,
+                    message: retryRes.message || 'SAP rejected BOM creation.',
+                    input: bom
+                  });
+                  job.processed = overallIndex;
+                  job.processed_rows = overallIndex;
+                  job.updatedAt = new Date().toISOString();
+                  continue;
+                }
+              } catch (retryErr) {
+                // Check if created during retry
+                let secondCheckCreated = false;
+                try {
+                  const checkRes2 = await rfcReadBom({
+                    material: bom.material,
+                    plant: bom.plant,
+                    bomUsage: bom.bomUsage || '1',
+                    alternativeBom: bom.alternativeBom || '1',
+                    server,
+                    useCache: false,
+                    priority: RFC_PRIORITY.READ
+                  });
+                  if (checkRes2.success && checkRes2.bomExists) secondCheckCreated = true;
+                } catch (_) {}
+
+                if (secondCheckCreated) {
+                  if (bom !== group.parent) group.createdSubBoms.push(bom.material);
+                  job.successCount++;
+                  job.results.push({
+                    sequenceNum: bom.sequenceNum,
+                    material: bom.material,
+                    plant: bom.plant,
+                    bomUsage: bom.bomUsage,
+                    alternativeBom: bom.alternativeBom,
+                    bomNumber: bom.alternativeBom || '01',
+                    status: 'SUCCESS',
+                    message: 'Created (connection dropped after save, verified in SAP)',
+                    componentsCount: bom.components?.length || 0,
+                    input: bom
+                  });
+                  job.processed = overallIndex;
+                  job.processed_rows = overallIndex;
+                  job.updatedAt = new Date().toISOString();
+                  continue;
+                }
+
+                // Verified NOT created in SAP -> friendly message
+                job.failedCount++;
+                if (bom !== group.parent) group.failedMaterial = bom.material;
+                job.results.push({
+                  sequenceNum: bom.sequenceNum,
+                  material: bom.material,
+                  plant: bom.plant,
+                  bomUsage: bom.bomUsage,
+                  alternativeBom: bom.alternativeBom,
+                  bomNumber: '-',
+                  status: 'FAILED',
+                  retryable: true,
+                  connectionLost: true,
+                  message: 'Connection to SAP was lost while creating this BOM. No BOM was created. Use Retry Failed Rows.',
+                  input: bom
+                });
+                job.processed = overallIndex;
+                job.processed_rows = overallIndex;
+                job.updatedAt = new Date().toISOString();
+                continue;
+              }
+            } else {
+              // Read verification indeterminate
+              job.failedCount++;
+              if (bom !== group.parent) group.failedMaterial = bom.material;
+              job.results.push({
+                sequenceNum: bom.sequenceNum,
+                material: bom.material,
+                plant: bom.plant,
+                bomUsage: bom.bomUsage,
+                alternativeBom: bom.alternativeBom,
+                bomNumber: '-',
+                status: 'FAILED',
+                code: 'WRITE_OUTCOME_UNKNOWN',
+                retryable: false,
+                connectionLost: true,
+                message: 'Connection to SAP was lost while writing to SAP and outcome could not be verified. Please verify using Display BOM before attempting again.',
+                input: bom
+              });
+              job.processed = overallIndex;
+              job.processed_rows = overallIndex;
+              job.updatedAt = new Date().toISOString();
+              continue;
+            }
+          }
+
           const userMsg = isInternalCodeError
             ? 'Validation could not be completed for this row.'
-            : (isConn ? `SAP connection dropped: ${err.message}` : err.message);
+            : err.message;
           job.failedCount++;
           const isParent = bom === group.parent;
           if (!isParent) {
@@ -1022,7 +1238,7 @@ class BomJobManager {
             alternativeBom: bom.alternativeBom,
             bomNumber: '-',
             status: 'FAILED',
-            retryable: !isInternalCodeError && isConn,
+            retryable: false,
             message: finalUserMsg,
             input: bom
           });
@@ -1246,19 +1462,57 @@ class BomJobManager {
           continue;
         }
 
+        // Never execute a row that failed pre-execution validation
+        if (item.status === 'ERROR' || item.status === 'FAILED' || item.status === 'INVALID') {
+          job.failedCount++;
+          job.results.push({
+            id: item.id || overallIndex,
+            sourceMaterial: srcMat,
+            sourcePlant: srcPlant,
+            targetMaterial: tgtMat,
+            targetPlant: tgtPlant,
+            status: 'FAILED',
+            retryable: false,
+            message: item.message || 'Row failed validation and was not executed.',
+            input: item
+          });
+          job.processed = overallIndex;
+          job.processed_rows = overallIndex;
+          job.updatedAt = new Date().toISOString();
+          continue;
+        }
+
         try {
-          let effectiveSrcAlt = srcAlt;
-          if (!effectiveSrcAlt) {
-            const srcAltRes = await resolveSourceAlternativeForCopy({
+          // Strictly resolve and verify source alternative exists (never trust frontend or blindly fallback)
+          const srcAltRes = await resolveSourceAlternativeForCopy({
+            sourceMaterial: srcMat,
+            sourcePlant: srcPlant,
+            sourceUsage: srcUsage,
+            sourceAlternative: srcAlt,
+            server,
+            priority: RFC_PRIORITY.BULK
+          });
+
+          if (!srcAltRes.sourceAlternative) {
+            job.failedCount++;
+            job.results.push({
+              id: item.id || overallIndex,
               sourceMaterial: srcMat,
               sourcePlant: srcPlant,
-              sourceUsage: srcUsage,
-              sourceAlternative: srcAlt,
-              server,
-              priority: RFC_PRIORITY.BULK
+              targetMaterial: tgtMat,
+              targetPlant: tgtPlant,
+              status: 'FAILED',
+              retryable: false,
+              message: srcAltRes.message || `Source alternative ${srcAlt} does not exist for ${srcMat} in plant ${srcPlant}`,
+              input: item
             });
-            if (srcAltRes.sourceAlternative) effectiveSrcAlt = srcAltRes.sourceAlternative;
+            job.processed = overallIndex;
+            job.processed_rows = overallIndex;
+            job.updatedAt = new Date().toISOString();
+            if (!skipErrors) break;
+            continue;
           }
+          const effectiveSrcAlt = srcAltRes.sourceAlternative;
 
           const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
           const allocatedList = allocatedByTargetKey.get(targetKey) || [];
@@ -1388,10 +1642,160 @@ class BomJobManager {
         } catch (err) {
           console.error('[bomJobManager] Copy bulk row execution failed:', err);
           const isInternalCodeError = err instanceof ReferenceError || err instanceof TypeError;
-          const isConn = isSapConnectionDrop(err);
+          const isConn = !isInternalCodeError && (isSapConnectionDrop(err) || err.code === 'CONNECTION_LOST' || err.code === 'WRITE_OUTCOME_UNKNOWN');
+
+          if (isConn) {
+            // Check read-only whether target BOM exists in SAP
+            let targetCreated = false;
+            let checkIndeterminate = false;
+            try {
+              const checkRes = await rfcReadBom({
+                material: tgtMat,
+                plant: tgtPlant,
+                bomUsage: tgtUsage,
+                alternativeBom: resolvedTgtAlt || '01',
+                server,
+                useCache: false,
+                priority: RFC_PRIORITY.READ
+              });
+              if (checkRes.success && checkRes.bomExists) targetCreated = true;
+            } catch (_) {
+              checkIndeterminate = true;
+            }
+
+            if (targetCreated) {
+              job.successCount++;
+              job.results.push({
+                id: item.id || overallIndex,
+                sourceMaterial: srcMat,
+                sourcePlant: srcPlant,
+                targetMaterial: tgtMat,
+                targetPlant: tgtPlant,
+                targetAltBom: resolvedTgtAlt,
+                bomNumber: resolvedTgtAlt || '',
+                status: 'SUCCESS',
+                message: 'Copied (connection dropped after save, verified in SAP)',
+                input: item
+              });
+              job.processed = overallIndex;
+              job.processed_rows = overallIndex;
+              job.updatedAt = new Date().toISOString();
+              continue;
+            } else if (!checkIndeterminate) {
+              // Retry copy once on fresh connection
+              try {
+                const retryCopyRes = await rfcCopyBom({
+                  sourceMaterial: srcMat,
+                  sourcePlant: srcPlant,
+                  targetMaterial: tgtMat,
+                  targetPlant: tgtPlant,
+                  bomUsage: tgtUsage,
+                  sourceAlternative: effectiveSrcAlt || '1',
+                  targetAlternative: resolvedTgtAlt,
+                  copyHierarchy,
+                  server,
+                  priority: RFC_PRIORITY.BULK
+                });
+                if (retryCopyRes.success) {
+                  job.successCount++;
+                  job.results.push({
+                    id: item.id || overallIndex,
+                    sourceMaterial: srcMat,
+                    sourcePlant: srcPlant,
+                    targetMaterial: tgtMat,
+                    targetPlant: tgtPlant,
+                    targetAltBom: retryCopyRes.alternativeBom || resolvedTgtAlt,
+                    bomNumber: retryCopyRes.bomNumber || '',
+                    status: 'SUCCESS',
+                    message: retryCopyRes.message || 'BOM copied successfully in SAP.',
+                    input: item
+                  });
+                  job.processed = overallIndex;
+                  job.processed_rows = overallIndex;
+                  job.updatedAt = new Date().toISOString();
+                  continue;
+                }
+              } catch (retryErr) {
+                // Check if created during retry
+                let secondCheckCreated = false;
+                try {
+                  const checkRes2 = await rfcReadBom({
+                    material: tgtMat,
+                    plant: tgtPlant,
+                    bomUsage: tgtUsage,
+                    alternativeBom: resolvedTgtAlt || '01',
+                    server,
+                    useCache: false,
+                    priority: RFC_PRIORITY.READ
+                  });
+                  if (checkRes2.success && checkRes2.bomExists) secondCheckCreated = true;
+                } catch (_) {}
+
+                if (secondCheckCreated) {
+                  job.successCount++;
+                  job.results.push({
+                    id: item.id || overallIndex,
+                    sourceMaterial: srcMat,
+                    sourcePlant: srcPlant,
+                    targetMaterial: tgtMat,
+                    targetPlant: tgtPlant,
+                    targetAltBom: resolvedTgtAlt,
+                    bomNumber: resolvedTgtAlt || '',
+                    status: 'SUCCESS',
+                    message: 'Copied (connection dropped after save, verified in SAP)',
+                    input: item
+                  });
+                  job.processed = overallIndex;
+                  job.processed_rows = overallIndex;
+                  job.updatedAt = new Date().toISOString();
+                  continue;
+                }
+
+                job.failedCount++;
+                job.results.push({
+                  id: item.id || overallIndex,
+                  sourceMaterial: srcMat,
+                  sourcePlant: srcPlant,
+                  targetMaterial: tgtMat,
+                  targetPlant: tgtPlant,
+                  bomNumber: '-',
+                  status: 'FAILED',
+                  retryable: true,
+                  connectionLost: true,
+                  message: 'Connection to SAP was lost while creating this BOM. No BOM was created. Use Retry Failed Rows.',
+                  input: item
+                });
+                job.processed = overallIndex;
+                job.processed_rows = overallIndex;
+                job.updatedAt = new Date().toISOString();
+                continue;
+              }
+            } else {
+              job.failedCount++;
+              job.results.push({
+                id: item.id || overallIndex,
+                sourceMaterial: srcMat,
+                sourcePlant: srcPlant,
+                targetMaterial: tgtMat,
+                targetPlant: tgtPlant,
+                bomNumber: '-',
+                status: 'FAILED',
+                code: 'WRITE_OUTCOME_UNKNOWN',
+                retryable: false,
+                connectionLost: true,
+                message: 'Connection to SAP was lost while writing to SAP and outcome could not be verified. Please verify using Display BOM before attempting again.',
+                input: item
+              });
+              job.processed = overallIndex;
+              job.processed_rows = overallIndex;
+              job.updatedAt = new Date().toISOString();
+              continue;
+            }
+          }
+
           const userMsg = isInternalCodeError
             ? 'Validation could not be completed for this row.'
-            : (isConn ? `SAP connection dropped: ${err.message}` : err.message);
+            : err.message;
           job.failedCount++;
           job.results.push({
             id: item.id || overallIndex,
@@ -1401,7 +1805,7 @@ class BomJobManager {
             targetPlant: tgtPlant,
             bomNumber: '-',
             status: 'FAILED',
-            retryable: !isInternalCodeError && isConn,
+            retryable: false,
             message: userMsg,
             input: item
           });

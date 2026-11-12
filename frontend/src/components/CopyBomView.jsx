@@ -281,23 +281,65 @@ export default function CopyBomView({
   };
 
   // Immediate values from executionResult
-  const immediateComps = executionResult?.totalComponents !== undefined
-    ? executionResult.totalComponents
-    : (Array.isArray(executionResult?.hierarchy) && executionResult.hierarchy.length > 0
-        ? executionResult.hierarchy.reduce((sum, h) => sum + (h.componentCount || 0), 0)
-        : null);
+  const actionRes = executionResult?.actionResult || executionResult || {};
+  const immediateBoms =
+    (actionRes.bomsCreated && actionRes.bomsCreated > 0 ? actionRes.bomsCreated : null) ??
+    (actionRes.totalBoms && actionRes.totalBoms > 0 ? actionRes.totalBoms : null) ??
+    (actionRes.totalBomsCreated && actionRes.totalBomsCreated > 0 ? actionRes.totalBomsCreated : null) ??
+    (actionRes.copiedCount && actionRes.copiedCount > 0 ? actionRes.copiedCount : null) ??
+    (executionResult?.totalBoms && executionResult.totalBoms > 0 ? executionResult.totalBoms : null) ??
+    (executionResult?.bomsCreated && executionResult.bomsCreated > 0 ? executionResult.bomsCreated : null) ??
+    (Array.isArray(actionRes.hierarchy) && actionRes.hierarchy.length > 0 ? actionRes.hierarchy.filter((h) => h.status === 'COPIED' || !h.status).length : null) ??
+    (Array.isArray(executionResult?.data) && executionResult.data.length > 0 ? executionResult.data.length : null) ??
+    1;
 
-  const immediateLevels = executionResult?.totalLevels !== undefined
-    ? executionResult.totalLevels
-    : null;
+  const immediateComps =
+    (actionRes.totalComponents !== undefined && actionRes.totalComponents !== null)
+      ? actionRes.totalComponents
+      : (executionResult?.totalComponents !== undefined && executionResult?.totalComponents !== null)
+        ? executionResult.totalComponents
+        : (Array.isArray(actionRes.hierarchy) && actionRes.hierarchy.length > 0
+            ? actionRes.hierarchy.reduce((sum, h) => sum + (h.componentCount || (Array.isArray(h.components) ? h.components.length : 0)), 0)
+            : (Array.isArray(executionResult?.hierarchy) && executionResult.hierarchy.length > 0
+                ? executionResult.hierarchy.reduce((sum, h) => sum + (h.componentCount || 0), 0)
+                : (Array.isArray(executionResult?.data) && executionResult.data.length > 0
+                    ? executionResult.data.reduce((sum, h) => sum + (h.componentCount || (Array.isArray(h.components) ? h.components.length : 0)), 0)
+                    : null)));
+
+  const immediateLevels =
+    actionRes.totalLevels ??
+    actionRes.hierarchyDepth ??
+    executionResult?.totalLevels ??
+    null;
+
+  // Verification status evaluation
+  const isVerificationFailed = Boolean(
+    readBackError ||
+    (verifiedData && (verifiedData.status === 'FAILED' || verifiedData.success === false) && (!verifiedData.verification?.differences || verifiedData.verification.differences.length === 0))
+  );
+
+  const realDifferences = (verifiedData?.verification?.differences || []).filter(
+    (d) => !d.toLowerCase().includes('failed to read') && !d.toLowerCase().includes('could not be read') && !d.toLowerCase().includes('not found in sap database')
+  );
+
+  const hasDifferences = !isVerificationFailed && verifiedData && realDifferences.length > 0;
+  const diffCount = realDifferences.length;
 
   // Consistent single source of truth for all counts across banner and cards
-  const bomsCount = verifiedData?.bomsCreated ?? (executionResult?.totalBoms || executionResult?.copiedCount || executionResult?.data?.length || 1);
-  const compsCount = verifiedData ? verifiedData.totalComponents : immediateComps;
-  const levelsCount = verifiedData ? verifiedData.totalLevels : immediateLevels;
+  const bomsCount = (!isVerificationFailed && verifiedData?.bomsCreated && verifiedData.bomsCreated > 0)
+    ? verifiedData.bomsCreated
+    : immediateBoms;
+  const compsCount = (!isVerificationFailed && verifiedData?.totalComponents !== undefined && verifiedData?.totalComponents !== null)
+    ? verifiedData.totalComponents
+    : immediateComps;
+  const levelsCount = (!isVerificationFailed && verifiedData?.totalLevels && verifiedData.totalLevels > 0)
+    ? verifiedData.totalLevels
+    : (isReadingBack ? immediateLevels : (immediateLevels ?? 1));
 
   const rootAlt =
     verifiedData?.rootAlternative ||
+    actionRes.alternativeBom ||
+    actionRes.createdAlternative ||
     executionResult?.alternativeBom ||
     executionResult?.createdAlternative ||
     executionResult?.executedAction?.alternative ||
@@ -309,21 +351,14 @@ export default function CopyBomView({
     executionResult?.executedAction?.recordId ||
     'BOM';
 
-  // Differences evaluation
-  const differences = verifiedData?.verification?.differences || [];
-  const hasDifferences = verifiedData ? (differences.length > 0 || verifiedData.status === 'PARTIAL' || verifiedData.status === 'FAILED') : false;
-  const diffCount = differences.length;
-
   // Plain text banner subtitle
   let bannerSubtitle = null;
   if (isReadingBack) {
     bannerSubtitle = 'Verifying copied hierarchy...';
-  } else if (readBackError && !verifiedData) {
-    bannerSubtitle = 'Copy completed. Verification could not finish.';
-  } else if (hasDifferences) {
-    bannerSubtitle = `Created Alternative ${rootAlt} for ${targetMat}: ${bomsCount} BOMs across ${levelsCount || 1} levels.`;
+  } else if (isVerificationFailed) {
+    bannerSubtitle = 'Copy completed. Verification could not be completed.';
   } else {
-    bannerSubtitle = null;
+    bannerSubtitle = `Created Alternative ${rootAlt} for ${targetMat}: ${bomsCount} BOMs across ${levelsCount} levels.`;
   }
 
   return (
@@ -421,9 +456,11 @@ export default function CopyBomView({
                 <div className="sap-result-success-header" style={{ alignItems: 'flex-start' }}>
                   <div className="sap-result-success-icon" style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
                     {hasDifferences ? (
-                      <AlertTriangle size={24} color="var(--sap-warning, #d97706)" />
+                      <AlertTriangle data-testid="warning-icon" size={24} color="var(--sap-warning, #d97706)" />
+                    ) : isVerificationFailed ? (
+                      <CheckCircle2 data-testid="info-icon" size={24} color="var(--sap-primary, #0070f2)" />
                     ) : (
-                      <CheckCircle2 size={24} color="var(--sap-success, #16a34a)" />
+                      <CheckCircle2 data-testid="success-icon" size={24} color="var(--sap-success, #16a34a)" />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -432,7 +469,11 @@ export default function CopyBomView({
                         className="sap-result-success-title"
                         style={{
                           margin: 0,
-                          color: hasDifferences ? 'var(--sap-warning-text, #00204E)' : 'var(--sap-success-text, #166534)'
+                          color: hasDifferences
+                            ? 'var(--sap-warning-text, #00204E)'
+                            : isVerificationFailed
+                              ? 'var(--sap-text, #00204E)'
+                              : 'var(--sap-success-text, #166534)'
                         }}
                       >
                         {hasDifferences
@@ -467,7 +508,7 @@ export default function CopyBomView({
                 </div>
 
                 {/* Collapsed by default discrepancy list */}
-                {hasDifferences && showDiscrepancies && differences.length > 0 && (
+                {hasDifferences && showDiscrepancies && realDifferences.length > 0 && (
                   <div
                     style={{
                       marginTop: 14,
@@ -478,10 +519,10 @@ export default function CopyBomView({
                     }}
                   >
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#00204E', marginBottom: 6 }}>
-                      Discrepancies from source BOM ({differences.length}):
+                      Discrepancies from source BOM ({realDifferences.length}):
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark, #1e293b)', lineHeight: 1.5 }}>
-                      {differences.map((diff, idx) => (
+                      {realDifferences.map((diff, idx) => (
                         <li key={idx} style={{ marginBottom: 3 }}>
                           {diff}
                         </li>
