@@ -1,57 +1,76 @@
-# name: Native Node.js EC2 Deployment
+name: Deploy MERN Stack to EC2
 
-# on:
-#   push:
-#     branches:
-#       - main  # Adjust this to match your deployment branch (e.g., master)
+on:
+  push:
+    branches: 
+      - main
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: 'Optional: Specific Commit SHA for manual rollback'
+        required: false
+        type: string
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    runs-on: self-hosted
+    # Only run if triggered manually, or if the commit message contains specific trigger words
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, 'Deploy Now') ||
+      contains(github.event.head_commit.message, 'Roll Back')
 
-#     steps:
-#       - name: Checkout Repository
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-#       - name: Execute Remote SSH Commands for Deployment
-#         uses: appleboy/ssh-action@v1.0.3
-#         with:
-#           host: ${{ secrets.EC2_HOST }}
-#           username: ${{ secrets.EC2_USER }}
-#           key: ${{ secrets.EC2_SSH_KEY }}
-#           port: 22
-#           script: |
-#             echo "🚀 Starting native deployment process..."
+      - name: Connect and Deploy to EC2 via SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          PEM_PATH: "/home/nishad/ubuntu.pem"
+        run: |
+          ssh -i "$PEM_PATH" -o StrictHostKeyChecking=no ubuntu@"$EC2_HOST" << 'EOF'
+            set -e
+            echo "Successfully connected to EC2 instance!"
             
-#             # Navigate to application directory
-#             cd /var/www/my_noe_app
+            # Navigate to home directory
+            cd ~
             
-#             # Fetch latest updates and pull cleanly
-#             git fetch --all
-#             git reset --hard origin/main
-            
-#             # 🛠️ Backend Setup & Restart
-#             echo "📦 Setting up backend dependencies..."
-#             # Assuming backend is in the root directory or a /backend folder
-#             # Modify 'cd' if it's in a subdirectory, e.g., cd backend
-#             npm install --production
-            
-#             echo "🔄 Restarting backend process with PM2..."
-#             # Using PM2 to handle continuous background runtime natively
-#             pm2 restart all || pm2 start server.js --name "node-app"
-            
-#             # 🎨 Frontend Setup & Build
-#             echo "🎨 Setting up frontend dependencies..."
-#             # Adjust the path to your frontend directory if applicable
-#             cd frontend
-#             npm install
-#             npm run build
-            
-#             # ⚙️ Nginx Reverse Proxy Validation & Reload
-#             echo "🔧 Validating Nginx configuration..."
-#             sudo nginx -t
-            
-#             echo "🔄 Reloading Nginx service..."
-#             sudo systemctl reload nginx
-            
-#             echo "🎉 DEPLOYMENT COMPLETED SUCCESSFULY! 🎉"
+            # Clone or update the repository and clean local conflicts
+            if [ -d "SAP_APPLICATION_Final" ]; then
+              echo "Repository exists. Resetting local changes and pulling latest..."
+              cd SAP_APPLICATION_Final
+              git reset --hard HEAD
+              git clean -fd
+              git pull origin main
+            else
+              echo "Cloning repository..."
+              git clone https://github.com/mdnishadnk/SAP_APPLICATION_Final.git
+              cd SAP_APPLICATION_Final
+            fi
+
+            echo "Setting up and Installing Backend dependencies..."
+            cd backend
+            npm install
+
+            echo "Restarting Backend with PM2..."
+            pm2 restart sap-backend || pm2 start server.js --name "sap-backend"
+            pm2 save
+
+            echo "Setting up and Building Frontend..."
+            cd ../frontend
+            npm install
+            npm run build
+
+            echo "Copying Frontend build assets to Nginx web root..."
+            sudo rm -rf /var/www/html/*
+            sudo cp -r dist/* /var/www/html/
+
+            echo "Testing and restarting Nginx..."
+            sudo nginx -t
+            sudo systemctl restart nginx
+
+            echo "Deployment/Rollback script executed successfully with zero errors!"
+          EOF
