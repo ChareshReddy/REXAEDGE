@@ -135,7 +135,7 @@ export const Card = forwardRef(function Card(
           className={cn(
             'rx-card-header rx-form-section-header flex flex-row items-center justify-between gap-2',
             isTinted
-              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] w-full'
+              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] border-l-4 border-l-[var(--card-header-accent,#0B2D57)] w-full'
               : 'border-b border-[var(--color-border-subtle)] pb-4 mb-4'
           )}
         >

@@ -114,11 +114,11 @@ console.log('\n3. Testing failed row with a primary error and follow-on messages
 }
 
 // --------------------------------------------------------------------------
-// CASE 4: Ready row with a warning
+// CASE 4: Ready row with an informational MARC note vs a real warning
 // --------------------------------------------------------------------------
-console.log('\n4. Testing ready row with a warning:');
+console.log('\n4. Testing ready row with an informational MARC note vs a real warning:');
 {
-  const readyRow = {
+  const readyRowWithMarc = {
     sequenceNum: '3',
     material: 'A1PSB001B',
     plant: '1010',
@@ -130,19 +130,38 @@ console.log('\n4. Testing ready row with a warning:');
     ]
   };
 
-  const normStatus = normalizeBomStatus(readyRow);
-  assert.strictEqual(normStatus, 'ready', 'Ready row with warning must still normalize to ready');
+  const normStatus = normalizeBomStatus(readyRowWithMarc);
+  assert.strictEqual(normStatus, 'ready', 'Ready row with MARC note must normalize to ready');
 
-  const severity = deriveMessageSeverity(readyRow.warnings[0], readyRow);
-  assert.strictEqual(severity, 'warning', 'Non-blocking warning on ready row must have severity "warning"');
+  const severity = deriveMessageSeverity(readyRowWithMarc.warnings[0], readyRowWithMarc);
+  assert.strictEqual(severity, 'info', 'Non-blocking MARC plant extension on ready row must have severity "info"');
 
-  const messages = getBomRowMessages(readyRow);
+  const messages = getBomRowMessages(readyRowWithMarc);
   assert.strictEqual(messages.total, 1, 'Total messages count must be 1');
-  assert.strictEqual(messages.all[0].severity, 'warning', 'Message severity must be "warning"');
-  assert.strictEqual(messages.warnings.length, 1, 'Warnings list must have length 1');
+  assert.strictEqual(messages.all[0].severity, 'info', 'Message severity must be "info"');
+  assert.strictEqual(messages.info.length, 1, 'Info list must have length 1');
+  assert.strictEqual(messages.warnings.length, 0, 'Warnings list must be 0 for MARC notes');
   assert.strictEqual(messages.errors.length, 0, 'Errors list must be 0');
   assert.strictEqual(messages.skipped.length, 0, 'Skipped list must be 0');
-  console.log('   ✓ Ready row with warning correctly assigned severity "warning" without blocking ready status');
+
+  // Verify real warning stays warning
+  const readyRowWithRealWarn = {
+    sequenceNum: '4',
+    material: 'A1PSB002B',
+    plant: '1010',
+    status: 'Ready',
+    warnings: [
+      'Storage location PR67 is not valid for plant 1010 (T001L)'
+    ]
+  };
+  const realWarnSeverity = deriveMessageSeverity(readyRowWithRealWarn.warnings[0], readyRowWithRealWarn, { defaultSeverity: 'warning' });
+  assert.strictEqual(realWarnSeverity, 'warning', 'Real data inconsistency warning must have severity "warning"');
+
+  const realWarnMessages = getBomRowMessages(readyRowWithRealWarn);
+  assert.strictEqual(realWarnMessages.warnings.length, 1, 'Warnings list must have length 1 for real warnings');
+  assert.strictEqual(realWarnMessages.info.length, 0, 'Info list must be 0 for real warnings');
+
+  console.log('   ✓ Ready row with MARC note correctly assigned severity "info", and real warning remains "warning"');
 }
 
 // --------------------------------------------------------------------------
@@ -226,9 +245,9 @@ console.log('\n7. Testing not-validated row right after upload:');
 }
 
 // --------------------------------------------------------------------------
-// CASE 8: Ready row with BOTH a real warning and a success note
+// CASE 8: Ready row with BOTH a real warning, a MARC info note, and a success note
 // --------------------------------------------------------------------------
-console.log('\n8. Testing ready row with both a real warning and a success note:');
+console.log('\n8. Testing ready row with both a real warning, a MARC info note, and a success note:');
 {
   const rowWithBoth = {
     sequenceNum: '5',
@@ -238,6 +257,7 @@ console.log('\n8. Testing ready row with both a real warning and a success note:
     message: 'Ready to copy (Alternative 02 auto-selected, 12 components).',
     messageType: 'success',
     warnings: [
+      { text: 'Component unit mismatch with MARA definition', type: 'warning' },
       { text: 'Header material MAT_WARN_01 is not extended to plant 1010 (MARC)', type: 'warning' }
     ]
   };
@@ -246,13 +266,13 @@ console.log('\n8. Testing ready row with both a real warning and a success note:
   assert.strictEqual(normStatus, 'ready', 'Row must remain ready');
 
   const messages = getBomRowMessages(rowWithBoth);
-  assert.strictEqual(messages.total, 1, 'Only the warning is rendered (total 1)');
-  assert.strictEqual(messages.all.length, 1, 'all array has length 1');
-  assert.strictEqual(messages.all[0].severity, 'warning', 'Rendered line is warning');
-  assert.strictEqual(messages.warnings.length, 1, 'warnings list has length 1');
+  assert.strictEqual(messages.total, 2, 'Actionable line and info line rendered (total 2)');
+  assert.strictEqual(messages.warnings.length, 1, 'Only real warning is in warnings list');
+  assert.strictEqual(messages.info.length, 1, 'MARC note is categorized as info');
   assert.strictEqual(messages.errors.length, 0, 'errors list is 0');
-  assert.ok(messages.all[0].text.includes('not extended to plant'), 'Warning text matches');
-  console.log('   ✓ Only the warning line is rendered; success note is stripped from output');
+  assert.ok(messages.warnings[0].includes('Component unit mismatch'), 'Real warning text matches');
+  assert.ok(messages.info[0].includes('not extended to plant'), 'Info note text matches');
+  console.log('   ✓ Real warning is "warning", MARC note is "info", and success note is stripped from output');
 }
 
 console.log('\n============================================================');

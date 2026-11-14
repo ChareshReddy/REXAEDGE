@@ -582,9 +582,9 @@ export async function rfcPreflightCreateBoms(params = {}) {
         bom.baseUnit = headerMara.meins;
       }
 
-      // Header MARC plant extension reported as warning
+      // Header MARC plant extension reported as info note (non-blocking)
       if (!marcMap.has(`${plant}|${matSap}`)) {
-        warnings.push({ text: `Header material "${mat}" is not extended to plant ${plant} (MARC)`, type: 'warning' });
+        warnings.push({ text: `Header material "${mat}" is not extended to plant ${plant} (MARC)`, type: 'info', severity: 'info' });
       }
 
       // C. BOM Status Check in T415S
@@ -618,9 +618,9 @@ export async function rfcPreflightCreateBoms(params = {}) {
           }
         }
 
-        // Component MARC plant extension reported as warning
+        // Component MARC plant extension reported as info note (non-blocking)
         if (!marcMap.has(`${plant}|${compSap}`)) {
-          warnings.push({ text: `Component "${compMat}" is not extended to plant ${plant} (MARC)`, type: 'warning' });
+          warnings.push({ text: `Component "${compMat}" is not extended to plant ${plant} (MARC)`, type: 'info', severity: 'info' });
         }
 
         // Storage location validity check
@@ -651,7 +651,7 @@ export async function rfcPreflightCreateBoms(params = {}) {
         status,
         errors,
         warnings,
-        messageType: errors.length > 0 ? 'error' : (warnings.length > 0 ? 'warning' : 'success'),
+        messageType: errors.length > 0 ? 'error' : (warnings.some((w) => (typeof w === 'object' && w !== null ? (w.type !== 'info' && w.severity !== 'info') : !/not extended to plant|marc\b/i.test(String(w)))) ? 'warning' : 'success'),
         reason: errors.length > 0 ? errors.join(' | ') : 'Ready for creation',
         reasonType: errors.length > 0 ? 'error' : 'success'
       };

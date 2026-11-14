@@ -60,7 +60,7 @@ test.describe('Add Component Primary Solid Button Suite', () => {
     });
     expect(iconColor).toBe('rgb(255, 255, 255)');
 
-    // 4. Contrast against card header band (#7F9DB9, rgb(127, 157, 185)) >= 4.5:1
+    // 4. Contrast against card header band (>= 4.5:1)
     const cardHeader = page.locator('.rx-form-section-header-tinted').filter({ hasText: 'Component Items' }).first();
     await expect(cardHeader).toBeVisible();
     const bandBg = await cardHeader.evaluate((el) => window.getComputedStyle(el).backgroundColor);

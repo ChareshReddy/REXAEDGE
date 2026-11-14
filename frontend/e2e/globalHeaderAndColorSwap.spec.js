@@ -34,6 +34,75 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
   test.beforeEach(async ({ page }) => {
     await setupMocks(page, { authenticated: true, role: 'admin' });
 
+    let jobType = 'preflight';
+    await page.route('**/api/bom/job/**', async (route) => {
+      const url = route.request().url();
+      const method = route.request().method();
+      if (url.includes('/active')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ success: false, job: null })
+        });
+      }
+      if (url.includes('/start') || method === 'POST') {
+        let postData = {};
+        try { postData = route.request().postDataJSON() || {}; } catch (_) {}
+        jobType = postData.type || 'create_bulk';
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            success: true,
+            jobId: 'job-123',
+            total: 2,
+            status: 'PROCESSING'
+          })
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          job: {
+            id: 'job-123',
+            jobId: 'job-123',
+            type: jobType,
+            status: 'COMPLETED',
+            processed: 2,
+            total: 2,
+            successCount: 2,
+            failedCount: 0,
+            skippedCount: 0,
+            notProcessedCount: 0,
+            results: [
+              {
+                sequenceNum: 1,
+                material: 'A1BH0214C',
+                plant: '1010',
+                bomUsage: '1',
+                alternativeBom: '01',
+                bomNumber: '00010045',
+                status: 'SUCCESS',
+                message: 'BOM created successfully'
+              },
+              {
+                sequenceNum: 2,
+                material: 'B2CH0315D',
+                plant: '1010',
+                bomUsage: '1',
+                alternativeBom: '01',
+                bomNumber: '00010046',
+                status: 'SUCCESS',
+                message: 'BOM created successfully'
+              }
+            ]
+          }
+        })
+      });
+    });
+
     // Mock validation & execution endpoint responses for smooth transitions
     await page.route('**/api/bom/validate-preflight', async (route) => {
       await route.fulfill({
@@ -75,21 +144,21 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
 
   // Helper to assert header, card, table styles
   async function assertPageVisualStyles(page, screenName) {
-    // 1. Page Header band
+    // 1. Page Header band (#EAF1FB -> rgb(234, 241, 251))
     const pageHeader = page.locator('.fiori-ph');
     await expect(pageHeader.first()).toBeVisible();
 
     const phBg = await pageHeader.first().evaluate(el => window.getComputedStyle(el).backgroundColor);
-    expect(phBg).toBe('rgb(11, 45, 87)'); // #0B2D57
+    expect(phBg).toBe('rgb(234, 241, 251)'); // #EAF1FB
 
     const title = page.locator('.fiori-ph-title').first();
     const titleColor = await title.evaluate(el => window.getComputedStyle(el).color);
-    expect(titleColor).toBe('rgb(255, 255, 255)'); // #FFFFFF
+    expect(titleColor).toBe('rgb(11, 45, 87)'); // #0B2D57
 
     const contrastTitle = getContrastRatio(titleColor, phBg);
     expect(contrastTitle).toBeGreaterThanOrEqual(4.5);
 
-    // 2. Subtitle if present
+    // 2. Subtitle if present (#4A5F77 -> rgb(74, 95, 119))
     const subtitle = page.locator('.fiori-ph-subtitle').first();
     if (await subtitle.count() > 0 && await subtitle.isVisible()) {
       const subColor = await subtitle.evaluate(el => window.getComputedStyle(el).color);
@@ -97,27 +166,35 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
       expect(contrastSub).toBeGreaterThanOrEqual(4.5);
     }
 
-    // 3. Card Header Band (calm mid blue-gray #7F9DB9 -> rgb(127, 157, 185))
+    // 3. Card Header Band (#E4EDF8 -> rgb(228, 237, 248) with left navy accent line #0B2D57 -> rgb(11, 45, 87))
     const tintedCardHeader = page.locator('.rx-form-section-header-tinted').first();
     if (await tintedCardHeader.count() > 0 && await tintedCardHeader.isVisible()) {
       const cardHeaderBg = await tintedCardHeader.evaluate(el => window.getComputedStyle(el).backgroundColor);
-      expect(cardHeaderBg).toBe('rgb(127, 157, 185)'); // #7F9DB9
+      expect(cardHeaderBg).toBe('rgb(228, 237, 248)'); // #E4EDF8
+
+      const borderLeftColor = await tintedCardHeader.evaluate(el => window.getComputedStyle(el).borderLeftColor);
+      expect(borderLeftColor).toBe('rgb(11, 45, 87)'); // #0B2D57
+
+      const borderLeftWidth = await tintedCardHeader.evaluate(el => window.getComputedStyle(el).borderLeftWidth);
+      expect(borderLeftWidth).toBe('4px');
 
       const cardTitle = tintedCardHeader.locator('.rx-form-section-title, h3').first();
       if (await cardTitle.count() > 0) {
         const cardTitleColor = await cardTitle.evaluate(el => window.getComputedStyle(el).color);
+        expect(cardTitleColor).toBe('rgb(11, 45, 87)'); // #0B2D57
         const cardContrast = getContrastRatio(cardTitleColor, cardHeaderBg);
         expect(cardContrast).toBeGreaterThanOrEqual(4.5);
       }
     }
 
-    // 4. Table Header Row (light tint #DCE8F1 -> rgb(220, 232, 241))
+    // 4. Table Header Row (#EDF2F9 -> rgb(237, 242, 249))
     const tableHeader = page.locator('.rx-table-th, .sap-table th, .sap-bulk-table th').first();
     if (await tableHeader.count() > 0 && await tableHeader.isVisible()) {
       const tableHeaderBg = await tableHeader.evaluate(el => window.getComputedStyle(el).backgroundColor);
-      expect(tableHeaderBg).toBe('rgb(220, 232, 241)'); // old card header color
+      expect(tableHeaderBg).toBe('rgb(237, 242, 249)'); // #EDF2F9
 
       const thColor = await tableHeader.evaluate(el => window.getComputedStyle(el).color);
+      expect(['rgb(11, 45, 87)', 'rgb(0, 32, 78)']).toContain(thColor); // #0B2D57 or brand navy
       const tableContrast = getContrastRatio(thColor, tableHeaderBg);
       expect(tableContrast).toBeGreaterThanOrEqual(4.5);
     }
@@ -133,14 +210,31 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
     const viewport = page.viewportSize();
     const vpSuffix = `${viewport.width}x${viewport.height}`;
 
-    // 1. Home
+    // 1. Home (Hero preserved, excluded from .fiori-ph page header)
     await page.goto('/home', { waitUntil: 'networkidle' });
-    await assertPageVisualStyles(page, 'Home');
+    const heroTitle = page.locator('h1, h2, .rx-home-hero, .sap-home-hero').first();
+    await expect(heroTitle).toBeVisible();
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `home-${vpSuffix}.png`), fullPage: false });
 
     // 2. Create Single BOM
     await page.goto('/products/bom/create/single', { waitUntil: 'networkidle' });
     await assertPageVisualStyles(page, 'Create Single BOM');
+
+    // Check Add Component button is solid primary navy with white text/icon
+    const addCompBtn = page.locator('button.rx-btn-add-component, button.sap-btn-add-component, button:has-text("Add Component")').first();
+    await expect(addCompBtn).toBeVisible();
+    const addCompBg = await addCompBtn.evaluate(el => window.getComputedStyle(el).backgroundColor);
+    expect(['rgb(0, 32, 78)', 'rgb(11, 45, 87)']).toContain(addCompBg);
+    const addCompColor = await addCompBtn.evaluate(el => window.getComputedStyle(el).color);
+    expect(addCompColor).toBe('rgb(255, 255, 255)');
+
+    // Check Single / Bulk toggle
+    const toggleActive = page.locator('button:has-text("Single")').first();
+    const toggleActiveBg = await toggleActive.evaluate(el => window.getComputedStyle(el).backgroundColor);
+    expect(['rgb(11, 45, 87)', 'rgb(0, 32, 78)']).toContain(toggleActiveBg);
+    const toggleActiveColor = await toggleActive.evaluate(el => window.getComputedStyle(el).color);
+    expect(toggleActiveColor).toBe('rgb(255, 255, 255)');
+
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `create-single-bom-${vpSuffix}.png`), fullPage: false });
 
     // 3. Confirm BOM Creation Modal on Create Single BOM
@@ -192,9 +286,17 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
     await assertPageVisualStyles(page, 'Create Bulk BOM step 2');
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `create-bulk-bom-step2-${vpSuffix}.png`), fullPage: false });
 
+    // Click Validate data to move rows to Ready
+    const validateDataBtn = page.locator('button:has-text("Validate data")').first();
+    if (await validateDataBtn.count() > 0 && await validateDataBtn.isEnabled()) {
+      await validateDataBtn.click();
+      await page.waitForTimeout(600);
+    }
+
     // 5. Create Bulk BOM step 3 (results)
     const createBomsBtn = page.locator('button.create-ready-boms-btn, button:has-text("Create BOMs")').first();
-    if (await createBomsBtn.count() > 0 && await createBomsBtn.isEnabled()) {
+    if (await createBomsBtn.count() > 0) {
+      await expect(createBomsBtn).toBeEnabled({ timeout: 5000 });
       await createBomsBtn.click();
       const confirmModalBtn = page.locator('button:has-text("Confirm & Create")').first();
       if (await confirmModalBtn.count() > 0 && await confirmModalBtn.isVisible()) {
@@ -205,12 +307,19 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
       await page.screenshot({ path: path.join(SCREENSHOT_DIR, `create-bulk-bom-results-${vpSuffix}.png`), fullPage: false });
     }
 
-    // 6. Copy Single BOM
+    // 6. Copy Single BOM (check Source/Target pills contrast >= 4.5:1)
     await page.goto('/products/bom/copy/single', { waitUntil: 'networkidle' });
     await assertPageVisualStyles(page, 'Copy Single BOM');
+    const badge = page.locator('.rx-copy-card-badge, .sap-badge').first();
+    if (await badge.count() > 0) {
+      const badgeBg = await badge.evaluate(el => window.getComputedStyle(el).backgroundColor);
+      const badgeColor = await badge.evaluate(el => window.getComputedStyle(el).color);
+      const badgeContrast = getContrastRatio(badgeColor, badgeBg);
+      expect(badgeContrast).toBeGreaterThanOrEqual(4.5);
+    }
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `copy-single-bom-${vpSuffix}.png`), fullPage: false });
 
-    // 7. Copy Bulk BOM
+    // 7. Copy Bulk BOM & Results
     await page.goto('/products/bom/copy/bulk', { waitUntil: 'networkidle' });
     await assertPageVisualStyles(page, 'Copy Bulk BOM');
     const copyBuffer = createSampleBulkCopyFile();
@@ -222,6 +331,35 @@ test.describe('Global Page Header Band & Card/Table Color Swap Verification', ()
     });
     await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `copy-bulk-bom-${vpSuffix}.png`), fullPage: false });
+
+    const continueCopyBtn = page.locator('button:has-text("Continue")').first();
+    if (await continueCopyBtn.count() > 0 && await continueCopyBtn.isEnabled()) {
+      await continueCopyBtn.click();
+      await page.waitForTimeout(500);
+
+      const validateCopyDataBtn = page.locator('button:has-text("Validate data")').first();
+      if (await validateCopyDataBtn.count() > 0 && await validateCopyDataBtn.isEnabled()) {
+        await validateCopyDataBtn.click();
+        await page.waitForTimeout(600);
+      }
+
+      page.on('dialog', async (dialog) => {
+        await dialog.accept();
+      });
+
+      const copyBomsBtn = page.locator('button.create-ready-boms-btn, button:has-text("Copy BOMs")').first();
+      if (await copyBomsBtn.count() > 0) {
+        await expect(copyBomsBtn).toBeEnabled({ timeout: 5000 });
+        await copyBomsBtn.click();
+        const confirmCopyModalBtn = page.locator('button:has-text("Confirm & Copy"), button:has-text("Confirm & Create")').first();
+        if (await confirmCopyModalBtn.count() > 0 && await confirmCopyModalBtn.isVisible()) {
+          await confirmCopyModalBtn.click();
+        }
+        await page.waitForTimeout(1000);
+        await assertPageVisualStyles(page, 'Copy Bulk Results');
+        await page.screenshot({ path: path.join(SCREENSHOT_DIR, `copy-bulk-results-${vpSuffix}.png`), fullPage: false });
+      }
+    }
 
     // 8. Display BOM
     await page.goto('/products/bom/display', { waitUntil: 'networkidle' });

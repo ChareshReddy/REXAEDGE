@@ -592,24 +592,25 @@ export default function BulkBomCopyModal({
                     type="button"
                     className="rx-btn rx-btn-primary"
                     style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
                   >
-                    <Upload size={13} />
+                    <Upload size={16} style={{ display: 'block', lineHeight: 1 }} />
                     <span>Browse files</span>
                   </button>
                   <button
                     type="button"
                     className="rx-btn rx-btn-secondary"
-                    style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 8 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDownloadTemplate();
                     }}
                   >
-                    <Download size={13} />
+                    <Download size={16} style={{ display: 'block', lineHeight: 1 }} />
                     <span>Download template</span>
                   </button>
                 </div>

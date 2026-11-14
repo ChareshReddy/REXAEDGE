@@ -31,7 +31,7 @@ import { preflightCreateBoms, createSingleBom } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
-import { formatWarnings } from '../utils/warningUtils';
+import { formatWarnings, formatNotes } from '../utils/warningUtils';
 import { PageContainer } from './layout';
 import { FIELD_RULES, validateField, sanitizeValidFromInput, sanitizeBaseQuantityInput, isValidQuantity } from '@shared/fieldRules.js';
 import { checkFieldExistence } from '../services/fieldValidationService';
@@ -489,15 +489,30 @@ export default function CreateBomView({
         setPreflightData(validatedBom);
 
         if (validatedBom.status === 'Ready') {
-          const cleanWarnings = formatWarnings(validatedBom.warnings || []);
+          const rawItems = [
+            ...(validatedBom.warnings || []),
+            ...(validatedBom.notes || [])
+          ];
+          const cleanWarnings = formatWarnings(rawItems);
+          const cleanNotes = formatNotes(rawItems);
+
           setPreflightPassed(true);
           setValidationErrors([]);
           setValidationWarnings(cleanWarnings);
 
           if (cleanWarnings.length > 0) {
+            // Real warnings exist -> amber toast "Pre-flight passed with warnings"
+            // If notes also exist, list real warnings first, then notes in muted text
             toast.warning('', {
               title: 'Pre-flight passed with warnings',
-              messages: cleanWarnings
+              messages: cleanWarnings,
+              notes: cleanNotes
+            });
+          } else if (cleanNotes.length > 0) {
+            // Only info notes exist -> ONE green success toast
+            toast.success('Material master data, units and SAP simulation verified.', {
+              title: 'Pre-flight passed',
+              notes: cleanNotes
             });
           } else {
             toast.success('Pre-flight passed. Material master data, units and SAP simulation verified.');
@@ -1083,18 +1098,18 @@ export default function CreateBomView({
                     padding: '0 var(--space-12, 12px)',
                     borderRadius: 'var(--radius-sm, 4px)',
                     backgroundColor: 'var(--color-navy-900, #00204E)',
-                    color: 'var(--color-text-inverse, #FFFFFF)',
+                    color: '#FFFFFF',
                     border: 'none',
                     boxShadow: 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 'var(--space-6, 6px)',
+                    gap: 8,
                     fontSize: 13,
                     fontWeight: 500,
                     cursor: isLocked ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  <Plus size={15} strokeWidth={2.4} style={{ color: 'var(--color-text-inverse, #FFFFFF)', stroke: 'var(--color-text-inverse, #FFFFFF)' }} />
+                  <Plus size={16} strokeWidth={2.4} style={{ display: 'block', lineHeight: 1, margin: 0, padding: 0, color: '#FFFFFF', stroke: '#FFFFFF' }} />
                   <span>Add Component</span>
                 </Button>
               }

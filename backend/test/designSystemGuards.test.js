@@ -227,13 +227,15 @@ for (const relPath of bulkFiles) {
 }
 console.log('   ✓ Zero disallowed orange/amber colors or classes in bulk components\n');
 
-// 9. Page Header Band & Swapped Card/Table Header Guard with WCAG AA Contrast
-console.log('Test 9: Verify Page Header, Card Header, and Table Header tokens and WCAG AA contrast...');
-assert(tokensCss.includes('--page-header-bg: #0B2D57'), 'tokens.css must define --page-header-bg as #0B2D57');
-assert(tokensCss.includes('--page-header-text: #FFFFFF'), 'tokens.css must define --page-header-text as #FFFFFF');
-assert(tokensCss.includes('--card-header-bg: #7F9DB9'), 'tokens.css must set --card-header-bg to #7F9DB9');
+// 9. Page Header Band, Card Header with 4px Left Accent, and Table Header Guard with WCAG AA Contrast
+console.log('Test 9: Verify Page Header, Card Header (with 4px left accent line), and Table Header tokens and WCAG AA contrast...');
+assert(tokensCss.includes('--page-header-bg: #EAF1FB'), 'tokens.css must define --page-header-bg as #EAF1FB');
+assert(tokensCss.includes('--page-header-text: #0B2D57'), 'tokens.css must define --page-header-text as #0B2D57');
+assert(tokensCss.includes('--card-header-bg: #E4EDF8'), 'tokens.css must set --card-header-bg to #E4EDF8');
+assert(tokensCss.includes('--card-header-accent: #0B2D57'), 'tokens.css must set --card-header-accent to #0B2D57');
 assert(tokensCss.includes('--card-header-text: #0B2D57'), 'tokens.css must set --card-header-text to #0B2D57');
-assert(tokensCss.includes('--table-header-bg: var(--color-blue-100)'), 'tokens.css must set --table-header-bg to the light token (--color-blue-100)');
+assert(tokensCss.includes('--table-header-bg: #EDF2F9'), 'tokens.css must set --table-header-bg to #EDF2F9');
+assert(tokensCss.includes('--table-header-text: #0B2D57'), 'tokens.css must set --table-header-text to #0B2D57');
 
 // WCAG 2.1 Contrast Formula
 function getLuminance(hex) {
@@ -256,26 +258,34 @@ function getContrast(hex1, hex2) {
   return (brighter + 0.05) / (darker + 0.05);
 }
 
-// 1. Page Header Title (#FFFFFF on #0B2D57)
-const phTitleContrast = getContrast('#FFFFFF', '#0B2D57');
+// 1. Page Header Luminance (> 0.8) and Title/Subtitle Contrast
+const phBgLum = getLuminance('#EAF1FB');
+assert(phBgLum >= 0.8, `Page header background luminance ${phBgLum.toFixed(2)} must be >= 0.8`);
+const phTitleContrast = getContrast('#0B2D57', '#EAF1FB');
 assert(phTitleContrast >= 4.5, `Page header title contrast ${phTitleContrast.toFixed(2)} must be >= 4.5`);
-
-// 2. Page Header Subtitle (rgba(255,255,255,0.8) on #0B2D57 -> ~#CED5DD)
-// Composite 80% white over #0B2D57 (r:11, g:45, b:87) -> r:206, g:213, b:221 -> #CED5DD
-const phSubtextContrast = getContrast('#CED5DD', '#0B2D57');
+const phSubtextContrast = getContrast('#4A5F77', '#EAF1FB');
 assert(phSubtextContrast >= 4.5, `Page header subtext contrast ${phSubtextContrast.toFixed(2)} must be >= 4.5`);
 
-// 3. Card Header Title (#0B2D57 on #7F9DB9)
-const cardHeaderContrast = getContrast('#0B2D57', '#7F9DB9');
+// 2. Card Header Luminance (> 0.8) and Title Contrast
+const cardHeaderBgLum = getLuminance('#E4EDF8');
+assert(cardHeaderBgLum >= 0.8, `Card header background luminance ${cardHeaderBgLum.toFixed(2)} must be >= 0.8`);
+const cardHeaderContrast = getContrast('#0B2D57', '#E4EDF8');
 assert(cardHeaderContrast >= 4.5, `Card header title contrast ${cardHeaderContrast.toFixed(2)} must be >= 4.5`);
 
-// 4. Table Header Text (#00204E on #DCE8F1)
-const tableHeaderContrast = getContrast('#00204E', '#DCE8F1');
+// 3. Table Header Luminance (> 0.85) and Text Contrast
+const tableHeaderBgLum = getLuminance('#EDF2F9');
+assert(tableHeaderBgLum >= 0.85, `Table header background luminance ${tableHeaderBgLum.toFixed(2)} must be >= 0.85`);
+const tableHeaderContrast = getContrast('#0B2D57', '#EDF2F9');
 assert(tableHeaderContrast >= 4.5, `Table header text contrast ${tableHeaderContrast.toFixed(2)} must be >= 4.5`);
 
-// Verify components use token rather than hardcoded old table/card header hex
+// Verify card header left accent line and Add Component button styling
 const formLayoutJsx = fs.readFileSync(path.resolve(frontendDir, 'components/ui/form-layout.jsx'), 'utf8');
 assert(formLayoutJsx.includes('var(--card-header-bg)'), 'form-layout.jsx must use var(--card-header-bg)');
+assert(formLayoutJsx.includes('card-header-accent') || formLayoutJsx.includes('border-l-4'), 'form-layout.jsx must include left accent border');
+
+const createBomJsx = fs.readFileSync(path.resolve(frontendDir, 'components/CreateBomView.jsx'), 'utf8');
+assert(createBomJsx.includes('rx-btn-add-component'), 'CreateBomView must use rx-btn-add-component');
+assert(createBomJsx.includes('var(--color-navy-900'), 'Add Component button must use primary navy background');
 
 const dataTableJsx = fs.readFileSync(path.resolve(frontendDir, 'components/ui/DataTable.jsx'), 'utf8');
 assert(dataTableJsx.includes('var(--table-header-bg)'), 'DataTable.jsx must use var(--table-header-bg)');
@@ -283,6 +293,10 @@ assert(dataTableJsx.includes('var(--table-header-bg)'), 'DataTable.jsx must use 
 console.log(`   ✓ Page header title contrast: ${phTitleContrast.toFixed(2)}:1 (>= 4.5:1)`);
 console.log(`   ✓ Page header subtitle contrast: ${phSubtextContrast.toFixed(2)}:1 (>= 4.5:1)`);
 console.log(`   ✓ Card header title contrast: ${cardHeaderContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Table header text contrast: ${tableHeaderContrast.toFixed(2)}:1 (>= 4.5:1)`);
+console.log(`   ✓ Card header background luminance: ${cardHeaderBgLum.toFixed(2)} (>= 0.8)`);
+console.log(`   ✓ Table header background luminance: ${tableHeaderBgLum.toFixed(2)} (>= 0.85)`);
+console.log('   ✓ Page Header, Card Header (with 4px left accent line), and Table Header tokens and contrast verified\n');
 console.log(`   ✓ Table header text contrast: ${tableHeaderContrast.toFixed(2)}:1 (>= 4.5:1)`);
 console.log('   ✓ Page Header, Card Header, and Table Header tokens and contrast verified\n');
 
