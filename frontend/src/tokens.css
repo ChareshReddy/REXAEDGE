@@ -135,6 +135,8 @@
   --size-popup-header-height: 48px;
   --size-table-row-height: 40px;
   --size-table-header-height: 40px;
+  --table-col-status-min-width: 140px;
+  --size-table-col-status-min-width: 140px;
   --size-button-height: 36px;
   --size-button-sm-height: 32px;
   --size-card-header-height: 48px;
@@ -157,23 +159,25 @@
   --transition-normal: 200ms ease;
   --transition-slow: 250ms ease;
 
-  /* Page Header Band Tokens */
-  --page-header-bg: #0B2D57;
-  --page-header-text: #FFFFFF;
-  --page-header-subtext: rgba(255, 255, 255, 0.8);
-  --page-header-toggle-track: rgba(255, 255, 255, 0.12);
-  --page-header-toggle-track-border: rgba(255, 255, 255, 0.2);
-  --page-header-toggle-inactive: rgba(255, 255, 255, 0.8);
-  --page-header-toggle-active-bg: #FFFFFF;
-  --page-header-toggle-active-text: var(--color-navy-900);
+  /* Page Header Band Tokens (Light Blue Theme) */
+  --page-header-bg: #EAF1FB;
+  --page-header-text: #0B2D57;
+  --page-header-subtext: #4A5F77;
+  --page-header-toggle-track: #FFFFFF;
+  --page-header-toggle-track-border: #DDE6F0;
+  --page-header-toggle-inactive: #0B2D57;
+  --page-header-toggle-active-bg: #0B2D57;
+  --page-header-toggle-active-text: #FFFFFF;
 
   /* Card Header Bands vs Table Header Rows */
-  --card-header-bg: #7F9DB9;                /* #7F9DB9 calm mid blue-gray */
-  --card-header-border: #6B8B9E;            /* Subdued border for mid blue-gray band */
-  --card-header-text: #0B2D57;              /* Deep navy text (contrast >= 4.5:1) */
-  --table-header-bg: var(--color-blue-100);  /* #DCE8F1 light tint */
-  --table-header-border: var(--color-border);
-  --table-header-text: var(--color-navy-900);
+  --card-header-bg: #E4EDF8;                /* Light blue shade as in reference */
+  --card-header-border: #DDE6F0;            /* Soft border matching reference */
+  --card-header-accent: #0B2D57;            /* Dark navy accent line on LEFT edge (4px wide) */
+  --card-header-text: #0B2D57;              /* Deep navy bold title (contrast >= 4.5:1) */
+  --card-header-subtext: #4A5F77;           /* Muted navy/gray-blue secondary text (contrast >= 4.5:1) */
+  --table-header-bg: #EDF2F9;               /* Very light gray-blue from reference (#EDF2F9) */
+  --table-header-border: #DDE6F0;
+  --table-header-text: #0B2D57;
 
   /* ==========================================================================
      8. BACKWARD COMPATIBILITY BRIDGES (Aliasing to Beautiful Blues tokens)

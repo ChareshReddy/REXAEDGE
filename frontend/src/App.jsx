@@ -994,7 +994,7 @@ function AppContent({
               aria-expanded={isUserMenuOpen}
               aria-haspopup="menu"
             >
-              <div className={`sap-user-avatar-circle ${user.role === 'admin' ? 'admin' : ''}`}>
+              <div className="sap-user-avatar-circle">
                 {user.email ? user.email.charAt(0).toUpperCase() : 'A'}
               </div>
             </button>

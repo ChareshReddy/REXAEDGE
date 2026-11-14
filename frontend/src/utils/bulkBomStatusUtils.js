@@ -523,18 +523,38 @@ export const FOLLOW_ON_TECHNICAL_REGEX =
   /consistency check when creating bom item|no instance of object type bomgroup|cascade|subsequent error|internal error occurred/i;
 
 /**
+ * Helper to identify MARC plant extension informational messages.
+ * "Header material X is not extended to plant P (MARC)" and
+ * "Component Y is not extended to plant P (MARC)" are informational notes,
+ * not warnings, because they do not block BOM creation in SAP.
+ */
+export function isMarcExtensionMessage(text) {
+  if (!text || typeof text !== 'string') return false;
+  return /not extended to plant|marc\b/i.test(text);
+}
+
+/**
  * Shared helper to derive severity ('error' | 'warning' | 'skipped' | 'info') for a message line.
  *
  * Rules:
  * - All messages of a row whose status is Skipped are severity 'skipped'.
  * - Messages that make a row Failed are 'error'.
- * - Non-blocking messages on a Ready row (or on a row that will still be created) are 'warning'.
+ * - MARC plant extension notes are severity 'info' (non-blocking informational notes).
+ * - Non-blocking real warnings on a Ready row are 'warning'.
  * - Follow-on technical messages on failed rows stay 'info'.
  * - Confirmation/informational messages on created execution rows are 'info'.
  */
 export function deriveMessageSeverity(message, rowOrStatus = {}, options = {}) {
   // If message itself is null/empty
   if (!message && !options.defaultSeverity && !options.type) {
+    return 'info';
+  }
+
+  const msgText = typeof message === 'string' ? message : (message?.text || message?.message || '');
+  const cleanText = msgText.trim();
+
+  // MARC extension is strictly an informational note (never warning or error)
+  if (isMarcExtensionMessage(cleanText)) {
     return 'info';
   }
 
@@ -549,9 +569,6 @@ export function deriveMessageSeverity(message, rowOrStatus = {}, options = {}) {
       return cleanType;
     }
   }
-
-  const msgText = typeof message === 'string' ? message : (message?.text || message?.message || '');
-  const cleanText = msgText.trim();
 
   // 2. Success notes (e.g. "Ready to copy...", "Ready for creation...", "Source BOM verified...")
   if (/^ready\s+(?:to|for)\b/i.test(cleanText) || /^source bom verified/i.test(cleanText) || /^copied successfully/i.test(cleanText) || /^created successfully/i.test(cleanText)) {
@@ -586,8 +603,8 @@ export function deriveMessageSeverity(message, rowOrStatus = {}, options = {}) {
     if (execStatus === 'CREATED' || options.isSuccessInfo) {
       return 'info';
     }
-    // Only real warnings that need attention (e.g. MARC extension) are 'warning'
-    if (options.isWarning || /not extended to plant|marc\b/i.test(cleanText)) {
+    // Real warnings that need attention (e.g. data inconsistencies) are 'warning'
+    if (options.isWarning || (options.defaultSeverity === 'warning' && !isMarcExtensionMessage(cleanText))) {
       return 'warning';
     }
     // Ready row with no real warning is success

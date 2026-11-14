@@ -300,10 +300,10 @@ export default function BulkUploadCard({
                   fontSize: 'var(--font-size-13, 13px)',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 8
                 }}
               >
-                <Upload size={14} />
+                <Upload size={16} style={{ display: 'block', lineHeight: 1 }} />
                 <span>Browse files</span>
               </button>
             </div>
@@ -373,11 +373,11 @@ export default function BulkUploadCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 6,
+                gap: 8,
                 width: '100%'
               }}
             >
-              <Download size={14} />
+              <Download size={16} style={{ display: 'block', lineHeight: 1 }} />
               <span>{templateButtonText}</span>
             </button>
           )}

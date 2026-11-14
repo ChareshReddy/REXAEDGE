@@ -30,6 +30,7 @@ export default function Notification({
   title,
   message,
   messages = [],
+  notes = [],
   hint,
   errorRef,
   onClose,
@@ -121,6 +122,50 @@ export default function Notification({
               </button>
             )}
           </>
+        )}
+
+        {notes && notes.length > 0 && (
+          <div className="sap-notification-notes-section" style={{ marginTop: (messages && messages.length > 0) || message ? 6 : 2 }}>
+            <ul
+              className="sap-notification-notes-list"
+              style={{
+                margin: 0,
+                padding: 0,
+                listStyle: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3
+              }}
+            >
+              {(notes.length <= 3 ? notes : notes.slice(0, 3)).map((note, idx) => (
+                <li
+                  key={idx}
+                  className="sap-notification-note-item"
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    color: 'var(--color-text-secondary, #4A5F77)',
+                    fontFamily: 'var(--font-sans)'
+                  }}
+                >
+                  {note}
+                </li>
+              ))}
+            </ul>
+            {notes.length > 3 && (
+              <div
+                className="sap-notification-notes-more"
+                style={{
+                  fontSize: 12,
+                  marginTop: 2,
+                  color: 'var(--color-text-muted, #7A8CA3)',
+                  fontStyle: 'italic'
+                }}
+              >
+                and {notes.length - 3} more
+              </div>
+            )}
+          </div>
         )}
 
         {hint && <div className="sap-notification-hint">{hint}</div>}

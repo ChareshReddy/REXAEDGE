@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 import "./ui.css"
 
 const buttonVariants = cva(
-  "rx-btn inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "rx-btn inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-md)] text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:block [&_svg]:leading-none [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -76,7 +76,7 @@ const Button = React.forwardRef(function Button(
       ) : Icon ? (
         <Icon className="size-4" aria-hidden="true" />
       ) : null}
-      {children && <span>{children}</span>}
+      {children}
       {!isLoading && IconRight ? (
         <IconRight className="size-4" aria-hidden="true" />
       ) : null}

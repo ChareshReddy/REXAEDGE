@@ -328,7 +328,7 @@ export function BulkExecutionResultsView({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 8,
                   fontSize: 13,
                   fontWeight: 500,
                   height: 32,
@@ -340,7 +340,7 @@ export function BulkExecutionResultsView({
                   boxShadow: 'none'
                 }}
               >
-                <RefreshCw size={14} />
+                <RefreshCw size={16} style={{ display: 'block', lineHeight: 1 }} />
                 <span>Retry Failed Rows ({failedCount})</span>
               </button>
             )}
@@ -352,7 +352,7 @@ export function BulkExecutionResultsView({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 8,
                   fontSize: 13,
                   fontWeight: 500,
                   height: 32,
@@ -364,7 +364,7 @@ export function BulkExecutionResultsView({
                   boxShadow: 'none'
                 }}
               >
-                <Download size={14} />
+                <Download size={16} style={{ display: 'block', lineHeight: 1 }} />
                 <span>Export Results</span>
               </button>
             )}
@@ -389,7 +389,7 @@ export function BulkExecutionResultsView({
                   <col style={{ width: 220 }} />
                   <col style={{ width: 220 }} />
                   <col style={{ width: 65 }} />
-                  <col style={{ width: 105 }} />
+                  <col style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140 }} />
                   <col style={{ width: 'auto' }} />
                 </colgroup>
                 <thead>
@@ -398,7 +398,7 @@ export function BulkExecutionResultsView({
                     <th style={{ width: 220 }}>Source BOM</th>
                     <th style={{ width: 220 }}>Target BOM</th>
                     <th style={{ width: 65, textAlign: 'center' }}>Items</th>
-                    <th style={{ width: 105, textAlign: 'center' }}>Status</th>
+                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140, textAlign: 'center' }}>Status</th>
                     <th style={{ width: 'auto' }}>Message / Details</th>
                   </tr>
                 </thead>
@@ -448,7 +448,7 @@ export function BulkExecutionResultsView({
                             <span style={{ color: 'var(--color-text-muted, #7A8CA3)' }}>-</span>
                           )}
                         </td>
-                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }} className="col-status">
                           <BulkExecutionResultBadge status={normStatus} mode="copy" subStatus={row.subStatus} message={row.message} />
                         </td>
                         <td
@@ -478,7 +478,7 @@ export function BulkExecutionResultsView({
                   <col style={{ width: 55 }} />
                   <col style={{ width: 50 }} />
                   <col style={{ width: 120 }} />
-                  <col style={{ width: 105 }} />
+                  <col style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140 }} />
                   <col style={{ width: 'auto' }} />
                 </colgroup>
                 <thead>
@@ -489,7 +489,7 @@ export function BulkExecutionResultsView({
                     <th style={{ width: 55, textAlign: 'center' }}>Usage</th>
                     <th style={{ width: 50, textAlign: 'center' }}>Alt</th>
                     <th style={{ width: 120 }}>BOM Number</th>
-                    <th style={{ width: 105, textAlign: 'center' }}>Status</th>
+                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140, textAlign: 'center' }}>Status</th>
                     <th style={{ width: 'auto' }}>Message / Details</th>
                   </tr>
                 </thead>
@@ -512,7 +512,7 @@ export function BulkExecutionResultsView({
                         <td style={{ verticalAlign: 'top', paddingTop: 10, fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
                           {row.bomNumber || '-'}
                         </td>
-                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }} className="col-status">
                           <BulkExecutionResultBadge status={normStatus} mode="create" subStatus={row.subStatus} message={row.message} />
                         </td>
                         <td

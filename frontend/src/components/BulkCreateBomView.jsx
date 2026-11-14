@@ -737,19 +737,27 @@ export default function BulkCreateBomView({
   const handleExportResults = () => {
     if (!executionReport || !executionReport.results) return;
 
-    const rows = executionReport.results.map((r) => ({
-      'Sequence Num': r.sequenceNum,
-      'Material': r.material,
-      'Plant': r.plant,
-      'Usage': r.bomUsage,
-      'Alternative': r.alternativeBom,
-      'Created BOM Number': r.bomNumber || '-',
-      'Status': r.status,
-      'Components Count': r.componentsCount || 0,
-      'Message / Discrepancies': r.discrepancies?.length > 0
-        ? r.discrepancies.join(' | ')
-        : r.message
-    }));
+    const rows = executionReport.results.map((r) => {
+      const rowMessages = getExecutionRowMessages(r);
+      const noteText = (rowMessages.info && rowMessages.info.length > 0)
+        ? rowMessages.info.join(' | ')
+        : (Array.isArray(r.notes) ? r.notes.join(' | ') : (r.note || ''));
+
+      return {
+        'Sequence Num': r.sequenceNum,
+        'Material': r.material,
+        'Plant': r.plant,
+        'Usage': r.bomUsage,
+        'Alternative': r.alternativeBom,
+        'Created BOM Number': r.bomNumber || '-',
+        'Status': r.status,
+        'Components Count': r.componentsCount || 0,
+        'Notes': noteText || '-',
+        'Message / Discrepancies': r.discrepancies?.length > 0
+          ? r.discrepancies.join(' | ')
+          : r.message
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
@@ -1057,7 +1065,7 @@ export default function BulkCreateBomView({
                         <col style={{ width: '4%' }} />
                         <col style={{ width: '16%' }} />
                         <col style={{ width: '6%' }} />
-                        <col style={{ width: '22%' }} />
+                        <col style={{ width: '22%', minWidth: 'var(--table-col-status-min-width, 140px)' }} />
                       </colgroup>
                       <thead>
                         <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--table-header-bg)' }}>
@@ -1074,7 +1082,7 @@ export default function BulkCreateBomView({
                           <th className="col-item-cat col-cat" title="Item Category" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Cat</th>
                           <th className="col-component" title="Component Material" style={{ width: '16%', textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Component</th>
                           <th className="col-qty" title="Component Quantity" style={{ width: '6%', textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Qty</th>
-                          <th className="col-result" title="Validation Result" style={{ width: '22%', textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
+                          <th className="col-result" title="Validation Result" style={{ width: '22%', minWidth: 'var(--table-col-status-min-width, 140px)', textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1321,14 +1329,19 @@ export default function BulkCreateBomView({
                                       {/* 12. Result Badge only */}
                                       <td
                                         rowSpan={span}
-                                        className="col-result"
+                                        className="col-result col-result-cell"
+                                        title={messages.info && messages.info.length > 0 ? messages.info.join('\n') : undefined}
                                         style={{
                                           textAlign: 'center',
                                           padding: '6px 6px',
                                           border: '1px solid var(--sap-border-subtle, #e2e8f0)',
                                           background: '#ffffff',
                                           verticalAlign: 'middle',
-                                          boxSizing: 'border-box'
+                                          boxSizing: 'border-box',
+                                          minWidth: 'var(--table-col-status-min-width, 140px)',
+                                          overflow: 'visible',
+                                          textOverflow: 'clip',
+                                          whiteSpace: 'nowrap'
                                         }}
                                       >
                                         <BulkBomResultBadge status={normStatus} hasValidated={hasValidated} />

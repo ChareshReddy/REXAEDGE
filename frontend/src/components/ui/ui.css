@@ -612,8 +612,9 @@
   flex-direction: row !important;
   align-items: center !important;
   justify-content: space-between !important;
-  background-color: var(--card-header-bg, #7F9DB9) !important;
-  border-bottom: 1px solid var(--card-header-border, #6B8B9E) !important;
+  background-color: var(--card-header-bg, #E4EDF8) !important;
+  border-bottom: 1px solid var(--card-header-border, #DDE6F0) !important;
+  border-left: 4px solid var(--card-header-accent, #0B2D57) !important;
   box-sizing: border-box;
 }
 
@@ -804,12 +805,12 @@
 .rx-table-th {
   padding: var(--space-8) var(--space-12);
   font-weight: var(--font-weight-semibold);
-  color: var(--color-navy-900);
+  color: var(--table-header-text, #0B2D57);
   font-size: var(--font-size-13);
   white-space: nowrap;
   position: sticky;
   top: 0;
-  background-color: var(--table-header-bg, var(--color-blue-100));
+  background-color: var(--table-header-bg, #EDF2F9);
   z-index: 2;
 }
 

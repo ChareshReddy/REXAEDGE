@@ -107,7 +107,7 @@ export default function FioriPageHeader({
               <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''} rx-welcome-title`} style={{ fontSize: 24, fontWeight: 600 }}>
                 {title}
               </h1>
-              {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle" style={{ fontSize: 14, color: 'var(--page-header-subtext, rgba(255, 255, 255, 0.8))' }}>{subtitle}</p>}
+              {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle" style={{ fontSize: 14, color: 'var(--page-header-subtext, #4A5F77)' }}>{subtitle}</p>}
             </div>
             {extraTitleContent && (
               <div className="fiori-ph-actions-right" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>

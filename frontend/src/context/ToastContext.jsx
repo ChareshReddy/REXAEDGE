@@ -92,15 +92,17 @@ function ToastRootProvider({ children, suppressBanner = false }) {
     }
 
     const messages = Array.isArray(toastObj.messages) ? toastObj.messages : [];
+    const notes = Array.isArray(toastObj.notes) ? toastObj.notes : [];
     const errorRef = toastObj.errorRef || toastObj.error_ref || '';
     const hint = toastObj.hint || '';
     const code = toastObj.code || '';
 
-    // Normalized content key (same title, same text/messages)
+    // Normalized content key (same title, same text/messages/notes)
     const normTitle = String(title || '').trim().toLowerCase();
     const normMessage = String(message || '').trim().toLowerCase();
     const normMessages = messages.map((m) => String(m).trim().toLowerCase()).sort().join('|');
-    const contentKey = `${normTitle}:::${normMessage}:::${normMessages}`;
+    const normNotes = notes.map((n) => String(n).trim().toLowerCase()).sort().join('|');
+    const contentKey = `${normTitle}:::${normMessage}:::${normMessages}:::${normNotes}`;
 
     const now = Date.now();
 
@@ -171,6 +173,7 @@ function ToastRootProvider({ children, suppressBanner = false }) {
       title,
       message,
       messages,
+      notes,
       hint,
       code,
       errorRef,
@@ -496,6 +499,50 @@ function ToastItem({ toast: item, onRemove }) {
               </button>
             )}
           </>
+        )}
+
+        {item.notes && item.notes.length > 0 && (
+          <div className="sap-toast-notes-section" style={{ marginTop: (item.messages && item.messages.length > 0) || item.message ? 6 : 2 }}>
+            <ul
+              className="sap-toast-notes-list"
+              style={{
+                margin: 0,
+                padding: 0,
+                listStyle: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 3
+              }}
+            >
+              {(item.notes.length <= 3 ? item.notes : item.notes.slice(0, 3)).map((note, idx) => (
+                <li
+                  key={idx}
+                  className="sap-toast-note-item"
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    color: 'var(--color-text-secondary, #4A5F77)',
+                    fontFamily: 'var(--font-sans)'
+                  }}
+                >
+                  {note}
+                </li>
+              ))}
+            </ul>
+            {item.notes.length > 3 && (
+              <div
+                className="sap-toast-notes-more"
+                style={{
+                  fontSize: 12,
+                  marginTop: 2,
+                  color: 'var(--color-text-muted, #7A8CA3)',
+                  fontStyle: 'italic'
+                }}
+              >
+                and {item.notes.length - 3} more
+              </div>
+            )}
+          </div>
         )}
 
         {item.hint && (

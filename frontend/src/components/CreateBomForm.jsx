@@ -446,7 +446,6 @@ export default function CreateBomForm({
                 Source
               </Badge>
             }
-            accentTop="3px solid var(--color-blue-600)"
             className="w-full h-full flex flex-col"
             bodyClassName="flex flex-col rx-copy-card-body"
           >
@@ -549,24 +548,29 @@ export default function CreateBomForm({
                   onClick={handleValidateSource}
                   disabled={isValidating}
                   className={cn(
-                    "rx-btn rx-btn-sm rx-btn-validate justify-center gap-1.5 text-xs w-auto shrink-0",
+                    "rx-btn rx-btn-sm rx-btn-validate justify-center text-xs w-auto shrink-0",
                     isValidated && "is-validated"
                   )}
-                  style={{ height: 'var(--size-button-sm-height, 32px)' }}
+                  style={{
+                    height: 'var(--size-button-sm-height, 32px)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
                 >
                 {isValidating ? (
                   <>
-                    <Loader2 size={14} className="sap-spin text-[var(--color-blue-600)]" />
+                    <Loader2 size={16} className="sap-spin text-[var(--color-blue-600)]" style={{ display: 'block', lineHeight: 1 }} />
                     <span>Validating BOM in SAP...</span>
                   </>
                 ) : isValidated ? (
                   <>
-                    <CheckCircle2 size={14} className="text-[var(--color-success)]" />
+                    <CheckCircle2 size={16} className="text-[var(--color-success)]" style={{ display: 'block', lineHeight: 1 }} />
                     <span>BOM Validated</span>
                   </>
                 ) : (
                   <>
-                    <ShieldCheck size={14} className="text-[var(--color-blue-600)]" />
+                    <ShieldCheck size={16} className="text-[var(--color-blue-600)]" style={{ display: 'block', lineHeight: 1 }} />
                     <span>Validate BOM</span>
                   </>
                 )}
@@ -596,7 +600,6 @@ export default function CreateBomForm({
                 Target
               </Badge>
             }
-            accentTop="3px solid var(--color-blue-600)"
             className="w-full h-full flex flex-col"
             bodyClassName="flex flex-col rx-copy-card-body"
           >

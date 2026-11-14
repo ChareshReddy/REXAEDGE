@@ -932,23 +932,31 @@ export default function BulkBomView({
   const handleExportResults = () => {
     if (parsedRows.length === 0) return;
 
-    const exportData = parsedRows.map((r, i) => ({
-      'Row #': i + 1,
-      'Source Material': r.sourceMaterial,
-      'Source Plant': r.sourcePlant,
-      'Source Usage': r.sourceUsage,
-      'Source Alt BOM': r.sourceAltBom,
-      'Target Material': r.targetMaterial,
-      'Target Plant': r.targetPlant,
-      'Target Usage': r.targetUsage,
-      'Target Alt BOM': r.targetAltBom,
-      'Components': r.componentCount || '-',
-      'Hierarchy Levels': r.totalLevels || 1,
-      'Total BOMs Created': r.totalBoms || 1,
-      'Execution Status': r.status,
-      'SAP BOM Number': r.bomNumber || '-',
-      'SAP Message': r.message
-    }));
+    const exportData = parsedRows.map((r, i) => {
+      const messages = getBomMessages(r);
+      const noteText = (messages.info && messages.info.length > 0)
+        ? messages.info.join(' | ')
+        : (r.notes ? String(r.notes) : '');
+
+      return {
+        'Row #': i + 1,
+        'Source Material': r.sourceMaterial,
+        'Source Plant': r.sourcePlant,
+        'Source Usage': r.sourceUsage,
+        'Source Alt BOM': r.sourceAltBom,
+        'Target Material': r.targetMaterial,
+        'Target Plant': r.targetPlant,
+        'Target Usage': r.targetUsage,
+        'Target Alt BOM': r.targetAltBom,
+        'Components': r.componentCount || '-',
+        'Hierarchy Levels': r.totalLevels || 1,
+        'Total BOMs Created': r.totalBoms || 1,
+        'Execution Status': r.status,
+        'SAP BOM Number': r.bomNumber || '-',
+        'Notes': noteText || '-',
+        'SAP Message': r.message
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     ws['!cols'] = [
@@ -1193,7 +1201,7 @@ export default function BulkBomView({
                         <col style={{ width: '35%' }} />
                         <col style={{ width: '35%' }} />
                         <col style={{ width: '9%' }} />
-                        <col style={{ width: '16%' }} />
+                        <col style={{ width: '16%', minWidth: 'var(--table-col-status-min-width, 140px)' }} />
                       </colgroup>
                       <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
                         <tr style={{ backgroundColor: 'var(--table-header-bg)' }}>
@@ -1201,7 +1209,7 @@ export default function BulkBomView({
                           <th style={{ width: '35%' }}>Source BOM</th>
                           <th style={{ width: '35%' }}>Target BOM</th>
                           <th style={{ width: '9%', textAlign: 'center' }}>Items</th>
-                          <th style={{ width: '16%', textAlign: 'center' }}>Result</th>
+                          <th className="col-result" style={{ width: '16%', minWidth: 'var(--table-col-status-min-width, 140px)', textAlign: 'center' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1289,12 +1297,17 @@ export default function BulkBomView({
                                   )}
                                 </td>
                                 <td
-                                  className="col-result"
+                                  className="col-result col-result-cell"
+                                  title={messages.info && messages.info.length > 0 ? messages.info.join('\n') : undefined}
                                   style={{
                                     textAlign: 'center',
                                     padding: '6px 8px',
                                     verticalAlign: 'middle',
-                                    boxSizing: 'border-box'
+                                    boxSizing: 'border-box',
+                                    minWidth: 'var(--table-col-status-min-width, 140px)',
+                                    overflow: 'visible',
+                                    textOverflow: 'clip',
+                                    whiteSpace: 'nowrap'
                                   }}
                                 >
                                   <BulkBomResultBadge status={normStatus} hasValidated={hasValidated} />

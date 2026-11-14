@@ -17,6 +17,7 @@ import {
 import {
   cleanDiagnosticMessage,
   deriveMessageSeverity,
+  isMarcExtensionMessage,
   getBomRowMessages,
   FOLLOW_ON_TECHNICAL_REGEX,
   classifyBomStatus,
@@ -28,6 +29,7 @@ import {
 export {
   cleanDiagnosticMessage,
   deriveMessageSeverity,
+  isMarcExtensionMessage,
   getBomRowMessages,
   FOLLOW_ON_TECHNICAL_REGEX,
   classifyBomStatus,
@@ -234,14 +236,14 @@ export function BulkFileInfoBar({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 8,
               fontSize: 'var(--font-size-12, 12px)',
               height: 'var(--size-button-sm-height, 32px)',
               padding: '0 12px',
               borderRadius: 'var(--radius-md, 8px)'
             }}
           >
-            <Download size={13} />
+            <Download size={16} style={{ display: 'block', lineHeight: 1 }} />
             <span>Template</span>
           </button>
         )}
@@ -310,8 +312,9 @@ export function BulkDataPreviewSection({
           minHeight: 48,
           maxHeight: 48,
           padding: '0 16px',
-          backgroundColor: 'var(--card-header-bg, #7F9DB9)',
-          borderBottom: '1px solid var(--card-header-border, #6B8B9E)',
+          backgroundColor: 'var(--card-header-bg, #E4EDF8)',
+          borderBottom: '1px solid var(--card-header-border, #DDE6F0)',
+          borderLeft: '4px solid var(--card-header-accent, #0B2D57)',
           width: '100%',
           boxSizing: 'border-box'
         }}
@@ -1118,6 +1121,10 @@ export function BulkBomMessageRow({
   // Never render success notes as message lines
   const displayItems = messages.all.filter((item) => item && item.severity !== 'success');
   if (displayItems.length === 0) return null;
+
+  // Rows whose only message is an informational note (e.g. MARC extension) do NOT render a message line in the table
+  const hasActionableMessages = displayItems.some((item) => item.severity === 'error' || item.severity === 'warning' || item.severity === 'skipped');
+  if (!hasActionableMessages) return null;
 
   return (
     <tr className="bom-messages-row" key={`bom-${bomKey}-messages`}>

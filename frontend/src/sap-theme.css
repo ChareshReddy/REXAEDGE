@@ -510,13 +510,13 @@ table.sap-data-table {
 .sap-admin-compact-table th,
 table.sap-data-table th,
 .sap-diff-table th {
-  background-color: var(--table-header-bg, var(--color-blue-100)) !important;
+  background-color: var(--table-header-bg, #EDF2F9) !important;
   height: var(--sap-table-header-height) !important;
   font-size: var(--sap-size-table) !important;
   font-family: var(--sap-font-family) !important;
   font-weight: 600 !important;
-  color: var(--color-navy-900) !important;
-  border: var(--sap-border-width) solid var(--sap-border-color) !important;
+  color: var(--table-header-text, #0B2D57) !important;
+  border: var(--sap-border-width) solid var(--table-header-border, #DDE6F0) !important;
   padding: 0 var(--sap-table-cell-padding) !important;
   text-align: left;
   vertical-align: middle !important;
@@ -1061,13 +1061,13 @@ button.sap-btn-navy-login:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-/* Page Header Band (flat solid #0B2D57, text #FFFFFF) */
+/* Page Header Band (flat light blue #EAF1FB, text #0B2D57) */
 .fiori-ph {
-  background: var(--page-header-bg, #0B2D57) !important;
-  color: var(--page-header-text, #FFFFFF) !important;
+  background: var(--page-header-bg, #EAF1FB) !important;
+  color: var(--page-header-text, #0B2D57) !important;
   padding: 0 !important;
   margin: 0 !important;
-  border-bottom: 1px solid var(--color-navy-800, #05396B) !important;
+  border-bottom: 1px solid var(--color-border, #DDE6F0) !important;
   box-shadow: none !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1106,7 +1106,7 @@ button.sap-btn-navy-login:active:not(:disabled) {
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
-  color: var(--page-header-subtext, rgba(255, 255, 255, 0.8)) !important;
+  color: var(--page-header-subtext, #4A5F77) !important;
   line-height: 1.4 !important;
   text-align: left !important;
   align-self: flex-start !important;
@@ -1837,6 +1837,9 @@ td.rx-audit-col-actions > div {
 .sap-user-avatar-circle {
   width: 32px !important;
   height: 32px !important;
+  border-radius: 50% !important;
+  background-color: var(--color-navy-900, #00204E) !important;
+  color: #ffffff !important;
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
@@ -2242,14 +2245,14 @@ button.rx-btn {
   color: var(--card-header-text, #0B2D57) !important;
 }
 
-/* Add Component button on card header band: solid primary navy */
+/* Add Component button on card header band: solid primary navy, white text & icon, no border */
 .rx-form-section-header-tinted .sap-btn-add-component,
 .rx-form-section-header-tinted .rx-btn-add-component,
 .rx-btn-add-component,
 .sap-btn-add-component {
   background-color: var(--color-navy-900, #00204E) !important;
   border: none !important;
-  color: var(--color-text-inverse, #FFFFFF) !important;
+  color: #FFFFFF !important;
   height: var(--size-button-sm-height, 32px) !important;
   padding: 0 var(--space-12, 12px) !important;
   font-size: 13px !important;
@@ -2258,7 +2261,7 @@ button.rx-btn {
   box-shadow: none !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: var(--space-6, 6px) !important;
+  gap: 8px !important;
 }
 
 .rx-form-section-header-tinted .sap-btn-add-component:hover:not(:disabled),
@@ -2267,7 +2270,7 @@ button.rx-btn {
 .sap-btn-add-component:hover:not(:disabled) {
   background-color: var(--color-navy-800, #05396B) !important;
   border: none !important;
-  color: var(--color-text-inverse, #FFFFFF) !important;
+  color: #FFFFFF !important;
 }
 
 .rx-form-section-header-tinted .sap-btn-add-component:focus-visible,
@@ -2290,8 +2293,24 @@ button.rx-btn {
 .rx-form-section-header-tinted .rx-btn-add-component svg,
 .rx-btn-add-component svg,
 .sap-btn-add-component svg {
-  color: var(--color-text-inverse, #FFFFFF) !important;
-  stroke: var(--color-text-inverse, #FFFFFF) !important;
+  display: block !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+/* Card Header Bands: light blue shade with dark navy left accent line */
+.rx-form-section-header-tinted,
+.rx-bulk-preview-header,
+.rx-card-tinted-header > .rx-card-header,
+.rx-card-tinted-header > .rx-form-section-header {
+  background-color: var(--card-header-bg, #E4EDF8) !important;
+  border-bottom: 1px solid var(--card-header-border, #DDE6F0) !important;
+  border-left: 4px solid var(--card-header-accent, #0B2D57) !important;
+  box-sizing: border-box !important;
 }
 
 /* Card Header title and text on the band: #0B2D57 (contrast >= 4.5:1) */
@@ -2329,6 +2348,38 @@ input.sap-form-input,
 [role="dialog"] {
   border-radius: var(--radius-xl, 6px) !important;
   box-shadow: var(--shadow-modal) !important;
+}
+
+/* Status and Result badge cells: never truncate, no ellipsis, no hidden overflow */
+.sap-table td.col-status,
+.sap-table td.col-result,
+.sap-table td.col-status-cell,
+.sap-table td.col-result-cell,
+.sap-table td:has(.sap-badge),
+.sap-bulk-table td.col-status,
+.sap-bulk-table td.col-result,
+.sap-bulk-table td.col-status-cell,
+.sap-bulk-table td.col-result-cell,
+.sap-bulk-table td:has(.sap-badge),
+.col-status,
+.col-result,
+.col-status-cell,
+.col-result-cell {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+}
+
+.sap-badge,
+.rx-badge,
+.col-status .sap-badge,
+.col-result .sap-badge,
+.col-status-cell .sap-badge,
+.col-result-cell .sap-badge {
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  max-width: none !important;
 }
 
 /* Badges: 4px radius (not pill, except dot indicators) */
