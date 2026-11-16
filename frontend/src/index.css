@@ -5602,11 +5602,21 @@ button.fiori-bc-link.sap-button:hover {
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
-.fiori-ph .fiori-home-tab:hover,
-.fiori-ph .sap-admin-nav-tab:hover {
-  color: #FFFFFF !important;
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
+.fiori-ph .fiori-home-tab:hover:not(.active),
+.fiori-ph .sap-admin-nav-tab:hover:not(.active),
+.fiori-ph .fiori-home-tab:focus-visible:not(.active),
+.fiori-ph .sap-admin-nav-tab:focus-visible:not(.active) {
+  color: var(--page-header-text, #0B2D57) !important;
+  background-color: var(--color-blue-100, #DCE8F1) !important;
+  border-color: var(--color-border, #DDE6F0) !important;
+}
+
+.fiori-ph .fiori-home-tab:hover:not(.active) .fiori-home-tab-badge,
+.fiori-ph .sap-admin-nav-tab:hover:not(.active) .sap-admin-tab-badge,
+.fiori-ph .fiori-home-tab:focus-visible:not(.active) .fiori-home-tab-badge,
+.fiori-ph .sap-admin-nav-tab:focus-visible:not(.active) .sap-admin-tab-badge {
+  background: #FFFFFF !important;
+  color: var(--page-header-text, #0B2D57) !important;
 }
 
 .fiori-ph .fiori-home-tab.active,
@@ -5626,8 +5636,8 @@ button.fiori-bc-link.sap-button:hover {
 
 .fiori-ph .fiori-home-tab:not(.active) .fiori-home-tab-badge,
 .fiori-ph .sap-admin-nav-tab:not(.active) .sap-admin-tab-badge {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #FFFFFF !important;
+  background: var(--color-blue-100, #DCE8F1) !important;
+  color: var(--page-header-text, #0B2D57) !important;
 }
 
 @media (max-width: 768px) {
