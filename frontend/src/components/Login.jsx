@@ -182,6 +182,7 @@ export default function Login({ onLoginSuccess }) {
                     placeholder="Ex. user@nextitpoint.com"
                     autoComplete="username"
                     inputMode="email"
+                    autoFocus
                     required
                     disabled={isLoading}
                     className="lg-input"
