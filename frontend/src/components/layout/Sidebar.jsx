@@ -304,9 +304,9 @@ export function Sidebar({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          height: 'calc(100vh - 64px)',
+          height: '100%',
           position: 'sticky',
-          top: 64,
+          top: 0,
           zIndex: isOpenMobile ? 999 : 99,
           boxSizing: 'border-box',
           transition: 'width var(--transition-normal, 200ms ease), min-width var(--transition-normal, 200ms ease)'
