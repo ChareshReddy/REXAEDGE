@@ -592,7 +592,6 @@ export default function BulkBomCopyModal({
                     type="button"
                     className="rx-btn rx-btn-primary"
                     style={{ height: 'var(--size-button-sm-height, 32px)', padding: '0 14px', borderRadius: 'var(--radius-md, 8px)', fontSize: 'var(--font-size-12, 12px)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
                     onClick={(e) => {
                       e.stopPropagation();
                       fileInputRef.current?.click();

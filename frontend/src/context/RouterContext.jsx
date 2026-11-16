@@ -105,15 +105,6 @@ export function RouterProvider({ initialPath, children }) {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     const mainEl = document.querySelector('.sap-assistant-layout') || document.querySelector('main');
     if (mainEl) { mainEl.scrollTop = 0; }
-
-    // Focus management for accessibility
-    setTimeout(() => {
-      const heading = document.querySelector('h1, h2, [role="heading"], main');
-      if (heading) {
-        heading.setAttribute('tabindex', '-1');
-        heading.focus({ preventScroll: true });
-      }
-    }, 50);
   }, []);
 
   // Listen to popstate (browser back/forward buttons)

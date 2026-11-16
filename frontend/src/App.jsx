@@ -73,7 +73,13 @@ import {
   resolveLegacyRedirect,
   getRouteByPath,
   getRouteById,
-  routeTo
+  routeTo,
+  isKnownRoute,
+  isProtectedRoute,
+  isAuthRoute,
+  saveIntendedPath,
+  popIntendedPath,
+  clearIntendedPath
 } from './config/routes';
 import AccessDeniedView from './components/AccessDeniedView';
 import NotFoundView from './components/NotFoundView';
@@ -106,6 +112,7 @@ function AppContent({
     if (initialActiveTab === 'launchpad' && (!initialLaunchpadSubView || initialLaunchpadSubView === 'home')) return 'home';
     if (initialActiveTab && initialActiveTab !== 'home') return initialActiveTab;
     const path = normalizePath(router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '/home'));
+    if (!isKnownRoute(path) && path !== '/' && !isAuthRoute(path)) return 'not_found';
     if (path === '/dev/design-system') return import.meta.env.DEV ? 'dev_design_system' : 'not_found';
     if (path.startsWith('/admin')) return 'admin';
     if (path === '/products/bom/create/single') return 'create_bom';
@@ -118,7 +125,7 @@ function AppContent({
     if (path === '/products' || path === '/launchpad') return 'home';
     if (path.startsWith('/products')) return 'launchpad';
     if (path === '/home' || path === '/') return 'home';
-    if (path === '/about' || path === '/contact' || path === '/signin') return 'home';
+    if (path === '/about' || path === '/contact' || isAuthRoute(path)) return 'home';
     return 'not_found';
   };
 
@@ -406,7 +413,7 @@ function AppContent({
         setIsHeaderContactOpen(true);
         return;
       }
-      if (path === '/signin') {
+      if (isAuthRoute(path)) {
         return;
       }
       if (path === '/dev/design-system') {
@@ -418,11 +425,13 @@ function AppContent({
         return;
       }
 
-      // Default root path: map to /home
+      // Default root path: map to /home if user is logged in
       if (path === '/' || path === '') {
-        setActiveTab('home');
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({ tab: 'home' }, '', '/home');
+        if (user) {
+          setActiveTab('home');
+          if (window.history && window.history.replaceState && window.location.pathname !== '/home') {
+            window.history.replaceState({ tab: 'home' }, '', '/home');
+          }
         }
         return;
       }
@@ -453,25 +462,86 @@ function AppContent({
 
     const currentPath = normalizePath(window.location.pathname);
 
-    // Unauthenticated user attempting to access protected route
-    if (!user) {
-      if (currentPath !== '/signin') {
-        const returnTarget = currentPath !== '/' ? currentPath : '/home';
+    // 1. Root path '/': /home if logged in, otherwise /signin
+    if (currentPath === '/' || currentPath === '') {
+      if (user) {
         if (router?.navigate) {
-          router.navigate(`/signin?returnTo=${encodeURIComponent(returnTarget)}`, { replace: true });
+          router.navigate('/home', { replace: true });
+        }
+      } else {
+        if (router?.navigate) {
+          router.navigate('/signin', { replace: true });
         }
       }
       return;
     }
 
-    // Authenticated user landing on /signin or root /
-    if (currentPath === '/signin' || currentPath === '/') {
+    // 2. Unauthenticated user
+    if (!user) {
+      // If already on /signin, ensure no query string exists
+      if (currentPath === '/signin') {
+        if (typeof window !== 'undefined' && window.location.search) {
+          const sp = new URLSearchParams(window.location.search);
+          const rTo = sp.get('returnTo');
+          if (rTo && isInternalPath(rTo) && !isAuthRoute(rTo)) {
+            saveIntendedPath(rTo);
+          }
+          if (router?.navigate) {
+            router.navigate('/signin', { replace: true });
+          } else {
+            window.history.replaceState({}, '', '/signin');
+          }
+        }
+        return;
+      }
+
+      // If on other auth route (e.g. /forgot-password), ensure clean URL
+      if (isAuthRoute(currentPath)) {
+        if (typeof window !== 'undefined' && window.location.search) {
+          if (router?.navigate) {
+            router.navigate(currentPath, { replace: true });
+          } else {
+            window.history.replaceState({}, '', currentPath);
+          }
+        }
+        return;
+      }
+
+      // If on an unknown route, show 404 page (do not redirect to /signin)
+      if (!isKnownRoute(currentPath)) {
+        setActiveTab('not_found');
+        return;
+      }
+
+      // Protected route: save intended path and redirect to clean /signin
+      // Rule: Not logged in on a protected page → redirect to /signin (use replace, so Back doesn't loop)
+      if (isProtectedRoute(currentPath)) {
+        saveIntendedPath(currentPath);
+        if (router?.navigate) {
+          router.navigate('/signin', { replace: true });
+        }
+        return;
+      }
+
+      return;
+    }
+
+    // 3. Authenticated user landing on /signin or other auth page
+    // Rule: Logged in on /signin → redirect to the home/default page
+    if (isAuthRoute(currentPath)) {
       if (router?.navigate) {
         router.navigate('/home', { replace: true });
       }
       return;
     }
-  }, [user, isCheckingAuth, router]);
+
+    // 4. Authenticated user on unknown route
+    // Rule: Unknown URLs → 404 page
+    if (!isKnownRoute(currentPath)) {
+      setActiveTab('not_found');
+      return;
+    }
+  }, [user, isCheckingAuth, router, router?.pathname]);
 
   // Verify active session on initial mount
   useEffect(() => {
@@ -583,18 +653,22 @@ function AppContent({
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
     if (savedId) prefetchPlants(savedId);
 
-    if (typeof window !== 'undefined') {
+    // Retrieve and clear saved intended destination from client memory / sessionStorage
+    let destination = popIntendedPath();
+    if (!destination && typeof window !== 'undefined') {
       const query = new URLSearchParams(window.location.search);
       const returnTo = query.get('returnTo');
-      if (returnTo && isInternalPath(returnTo) && returnTo !== '/signin') {
-        if (router?.navigate) {
-          router.navigate(returnTo, { replace: true });
-        }
-      } else {
-        if (router?.navigate) {
-          router.navigate(ROUTE_IDS.HOME, { replace: true });
-        }
+      if (returnTo && isInternalPath(returnTo) && !isAuthRoute(returnTo)) {
+        destination = returnTo;
       }
+    }
+
+    if (!destination || !isInternalPath(destination) || isAuthRoute(destination)) {
+      destination = ROUTE_IDS.HOME;
+    }
+
+    if (router?.navigate) {
+      router.navigate(destination, { replace: true });
     }
   };
 
@@ -602,6 +676,9 @@ function AppContent({
     toast.clearAll();
     try {
       localStorage.removeItem('rexa_sidebar_expanded_groups');
+    } catch {}
+    try {
+      clearIntendedPath();
     } catch {}
     try {
       await logoutUser();
@@ -791,7 +868,20 @@ function AppContent({
     );
   }
 
+  const currentPath = normalizePath(router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : ''));
+  const isUnknown = !isKnownRoute(currentPath) || currentPath === '/404' || activeTab === 'not_found';
+
   if (!user) {
+    if (isUnknown && currentPath !== '/' && !isAuthRoute(currentPath)) {
+      return (
+        <ToastProvider suppressBanner={true}>
+          <div className="sap-login-viewport" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
+            <NotFoundView pathname={currentPath} />
+          </div>
+        </ToastProvider>
+      );
+    }
+
     return (
       <ToastProvider suppressBanner={true}>
         <Login authConfig={authConfig} onLoginSuccess={handleLoginSuccess} />

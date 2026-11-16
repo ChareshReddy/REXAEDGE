@@ -10,6 +10,8 @@
 
 export const ROUTE_IDS = Object.freeze({
   SIGN_IN: 'signin',
+  FORGOT_PASSWORD: 'forgotPassword',
+  RESET_PASSWORD: 'resetPassword',
   HOME: 'home',
   ABOUT: 'about',
   CONTACT: 'contact',
@@ -41,6 +43,22 @@ export const ROUTES = Object.freeze({
     path: '/signin',
     title: 'Sign In · RexaEdge',
     breadcrumb: 'Sign In',
+    access: 'public',
+    parent: null
+  },
+  [ROUTE_IDS.FORGOT_PASSWORD]: {
+    id: ROUTE_IDS.FORGOT_PASSWORD,
+    path: '/forgot-password',
+    title: 'Forgot Password · RexaEdge',
+    breadcrumb: 'Forgot Password',
+    access: 'public',
+    parent: null
+  },
+  [ROUTE_IDS.RESET_PASSWORD]: {
+    id: ROUTE_IDS.RESET_PASSWORD,
+    path: '/reset-password',
+    title: 'Reset Password · RexaEdge',
+    breadcrumb: 'Reset Password',
     access: 'public',
     parent: null
   },
@@ -396,4 +414,84 @@ export function getBreadcrumbsForRoute(routeId) {
   }
 
   return crumbs;
+}
+
+/**
+ * Client-Side Auth & Intended Route State Management
+ */
+const INTENDED_PATH_STORAGE_KEY = 'rexa_intended_url';
+let inMemoryIntendedPath = null;
+
+export function isAuthRoute(pathname) {
+  const normalized = normalizePath(pathname);
+  return normalized === '/signin' || normalized === '/forgot-password' || normalized === '/reset-password';
+}
+
+export function isKnownRoute(pathname) {
+  const normalized = normalizePath(pathname);
+  if (normalized === '/' || normalized === '') return true;
+  if (resolveLegacyRedirect(normalized)) return true;
+  const match = Object.values(ROUTES).find((r) => r.path === normalized);
+  if (match) return true;
+  if (normalized.startsWith('/admin')) return true;
+  return false;
+}
+
+export function isProtectedRoute(pathname) {
+  const normalized = normalizePath(pathname);
+  if (normalized === '/' || normalized === '') return false;
+  if (isAuthRoute(normalized)) return false;
+  if (normalized === '/404' || normalized === '/access-denied') return false;
+
+  const target = resolveLegacyRedirect(normalized) || normalized;
+  const route = Object.values(ROUTES).find((r) => r.path === target);
+  if (route) {
+    return route.access !== 'public';
+  }
+  if (normalized.startsWith('/admin')) {
+    return true;
+  }
+  return false;
+}
+
+export function saveIntendedPath(path) {
+  if (typeof path !== 'string') return;
+  const clean = path.split('?')[0].trim();
+  if (isInternalPath(clean) && !isAuthRoute(clean) && clean !== '/' && clean !== '') {
+    inMemoryIntendedPath = clean;
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(INTENDED_PATH_STORAGE_KEY, clean);
+      }
+    } catch {}
+  }
+}
+
+export function popIntendedPath() {
+  let target = inMemoryIntendedPath;
+  inMemoryIntendedPath = null;
+
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const stored = sessionStorage.getItem(INTENDED_PATH_STORAGE_KEY);
+      sessionStorage.removeItem(INTENDED_PATH_STORAGE_KEY);
+      if (stored && isInternalPath(stored) && !isAuthRoute(stored)) {
+        target = stored;
+      }
+    }
+  } catch {}
+
+  if (target && isInternalPath(target) && !isAuthRoute(target) && target !== '/') {
+    return target;
+  }
+  return null;
+}
+
+export function clearIntendedPath() {
+  inMemoryIntendedPath = null;
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem(INTENDED_PATH_STORAGE_KEY);
+    }
+  } catch {}
 }
