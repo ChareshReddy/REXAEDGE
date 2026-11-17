@@ -490,7 +490,12 @@
   background-color: var(--color-blue-50, #EEF4F9);
 }
 
-@media (max-width: 899.98px) {
+@media (max-width: 1024px) {
+  .sap-mobile-menu-btn,
+  .sap-mobile-dropdown {
+    display: none !important;
+  }
+
   .rx-topbar-sidebar-toggle {
     display: inline-flex !important;
   }
@@ -512,6 +517,129 @@
 
   .rx-sidebar.rx-sidebar-mobile-open {
     transform: translateX(0) !important;
+  }
+
+  .sap-page-container {
+    padding-left: var(--page-gutter, 16px) !important;
+    padding-right: var(--page-gutter, 16px) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .sap-shell-header {
+    padding: 0 12px !important;
+    gap: 8px !important;
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .sap-mobile-menu-btn,
+  .sap-mobile-dropdown {
+    display: none !important;
+  }
+
+  .sap-shell-header-left {
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sap-brand-logo-container {
+    height: 28px !important;
+    max-height: 28px !important;
+  }
+
+  .sap-brand-logo-img {
+    height: 28px !important;
+    max-height: 28px !important;
+    max-width: 100px !important;
+  }
+
+  .sap-shell-actions {
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+
+  .rx-topbar-search-text,
+  .rx-topbar-search-kbd {
+    display: none !important;
+  }
+
+  .rx-topbar-search-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+
+  .sap-system-label {
+    display: none !important;
+  }
+
+  .sap-system-select-wrapper {
+    gap: 4px !important;
+    max-width: 140px !important;
+  }
+
+  .sap-system-select,
+  select.sap-system-select,
+  .sap-system-static-name {
+    max-width: 75px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+  }
+
+  .rx-server-env-badge {
+    font-size: 10px !important;
+    padding: 1px 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .rx-single-bulk-switch {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .rx-switch-btn {
+    flex: 1 !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  .fiori-ph-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .fiori-ph-actions-right {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: stretch !important;
+  }
+
+  .fiori-ph-breadcrumbs-bar {
+    padding: 8px 12px 4px !important;
+  }
+
+  .fiori-bc {
+    white-space: nowrap !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .fiori-bc::-webkit-scrollbar {
+    display: none;
   }
 }
 

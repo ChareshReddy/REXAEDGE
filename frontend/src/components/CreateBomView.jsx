@@ -1378,7 +1378,42 @@ export default function CreateBomView({
           title="Confirm BOM Creation"
           maxWidth={560}
           width="min(560px, calc(100vw - 32px))"
+          style={{ maxHeight: '90vh' }}
           cardClassName="confirm-bom-creation-modal-card"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+              <button
+                type="button"
+                className="sap-button"
+                disabled={isExecuting}
+                onClick={() => {
+                  if (!isExecuting) setIsConfirmModalOpen(false);
+                }}
+                style={{ height: 32, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                ref={confirmButtonRef}
+                autoFocus
+                data-autofocus
+                className="sap-button primary"
+                disabled={isExecuting || (isProd && confirmText !== 'CONFIRM')}
+                onClick={handleExecuteCreate}
+                style={{ height: 32, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
+              >
+                {isExecuting ? (
+                  <>
+                    <Loader2 size={16} className="sap-spin" />
+                    <span>Creating BOM in SAP...</span>
+                  </>
+                ) : (
+                  'Confirm & Create'
+                )}
+              </button>
+            </div>
+          }
         >
           <div style={{ padding: '4px 0' }} data-testid="confirm-bom-modal-content">
             <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-body, #334155)', lineHeight: 1.5 }}>
@@ -1396,56 +1431,56 @@ export default function CreateBomView({
                 padding: '12px 14px',
                 background: 'var(--sap-surface-subtle, #f8fafc)',
                 border: '1px solid var(--sap-border-color, #e2e8f0)',
-                borderRadius: 'var(--sap-radius-sm, 6px)',
+                borderRadius: 'var(--radius-md, 8px)',
                 marginBottom: 16,
                 fontSize: 12.5
               }}
             >
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Material</span>
-                <span data-testid="confirm-detail-material" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.material || '-'}
+                <span data-testid="confirm-detail-material" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {(headerData.material || '-').toUpperCase()}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Plant</span>
-                <span data-testid="confirm-detail-plant" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.plant || '-'}
+                <span data-testid="confirm-detail-plant" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {(headerData.plant || '-').toUpperCase()}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM usage</span>
-                <span data-testid="confirm-detail-usage" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.bomUsage || '-'}
+                <span data-testid="confirm-detail-usage" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {headerData.bomUsage || '1'}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Alternative</span>
-                <span data-testid="confirm-detail-alternative" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.alternativeBom || '-'}
+                <span data-testid="confirm-detail-alternative" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {(headerData.alternativeBom || '01').toUpperCase()}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Valid from</span>
-                <span data-testid="confirm-detail-validfrom" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                <span data-testid="confirm-detail-validfrom" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
                   {headerData.validFrom || '-'}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Base quantity</span>
-                <span data-testid="confirm-detail-baseqty" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {`${headerData.baseQty || '1'} ${resolvedBaseUnit || preflightData?.baseUnit || ''}`.trim()}
+                <span data-testid="confirm-detail-baseqty" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
+                  {`${headerData.baseQty || '1'} ${(resolvedBaseUnit || preflightData?.baseUnit || '').toUpperCase()}`.trim()}
                 </span>
               </div>
               <div>
                 <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM status</span>
-                <span data-testid="confirm-detail-status" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0f172a)' }}>
+                <span data-testid="confirm-detail-status" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
                   {headerData.bomStatus || '01'}
                 </span>
               </div>
             </div>
 
-            {/* Components list as short monospace rows (max 6 visible with scroll inside) */}
+            {/* Components section: aligned list with sticky header row */}
             <div style={{ marginBottom: 16 }}>
               <div
                 data-testid="confirm-components-heading"
@@ -1462,38 +1497,69 @@ export default function CreateBomView({
                 className="confirm-bom-components-container"
                 data-testid="confirm-bom-components-container"
                 style={{
-                  maxHeight: 180,
+                  maxHeight: 260,
                   overflowY: 'auto',
                   overflowX: 'hidden',
-                  border: '1px solid var(--sap-border-color, #e2e8f0)',
-                  borderRadius: 'var(--sap-radius-sm, 6px)',
-                  background: 'var(--sap-surface-subtle, #f8fafc)',
-                  padding: 4
+                  border: '1px solid var(--sap-border-color, #dde6f0)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  background: 'var(--sap-surface-subtle, #f8fafc)'
                 }}
               >
+                {/* Sticky Header Row */}
+                <div
+                  style={{
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 2,
+                    display: 'grid',
+                    gridTemplateColumns: '48px 1fr 60px 85px 105px',
+                    gap: 8,
+                    padding: '7px 10px',
+                    background: 'var(--color-blue-100, #EAF1FB)',
+                    borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: 'var(--sap-text-secondary, #475569)',
+                    lineHeight: 1.2
+                  }}
+                >
+                  <div>Item</div>
+                  <div>Component</div>
+                  <div>Quantity</div>
+                  <div>Item category</div>
+                  <div>Storage location</div>
+                </div>
+
+                {/* Rows */}
                 {components.map((c, idx) => {
                   const itemNo = c.itemNo || String((idx + 1) * 10).padStart(4, '0');
-                  const compMat = (c.component || '-').trim();
+                  const compMat = (c.component || '-').trim().toUpperCase();
                   const qty = (c.quantity || '1').trim();
-                  const cat = (c.itemCategory || 'L').trim();
-                  const loc = (c.storageLocation || '-').trim();
+                  const cat = (c.itemCategory || 'L').trim().toUpperCase();
+                  const loc = (c.storageLocation || '-').trim().toUpperCase();
                   return (
                     <div
                       key={c.id || idx}
                       data-testid={`confirm-component-row-${idx}`}
                       style={{
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: 12,
-                        padding: '5px 8px',
-                        borderRadius: 'var(--sap-radius-xs, 4px)',
+                        display: 'grid',
+                        gridTemplateColumns: '48px 1fr 60px 85px 105px',
+                        gap: 8,
+                        padding: '6px 10px',
+                        alignItems: 'center',
                         background: idx % 2 === 0 ? 'var(--sap-card-bg, #ffffff)' : 'transparent',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        color: 'var(--sap-text-dark, #0f172a)'
+                        borderBottom: idx === components.length - 1 ? 'none' : '1px solid var(--sap-border-color, #f1f5f9)',
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 13,
+                        color: 'var(--sap-text-dark, #0f172a)',
+                        lineHeight: 1.3
                       }}
                     >
-                      {`${itemNo}  ${compMat}  Qty ${qty}  Cat ${cat}  Loc ${loc}`}
+                      <div>{itemNo}</div>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={compMat}>{compMat}</div>
+                      <div>{qty}</div>
+                      <div>{cat}</div>
+                      <div>{loc}</div>
                     </div>
                   );
                 })}
@@ -1542,39 +1608,6 @@ export default function CreateBomView({
                 </div>
               </div>
             )}
-
-            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-              <button
-                type="button"
-                className="sap-button"
-                disabled={isExecuting}
-                onClick={() => {
-                  if (!isExecuting) setIsConfirmModalOpen(false);
-                }}
-                style={{ height: 32, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                ref={confirmButtonRef}
-                autoFocus
-                data-autofocus
-                className="sap-button primary"
-                disabled={isExecuting}
-                onClick={handleExecuteCreate}
-                style={{ height: 32, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
-              >
-                {isExecuting ? (
-                  <>
-                    <Loader2 size={16} className="sap-spin" />
-                    <span>Creating BOM in SAP...</span>
-                  </>
-                ) : (
-                  'Confirm & Create'
-                )}
-              </button>
-            </div>
           </div>
         </Modal>
       </PageContainer>

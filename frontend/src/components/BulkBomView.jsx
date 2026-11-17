@@ -33,6 +33,7 @@ import {
   getPlants
 } from '../services/api';
 import BulkUploadPanel from './BulkUploadPanel';
+import BulkConfirmModal from './BulkConfirmModal';
 import { SearchInput } from './ui/search-input';
 import { FormSection } from './ui/form-layout';
 import activityTracker from '../services/activityTracker';
@@ -149,6 +150,7 @@ export default function BulkBomView({
   const [validationReport, setValidationReport] = useState(initialValidationReport);
 
   // Execution phase state
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [skipErrors] = useState(true);
   const [copyHierarchy] = useState(true);
@@ -872,6 +874,18 @@ export default function BulkBomView({
     }
   };
 
+  const handleOpenConfirmCopy = () => {
+    const executableRows = parsedRows.filter((r) => {
+      const norm = normalizeBomStatus(r);
+      return norm === 'ready' || norm === 'skipped' || r.status === 'VALID' || r.status === 'WARNING';
+    });
+    if (executableRows.length === 0) {
+      toast.warning('No valid rows available to execute.', { title: 'Validation notice' });
+      return;
+    }
+    setIsConfirmModalOpen(true);
+  };
+
   const handleExecuteBatchCopy = async () => {
     const executableRows = parsedRows.filter((r) => {
       const norm = normalizeBomStatus(r);
@@ -882,16 +896,7 @@ export default function BulkBomView({
       return;
     }
 
-    const hasWarnings = parsedRows.some((r) => r.status === 'WARNING');
-    const warningNotice = hasWarnings
-      ? '\n\n⚠️ Note: Some rows have WARNINGS (target alternative may already exist and conflict).'
-      : '';
-
-    const confirmMsg = `Are you sure you want to copy ${executableRows.length} Bill of Materials in SAP?${warningNotice}\n\nOperation will copy ${executableRows.length} BOM(s) in SAP.`;
-    if (!window.confirm(confirmMsg)) {
-      return;
-    }
-
+    setIsConfirmModalOpen(false);
     setIsExecuting(true);
     setActiveStep(3);
     setExecutionReport(null);
@@ -1411,7 +1416,7 @@ export default function BulkBomView({
                         type="button"
                         className="sap-button primary execute-batch-copy-btn"
                         disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
-                        onClick={handleExecuteBatchCopy}
+                        onClick={handleOpenConfirmCopy}
                         style={{
                           height: 'var(--size-button-height, 40px)',
                           display: 'inline-flex',
@@ -1444,6 +1449,21 @@ export default function BulkBomView({
           </div>
         )}
       </BulkFlowContainer>
+
+      <BulkConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => {
+          if (!isExecuting) setIsConfirmModalOpen(false);
+        }}
+        onConfirm={handleExecuteBatchCopy}
+        mode="copy"
+        fileName={file?.name || 'Bulk_BOM_Copy.xlsx'}
+        readyCount={validCount}
+        skippedCount={warningCount}
+        invalidCount={errorCount}
+        isExecuting={isExecuting}
+        jobProgress={jobProgress}
+      />
     </div>
   );
 }

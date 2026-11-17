@@ -817,7 +817,7 @@ export default function AdminView({
         }
       >
         {/* Admin Navigation Tabs */}
-        <div className="sap-toolbar" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <div className="sap-toolbar sap-admin-tabs-row" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button
             type="button"
             onClick={() => handleAdminTabChange('users', ROUTE_IDS.ADMIN_USERS)}

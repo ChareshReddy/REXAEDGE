@@ -409,7 +409,7 @@ export default function AdminActivityLogsView({
           borderBottom: '1px solid var(--color-border, #e2e8f0)'
         }}
       >
-        <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+        <div className="sap-admin-subtabs-row" style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <button
             type="button"
             onClick={() => handleSubTabChange('audit')}

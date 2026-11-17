@@ -25,6 +25,7 @@ import {
   MinusCircle
 } from 'lucide-react';
 import Modal from './Modal';
+import BulkConfirmModal from './BulkConfirmModal';
 import BulkUploadPanel from './BulkUploadPanel';
 import {
   BulkFlowContainer,
@@ -1534,111 +1535,25 @@ export default function BulkCreateBomView({
       </BulkFlowContainer>
 
         {/* CONFIRMATION MODAL */}
-        <Modal
+        <BulkConfirmModal
           isOpen={isConfirmModalOpen}
           onClose={() => {
             if (!isExecuting) setIsConfirmModalOpen(false);
           }}
-          title="Confirm Bulk BOM Creation"
-        >
-          <div style={{ padding: 4 }}>
-            <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--sap-text-dark)' }}>
-              You are about to create <strong>{readyCount}</strong> BOM(s) in SAP from file <strong>{fileName}</strong>:
-            </p>
-
-            <div
-              style={{
-                background: 'var(--sap-surface-subtle)',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: 16,
-                fontSize: 13,
-                lineHeight: 1.6
-              }}
-            >
-              <div><strong>Ready BOMs to Create:</strong> {readyCount}</div>
-              <div><strong>Skipped (Existing):</strong> {skippedCount}</div>
-              <div><strong>Invalid (Will Not Run):</strong> {invalidCount}</div>
-            </div>
-
-            {isProd && (
-              <div
-                style={{
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--sap-error-bg)',
-                  border: '1px solid var(--sap-error-border)',
-                  marginBottom: 16
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--sap-error)', fontWeight: 700, marginBottom: 8 }}>
-                  <ShieldCheck size={18} />
-                  <span>Production System Protection</span>
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label className="sap-form-label" style={{ fontSize: 12 }}>
-                    Type <strong>CONFIRM</strong> to proceed:
-                  </label>
-                  <input
-                    type="text"
-                    className="sap-form-input"
-                    placeholder="CONFIRM"
-                    disabled={isExecuting}
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="sap-form-label" style={{ fontSize: 12 }}>
-                    Business Reason*:
-                  </label>
-                  <input
-                    type="text"
-                    className="sap-form-input"
-                    placeholder="Ex. Approved Engineering Change ECO-1049"
-                    disabled={isExecuting}
-                    value={businessReason}
-                    onChange={(e) => setBusinessReason(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-              <button
-                type="button"
-                className="sap-button"
-                disabled={isExecuting}
-                onClick={() => {
-                  if (!isExecuting) setIsConfirmModalOpen(false);
-                }}
-                style={{ height: 30, padding: '0 16px', fontSize: 'var(--sap-size-button)' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="sap-button primary"
-                disabled={isExecuting}
-                onClick={handleExecuteBatch}
-                style={{ height: 30, padding: '0 18px', fontSize: 'var(--sap-size-button)' }}
-              >
-                {isExecuting ? (
-                  <>
-                    <Loader2 size={16} className="sap-spin" />
-                    <span>
-                      {jobProgress.total > 0
-                        ? `Creating ${jobProgress.current} of ${jobProgress.total}...`
-                        : 'Creating in SAP...'}
-                    </span>
-                  </>
-                ) : (
-                  'Confirm & Create'
-                )}
-              </button>
-            </div>
-          </div>
-        </Modal>
+          onConfirm={handleExecuteBatch}
+          mode="create"
+          fileName={fileName}
+          readyCount={readyCount}
+          skippedCount={skippedCount}
+          invalidCount={invalidCount}
+          isExecuting={isExecuting}
+          jobProgress={jobProgress}
+          isProd={isProd}
+          confirmText={confirmText}
+          setConfirmText={setConfirmText}
+          businessReason={businessReason}
+          setBusinessReason={setBusinessReason}
+        />
 
         {/* Validation Errors Popover Modal */}
         {errorPopoverBom && (

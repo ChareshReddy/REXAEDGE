@@ -3,6 +3,7 @@ import {
   Copy,
   AlertCircle,
   ArrowRight,
+  ArrowDown,
   X,
   Calendar,
   Layers,
@@ -582,10 +583,11 @@ export default function CreateBomForm({
             </div>
           </FormSection>
 
-          {/* Visual Connector Arrow */}
-          <div className="hidden min-[1100px]:flex flex-col items-center justify-center self-center my-auto p-2" aria-hidden="true">
+          {/* Visual Connector Arrow: Right arrow on desktop (>=1100px), Down arrow on phone/tablet (<1100px) */}
+          <div className="flex flex-col items-center justify-center self-center my-auto p-2" aria-hidden="true">
             <div className="w-10 h-10 rounded-full bg-[var(--color-blue-50)] border border-[var(--color-blue-200)] flex items-center justify-center text-[var(--color-blue-600)] shadow-sm">
-              <ArrowRight size={18} strokeWidth={2} />
+              <ArrowRight size={18} strokeWidth={2} className="hidden min-[1100px]:block copy-bom-responsive-arrow-right" />
+              <ArrowDown size={18} strokeWidth={2} className="block min-[1100px]:hidden copy-bom-responsive-arrow-down" />
             </div>
           </div>
 

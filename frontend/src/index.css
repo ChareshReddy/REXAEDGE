@@ -2645,7 +2645,7 @@ select:-webkit-autofill:focus {
 
   .sap-brand {
     gap: 8px;
-    max-width: calc(100% - 50px);
+    max-width: fit-content;
     flex-shrink: 0;
     margin: 0 !important;
     padding: 0 !important;
@@ -2671,12 +2671,8 @@ select:-webkit-autofill:focus {
     padding: 2px 4px;
   }
 
-  .sap-shell-actions {
-    display: none !important; /* Hidden on mobile; in dropdown menu */
-  }
-
   .sap-mobile-menu-btn {
-    display: flex !important;
+    display: none !important;
   }
 
   .sap-mobile-dropdown {
@@ -8240,4 +8236,649 @@ a.fiori-ph-orange-back:focus-visible {
 .rx-stat-tile:disabled {
   opacity: 0.55;
   cursor: not-allowed !important;
+}
+
+/* ============================================================================
+   ENTERPRISE RESPONSIVE SYSTEM (Phone <= 640px, Tablet 641px - 1024px)
+   Strictly scoped inside max-width / container queries.
+   Zero changes to desktop (> 1024px).
+   All spacing and sizing derived strictly from tokens.css.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   A. TABLET & PHONE SHARED (max-width: 1024px)
+   ---------------------------------------------------------------------------- */
+@media (max-width: 1024px) {
+  /* 1. Root & Shell Containment (No Document Horizontal Overflow) */
+  html, body, #root, .sap-app-root, .rx-app-shell-body, .sap-assistant-layout {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Topbar Responsive Rules: Clean Single Row with Search Icon, Server, Sandbox, Avatar */
+  .sap-shell-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    overflow: hidden !important;
+  }
+
+  .sap-shell-actions {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+
+  .sap-mobile-menu-btn,
+  .sap-mobile-dropdown {
+    display: none !important;
+  }
+
+  /* 2. Touch Targets (At least 44x44px hit area) */
+  .sap-button, .rx-btn, .sap-btn, .fiori-ph-btn,
+  .sap-admin-nav-tab, .fiori-home-tab,
+  .rx-switch-btn, .rx-topbar-sidebar-toggle, .rx-topbar-search-btn {
+    min-height: var(--touch-target-min, 44px) !important;
+  }
+
+  .sap-action-icon-btn,
+  .rx-icon-btn,
+  button.sap-row-action-btn,
+  .sap-table-btn {
+    min-width: var(--touch-target-min, 44px) !important;
+    min-height: var(--touch-target-min, 44px) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  input[type="checkbox"], input[type="radio"] {
+    min-width: 20px !important;
+    min-height: 20px !important;
+    cursor: pointer;
+  }
+
+  /* 3. Form Grids on Tablet (2 Columns) */
+  .sap-form-grid,
+  .rx-form-grid,
+  .grid-cols-4,
+  .grid-cols-3,
+  .confirm-bom-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+
+  /* 4. Table Containers: Horizontal Scroll with Preserved Sticky Headers */
+  .sap-table-container,
+  .fiori-table-wrapper,
+  .rx-components-table-container,
+  .sap-table-scroll-container,
+  .sap-table-responsive-wrapper,
+  .sap-admin-table-scroll,
+  .sap-bulk-table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative;
+    box-sizing: border-box !important;
+  }
+
+  .rx-components-table,
+  .sap-table,
+  .sap-bulk-table,
+  .sap-admin-table {
+    min-width: 760px !important;
+  }
+
+  /* 5. Bulk Upload Two-Column Stacking */
+  .rx-bulk-upload-columns {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .rx-bulk-dropzone,
+  .rx-bulk-instructions {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 6. Bulk Summary Cards on Tablet (4 Columns) */
+  .rx-bulk-stat-tiles,
+  .rx-results-summary-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  /* 7. Admin Tabs: Horizontally Scrollable Strip on Phone & Tablet */
+  .fiori-ph .sap-toolbar:has(.sap-admin-nav-tab),
+  .sap-admin-tabs-row {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px !important;
+    scrollbar-width: none;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .fiori-ph .sap-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sap-admin-nav-tab {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   B. PHONE ONLY (max-width: 640px)
+   ---------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  /* 1. Prevent iOS Auto-Zoom on Form Focus (Inputs at least 16px) */
+  input, select, textarea,
+  .sap-form-input, .sap-input, .rx-input, .sap-form-select,
+  .sap-input-wrap input, .lg-input {
+    font-size: 16px !important;
+  }
+
+  /* Topbar phone compactness: single non-wrapping row containing all items */
+  .sap-shell-header,
+  header.sap-shell-header,
+  .sap-toolbar.sap-shell-header {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    padding: 0 8px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .sap-shell-header-left {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    height: 100% !important;
+  }
+
+  .rx-topbar-sidebar-toggle {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sap-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    max-width: 90px !important;
+    overflow: hidden !important;
+  }
+
+  .sap-brand-logo-container {
+    height: 24px !important;
+    max-height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .sap-brand-logo-img {
+    height: 24px !important;
+    max-height: 24px !important;
+    max-width: 85px !important;
+    object-fit: contain !important;
+  }
+
+  .sap-shell-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    height: 100% !important;
+  }
+
+  .rx-topbar-search-text,
+  .rx-topbar-search-kbd,
+  .sap-system-label {
+    display: none !important;
+  }
+
+  .rx-topbar-search-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sap-system-select-wrapper {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    max-width: 125px !important;
+    flex-shrink: 1 !important;
+  }
+
+  .sap-system-select,
+  select.sap-system-select {
+    max-width: 65px !important;
+    width: auto !important;
+    font-size: 11px !important;
+    padding: 2px 4px !important;
+    height: 28px !important;
+  }
+
+  .rx-server-env-badge {
+    font-size: 9.5px !important;
+    padding: 1px 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sap-user-avatar-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+  }
+
+  .sap-user-avatar-circle {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  /* 2. Page Container Gutter Padding */
+  .sap-page-container,
+  .sap-form-view-section,
+  .sap-proposal-view-section {
+    padding-left: var(--page-gutter-phone, 12px) !important;
+    padding-right: var(--page-gutter-phone, 12px) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 3. Page Header Band: Title/Subtitle Wrap & Full-Width Single/Bulk Switch */
+  .fiori-ph {
+    padding: 12px var(--page-gutter-phone, 12px) !important;
+  }
+
+  .fiori-ph-title-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .fiori-ph-title {
+    font-size: 20px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.3 !important;
+  }
+
+  .fiori-ph-subtitle {
+    font-size: 13px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .fiori-ph-actions-right {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: stretch !important;
+  }
+
+  .fiori-ph-actions-right .rx-single-bulk-switch {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .fiori-ph-actions-right .rx-single-bulk-switch .rx-switch-btn {
+    flex: 1 !important;
+    text-align: center !important;
+    justify-content: center !important;
+  }
+
+  /* Breadcrumbs on Mobile: Scrollable with No Wrap Overlap */
+  .fiori-ph-breadcrumbs-bar {
+    padding: 8px var(--page-gutter-phone, 12px) 4px !important;
+  }
+
+  .fiori-bc {
+    white-space: nowrap !important;
+    overflow-x: auto !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .fiori-bc::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 4. Box Headers (Cards): Wrap onto Two Rows & Full Width */
+  .rx-form-section-header-tinted,
+  .rx-card-header,
+  .rx-form-section-header,
+  .rx-bulk-preview-header {
+    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 10px 12px !important;
+    height: auto !important;
+    min-height: var(--size-card-header-height, 48px) !important;
+  }
+
+  .rx-form-section-header-tinted > div:last-child,
+  .rx-card-header > div:last-child,
+  .rx-form-section-header > div:last-child,
+  .rx-bulk-preview-header > div:last-child {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+  }
+
+  .rx-card, .sap-card, .rx-form-section, .sap-form-section {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .rx-card-body, .sap-card-body, .rx-form-section-body {
+    padding: 12px !important;
+  }
+
+  /* 5. Form Grids on Phone (1 Column) */
+  .sap-form-grid,
+  .rx-form-grid,
+  .grid-cols-4,
+  .grid-cols-3,
+  .grid-cols-2,
+  .confirm-bom-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .sap-card-action-row,
+  .rx-form-actions,
+  .sap-form-card-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .sap-card-action-row button,
+  .rx-form-actions button,
+  .sap-form-card-actions button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* 6. Bulk Workflow Progress Stepper (Numbers Only, Active Step Label Shown) */
+  .rx-bulk-stepper {
+    padding: 10px 12px !important;
+    gap: 8px !important;
+  }
+
+  .rx-bulk-step-item:not(.active) .rx-step-label {
+    display: none !important;
+  }
+
+  .rx-bulk-step-item.active .rx-step-label {
+    display: inline !important;
+    font-size: 13px !important;
+  }
+
+  .rx-step-circle {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  .rx-step-line {
+    min-width: 16px !important;
+  }
+
+  /* 7. Bulk Summary Cards (2x2 Grid on Phone) */
+  .rx-bulk-stat-tiles,
+  .rx-results-summary-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .rx-stat-tile {
+    padding: 10px 12px !important;
+  }
+
+  /* 8. Data Preview Header Items Stacking on Phone */
+  .rx-preview-header-main-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .rx-preview-header-left {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .rx-file-chip {
+    max-width: 100% !important;
+    width: auto !important;
+  }
+
+  .rx-preview-search-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  /* 9. Bulk Results Actions & Banner on Phone */
+  .rx-results-action-buttons {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .rx-results-action-buttons button,
+  .rx-results-action-buttons .sap-button {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .rx-results-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+  }
+
+  /* 10. Modals & Popups: Near Full-Width on Phone (16px margins, max-height 90vh) */
+  .sap-f4-modal-dialog,
+  .sap-f4-modal-dialog.bom-usage,
+  .sap-f4-modal-dialog.material,
+  .sap-f4-modal-dialog.plant,
+  .sap-f4-modal-dialog.storage-location,
+  .sap-restrict-modal-dialog,
+  .rx-modal-dialog,
+  .rx-command-palette-dialog,
+  .sap-modal-dialog,
+  .sap-modal {
+    width: calc(100vw - 32px) !important;
+    min-width: calc(100vw - 32px) !important;
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px auto !important;
+    max-height: 90vh !important;
+    left: 16px !important;
+    right: 16px !important;
+    top: 5vh !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .rx-modal-body,
+  .sap-f4-table-container,
+  .sap-f4-content {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 120px) !important;
+  }
+
+  .sap-f4-table-container,
+  .sap-f4-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+  }
+
+  .sap-f4-table {
+    min-width: 440px !important;
+  }
+
+  .rx-modal-footer,
+  .sap-f4-footer,
+  .sap-modal-footer {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+  }
+
+  .rx-modal-footer button,
+  .sap-f4-footer button,
+  .sap-modal-footer button {
+    flex: 1 1 auto !important;
+    min-width: 120px !important;
+  }
+
+  /* 11. Toasts: Full Width Minus 16px Margins Below Topbar */
+  .sap-toast-container,
+  .rx-toast-banner-container {
+    top: calc(var(--size-topbar-height, 56px) + 8px) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: none !important;
+  }
+
+  /* 12. Admin Tabs: Horizontally Scrollable Strip */
+  .fiori-ph .sap-toolbar:has(.sap-admin-nav-tab),
+  .sap-admin-tabs-row {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px !important;
+    scrollbar-width: none;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .fiori-ph .sap-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sap-admin-nav-tab {
+    flex-shrink: 0 !important;
+  }
+
+  /* Admin Activity Logs Filters: 1 Column on Phone */
+  .sap-logs-filter-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .sap-logs-filter-item,
+  .sap-logs-filter-reset {
+    width: 100% !important;
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .sap-logs-filter-reset button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Table Pagination Wrapping */
+  .sap-table-pagination,
+  .sap-pagination {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   C. TOUCH DEVICE AFFORDANCES (hover: none)
+   ---------------------------------------------------------------------------- */
+@media (hover: none) {
+  /* Keep hover-reveal controls visible on touch */
+  .sap-row-actions,
+  .rx-row-actions,
+  button.sap-action-icon-btn,
+  .fiori-op-arrow {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   D. LANDSCAPE PHONE & SHORT VIEWPORTS (max-height: 500px)
+   ---------------------------------------------------------------------------- */
+@media (max-height: 500px) {
+  .sap-shell-header {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+  }
+
+  .sap-f4-modal-dialog,
+  .sap-restrict-modal-dialog,
+  .rx-modal-dialog,
+  .sap-modal-dialog,
+  .sap-modal {
+    top: 8px !important;
+    max-height: calc(100vh - 16px) !important;
+    margin: 8px auto !important;
+  }
+
+  .rx-modal-body,
+  .sap-f4-table-container,
+  .sap-f4-content {
+    max-height: calc(100vh - 96px) !important;
+    overflow-y: auto !important;
+  }
 }

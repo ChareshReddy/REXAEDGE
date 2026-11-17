@@ -123,6 +123,47 @@ export function Sidebar({
     };
   }, [isOpenMobile, onCloseMobile]);
 
+  const sidebarAsideRef = useRef(null);
+
+  // Body scroll lock while mobile drawer is open
+  useEffect(() => {
+    if (!isOpenMobile) return;
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = origOverflow;
+    };
+  }, [isOpenMobile]);
+
+  // Focus trap while mobile drawer is open
+  useEffect(() => {
+    if (!isOpenMobile || !sidebarAsideRef.current) return;
+    const aside = sidebarAsideRef.current;
+    const focusable = aside.querySelectorAll('button:not(:disabled), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const firstEl = focusable[0];
+    const lastEl = focusable[focusable.length - 1];
+
+    firstEl.focus();
+
+    const handleTab = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === firstEl) {
+          e.preventDefault();
+          lastEl.focus();
+        }
+      } else {
+        if (document.activeElement === lastEl) {
+          e.preventDefault();
+          firstEl.focus();
+        }
+      }
+    };
+    aside.addEventListener('keydown', handleTab);
+    return () => aside.removeEventListener('keydown', handleTab);
+  }, [isOpenMobile]);
+
   // Handle collapsed item click / hover flyout
   const handleCollapsedGroupClick = (groupKey, event) => {
     if (activeFlyoutGroup === groupKey) {
@@ -294,6 +335,7 @@ export function Sidebar({
       )}
 
       <aside
+        ref={sidebarAsideRef}
         className={`rx-sidebar ${isCollapsed ? 'rx-sidebar-collapsed' : 'rx-sidebar-expanded'} ${isOpenMobile ? 'rx-sidebar-mobile-open' : ''}`}
         aria-label="Application Sidebar"
         style={{

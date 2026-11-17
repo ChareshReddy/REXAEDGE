@@ -140,6 +140,13 @@ export default function Login({ onLoginSuccess }) {
       {/* ================= RIGHT FORM PANEL (45%) ================= */}
       <main className="lg-form-panel">
         <div className="lg-card-wrapper">
+          {/* Mobile-only logo above the login card (displayed < 900px when hero panel is hidden) */}
+          <div className="lg-mobile-brand" aria-hidden="true">
+            <div className="lg-logo-badge">
+              <img src={rexaedgeLogo} alt="RexaEdge" className="lg-logo-img" />
+            </div>
+          </div>
+
           {/* Absolutely positioned error overlay above the card (0px layout shift) */}
           {errorMessage && (
             <div className="lg-error-overlay" role="alert">

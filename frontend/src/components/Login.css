@@ -650,48 +650,67 @@
   }
 }
 
-/* Mobile & Tablet (< 900px): Compact Navy Header Band */
+/* Mobile brand logo above card: hidden on desktop, visible < 900px */
+.login-page .lg-mobile-brand {
+  display: none;
+}
+
+/* Mobile & Tablet (< 900px): Hero illustration hidden, centered card with logo above */
 @media (max-width: 900px) {
   .login-page {
     flex-direction: column;
     overflow-y: auto;
+    justify-content: center;
+    align-items: center;
   }
 
   .login-page .lg-brand-panel {
-    flex: 0 0 auto;
+    display: none !important;
+  }
+
+  .login-page .lg-mobile-brand {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
     width: 100%;
-    height: auto;
-    padding: 20px 24px;
-    align-items: center;
-    text-align: center;
   }
 
-  .login-page .lg-logo-badge {
-    margin-bottom: 8px;
-    padding: 6px 14px;
-  }
-
-  .login-page .lg-logo-img {
-    height: 28px;
-  }
-
-  .login-page .lg-brand-content,
-  .login-page .lg-brand-footer {
-    display: none;
+  .login-page .lg-mobile-brand .lg-logo-badge {
+    background-color: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--color-border, #D9E2EC);
+    box-shadow: var(--shadow-sm);
+    padding: 8px 16px;
+    border-radius: var(--radius-md, 8px);
   }
 
   .login-page .lg-form-panel {
     flex: 1 0 auto;
     width: 100%;
-    padding: 28px 16px;
+    max-width: 480px;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: auto;
+    box-sizing: border-box;
   }
 
   .login-page .lg-card-wrapper {
-    max-width: 100%;
+    width: 100%;
+    max-width: 440px;
   }
 
   .login-page .lg-card {
+    width: 100%;
     padding: 28px 20px 24px;
     border-radius: var(--radius-lg, 12px);
+    box-sizing: border-box;
+  }
+
+  .login-page .lg-submit-btn,
+  .login-page .lg-input-wrap,
+  .login-page .lg-input {
+    width: 100% !important;
   }
 }

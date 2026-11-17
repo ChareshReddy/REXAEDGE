@@ -469,27 +469,47 @@
 
 /* ----------------------------------------------------------------------------
    6. RESPONSIVE
-   - Mobile: cards 1 column, hero stacks (pill under text) below 640px, no horizontal scroll
+   - Tablet (641px - 1024px): 2 columns
+   - Mobile (<= 640px): 1 column, hero stacks, horizontal chips scroll
+   - Desktop (> 1024px): Unchanged repeat(auto-fill, minmax(280px, 1fr))
    ---------------------------------------------------------------------------- */
-@media (max-width: 768px) {
+@media (min-width: 641px) and (max-width: 1024px) {
   .rexa-home-page {
     padding: var(--space-16, 16px);
   }
 
   .rexa-home-page .rx-modules-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--space-16, 16px);
   }
 }
 
 @media (max-width: 640px) {
+  .rexa-home-page {
+    padding: var(--space-12, 12px);
+  }
+
   .rexa-home-page .rx-home-hero {
-    padding: var(--space-28, 28px) var(--space-20, 20px);
+    padding: var(--space-20, 20px) var(--space-16, 16px);
   }
 
   .rexa-home-page .rx-hero-content {
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column !important;
+    align-items: flex-start !important;
     gap: var(--space-12, 12px);
+  }
+
+  .rexa-home-page .rx-hero-title {
+    font-size: var(--font-size-22, 22px);
+  }
+
+  .rexa-home-page .rx-hero-subtitle {
+    font-size: var(--font-size-14, 14px);
+  }
+
+  .rexa-home-page .rx-modules-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-16, 16px);
   }
 
   .rexa-home-page .rx-category-chips {
