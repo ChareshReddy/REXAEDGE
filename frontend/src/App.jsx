@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Home,
   Layers,
@@ -109,7 +109,9 @@ function AppContent({
   const [selectedServer, setSelectedServer] = useState(initialSelectedServer);
   const [currentSystem, setCurrentSystem] = useState('DEV'); // 'DEV' | 'QA' | 'PROD'
   const [enabledModules, setEnabledModules] = useState(initialEnabledModules);
-  const [isLoadingServers, setIsLoadingServers] = useState(initialServers.length === 0);
+  const [isLoadingServers, setIsLoadingServers] = useState(false);
+  const [serverLoadError, setServerLoadError] = useState(null);
+  const [serverListLoaded, setServerListLoaded] = useState(initialServers.length > 0);
 
   // Application view state - defaults to modern Home page matching RexaEdge ERP portal
   const getInitialActiveTab = () => {
@@ -258,7 +260,13 @@ function AppContent({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
-  const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(false);
+  const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(() => {
+    try {
+      return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('rexa_dismissed_server_onboarding') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K listener and rexa:open-command-palette event listener
@@ -586,66 +594,81 @@ function AppContent({
   }, []);
 
   // Load available SAP servers for the current authenticated user
-  useEffect(() => {
-    if (isCheckingAuth) {
-      return;
-    }
+  const loadServers = useCallback(async () => {
     if (!user) {
       setAvailableServers([]);
       setSelectedServer(null);
       setSelectedServerHeader(null);
       setIsLoadingServers(false);
+      setServerListLoaded(false);
+      setServerLoadError(null);
       return;
     }
 
-    async function loadServers() {
-      setIsLoadingServers(true);
-      try {
-        const servers = await getAvailableServers();
-        setAvailableServers(servers || []);
+    setIsLoadingServers(true);
+    setServerLoadError(null);
+    setServerListLoaded(false);
+    try {
+      const servers = await getAvailableServers();
+      const list = Array.isArray(servers) ? servers : [];
+      setAvailableServers(list);
+      setServerListLoaded(true);
+      setServerLoadError(null);
 
-        if (servers && servers.length > 0) {
-          // Stage 3: Per-tab selection with sessionStorage; new tab uses default server, reload preserves selection
-          let targetServer = null;
-          try {
-            const savedTabServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
-            if (savedTabServerId) {
-              targetServer = servers.find((s) => s.id === savedTabServerId && !s.is_disabled);
-            }
-          } catch (_) {}
-
-          if (!targetServer) {
-            targetServer = servers.find((s) => s.is_default && !s.is_disabled) || getNewestActiveServer(servers) || servers[0];
+      if (list.length > 0) {
+        // Stage 3: Per-tab selection with sessionStorage; new tab uses default server, reload preserves selection
+        let targetServer = null;
+        try {
+          const savedTabServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
+          if (savedTabServerId) {
+            targetServer = list.find((s) => s.id === savedTabServerId && !s.is_disabled);
           }
+        } catch (_) {}
 
-          if (targetServer) {
-            setSelectedServer(targetServer);
-            setSelectedServerHeader(targetServer.id);
-            setCurrentSystem(targetServer.environment || 'DEV');
-          } else {
-            setSelectedServer(null);
-            setSelectedServerHeader(null);
-          }
+        if (!targetServer) {
+          targetServer = list.find((s) => s.is_default && !s.is_disabled) || getNewestActiveServer(list) || list[0];
+        }
+
+        if (targetServer) {
+          setSelectedServer(targetServer);
+          setSelectedServerHeader(targetServer.id);
+          setCurrentSystem(targetServer.environment || 'DEV');
         } else {
           setSelectedServer(null);
           setSelectedServerHeader(null);
         }
-      } catch (err) {
-        console.error('Failed to load permitted servers for user:', err);
-      } finally {
-        setIsLoadingServers(false);
+      } else {
+        setSelectedServer(null);
+        setSelectedServerHeader(null);
+
+        // Stage 4: Show onboarding popup ONLY when server list has finished loading successfully AND user owns 0 servers AND hasn't dismissed it in this session
+        const isDismissed = (() => {
+          try {
+            return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('rexa_dismissed_server_onboarding') === 'true';
+          } catch {
+            return false;
+          }
+        })();
+        if (!isDismissed && !user.must_change_password) {
+          setIsOnboardingModalOpen(true);
+        }
       }
+    } catch (err) {
+      console.error('Failed to load permitted servers for user:', err);
+      setServerLoadError(err.message || 'Failed to load servers');
+      setServerListLoaded(false);
+      // While list is loading or if loading fails, do NOT show onboarding popup
+    } finally {
+      setIsLoadingServers(false);
     }
+  }, [user]);
 
-    loadServers();
-  }, [user, isCheckingAuth]);
-
-  // Stage 4: Trigger onboarding modal when authenticated user owns 0 servers and hasn't dismissed it
   useEffect(() => {
-    if (!isCheckingAuth && user && !user.must_change_password && !isLoadingServers && availableServers.length === 0 && !hasDismissedOnboarding) {
-      setIsOnboardingModalOpen(true);
+    if (isCheckingAuth) {
+      return;
     }
-  }, [isCheckingAuth, user, isLoadingServers, availableServers.length, hasDismissedOnboarding]);
+    loadServers();
+  }, [user, isCheckingAuth, loadServers]);
 
   // Load enabled modules whenever selected server changes (Admin always sees all registered modules)
   useEffect(() => {
@@ -691,6 +714,8 @@ function AppContent({
       const servers = await getAvailableServers();
       const list = Array.isArray(servers) ? servers : [];
       setAvailableServers(list);
+      setServerListLoaded(true);
+      setServerLoadError(null);
 
       // Auto-select in this tab if none is selected, or if savedServer was provided
       if (!selectedServer || (savedServer && savedServer.id)) {
@@ -711,6 +736,12 @@ function AppContent({
     try {
       localStorage.removeItem('rexa_sidebar_expanded_groups');
     } catch {}
+    try {
+      sessionStorage.removeItem('rexa_dismissed_server_onboarding');
+    } catch {}
+    setHasDismissedOnboarding(false);
+    setServerListLoaded(false);
+    setServerLoadError(null);
     setUser(userData);
     setSelectedHomeGroup('');
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
@@ -749,6 +780,13 @@ function AppContent({
       // Ignore network errors during logout
     } finally {
       toast.clearAll();
+      try {
+        sessionStorage.removeItem('rexa_dismissed_server_onboarding');
+      } catch {}
+      setHasDismissedOnboarding(false);
+      setServerListLoaded(false);
+      setServerLoadError(null);
+      setIsOnboardingModalOpen(false);
       setUser(null);
       setAvailableServers([]);
       setSelectedServer(null);
@@ -1132,6 +1170,39 @@ function AppContent({
                 );
               }
 
+              if (isLoadingServers) {
+                return (
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted, #64748B)' }}>
+                    Loading servers...
+                  </span>
+                );
+              }
+
+              if (serverLoadError) {
+                return (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--color-danger, #B42318)' }} title={serverLoadError}>
+                      Failed to load servers
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => loadServers()}
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: 11,
+                        background: 'transparent',
+                        border: '1px solid var(--color-border, #E2E8F0)',
+                        borderRadius: 'var(--radius-sm, 4px)',
+                        cursor: 'pointer',
+                        color: 'var(--color-text, #0F172A)'
+                      }}
+                    >
+                      Retry
+                    </button>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   type="button"
@@ -1484,7 +1555,7 @@ function AppContent({
             user={user}
             sapSession={sapSession}
             selectedServer={selectedServer}
-            hasZeroServers={availableServers.length === 0 && !isLoadingServers}
+            hasZeroServers={availableServers.length === 0 && serverListLoaded && !isLoadingServers && !serverLoadError}
             onAddServer={() => setIsOnboardingModalOpen(true)}
           />
         )}
@@ -1577,7 +1648,7 @@ function AppContent({
         )}
 
         {/* Friendly Empty State for BOM Operations when User has 0 Servers */}
-        {isBomScreen && availableServers.length === 0 && !isLoadingServers && (
+        {isBomScreen && serverListLoaded && !isLoadingServers && !serverLoadError && availableServers.length === 0 && (
           <div
             className="rx-bom-no-servers-card"
             style={{
@@ -1652,6 +1723,49 @@ function AppContent({
                 My Servers
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Normal Error State for BOM Operations when Server Loading Fails */}
+        {isBomScreen && !isLoadingServers && serverLoadError && (
+          <div
+            className="rx-bom-server-error-card"
+            style={{
+              maxWidth: '560px',
+              margin: '48px auto',
+              padding: '32px 24px',
+              textAlign: 'center',
+              backgroundColor: 'var(--color-surface, #FFFFFF)',
+              borderRadius: 'var(--radius-lg, 8px)',
+              border: '1px solid var(--color-danger, #B42318)',
+              boxShadow: 'var(--shadow-card, 0 2px 8px rgba(0, 32, 78, 0.06))'
+            }}
+          >
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-danger, #B42318)', margin: '0 0 8px 0' }}>
+              Failed to load SAP servers
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)', margin: '0 0 16px 0' }}>
+              {serverLoadError}
+            </p>
+            <button
+              type="button"
+              onClick={() => loadServers()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                fontSize: '13px',
+                fontWeight: 600,
+                backgroundColor: 'var(--color-navy-900, #00204E)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 'var(--radius-md, 6px)',
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -1918,10 +2032,16 @@ function AppContent({
         onClose={() => {
           setIsOnboardingModalOpen(false);
           setHasDismissedOnboarding(true);
+          try {
+            sessionStorage.setItem('rexa_dismissed_server_onboarding', 'true');
+          } catch (_) {}
         }}
         onSuccess={async (newServer) => {
           setIsOnboardingModalOpen(false);
           setHasDismissedOnboarding(true);
+          try {
+            sessionStorage.setItem('rexa_dismissed_server_onboarding', 'true');
+          } catch (_) {}
           await refreshServersAndAutoSelect(newServer);
         }}
       />
