@@ -57,6 +57,13 @@ export const BOM_APP_LIST = Object.freeze([
     implies: ['bom.display']
   },
   {
+    key: 'bom.change',
+    label: 'Change BOM',
+    shortName: 'Change',
+    description: 'Change existing Bills of Materials in SAP (implies Display).',
+    implies: ['bom.display']
+  },
+  {
     key: 'bom.delete',
     label: 'Delete BOM',
     shortName: 'Delete',

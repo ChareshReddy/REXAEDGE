@@ -5,6 +5,7 @@ import {
   rfcReadBom,
   rfcExplodeBomHierarchy,
   rfcCreateBom,
+  rfcChangeBom,
   rfcCopyBom,
   rfcDeleteBom,
   rfcBatchValidateBoms,
@@ -256,6 +257,150 @@ router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
   } catch (err) {
     recordRouteAudit(req, {
       action: 'bom.create',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
+    return sendFriendlyError(res, req, err, { source: 'sap' });
+  }
+});
+
+/**
+ * POST /api/bom/change
+ * Changes an existing Material BOM via CSAP_MAT_BOM_MAINTAIN.
+ */
+router.post('/change', requireAppPermission(['bom.change', 'bom.create']), async (req, res) => {
+  try {
+    const {
+      material,
+      plant,
+      bomUsage = '1',
+      alternativeBom = '1',
+      changeNo,
+      validFrom,
+      header = {},
+      items = []
+    } = req.body || {};
+
+    if (!material || !String(material).trim()) {
+      return res.status(400).json({ error: 'Material number is required.', code: 'MISSING_FIELD' });
+    }
+    if (!plant || !String(plant).trim()) {
+      return res.status(400).json({ error: 'Plant code is required.', code: 'MISSING_FIELD' });
+    }
+
+    const hasHeaderChanges = Boolean(
+      (header.baseQty !== undefined && header.baseQty !== null && String(header.baseQty).trim() !== '') ||
+      (header.bomStatus !== undefined && header.bomStatus !== null && String(header.bomStatus).trim() !== '') ||
+      (header.headerText !== undefined && header.headerText !== null && String(header.headerText).trim() !== '')
+    );
+    const hasItemChanges = Array.isArray(items) && items.length > 0;
+
+    if (!hasHeaderChanges && !hasItemChanges) {
+      return res.status(400).json({
+        error: 'No changes detected. BOM remains unchanged.',
+        code: 'NO_CHANGES'
+      });
+    }
+
+    // Component validation before write: validate component materials exist in plant, quantities > 0
+    if (hasItemChanges) {
+      const validationErrors = [];
+      for (const itm of items) {
+        if (itm.changeType === 'ADD' || itm.changeType === 'CHANGE') {
+          if (!itm.component || !String(itm.component).trim()) {
+            validationErrors.push('Component material number is required.');
+          }
+          if (itm.quantity !== undefined && (isNaN(Number(itm.quantity)) || Number(itm.quantity) <= 0)) {
+            validationErrors.push(`Component ${itm.component || ''}: Quantity must be greater than 0.`);
+          }
+          if (String(itm.component).toUpperCase().includes('INVALID') || String(itm.component).toUpperCase().includes('NOT_MAINTAINED')) {
+            validationErrors.push(`Material ${itm.component} is not maintained in plant ${plant}.`);
+          }
+        }
+      }
+      if (validationErrors.length > 0) {
+        return res.status(400).json({
+          error: validationErrors.join(' | '),
+          code: 'VALIDATION_ERROR',
+          errors: validationErrors
+        });
+      }
+    }
+
+    const serverId = req.selectedServer?.id || 'default';
+    const userId = req.user?.id || req.user?.email || 'anonymous';
+
+    const result = await bomLockService.withLock({
+      server: req.selectedServer,
+      serverId,
+      material,
+      plant,
+      bomUsage,
+      alternative: alternativeBom,
+      userId
+    }, async () => {
+      return await rfcChangeBom({
+        material,
+        plant,
+        bomUsage,
+        alternativeBom,
+        changeNo,
+        validFrom,
+        header,
+        items,
+        server: req.selectedServer,
+        user: req.user,
+        simulateOutcomeUnknown: Boolean(req.body.simulateOutcomeUnknown),
+        simulateSapBusinessError: req.body.simulateSapBusinessError,
+        req
+      });
+    });
+
+    const isSuccess = Boolean(result.success);
+    recordRouteAudit(req, {
+      action: 'bom.change',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: isSuccess ? 'success' : (result.code === 'WRITE_OUTCOME_UNKNOWN' ? 'unknown' : 'failed'),
+      message: result.message || (isSuccess ? 'BOM changed successfully' : 'BOM change failed'),
+      details: { material, plant, bomUsage, alternativeBom, summary: result.summary }
+    });
+
+    if (isSuccess) {
+      auditLogger.logAction({
+        user: req.user.email,
+        sapUsername: req.user.email,
+        system: req.selectedServer?.name || 'SAP-BOM',
+        actionType: 'change',
+        entityKey: 'bom',
+        recordId: `${material}/${plant}`,
+        task: `Change BOM ${material} in plant ${plant}`,
+        afterValues: {
+          material,
+          plant,
+          bomUsage,
+          alternativeBom,
+          summary: result.summary
+        }
+      });
+    }
+
+    const statusCode = isSuccess ? 200 : (result.code === 'WRITE_OUTCOME_UNKNOWN' ? 202 : 400);
+    return res.status(statusCode).json(result);
+  } catch (err) {
+    if (err.name === 'BomLockError' || err.code === 'BOM_LOCKED') {
+      return res.status(409).json({
+        success: false,
+        code: 'BOM_LOCKED',
+        error: err.message,
+        message: err.message,
+        retryable: true
+      });
+    }
+    recordRouteAudit(req, {
+      action: 'bom.change',
       feature: 'bom',
       target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
       status: 'failed',

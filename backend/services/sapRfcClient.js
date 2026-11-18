@@ -499,16 +499,24 @@ export async function rfcReadBom(params = {}) {
       availableAlternatives,
       componentCount: comps.length,
       components: comps.map((c, idx) => ({
-        item: c.item || String((idx + 1) * 10).padStart(4, '0'),
+        item: c.item || c.itemNo || String((idx + 1) * 10).padStart(4, '0'),
+        itemNode: c.itemNode || c.stlkn || String(idx + 1).padStart(8, '0'),
         component: c.component || c.material || '',
-        description: c.description || '',
-        quantity: c.quantity || 1,
+        description: c.description || c.itemText || '',
+        itemText: c.itemText || c.description || '',
+        quantity: c.quantity !== undefined ? c.quantity : 1,
         unit: c.unit || 'EA',
-        itemCategory: c.itemCategory || 'L'
+        itemCategory: c.itemCategory || 'L',
+        storageLocation: c.storageLocation || c.issStLoc || ''
       })),
       header: {
-        description: found.description || '',
-        validFrom: found.validFrom || ''
+        description: found.description || found.altText || found.headerText || '',
+        validFrom: found.validFrom || '',
+        baseQty: String(found.baseQty || '100'),
+        baseUnit: found.baseUnit || 'EA',
+        bomStatus: String(found.bomStatus || '01'),
+        headerText: found.altText || found.description || found.headerText || '',
+        changeNo: found.changeNo || ''
       },
       message: hasNoActiveComponents ? 'BOM has no active components.' : `BOM retrieved successfully (${comps.length} components)`
     };
@@ -702,11 +710,13 @@ export async function rfcReadBom(params = {}) {
 
         normalizedComps.push({
           item: rowObj.POSNR || String((normalizedComps.length + 1) * 10).padStart(4, '0'),
+          itemNode: rowObj.STLKN || String(normalizedComps.length + 1).padStart(8, '0'),
           itemCategory: rowObj.POSTP || 'L',
           component: rowObj.IDNRK || '',
           quantity: parseFloat(rowObj.MENGE) || 1,
           unit: rowObj.MEINS || 'EA',
-          description: rowObj.POTX1 || ''
+          description: rowObj.POTX1 || '',
+          itemText: rowObj.POTX1 || ''
         });
       }
     }
@@ -995,9 +1005,10 @@ export async function rfcCreateBom(params = {}) {
         bomStatus: bomStatus || '01',
         altText: altText || '',
         changeNo: changeNo || '',
-        components: normalizedComponents.map((c) => ({
+        components: normalizedComponents.map((c, idx) => ({
           item: c.ITEM_NO,
           itemNo: c.ITEM_NO,
+          itemNode: String(idx + 1).padStart(8, '0'),
           itemCategory: c.ITEM_CATEG,
           component: c.COMPONENT,
           quantity: parseFloat(c.COMP_QTY) || 1,
@@ -1248,6 +1259,326 @@ export async function rfcCreateBom(params = {}) {
         await client.close();
       } catch {}
     }
+  }
+}
+
+/**
+ * Changes an existing Material BOM via CSAP_MAT_BOM_MAINTAIN.
+ * Replaces CS02 GUI scripting automation.
+ *
+ * @param {object} params
+ * @param {string} params.material
+ * @param {string} params.plant
+ * @param {string} [params.bomUsage='1']
+ * @param {string} [params.alternativeBom='1']
+ * @param {string} [params.changeNo='']
+ * @param {string} [params.validFrom='']
+ * @param {object} [params.header={}]
+ * @param {Array<object>} [params.items=[]]
+ * @returns {Promise<object>}
+ */
+export async function rfcChangeBom(params = {}) {
+  assertResolvedServer(params, 'rfcChangeBom', params.client);
+  const {
+    material,
+    plant,
+    bomUsage = '1',
+    alternativeBom = '1',
+    changeNo = '',
+    validFrom = '',
+    header = {},
+    items = []
+  } = params;
+
+  if (!material || !String(material).trim()) {
+    throw new Error('Material number is required for RFC BOM change.');
+  }
+  if (!plant || !String(plant).trim()) {
+    throw new Error('Plant code is required for RFC BOM change.');
+  }
+
+  const cleanMat = String(material).trim().toUpperCase();
+  const cleanPlt = String(plant).trim();
+  const cleanUsg = String(bomUsage || '1').trim();
+  const cleanAlt = String(alternativeBom || '1').trim();
+  const cleanAltPadded = cleanAlt.padStart(2, '0');
+  const cleanMatSap = toSapMatnr(cleanMat);
+
+  const hasHeaderChanges = Boolean(
+    (header.baseQty !== undefined && header.baseQty !== null && String(header.baseQty).trim() !== '') ||
+    (header.bomStatus !== undefined && header.bomStatus !== null && String(header.bomStatus).trim() !== '') ||
+    (header.headerText !== undefined && header.headerText !== null && String(header.headerText).trim() !== '')
+  );
+
+  const hasItemChanges = Array.isArray(items) && items.length > 0;
+
+  if (!hasHeaderChanges && !hasItemChanges) {
+    return {
+      success: false,
+      code: 'NO_CHANGES',
+      message: 'No changes detected. BOM remains unchanged.'
+    };
+  }
+
+  if (params.server && process.env.USE_MOCK_SAP !== 'true') {
+    getRfcConnectionParams(params.server);
+  }
+
+  // Mock mode handling
+  if (process.env.USE_MOCK_SAP === 'true' && !params.client) {
+    if (params.simulateOutcomeUnknown) {
+      return {
+        success: false,
+        verified: false,
+        code: 'WRITE_OUTCOME_UNKNOWN',
+        message: 'RFC connection timed out during CSAP_MAT_BOM_MAINTAIN execution. A re-read verification is required before any retry.',
+        verifyRequired: true
+      };
+    }
+
+    if (params.simulateSapBusinessError) {
+      return {
+        success: false,
+        verified: false,
+        code: 'SAP_BUSINESS_ERROR',
+        message: params.simulateSapBusinessError || 'SAP Business Error: Engineering Change Management (ECM) requires an active change number.'
+      };
+    }
+
+    let target = activeMockBoms.find(
+      (b) =>
+        (String(b.material).toUpperCase() === cleanMat || toSapMatnr(b.material) === cleanMatSap) &&
+        String(b.plant) === cleanPlt &&
+        String(b.bomUsage || '1') === cleanUsg &&
+        (String(b.alternativeBom || '1').padStart(2, '0') === cleanAltPadded || String(b.alternativeBom || '1') === cleanAlt)
+    );
+
+    if (!target) {
+      return {
+        success: false,
+        verified: false,
+        code: 'BOM_NOT_FOUND',
+        message: `BOM does not exist for material ${cleanMat} in plant ${cleanPlt}`
+      };
+    }
+
+    // Apply header changes
+    if (header.baseQty !== undefined && header.baseQty !== null && String(header.baseQty).trim() !== '') {
+      target.baseQty = String(header.baseQty).trim();
+    }
+    if (header.bomStatus !== undefined && header.bomStatus !== null && String(header.bomStatus).trim() !== '') {
+      target.bomStatus = String(header.bomStatus).trim();
+    }
+    if (header.headerText !== undefined && header.headerText !== null) {
+      target.altText = String(header.headerText).trim();
+      target.description = String(header.headerText).trim();
+    }
+    if (changeNo) target.changeNo = String(changeNo).trim();
+    if (validFrom) target.validFrom = String(validFrom).trim();
+
+    let currentComponents = Array.isArray(target.components) ? [...target.components] : [];
+    let modifiedCount = 0;
+    let addedCount = 0;
+    let deletedCount = 0;
+
+    for (const changeItem of items) {
+      const type = (changeItem.changeType || '').toUpperCase();
+      const targetNode = changeItem.itemNode ? String(changeItem.itemNode).trim() : null;
+
+      if (type === 'DELETE') {
+        const initialLen = currentComponents.length;
+        currentComponents = currentComponents.filter((c, idx) => {
+          const cNode = c.itemNode || c.stlkn || String(idx + 1).padStart(8, '0');
+          if (targetNode) {
+            return cNode !== targetNode;
+          }
+          return !(String(c.item).padStart(4, '0') === String(changeItem.item).padStart(4, '0') &&
+                   (c.component === changeItem.component || toSapMatnr(c.component) === toSapMatnr(changeItem.component)));
+        });
+        if (currentComponents.length < initialLen) deletedCount++;
+      } else if (type === 'CHANGE') {
+        let modified = false;
+        currentComponents = currentComponents.map((c, idx) => {
+          const cNode = c.itemNode || c.stlkn || String(idx + 1).padStart(8, '0');
+          const isMatch = targetNode
+            ? cNode === targetNode
+            : (String(c.item).padStart(4, '0') === String(changeItem.item).padStart(4, '0') &&
+               (c.component === changeItem.component || toSapMatnr(c.component) === toSapMatnr(changeItem.component)));
+
+          if (isMatch) {
+            modified = true;
+            return {
+              ...c,
+              itemNode: targetNode || cNode,
+              quantity: changeItem.quantity !== undefined ? parseFloat(changeItem.quantity) : c.quantity,
+              unit: changeItem.unit || c.unit,
+              storageLocation: changeItem.storageLocation !== undefined ? changeItem.storageLocation : (c.storageLocation || ''),
+              itemText: changeItem.itemText !== undefined ? changeItem.itemText : (changeItem.description || c.itemText || c.description || ''),
+              description: changeItem.itemText !== undefined ? changeItem.itemText : (changeItem.description || c.description || '')
+            };
+          }
+          return c;
+        });
+        if (modified) modifiedCount++;
+      } else if (type === 'ADD') {
+        const nextPosnr = currentComponents.length > 0
+          ? Math.max(...currentComponents.map((c) => parseInt(c.item || c.itemNo || '0', 10) || 0)) + 10
+          : 10;
+        const nextNode = currentComponents.length > 0
+          ? Math.max(...currentComponents.map((c) => parseInt(c.itemNode || '0', 10) || 0)) + 1
+          : 1;
+
+        const newComp = {
+          item: String(nextPosnr).padStart(4, '0'),
+          itemNo: String(nextPosnr).padStart(4, '0'),
+          itemNode: String(nextNode).padStart(8, '0'),
+          itemCategory: changeItem.itemCategory || 'L',
+          component: toSapMatnr(changeItem.component || changeItem.material || ''),
+          quantity: parseFloat(changeItem.quantity) || 1,
+          unit: changeItem.unit || 'EA',
+          storageLocation: changeItem.storageLocation || '',
+          itemText: changeItem.itemText || changeItem.description || '',
+          description: changeItem.itemText || changeItem.description || ''
+        };
+        currentComponents.push(newComp);
+        addedCount++;
+      }
+    }
+
+    target.components = currentComponents;
+
+    // Verify after write via internal read
+    const verifyRead = await rfcReadBom({
+      material: cleanMat,
+      plant: cleanPlt,
+      bomUsage: cleanUsg,
+      alternativeBom: cleanAlt
+    });
+
+    return {
+      success: true,
+      verified: verifyRead.success,
+      code: 'OK',
+      bomNumber: target.bomNumber || `BOM_${cleanMat}_${cleanPlt}`,
+      material: cleanMat,
+      plant: cleanPlt,
+      bomUsage: cleanUsg,
+      alternativeBom: cleanAlt,
+      header: {
+        baseQty: target.baseQty || '100',
+        baseUnit: target.baseUnit || 'EA',
+        bomStatus: target.bomStatus || '01',
+        headerText: target.altText || target.description || '',
+        validFrom: target.validFrom || '',
+        changeNo: target.changeNo || ''
+      },
+      summary: {
+        headerChanged: hasHeaderChanges,
+        itemsModified: modifiedCount,
+        itemsAdded: addedCount,
+        itemsDeleted: deletedCount,
+        totalComponentsAfter: target.components.length
+      },
+      components: verifyRead.components || target.components,
+      message: `BOM changed and verified successfully (${modifiedCount} modified, ${addedCount} added, ${deletedCount} deleted)`
+    };
+  }
+
+  // Live RFC execution via CSAP_MAT_BOM_MAINTAIN and BAPI_TRANSACTION_COMMIT
+  if (!params.client) {
+    const server = params.server || params;
+    const pool = getSapConnectionPool(server);
+    const userId = params.userId || params.user?.id || 'anonymous';
+    const priority = params.priority || RFC_PRIORITY.INTERACTIVE;
+    return pool.run(priority, userId, (pooledClient) => {
+      return rfcChangeBom({ ...params, client: pooledClient });
+    }, { signal: params.signal, req: params.req });
+  }
+
+  const client = params.client;
+  try {
+    const tStpo = items.map((c) => {
+      const row = {
+        ITEM_NODE: c.itemNode ? String(c.itemNode) : '',
+        ITEM_NO: c.item ? String(c.item).padStart(4, '0') : '',
+        ITEM_CATEG: c.itemCategory || 'L',
+        COMPONENT: toSapMatnr(c.component || ''),
+        COMP_QTY: String(c.quantity || '1'),
+        COMP_UNIT: c.unit || 'EA'
+      };
+      if (c.storageLocation) row.ISS_ST_LOC = String(c.storageLocation);
+      if (c.itemText) row.ITEM_TEXT1 = String(c.itemText);
+      if (c.changeType === 'DELETE') {
+        row.FLDELETE = 'X';
+      }
+      return row;
+    });
+
+    const iStko = {};
+    if (header.baseQty) iStko.BMENG = String(header.baseQty);
+    if (header.baseUnit) iStko.BMEIN = String(header.baseUnit);
+    if (header.bomStatus) iStko.STLST = String(header.bomStatus);
+    if (header.headerText) iStko.BKTXT = String(header.headerText);
+
+    const maintainPayload = {
+      MATERIAL: toSapMatnr(cleanMat),
+      PLANT: cleanPlt,
+      BOM_USAGE: cleanUsg,
+      ALTERNATIVE: cleanAltPadded,
+      FL_COMMIT_AND_WAIT: 'X',
+      I_STKO: iStko,
+      T_STPO: tStpo
+    };
+    if (changeNo) maintainPayload.CHANGE_NO = String(changeNo);
+    if (validFrom) maintainPayload.VALID_FROM = String(validFrom);
+
+    await client.call('CSAP_MAT_BOM_MAINTAIN', maintainPayload);
+    await client.call('BAPI_TRANSACTION_COMMIT', { WAIT: 'X' });
+
+    // Verification re-read
+    const verifyRes = await rfcReadBom({
+      material: cleanMat,
+      plant: cleanPlt,
+      bomUsage: cleanUsg,
+      alternativeBom: cleanAlt,
+      client
+    });
+
+    return {
+      success: true,
+      verified: verifyRes.success,
+      code: 'OK',
+      material: cleanMat,
+      plant: cleanPlt,
+      bomUsage: cleanUsg,
+      alternativeBom: cleanAlt,
+      components: verifyRes.components || [],
+      message: 'BOM changed and verified successfully in SAP'
+    };
+  } catch (err) {
+    const isConnBreak = err.message && (
+      err.message.includes('TIMEOUT') ||
+      err.message.includes('ECONNRESET') ||
+      err.code === 'TIMEOUT' ||
+      err.code === 'RFC_TIMEOUT'
+    );
+
+    if (isConnBreak) {
+      return {
+        success: false,
+        verified: false,
+        code: 'WRITE_OUTCOME_UNKNOWN',
+        message: `RFC write outcome unknown due to connection timeout: ${err.message}. Re-reading BOM to verify state before retry.`,
+        verifyRequired: true
+      };
+    }
+
+    return {
+      success: false,
+      verified: false,
+      code: 'SAP_BUSINESS_ERROR',
+      message: `SAP rejected BOM change: ${err.message}`
+    };
   }
 }
 
