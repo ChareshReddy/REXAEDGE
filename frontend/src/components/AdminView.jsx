@@ -273,7 +273,8 @@ export default function AdminView({
 
       // 3. Server Allowlist Tab
       if (allowlistResult.status === 'fulfilled') {
-        const list = allowlistResult.value || [];
+        const val = allowlistResult.value;
+        const list = Array.isArray(val) ? val : (val?.allowlist || []);
         setAllowlist(list);
         setAllowlistError('');
       } else {
@@ -465,8 +466,9 @@ export default function AdminView({
     setAllowlistSubmitting(true);
     setAllowlistModalError('');
     try {
-      const created = await adminAddAllowlist(allowlistFormData);
-      setAllowlist((prev) => [created, ...prev]);
+      const res = await adminAddAllowlist(allowlistFormData);
+      const created = res?.entry || res;
+      setAllowlist((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
       setIsAllowlistModalOpen(false);
       triggerNotice(`Pattern "${created.pattern}" added to allowlist successfully.`);
     } catch (err) {
@@ -639,24 +641,24 @@ export default function AdminView({
   };
 
   // Filtered lists
-  const filteredUsers = users.filter((u) =>
-    u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-    u.role.toLowerCase().includes(userSearch.toLowerCase())
+  const filteredUsers = (Array.isArray(users) ? users : []).filter((u) =>
+    (u.email && u.email.toLowerCase().includes(userSearch.toLowerCase())) ||
+    (u.role && u.role.toLowerCase().includes(userSearch.toLowerCase()))
   );
 
-  const filteredServers = servers.filter((s) =>
-    s.name.toLowerCase().includes(serverSearch.toLowerCase()) ||
-    s.environment.toLowerCase().includes(serverSearch.toLowerCase()) ||
+  const filteredServers = (Array.isArray(servers) ? servers : []).filter((s) =>
+    (s.name && s.name.toLowerCase().includes(serverSearch.toLowerCase())) ||
+    (s.environment && s.environment.toLowerCase().includes(serverSearch.toLowerCase())) ||
     (s.ashost && s.ashost.toLowerCase().includes(serverSearch.toLowerCase()))
   );
 
-  const filteredPermissions = permissions.filter((p) =>
+  const filteredPermissions = (Array.isArray(permissions) ? permissions : []).filter((p) =>
     (p.user_email && p.user_email.toLowerCase().includes(permSearch.toLowerCase())) ||
     (p.server_name && p.server_name.toLowerCase().includes(permSearch.toLowerCase())) ||
     (p.permissions && formatPermissionsSummary(p.permissions).toLowerCase().includes(permSearch.toLowerCase()))
   );
 
-  const filteredAllowlist = allowlist.filter((a) =>
+  const filteredAllowlist = (Array.isArray(allowlist) ? allowlist : []).filter((a) =>
     (a.pattern && a.pattern.toLowerCase().includes(allowlistSearch.toLowerCase())) ||
     (a.type && a.type.toLowerCase().includes(allowlistSearch.toLowerCase())) ||
     (a.comment && a.comment.toLowerCase().includes(allowlistSearch.toLowerCase()))
@@ -784,7 +786,7 @@ export default function AdminView({
           >
             <Settings size={14} />
             <span>Settings</span>
-            <span className="sap-admin-tab-badge">{allowlistError ? '!' : allowlist.length}</span>
+            <span className="sap-admin-tab-badge">{allowlistError ? '!' : (Array.isArray(allowlist) ? allowlist.length : 0)}</span>
           </button>
 
           <button

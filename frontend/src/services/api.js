@@ -720,7 +720,7 @@ export async function adminUpdateUserStatus(userId, isDisabled) {
  */
 export async function adminGetAllowlist() {
   const response = await apiClient.get('/admin/allowlist');
-  return response.data;
+  return response.data?.allowlist ?? response.data ?? [];
 }
 
 /**
@@ -728,7 +728,7 @@ export async function adminGetAllowlist() {
  */
 export async function adminAddAllowlist(entry) {
   const response = await apiClient.post('/admin/allowlist', entry);
-  return response.data;
+  return response.data?.entry ?? response.data;
 }
 
 /**

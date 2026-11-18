@@ -75,9 +75,10 @@ export default function AddServerModal({
 
       const result = await testServerConnection(payload, serverToEdit?.id || null);
       if (result?.success) {
+        const allowlistType = result.type || result.environment || 'Sandbox';
         setTestStatus({
           success: true,
-          message: `Connection successful (${result.responseTimeMs || 0} ms) - Type: ${result.type || 'Verified'}`
+          message: `Connection successful (${result.responseTimeMs || 0} ms) - Type: ${allowlistType}`
         });
       } else {
         setTestStatus({

@@ -36,8 +36,25 @@ function checkTestRateLimit(userId) {
 function sanitizeServer(server) {
   if (!server) return null;
   const { sap_password, sap_password_encrypted, ...safe } = server;
+  const queueTimeoutMs = Number(
+    server.queue_timeout_ms !== undefined
+      ? server.queue_timeout_ms
+      : (server.queue_timeout_seconds !== undefined ? server.queue_timeout_seconds * 1000 : 20000)
+  );
+  const rfcCallTimeoutMs = Number(
+    server.rfc_call_timeout_ms !== undefined
+      ? server.rfc_call_timeout_ms
+      : (server.rfc_call_timeout_seconds !== undefined ? server.rfc_call_timeout_seconds * 1000 : 45000)
+  );
+
   return {
     ...safe,
+    environment: server.environment || server.type || 'Sandbox',
+    type: server.environment || server.type || 'Sandbox',
+    queue_timeout_ms: queueTimeoutMs,
+    rfc_call_timeout_ms: rfcCallTimeoutMs,
+    queue_timeout_seconds: Math.round(queueTimeoutMs / 1000),
+    rfc_call_timeout_seconds: Math.round(rfcCallTimeoutMs / 1000),
     sap_password_masked: Boolean(sap_password || sap_password_encrypted)
   };
 }
@@ -69,13 +86,16 @@ router.post('/', requireAuth, async (req, res) => {
     client = '100',
     lang = 'EN',
     router: sapRouter = null,
+    saprouter = null,
     gwserv = null,
     sap_username = null,
     sap_password = null,
     max_connections = 3,
     per_user_limit = 2,
-    queue_timeout_seconds = 20,
-    rfc_call_timeout_seconds = 45,
+    queue_timeout_seconds,
+    queue_timeout_ms,
+    rfc_call_timeout_seconds,
+    rfc_call_timeout_ms,
     is_default = false
   } = req.body || {};
 
@@ -96,10 +116,12 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
 
+    const effectiveRouter = sapRouter ? String(sapRouter).trim() : (saprouter ? String(saprouter).trim() : null);
+
     // 2. Validate host & router against allowlist and SSRF rules
     const allowlist = await supabaseService.getAllowlist();
     const validation = await validateServerHost(
-      { ashost, router: sapRouter, ...req.body },
+      { ashost, router: effectiveRouter, ...req.body },
       allowlist
     );
 
@@ -130,7 +152,7 @@ router.post('/', requireAuth, async (req, res) => {
           client,
           sap_username,
           sap_password,
-          router: sapRouter,
+          router: effectiveRouter,
           gwserv
         });
         testPassed = Boolean(testRes && (testRes.success || testRes.latencyMs !== undefined));
@@ -159,23 +181,36 @@ router.post('/', requireAuth, async (req, res) => {
     const cappedMaxConnections = Math.min(Math.max(Number(max_connections) || 1, 1), 5);
     const cappedUserLimit = Math.min(Math.max(Number(per_user_limit) || 1, 1), cappedMaxConnections);
 
+    // Unit conversion: seconds -> milliseconds for queue_timeout_ms and rfc_call_timeout_ms
+    let finalQueueTimeoutMs = 20000;
+    if (queue_timeout_ms !== undefined) {
+      finalQueueTimeoutMs = Number(queue_timeout_ms) || 20000;
+    } else if (queue_timeout_seconds !== undefined) {
+      finalQueueTimeoutMs = (Number(queue_timeout_seconds) || 20) * 1000;
+    }
+
+    let finalRfcCallTimeoutMs = 45000;
+    if (rfc_call_timeout_ms !== undefined) {
+      finalRfcCallTimeoutMs = Number(rfc_call_timeout_ms) || 45000;
+    } else if (rfc_call_timeout_seconds !== undefined) {
+      finalRfcCallTimeoutMs = (Number(rfc_call_timeout_seconds) || 45) * 1000;
+    }
+
     const newServerData = {
       name: String(name).trim(),
       ashost: String(ashost).trim(),
-      validated_ip: validation.validatedIp,
       sysnr: String(sysnr).trim(),
       client: String(client).trim(),
       lang: String(lang).trim().toUpperCase(),
       environment: serverType,
-      type: serverType,
-      router: sapRouter ? String(sapRouter).trim() : null,
+      router: effectiveRouter,
       gwserv: gwserv ? String(gwserv).trim() : null,
       sap_username: sap_username ? String(sap_username).trim() : null,
-      sap_password: encryptedPassword,
+      sap_password_encrypted: encryptedPassword,
       max_connections: cappedMaxConnections,
       per_user_limit: cappedUserLimit,
-      queue_timeout_seconds: Number(queue_timeout_seconds) || 20,
-      rfc_call_timeout_seconds: Number(rfc_call_timeout_seconds) || 45,
+      queue_timeout_ms: finalQueueTimeoutMs,
+      rfc_call_timeout_ms: finalRfcCallTimeoutMs,
       is_default: Boolean(is_default)
     };
 
@@ -242,13 +277,16 @@ router.put('/:id', requireAuth, async (req, res) => {
     client,
     lang,
     router: sapRouter,
+    saprouter,
     gwserv,
     sap_username,
     sap_password,
     max_connections,
     per_user_limit,
     queue_timeout_seconds,
+    queue_timeout_ms,
     rfc_call_timeout_seconds,
+    rfc_call_timeout_ms,
     is_default,
     is_active
   } = req.body || {};
@@ -264,7 +302,8 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     // Validate host & router if modified
     const targetHost = ashost !== undefined ? String(ashost).trim() : existing.ashost;
-    const targetRouter = sapRouter !== undefined ? String(sapRouter).trim() : existing.router;
+    const routerParam = sapRouter !== undefined ? sapRouter : saprouter;
+    const targetRouter = routerParam !== undefined ? String(routerParam).trim() : existing.router;
 
     const allowlist = await supabaseService.getAllowlist();
     const validation = await validateServerHost(
@@ -281,20 +320,19 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     // Update server type from allowlist
     updatePayload.environment = validation.matchedType || existing.environment;
-    updatePayload.type = validation.matchedType || existing.environment;
 
     if (name !== undefined) updatePayload.name = String(name).trim();
     if (ashost !== undefined) updatePayload.ashost = String(ashost).trim();
     if (sysnr !== undefined) updatePayload.sysnr = String(sysnr).trim();
     if (client !== undefined) updatePayload.client = String(client).trim();
     if (lang !== undefined) updatePayload.lang = String(lang).trim().toUpperCase();
-    if (sapRouter !== undefined) updatePayload.router = sapRouter ? String(sapRouter).trim() : null;
+    if (routerParam !== undefined) updatePayload.router = routerParam ? String(routerParam).trim() : null;
     if (gwserv !== undefined) updatePayload.gwserv = gwserv ? String(gwserv).trim() : null;
     if (sap_username !== undefined) updatePayload.sap_username = sap_username ? String(sap_username).trim() : null;
 
     // "Leave blank to keep" on edit:
     if (sap_password && String(sap_password).trim()) {
-      updatePayload.sap_password = encryptPassword(String(sap_password));
+      updatePayload.sap_password_encrypted = encryptPassword(String(sap_password));
     }
 
     if (max_connections !== undefined) {
@@ -303,8 +341,16 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (per_user_limit !== undefined) {
       updatePayload.per_user_limit = Math.min(Math.max(Number(per_user_limit) || 1, 1), updatePayload.max_connections || existing.max_connections);
     }
-    if (queue_timeout_seconds !== undefined) updatePayload.queue_timeout_seconds = Number(queue_timeout_seconds);
-    if (rfc_call_timeout_seconds !== undefined) updatePayload.rfc_call_timeout_seconds = Number(rfc_call_timeout_seconds);
+    if (queue_timeout_ms !== undefined) {
+      updatePayload.queue_timeout_ms = Number(queue_timeout_ms);
+    } else if (queue_timeout_seconds !== undefined) {
+      updatePayload.queue_timeout_ms = Number(queue_timeout_seconds) * 1000;
+    }
+    if (rfc_call_timeout_ms !== undefined) {
+      updatePayload.rfc_call_timeout_ms = Number(rfc_call_timeout_ms);
+    } else if (rfc_call_timeout_seconds !== undefined) {
+      updatePayload.rfc_call_timeout_ms = Number(rfc_call_timeout_seconds) * 1000;
+    }
     if (is_default !== undefined) updatePayload.is_default = Boolean(is_default);
     if (is_active !== undefined) updatePayload.is_active = Boolean(is_active);
 
@@ -472,10 +518,13 @@ async function handleTestConnection(req, res) {
       reason: 'User initiated connection test'
     });
 
+    const allowlistType = validation.matchedType || 'Sandbox';
+
     return res.status(200).json({
       success: true,
-      message: 'Connection test successful.',
-      environment: validation.matchedType,
+      message: `Connection test successful. Type: ${allowlistType}`,
+      type: allowlistType,
+      environment: allowlistType,
       validatedIp: validation.validatedIp,
       responseTimeMs: durationMs
     });

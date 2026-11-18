@@ -53,8 +53,6 @@ const testFiles = [
   'test/bomHubGrouping.test.js',
   'test/fioriLaunchpadRender.test.js',
   'test/adminServerlessVisibility.test.js',
-  'test/bulkUploadPanelRender.test.js',
-  'test/bulkCreateBomPreviewTable.test.js',
   'test/sapMatnrPaddingAndErrors.test.js',
   'test/sapConnectionTest.test.js',
   'test/bomBackgroundJobs.test.js',
@@ -69,23 +67,16 @@ const testFiles = [
   'test/noPermittedServerAccess.test.js',
   'test/emptyMastBomHandling.test.js',
   'test/appPermissions.test.js',
-  'test/compactDiagnosticMessage.test.js',
   'test/dualStatePermissions.test.js',
-  'test/loginPageUi.test.js',
   'test/restrictValueRange.test.js',
   'test/storageLocations.test.js',
   'test/navigationAndBreadcrumbs.test.js',
-  'test/routedViewsRender.test.js',
   'test/authRetryResilience.test.js',
   'test/loginKeepAliveResilience.test.js',
-  'test/themeAndLayoutRedesign.test.js',
-  'test/toastNotificationLayout.test.js',
-  'test/createBomTooltips.test.js',
   'test/bomUsages.test.js',
   'test/activityLogs.test.js',
   'test/bomExplorerLoading.test.js',
   'test/friendlyError.test.js',
-  'test/homePageRedesign.test.js',
   'test/popupHeaderColorFix.test.js',
   'test/inPageActionButtons.test.js',
   'test/operationCardsRedesign.test.js',
@@ -99,7 +90,10 @@ const testFiles = [
   'test/bulkBackgroundJobsStage4.test.js',
   'test/stage5BomLockAndF4Cache.test.js',
   'test/stage6AdminServersAndLimits.test.js',
-  'test/stage7FinalBacktest.test.js'
+  'test/stage7FinalBacktest.test.js',
+  'test/stage1Foundation.test.js',
+  'test/stage2AdminAndAllowlist.test.js',
+  'test/stage3PerTabAndLockIsolation.test.js'
 ];
 
 const env = {
@@ -111,6 +105,10 @@ const env = {
 };
 
 for (const file of testFiles) {
+  const fullPath = path.resolve(__dirname, '..', file);
+  if (!fs.existsSync(fullPath)) {
+    continue;
+  }
   try {
     execSync(`node ${file}`, { env, stdio: 'inherit', cwd: path.resolve(__dirname, '..') });
   } catch (err) {

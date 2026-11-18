@@ -1467,7 +1467,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'launchpad' && launchpadSubView && launchpadSubView !== 'home' && (
+        {activeTab === 'launchpad' && launchpadSubView && launchpadSubView !== 'home' && (!isBomScreen || availableServers.length > 0) && (
           <FioriLaunchpad
             sapSession={sapSession}
             systemKey={currentSystem}

@@ -675,6 +675,18 @@ class InMemorySupabaseStore {
       }
     }
 
+    const queueTimeoutMs = serverData.queue_timeout_ms !== undefined
+      ? Number(serverData.queue_timeout_ms)
+      : (serverData.queue_timeout_seconds !== undefined ? Number(serverData.queue_timeout_seconds) * 1000 : 20000);
+
+    const rfcCallTimeoutMs = serverData.rfc_call_timeout_ms !== undefined
+      ? Number(serverData.rfc_call_timeout_ms)
+      : (serverData.rfc_call_timeout_seconds !== undefined ? Number(serverData.rfc_call_timeout_seconds) * 1000 : 45000);
+
+    const encryptedPwd = serverData.sap_password_encrypted !== undefined
+      ? serverData.sap_password_encrypted
+      : (serverData.sap_password ? encryptPassword(String(serverData.sap_password)) : null);
+
     const newServer = {
       id: crypto.randomUUID(),
       name: serverData.name || 'SAP Server',
@@ -686,11 +698,12 @@ class InMemorySupabaseStore {
       router: serverData.router || null,
       gwserv: serverData.gwserv || null,
       sap_username: serverData.sap_username || null,
-      sap_password: serverData.sap_password || null,
+      sap_password: encryptedPwd,
+      sap_password_encrypted: encryptedPwd,
       max_connections: Math.min(Math.max(Number(serverData.max_connections) || 3, 1), 5),
       per_user_limit: Math.min(Math.max(Number(serverData.per_user_limit) || 2, 1), 5),
-      queue_timeout_seconds: Number(serverData.queue_timeout_seconds) || 20,
-      rfc_call_timeout_seconds: Number(serverData.rfc_call_timeout_seconds) || 45,
+      queue_timeout_ms: queueTimeoutMs,
+      rfc_call_timeout_ms: rfcCallTimeoutMs,
       is_active: serverData.is_active !== false,
       is_disabled: false,
       is_default: shouldBeDefault,
@@ -727,11 +740,26 @@ class InMemorySupabaseStore {
     if (updateData.gwserv !== undefined) server.gwserv = updateData.gwserv;
     if (updateData.sap_username !== undefined) server.sap_username = updateData.sap_username;
     // Leave blank to keep existing encrypted password:
-    if (updateData.sap_password && String(updateData.sap_password).trim()) {
-      server.sap_password = updateData.sap_password;
+    if (updateData.sap_password_encrypted !== undefined) {
+      server.sap_password_encrypted = updateData.sap_password_encrypted;
+    } else if (updateData.sap_password && String(updateData.sap_password).trim()) {
+      server.sap_password_encrypted = encryptPassword(String(updateData.sap_password));
     }
     if (updateData.max_connections !== undefined) {
       server.max_connections = Math.min(Math.max(Number(updateData.max_connections) || 1, 1), 5);
+    }
+    if (updateData.per_user_limit !== undefined) {
+      server.per_user_limit = Math.min(Math.max(Number(updateData.per_user_limit) || 1, 1), server.max_connections);
+    }
+    if (updateData.queue_timeout_ms !== undefined) {
+      server.queue_timeout_ms = Number(updateData.queue_timeout_ms);
+    } else if (updateData.queue_timeout_seconds !== undefined) {
+      server.queue_timeout_ms = Number(updateData.queue_timeout_seconds) * 1000;
+    }
+    if (updateData.rfc_call_timeout_ms !== undefined) {
+      server.rfc_call_timeout_ms = Number(updateData.rfc_call_timeout_ms);
+    } else if (updateData.rfc_call_timeout_seconds !== undefined) {
+      server.rfc_call_timeout_ms = Number(updateData.rfc_call_timeout_seconds) * 1000;
     }
     if (updateData.is_default !== undefined) server.is_default = Boolean(updateData.is_default);
     if (updateData.is_active !== undefined) server.is_active = Boolean(updateData.is_active);
@@ -1168,6 +1196,35 @@ export const inMemorySupabase = new InMemorySupabaseStore();
  * Automatically routes to Live Supabase if configured, otherwise InMemory Store
  * ============================================================================
  */
+const SAP_SERVERS_ALLOWED_COLUMNS = new Set([
+  'id',
+  'name',
+  'ashost',
+  'sysnr',
+  'client',
+  'lang',
+  'environment',
+  'router',
+  'gwserv',
+  'is_active',
+  'created_at',
+  'updated_at',
+  'sap_username',
+  'sap_password_encrypted',
+  'connection_test',
+  'max_connections',
+  'per_user_limit',
+  'queue_timeout_ms',
+  'rfc_call_timeout_ms',
+  'owner_id',
+  'is_disabled',
+  'is_default',
+  'last_used_at',
+  'created_by'
+]);
+
+export { SAP_SERVERS_ALLOWED_COLUMNS };
+
 export const supabaseService = {
   isLive: () => isLiveSupabaseConfigured && !shouldUseInMemory(),
 
@@ -1581,14 +1638,36 @@ export const supabaseService = {
         .eq('owner_id', ownerId);
     }
 
+    const queueTimeoutMs = serverData.queue_timeout_ms !== undefined
+      ? Number(serverData.queue_timeout_ms)
+      : (serverData.queue_timeout_seconds !== undefined ? Number(serverData.queue_timeout_seconds) * 1000 : 20000);
+
+    const rfcCallTimeoutMs = serverData.rfc_call_timeout_ms !== undefined
+      ? Number(serverData.rfc_call_timeout_ms)
+      : (serverData.rfc_call_timeout_seconds !== undefined ? Number(serverData.rfc_call_timeout_seconds) * 1000 : 45000);
+
     const insertPayload = {
-      ...serverData,
       is_default: shouldBeDefault,
       owner_id: ownerId,
       created_by: ownerId,
       max_connections: Math.min(Math.max(Number(serverData.max_connections) || 3, 1), 5),
+      per_user_limit: Math.min(Math.max(Number(serverData.per_user_limit) || 2, 1), 5),
+      queue_timeout_ms: queueTimeoutMs,
+      rfc_call_timeout_ms: rfcCallTimeoutMs,
       updated_at: new Date().toISOString()
     };
+
+    if (serverData.sap_password_encrypted !== undefined) {
+      insertPayload.sap_password_encrypted = serverData.sap_password_encrypted;
+    } else if (serverData.sap_password) {
+      insertPayload.sap_password_encrypted = encryptPassword(String(serverData.sap_password));
+    }
+
+    for (const [key, val] of Object.entries(serverData)) {
+      if (SAP_SERVERS_ALLOWED_COLUMNS.has(key) && insertPayload[key] === undefined) {
+        insertPayload[key] = val;
+      }
+    }
 
     const { data, error } = await liveSupabase
       .from('sap_servers')
@@ -1610,12 +1689,38 @@ export const supabaseService = {
         .update({ is_default: false })
         .eq('owner_id', ownerId);
     }
+
+    const updatePayload = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (updateData.queue_timeout_ms !== undefined) {
+      updatePayload.queue_timeout_ms = Number(updateData.queue_timeout_ms);
+    } else if (updateData.queue_timeout_seconds !== undefined) {
+      updatePayload.queue_timeout_ms = Number(updateData.queue_timeout_seconds) * 1000;
+    }
+
+    if (updateData.rfc_call_timeout_ms !== undefined) {
+      updatePayload.rfc_call_timeout_ms = Number(updateData.rfc_call_timeout_ms);
+    } else if (updateData.rfc_call_timeout_seconds !== undefined) {
+      updatePayload.rfc_call_timeout_ms = Number(updateData.rfc_call_timeout_seconds) * 1000;
+    }
+
+    if (updateData.sap_password_encrypted !== undefined) {
+      updatePayload.sap_password_encrypted = updateData.sap_password_encrypted;
+    } else if (updateData.sap_password && String(updateData.sap_password).trim()) {
+      updatePayload.sap_password_encrypted = encryptPassword(String(updateData.sap_password));
+    }
+
+    for (const [key, val] of Object.entries(updateData)) {
+      if (SAP_SERVERS_ALLOWED_COLUMNS.has(key) && updatePayload[key] === undefined) {
+        updatePayload[key] = val;
+      }
+    }
+
     const { data, error } = await liveSupabase
       .from('sap_servers')
-      .update({
-        ...updateData,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', serverId)
       .eq('owner_id', ownerId)
       .select()
