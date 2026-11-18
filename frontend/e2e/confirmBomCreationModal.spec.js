@@ -10,6 +10,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const artifactDir = 'C:/Users/chare/.gemini/antigravity/brain/6fce99f3-5f59-4200-af87-677b5d74db10/screenshots/popups';
 
+if (!fs.existsSync(artifactDir)) {
+  fs.mkdirSync(artifactDir, { recursive: true });
+}
+
 function createBulkCreateSpreadsheet() {
   const filePath = path.join(os.tmpdir(), `bulk_create_confirm_${Date.now()}.xlsx`);
   const data = [
@@ -83,7 +87,8 @@ function createBulkCopySpreadsheet() {
 test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
   for (const viewport of [
     { width: 1366, height: 768, name: '1366x768' },
-    { width: 1920, height: 1080, name: '1920x1080' }
+    { width: 1920, height: 1080, name: '1920x1080' },
+    { width: 390, height: 844, name: '390x844' }
   ]) {
     test(`Confirmation popups at ${viewport.name}`, async ({ page }, testInfo) => {
       if (testInfo.project.name !== viewport.name) {
@@ -167,11 +172,29 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(createBomBtn).toBeEnabled({ timeout: 8000 });
       await createBomBtn.click();
 
-      const singleModal = page.locator('[role="dialog"]').first();
+      const singleModal = page.locator('.confirm-bom-creation-modal-card, [role="dialog"]').first();
       await expect(singleModal).toBeVisible({ timeout: 5000 });
       await expect(singleModal.locator('text=Confirm BOM Creation').first()).toBeVisible();
 
-      // Check header details 2-column grid
+      // Assert NO old details grid
+      await expect(page.locator('.confirm-bom-details-grid')).toHaveCount(0);
+
+      // Assert Header table has 7 columns and 1 row with correct values
+      const headerTable = page.locator('[data-testid="confirm-bom-header-table"]');
+      await expect(headerTable).toBeVisible();
+      const headerThs = headerTable.locator('thead th');
+      if (viewport.width > 640) {
+        await expect(headerThs).toHaveCount(7);
+        await expect(headerThs.nth(0)).toHaveText('Material');
+        await expect(headerThs.nth(1)).toHaveText('Plant');
+        await expect(headerThs.nth(2)).toHaveText('BOM usage');
+        await expect(headerThs.nth(3)).toHaveText('Alternative');
+        await expect(headerThs.nth(4)).toHaveText('Valid from');
+        await expect(headerThs.nth(5)).toHaveText('Base quantity');
+        await expect(headerThs.nth(6)).toHaveText('BOM status');
+      }
+
+      await expect(headerTable.locator('tbody tr')).toHaveCount(1);
       await expect(page.locator('[data-testid="confirm-detail-material"]')).toHaveText('A1PSB001B');
       await expect(page.locator('[data-testid="confirm-detail-plant"]')).toHaveText('1010');
       await expect(page.locator('[data-testid="confirm-detail-usage"]')).toHaveText('1');
@@ -182,7 +205,9 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       // Check Components section heading
       await expect(page.locator('[data-testid="confirm-components-heading"]')).toHaveText('Components (1)');
 
-      // Check sticky column header labels
+      // Assert Components table
+      const compTable = page.locator('[data-testid="confirm-bom-components-table"]');
+      await expect(compTable).toBeVisible();
       const compContainer = page.locator('[data-testid="confirm-bom-components-container"]');
       await expect(compContainer.getByText('Item', { exact: true })).toBeVisible();
       await expect(compContainer.getByText('Component', { exact: true })).toBeVisible();
@@ -200,14 +225,30 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       expect(row0Text).toContain('L');
       expect(row0Text).toContain('PR67');
 
-      // Check height fits content & footer buttons visible
-      const singleBox1 = await singleModal.boundingBox();
-      expect(singleBox1).not.toBeNull();
-      if (viewport.width === 1366) {
-        expect(singleBox1.height).toBeLessThan(520);
+      // Assert both tables have the same header background, font size, and padding (on desktop)
+      if (viewport.width > 640) {
+        const headerTh0 = headerThs.first();
+        const compTh0 = compTable.locator('thead th').first();
+        const hStyle = await headerTh0.evaluate((el) => {
+          const cs = window.getComputedStyle(el);
+          return { bg: cs.backgroundColor, font: cs.fontSize, pad: cs.padding };
+        });
+        const cStyle = await compTh0.evaluate((el) => {
+          const cs = window.getComputedStyle(el);
+          return { bg: cs.backgroundColor, font: cs.fontSize, pad: cs.padding };
+        });
+        expect(hStyle.bg).toBe(cStyle.bg);
+        expect(hStyle.font).toBe(cStyle.font);
+        expect(hStyle.pad).toBe(cStyle.pad);
       }
+
+      // Check footer buttons visible
       await expect(singleModal.locator('button:has-text("Confirm & Create")')).toBeVisible();
       await expect(singleModal.locator('button:has-text("Cancel")')).toBeVisible();
+
+      // Check horizontal overflow
+      const singleOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(singleOverflow).toBe(false);
 
       // Screenshot 1: Single Create with 1 Component
       const shot1 = path.join(artifactDir, `confirm-single-1comp-${viewport.name}.png`);
@@ -236,11 +277,11 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(singleModal).toBeVisible({ timeout: 5000 });
       await expect(page.locator('[data-testid="confirm-components-heading"]')).toHaveText('Components (10)');
 
-      // Verify list scrolls internally
+      // Verify components list scrolls internally
       const isScrollable = await compContainer.evaluate((el) => el.scrollHeight > el.clientHeight);
       expect(isScrollable).toBe(true);
 
-      // Verify footer buttons remain pinned & visible
+      // Verify footer buttons remain visible
       await expect(singleModal.locator('button:has-text("Confirm & Create")')).toBeVisible();
 
       // Screenshot 2: Single Create with 10 Components
@@ -292,21 +333,41 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(bulkCreateModal.locator('text=Confirm Bulk BOM Creation')).toBeVisible();
       await expect(bulkCreateModal.locator('text=You are about to create')).toBeVisible();
 
-      // Assert file chip
-      const fileChipCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-file-chip"]');
-      await expect(fileChipCreate).toBeVisible();
+      // Assert NO old tiles or blue file chip
+      await expect(page.locator('.bulk-confirm-tiles-grid')).toHaveCount(0);
+      await expect(page.locator('[data-testid="bulk-confirm-tiles-grid"]')).toHaveCount(0);
+      await expect(page.locator('[data-testid="bulk-confirm-tile-ready"]')).toHaveCount(0);
+      await expect(page.locator('[data-testid="bulk-confirm-file-chip"]')).toHaveCount(0);
 
-      // Assert 3 summary tiles
-      const tileReadyCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-tile-ready"]');
-      const tileSkippedCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-tile-skipped"]');
-      const tileInvalidCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-tile-invalid"]');
-      await expect(tileReadyCreate).toBeVisible();
-      await expect(tileSkippedCreate).toBeVisible();
-      await expect(tileInvalidCreate).toBeVisible();
+      // Assert plain text file line
+      const fileLineCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-file-line"]');
+      await expect(fileLineCreate).toBeVisible();
+      await expect(fileLineCreate).toContainText('File');
+      const fileNameCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-file-name"]');
+      await expect(fileNameCreate).toBeVisible();
+      const createFileNameText = await fileNameCreate.innerText();
+      expect(createFileNameText).toContain('.xlsx');
 
-      await expect(tileReadyCreate.locator('text=Ready to create')).toBeVisible();
-      await expect(tileSkippedCreate.locator('text=Skipped (existing)')).toBeVisible();
-      await expect(tileInvalidCreate.locator('text=Invalid (will not run)')).toBeVisible();
+      // Assert 3 summary table rows with correct counts & dot colors
+      const summaryTableCreate = bulkCreateModal.locator('[data-testid="bulk-confirm-summary-table"]');
+      await expect(summaryTableCreate).toBeVisible();
+      const createRows = summaryTableCreate.locator('tbody tr');
+      await expect(createRows).toHaveCount(3);
+
+      await expect(createRows.nth(0)).toContainText('Ready to create');
+      await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-ready-count"]')).toHaveText('2');
+      const createDotReadyColor = await bulkCreateModal.locator('[data-testid="bulk-confirm-dot-ready"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(createDotReadyColor).toBe('rgb(21, 128, 61)'); // green
+
+      await expect(createRows.nth(1)).toContainText('Skipped (existing)');
+      await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-skipped-count"]')).toHaveText('0');
+      const createDotSkippedColor = await bulkCreateModal.locator('[data-testid="bulk-confirm-dot-skipped"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(createDotSkippedColor).toBe('rgb(71, 85, 105)'); // gray when 0
+
+      await expect(createRows.nth(2)).toContainText('Invalid (will not run)');
+      await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-invalid-count"]')).toHaveText('0');
+      const createDotInvalidColor = await bulkCreateModal.locator('[data-testid="bulk-confirm-dot-invalid"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(createDotInvalidColor).toBe('rgb(71, 85, 105)'); // gray when 0
 
       // Footnote
       await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-footnote"]')).toHaveText('Only Ready BOMs are sent to SAP.');
@@ -314,6 +375,18 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       // Footer buttons
       const confirmCreateBtn = bulkCreateModal.locator('button:has-text("Confirm & Create")');
       await expect(confirmCreateBtn).toBeEnabled();
+      await expect(bulkCreateModal.locator('button:has-text("Cancel")')).toBeVisible();
+
+      // Check horizontal overflow
+      const bulkCreateOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(bulkCreateOverflow).toBe(false);
+
+      // Record computed styles for parity assertion against bulk copy
+      const createModalBox = await bulkCreateModal.boundingBox();
+      const createHeaderBox = await bulkCreateModal.locator('.sap-modal-header').boundingBox();
+      const createRow0Box = await createRows.nth(0).boundingBox();
+      const createCancelBox = await bulkCreateModal.locator('button:has-text("Cancel")').boundingBox();
+      const createConfirmBox = await confirmCreateBtn.boundingBox();
 
       // Screenshot 3: Bulk Create Confirm Popup
       const shot3 = path.join(artifactDir, `confirm-bulk-create-${viewport.name}.png`);
@@ -357,7 +430,6 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       const copyExecuteBtn = page.locator('button:has-text("Copy BOMs")');
       await expect(copyExecuteBtn).toBeEnabled({ timeout: 10000 });
 
-      // Ensure NO window.confirm dialog is triggered
       let windowConfirmFired = false;
       page.on('dialog', (dialog) => {
         windowConfirmFired = true;
@@ -372,21 +444,38 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(bulkCopyModal.locator('text=Confirm Bulk BOM Copy')).toBeVisible();
       await expect(bulkCopyModal.locator('text=You are about to copy')).toBeVisible();
 
-      // Assert file chip
-      const fileChipCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-file-chip"]');
-      await expect(fileChipCopy).toBeVisible();
+      // Assert NO old tiles or blue file chip
+      await expect(page.locator('.bulk-confirm-tiles-grid')).toHaveCount(0);
+      await expect(page.locator('[data-testid="bulk-confirm-tile-ready"]')).toHaveCount(0);
+      await expect(page.locator('[data-testid="bulk-confirm-file-chip"]')).toHaveCount(0);
 
-      // Assert 3 summary tiles
-      const tileReadyCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-tile-ready"]');
-      const tileSkippedCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-tile-skipped"]');
-      const tileInvalidCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-tile-invalid"]');
-      await expect(tileReadyCopy).toBeVisible();
-      await expect(tileSkippedCopy).toBeVisible();
-      await expect(tileInvalidCopy).toBeVisible();
+      // Assert plain text file line
+      const fileLineCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-file-line"]');
+      await expect(fileLineCopy).toBeVisible();
+      await expect(fileLineCopy).toContainText('File');
+      const fileNameCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-file-name"]');
+      await expect(fileNameCopy).toBeVisible();
 
-      await expect(tileReadyCopy.locator('text=Ready to copy')).toBeVisible();
-      await expect(tileSkippedCopy.locator('text=Skipped')).toBeVisible();
-      await expect(tileInvalidCopy.locator('text=Invalid (will not run)')).toBeVisible();
+      // Assert 3 summary table rows with correct counts & dot colors
+      const summaryTableCopy = bulkCopyModal.locator('[data-testid="bulk-confirm-summary-table"]');
+      await expect(summaryTableCopy).toBeVisible();
+      const copyRows = summaryTableCopy.locator('tbody tr');
+      await expect(copyRows).toHaveCount(3);
+
+      await expect(copyRows.nth(0)).toContainText('Ready to copy');
+      await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-ready-count"]')).toHaveText('2');
+      const copyDotReadyColor = await bulkCopyModal.locator('[data-testid="bulk-confirm-dot-ready"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(copyDotReadyColor).toBe('rgb(21, 128, 61)'); // green
+
+      await expect(copyRows.nth(1)).toContainText('Skipped');
+      await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-skipped-count"]')).toHaveText('0');
+      const copyDotSkippedColor = await bulkCopyModal.locator('[data-testid="bulk-confirm-dot-skipped"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(copyDotSkippedColor).toBe('rgb(71, 85, 105)'); // gray when 0
+
+      await expect(copyRows.nth(2)).toContainText('Invalid (will not run)');
+      await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-invalid-count"]')).toHaveText('0');
+      const copyDotInvalidColor = await bulkCopyModal.locator('[data-testid="bulk-confirm-dot-invalid"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
+      expect(copyDotInvalidColor).toBe('rgb(71, 85, 105)'); // gray when 0
 
       // Footnote
       await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-footnote"]')).toHaveText('Only Ready BOMs are copied.');
@@ -394,6 +483,24 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       // Footer buttons
       const confirmCopyBtn = bulkCopyModal.locator('button:has-text("Confirm & Copy")');
       await expect(confirmCopyBtn).toBeEnabled();
+      await expect(bulkCopyModal.locator('button:has-text("Cancel")')).toBeVisible();
+
+      // Check horizontal overflow
+      const bulkCopyOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+      expect(bulkCopyOverflow).toBe(false);
+
+      // Assert both bulk popups have identical structure and computed styles within 1px
+      const copyModalBox = await bulkCopyModal.boundingBox();
+      const copyHeaderBox = await bulkCopyModal.locator('.sap-modal-header').boundingBox();
+      const copyRow0Box = await copyRows.nth(0).boundingBox();
+      const copyCancelBox = await bulkCopyModal.locator('button:has-text("Cancel")').boundingBox();
+      const copyConfirmBox = await confirmCopyBtn.boundingBox();
+
+      expect(Math.abs(copyModalBox.width - createModalBox.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(copyHeaderBox.height - createHeaderBox.height)).toBeLessThanOrEqual(1);
+      expect(Math.abs(copyRow0Box.height - createRow0Box.height)).toBeLessThanOrEqual(1);
+      expect(Math.abs((copyCancelBox.y - copyModalBox.y) - (createCancelBox.y - createModalBox.y))).toBeLessThanOrEqual(1);
+      expect(Math.abs((copyConfirmBox.y - copyModalBox.y) - (createConfirmBox.y - createModalBox.y))).toBeLessThanOrEqual(1);
 
       // Screenshot 4: Bulk Copy Confirm Popup
       const shot4 = path.join(artifactDir, `confirm-bulk-copy-${viewport.name}.png`);

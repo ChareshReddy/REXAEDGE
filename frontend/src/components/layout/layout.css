@@ -526,14 +526,20 @@
 }
 
 @media (max-width: 640px) {
-  .sap-shell-header {
-    padding: 0 12px !important;
-    gap: 8px !important;
-    height: 56px !important;
-    min-height: 56px !important;
-    max-height: 56px !important;
-    flex-wrap: nowrap !important;
-    overflow: hidden !important;
+  .sap-shell-header,
+  header.sap-shell-header,
+  .sap-toolbar.sap-shell-header {
+    display: grid !important;
+    grid-template-columns: 1fr auto auto !important;
+    grid-template-rows: auto auto !important;
+    height: auto !important;
+    min-height: 84px !important;
+    max-height: none !important;
+    padding: 8px 12px 10px 12px !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
   }
 
   .sap-mobile-menu-btn,
@@ -542,63 +548,152 @@
   }
 
   .sap-shell-header-left {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
+    align-items: center !important;
     gap: 8px !important;
+    min-width: 0 !important;
+    height: 38px !important;
+  }
+
+  .rx-topbar-sidebar-toggle {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     flex-shrink: 0 !important;
+  }
+
+  .sap-brand {
+    display: inline-flex !important;
+    align-items: center !important;
+    min-width: 95px !important;
+    max-width: 130px !important;
+    flex-shrink: 0 !important;
+    overflow: visible !important;
   }
 
   .sap-brand-logo-container {
     height: 28px !important;
     max-height: 28px !important;
-  }
-
-  .sap-brand-logo-img {
-    height: 28px !important;
-    max-height: 28px !important;
-    max-width: 100px !important;
-  }
-
-  .sap-shell-actions {
-    gap: 6px !important;
-    flex-wrap: nowrap !important;
+    display: flex !important;
     align-items: center !important;
   }
 
+  .sap-brand-logo-img {
+    height: 26px !important;
+    max-height: 26px !important;
+    width: auto !important;
+    max-width: 120px !important;
+    object-fit: contain !important;
+  }
+
+  .sap-shell-actions {
+    display: contents !important;
+  }
+
   .rx-topbar-search-text,
-  .rx-topbar-search-kbd {
-    display: none !important;
-  }
-
-  .rx-topbar-search-btn {
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    padding: 0 !important;
-    justify-content: center !important;
-  }
-
+  .rx-topbar-search-kbd,
   .sap-system-label {
     display: none !important;
   }
 
+  .rx-topbar-search-btn {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sap-user-menu-wrapper {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    position: relative !important;
+  }
+
+  .sap-user-avatar-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    margin-right: 0px !important;
+  }
+
+  .sap-user-avatar-circle {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 14px !important;
+  }
+
+  .sap-connection-dot-container {
+    grid-column: 1 / 2 !important;
+    grid-row: 2 / 3 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 18px !important;
+    z-index: 2 !important;
+  }
+
   .sap-system-select-wrapper {
-    gap: 4px !important;
-    max-width: 140px !important;
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 22px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sap-system-select-wrapper > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
   }
 
   .sap-system-select,
   select.sap-system-select,
   .sap-system-static-name {
-    max-width: 75px !important;
-    overflow: hidden !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    height: 34px !important;
+    padding: 4px 8px !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
-    font-size: 11px !important;
+    overflow: hidden !important;
   }
 
   .rx-server-env-badge {
-    font-size: 10px !important;
-    padding: 1px 4px !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
     flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
   }
 
   .rx-single-bulk-switch {

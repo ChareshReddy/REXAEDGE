@@ -1,6 +1,6 @@
 import React from 'react';
 import Modal from './Modal';
-import { FileSpreadsheet, ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 
 /**
  * BulkConfirmModal
@@ -28,6 +28,10 @@ export default function BulkConfirmModal({
   const isCopy = mode === 'copy';
   const modalTitle = title || (isCopy ? 'Confirm Bulk BOM Copy' : 'Confirm Bulk BOM Creation');
 
+  const readyDotColor = readyCount > 0 ? 'var(--color-success, #15803D)' : 'var(--sap-text-muted, #7A8CA3)';
+  const skippedDotColor = skippedCount > 0 ? 'var(--color-info, #02579A)' : 'var(--sap-text-muted, #7A8CA3)';
+  const invalidDotColor = invalidCount > 0 ? 'var(--color-danger, #B42318)' : 'var(--sap-text-muted, #7A8CA3)';
+
   return (
     <Modal
       isOpen={isOpen}
@@ -36,8 +40,9 @@ export default function BulkConfirmModal({
       }}
       closeOnEscape={!isExecuting}
       title={modalTitle}
-      maxWidth={520}
-      width="min(520px, calc(100vw - 32px))"
+      maxWidth={480}
+      width="min(480px, calc(100vw - 32px))"
+      padding="20px"
       style={{ maxHeight: '90vh' }}
       cardClassName="rx-bulk-confirm-modal"
       footer={
@@ -80,176 +85,254 @@ export default function BulkConfirmModal({
         </div>
       }
     >
-      <style>{`
-        @media (max-width: 480px) {
-          .bulk-confirm-tiles-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
-      <div style={{ padding: '4px 0' }} data-testid="bulk-confirm-modal-content">
+      <div data-testid="bulk-confirm-modal-content">
         <p
           style={{
-            margin: '0 0 10px',
-            fontSize: 13.5,
-            color: 'var(--sap-text-dark, #0F172A)',
+            margin: '0 0 6px',
+            fontSize: 13,
+            color: 'var(--sap-text-body, #334155)',
             lineHeight: 1.5
           }}
         >
-          You are about to {isCopy ? 'copy' : 'create'} <strong>{readyCount}</strong> BOM(s) in SAP from file:
+          You are about to {isCopy ? 'copy' : 'create'} {readyCount} BOM(s) in SAP from file:
         </p>
 
-        {/* File chip on its own line */}
-        <div style={{ marginBottom: 16 }}>
-          <div
-            className="bulk-confirm-file-chip"
-            data-testid="bulk-confirm-file-chip"
-            title={fileName}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              maxWidth: '100%',
-              padding: '6px 12px',
-              backgroundColor: 'var(--color-blue-100, #EAF1FB)',
-              border: '1px solid var(--color-blue-200, #B3CDE0)',
-              borderRadius: 'var(--radius-md, 8px)',
-              fontFamily: 'var(--font-mono, monospace)',
-              fontWeight: 600,
-              fontSize: 13,
-              color: 'var(--sap-primary, #0B2D57)',
-              boxSizing: 'border-box'
-            }}
-          >
-            <FileSpreadsheet size={16} style={{ flexShrink: 0, color: 'var(--sap-primary, #0B2D57)' }} />
-            <span
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {fileName}
-            </span>
-          </div>
-        </div>
-
-        {/* Three equal summary tiles in one row */}
+        {/* File line */}
         <div
-          className="bulk-confirm-tiles-grid"
-          data-testid="bulk-confirm-tiles-grid"
+          data-testid="bulk-confirm-file-line"
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 12,
-            marginBottom: 14
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            margin: '0 0 16px',
+            minWidth: 0,
+            fontSize: 13,
+            lineHeight: 1.4
           }}
         >
-          {/* Tile 1: Ready */}
-          <div
-            data-testid="bulk-confirm-tile-ready"
+          <span style={{ color: 'var(--sap-text-muted, #7A8CA3)', flexShrink: 0 }}>File</span>
+          <span
+            data-testid="bulk-confirm-file-name"
+            title={fileName}
             style={{
-              backgroundColor: 'var(--color-success-bg, #ECFDF3)',
-              border: '1px solid var(--color-success-border, #A6F4C5)',
-              borderRadius: 'var(--radius-md, 8px)',
-              padding: '12px 14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4
+              fontWeight: 600,
+              color: 'var(--sap-text-dark, #0F172A)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0
             }}
           >
-            <div style={{ fontSize: 13, color: 'var(--color-success, #15803D)', fontWeight: 500 }}>
-              {isCopy ? 'Ready to copy' : 'Ready to create'}
-            </div>
-            <div
-              data-testid="bulk-confirm-ready-count"
-              style={{
-                fontSize: 24,
-                fontWeight: 600,
-                color: 'var(--color-success, #15803D)',
-                lineHeight: 1.2
-              }}
-            >
-              {readyCount}
-            </div>
-          </div>
-
-          {/* Tile 2: Skipped */}
-          <div
-            data-testid="bulk-confirm-tile-skipped"
-            style={{
-              backgroundColor: 'var(--color-info-bg, #EEF4F9)',
-              border: '1px solid var(--color-info-border, #B3CDE0)',
-              borderRadius: 'var(--radius-md, 8px)',
-              padding: '12px 14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4
-            }}
-          >
-            <div style={{ fontSize: 13, color: 'var(--color-info, #02579A)', fontWeight: 500 }}>
-              {isCopy ? 'Skipped' : 'Skipped (existing)'}
-            </div>
-            <div
-              data-testid="bulk-confirm-skipped-count"
-              style={{
-                fontSize: 24,
-                fontWeight: 600,
-                color: 'var(--color-info, #02579A)',
-                lineHeight: 1.2
-              }}
-            >
-              {skippedCount}
-            </div>
-          </div>
-
-          {/* Tile 3: Invalid */}
-          <div
-            data-testid="bulk-confirm-tile-invalid"
-            style={{
-              backgroundColor:
-                invalidCount > 0 ? 'var(--color-danger-bg, #FEF3F2)' : 'var(--sap-surface-subtle, #F8FAFC)',
-              border: `1px solid ${
-                invalidCount > 0 ? 'var(--color-danger-border, #FECDCA)' : 'var(--sap-border-color, #E2E8F0)'
-              }`,
-              borderRadius: 'var(--radius-md, 8px)',
-              padding: '12px 14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4
-            }}
-          >
-            <div
-              style={{
-                fontSize: 13,
-                color: invalidCount > 0 ? 'var(--color-danger, #B42318)' : 'var(--sap-text-muted, #64748B)',
-                fontWeight: 500
-              }}
-            >
-              Invalid (will not run)
-            </div>
-            <div
-              data-testid="bulk-confirm-invalid-count"
-              style={{
-                fontSize: 24,
-                fontWeight: 600,
-                color: invalidCount > 0 ? 'var(--color-danger, #B42318)' : 'var(--sap-text-muted, #64748B)',
-                lineHeight: 1.2
-              }}
-            >
-              {invalidCount}
-            </div>
-          </div>
+            {fileName}
+          </span>
         </div>
 
-        {/* Muted footnote */}
+        {/* Summary Table */}
+        <div
+          className="bulk-confirm-table-container rx-confirm-table-container"
+          data-testid="bulk-confirm-table-container"
+          style={{
+            border: '1px solid var(--table-header-border, #DDE6F0)',
+            borderRadius: 4,
+            overflow: 'hidden',
+            background: 'var(--sap-card-bg, #ffffff)',
+            marginBottom: 12
+          }}
+        >
+          <table
+            className="rx-confirm-table rx-bulk-confirm-table"
+            data-testid="bulk-confirm-summary-table"
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              tableLayout: 'fixed'
+            }}
+          >
+            <thead>
+              <tr
+                style={{
+                  background: 'var(--table-header-bg, #EDF2F9)',
+                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  height: 36
+                }}
+              >
+                <th
+                  style={{
+                    padding: '0 12px',
+                    textAlign: 'left',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--table-header-text, #0B2D57)',
+                    lineHeight: '36px',
+                    height: 36,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  Status
+                </th>
+                <th
+                  style={{
+                    padding: '0 12px',
+                    textAlign: 'right',
+                    width: 80,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'var(--table-header-text, #0B2D57)',
+                    lineHeight: '36px',
+                    height: 36,
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  BOMs
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Row 1: Ready */}
+              <tr
+                data-testid="bulk-confirm-row-ready"
+                style={{
+                  height: 36,
+                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <td style={{ padding: '0 12px', height: 36, verticalAlign: 'middle', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      data-testid="bulk-confirm-dot-ready"
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: readyDotColor,
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {isCopy ? 'Ready to copy' : 'Ready to create'}
+                    </span>
+                  </div>
+                </td>
+                <td
+                  data-testid="bulk-confirm-ready-count"
+                  style={{
+                    padding: '0 12px',
+                    textAlign: 'right',
+                    fontWeight: 600,
+                    color: 'var(--table-header-text, #0B2D57)',
+                    fontSize: 13,
+                    fontVariantNumeric: 'tabular-nums',
+                    height: 36,
+                    verticalAlign: 'middle',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {readyCount}
+                </td>
+              </tr>
+
+              {/* Row 2: Skipped */}
+              <tr
+                data-testid="bulk-confirm-row-skipped"
+                style={{
+                  height: 36,
+                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <td style={{ padding: '0 12px', height: 36, verticalAlign: 'middle', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      data-testid="bulk-confirm-dot-skipped"
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: skippedDotColor,
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {isCopy ? 'Skipped' : 'Skipped (existing)'}
+                    </span>
+                  </div>
+                </td>
+                <td
+                  data-testid="bulk-confirm-skipped-count"
+                  style={{
+                    padding: '0 12px',
+                    textAlign: 'right',
+                    fontWeight: 600,
+                    color: 'var(--table-header-text, #0B2D57)',
+                    fontSize: 13,
+                    fontVariantNumeric: 'tabular-nums',
+                    height: 36,
+                    verticalAlign: 'middle',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {skippedCount}
+                </td>
+              </tr>
+
+              {/* Row 3: Invalid */}
+              <tr
+                data-testid="bulk-confirm-row-invalid"
+                style={{
+                  height: 36,
+                  boxSizing: 'border-box'
+                }}
+              >
+                <td style={{ padding: '0 12px', height: 36, verticalAlign: 'middle', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      data-testid="bulk-confirm-dot-invalid"
+                      style={{
+                        display: 'inline-block',
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: invalidDotColor,
+                        flexShrink: 0
+                      }}
+                    />
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                      Invalid (will not run)
+                    </span>
+                  </div>
+                </td>
+                <td
+                  data-testid="bulk-confirm-invalid-count"
+                  style={{
+                    padding: '0 12px',
+                    textAlign: 'right',
+                    fontWeight: 600,
+                    color: 'var(--table-header-text, #0B2D57)',
+                    fontSize: 13,
+                    fontVariantNumeric: 'tabular-nums',
+                    height: 36,
+                    verticalAlign: 'middle',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {invalidCount}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footnote */}
         <p
           data-testid="bulk-confirm-footnote"
           style={{
-            margin: '0 0 12px',
-            fontSize: 12.5,
-            color: 'var(--sap-text-muted, #64748B)',
-            lineHeight: 1.5
+            margin: '0',
+            fontSize: 13,
+            color: 'var(--sap-text-muted, #7A8CA3)',
+            lineHeight: 1.4
           }}
         >
           {isCopy ? 'Only Ready BOMs are copied.' : 'Only Ready BOMs are sent to SAP.'}

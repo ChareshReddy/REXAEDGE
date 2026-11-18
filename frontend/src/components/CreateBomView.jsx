@@ -1376,10 +1376,11 @@ export default function CreateBomView({
             if (!isExecuting) setIsConfirmModalOpen(false);
           }}
           title="Confirm BOM Creation"
-          maxWidth={560}
-          width="min(560px, calc(100vw - 32px))"
+          maxWidth={760}
+          width="min(760px, calc(100vw - 32px))"
+          padding="20px"
           style={{ maxHeight: '90vh' }}
-          cardClassName="confirm-bom-creation-modal-card"
+          cardClassName="confirm-bom-creation-modal-card rx-confirm-single-modal"
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
               <button
@@ -1415,69 +1416,130 @@ export default function CreateBomView({
             </div>
           }
         >
-          <div style={{ padding: '4px 0' }} data-testid="confirm-bom-modal-content">
+          <style>{`
+            .confirm-single-header-table,
+            .confirm-single-components-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .confirm-single-header-table th,
+            .confirm-single-components-table th {
+              background: var(--table-header-bg, #EDF2F9);
+              color: var(--table-header-text, #0B2D57);
+              font-size: 12px;
+              font-weight: 600;
+              padding: 0 12px;
+              height: 36px;
+              line-height: 36px;
+              text-align: left;
+              border-bottom: 1px solid var(--table-header-border, #DDE6F0);
+              white-space: nowrap;
+              box-sizing: border-box;
+            }
+            .confirm-single-header-table td,
+            .confirm-single-components-table td {
+              padding: 0 12px;
+              height: 36px;
+              vertical-align: middle;
+              font-size: 13px;
+              box-sizing: border-box;
+              white-space: nowrap;
+            }
+            @media (max-width: 640px) {
+              .confirm-single-header-table thead {
+                display: none !important;
+              }
+              .confirm-single-header-table,
+              .confirm-single-header-table tbody,
+              .confirm-single-header-table tr {
+                display: block !important;
+                width: 100% !important;
+              }
+              .confirm-single-header-table td {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                padding: 8px 12px !important;
+                height: auto !important;
+                min-height: 36px !important;
+                border-bottom: 1px solid var(--table-header-border, #DDE6F0) !important;
+                font-size: 13px !important;
+                white-space: normal !important;
+                box-sizing: border-box !important;
+              }
+              .confirm-single-header-table td:last-child {
+                border-bottom: none !important;
+              }
+              .confirm-single-header-table td::before {
+                content: attr(data-label);
+                font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--sap-text-secondary, #475569);
+                margin-right: 12px;
+                flex-shrink: 0;
+              }
+            }
+          `}</style>
+
+          <div data-testid="confirm-bom-modal-content">
             <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-body, #334155)', lineHeight: 1.5 }}>
               You are about to create a new Bill of Materials in SAP.
             </p>
 
-            {/* Compact Two-Column Details Block */}
+            {/* Header details table */}
             <div
-              className="confirm-bom-details-grid"
-              data-testid="confirm-bom-details"
+              className="confirm-bom-header-container rx-confirm-table-container"
+              data-testid="confirm-bom-header-container"
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '10px 16px',
-                padding: '12px 14px',
-                background: 'var(--sap-surface-subtle, #f8fafc)',
-                border: '1px solid var(--sap-border-color, #e2e8f0)',
-                borderRadius: 'var(--radius-md, 8px)',
-                marginBottom: 16,
-                fontSize: 12.5
+                border: '1px solid var(--table-header-border, #DDE6F0)',
+                borderRadius: 4,
+                overflow: 'hidden',
+                background: 'var(--sap-card-bg, #ffffff)',
+                marginBottom: 16
               }}
             >
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Material</span>
-                <span data-testid="confirm-detail-material" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {(headerData.material || '-').toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Plant</span>
-                <span data-testid="confirm-detail-plant" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {(headerData.plant || '-').toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM usage</span>
-                <span data-testid="confirm-detail-usage" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.bomUsage || '1'}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Alternative</span>
-                <span data-testid="confirm-detail-alternative" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {(headerData.alternativeBom || '01').toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Valid from</span>
-                <span data-testid="confirm-detail-validfrom" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.validFrom || '-'}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>Base quantity</span>
-                <span data-testid="confirm-detail-baseqty" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {`${headerData.baseQty || '1'} ${(resolvedBaseUnit || preflightData?.baseUnit || '').toUpperCase()}`.trim()}
-                </span>
-              </div>
-              <div>
-                <span style={{ color: 'var(--sap-text-muted, #64748b)', display: 'block', fontSize: 11.5, marginBottom: 2 }}>BOM status</span>
-                <span data-testid="confirm-detail-status" style={{ fontWeight: 600, fontFamily: 'var(--font-mono, monospace)', fontSize: 13, color: 'var(--sap-text-dark, #0f172a)' }}>
-                  {headerData.bomStatus || '01'}
-                </span>
-              </div>
+              <table
+                className="confirm-single-header-table rx-confirm-table"
+                data-testid="confirm-bom-header-table"
+              >
+                <thead>
+                  <tr>
+                    <th>Material</th>
+                    <th>Plant</th>
+                    <th>BOM usage</th>
+                    <th>Alternative</th>
+                    <th>Valid from</th>
+                    <th>Base quantity</th>
+                    <th>BOM status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="Material" data-testid="confirm-detail-material" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {(headerData.material || '-').toUpperCase()}
+                    </td>
+                    <td data-label="Plant" data-testid="confirm-detail-plant" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {(headerData.plant || '-').toUpperCase()}
+                    </td>
+                    <td data-label="BOM usage" data-testid="confirm-detail-usage" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {headerData.bomUsage || '1'}
+                    </td>
+                    <td data-label="Alternative" data-testid="confirm-detail-alternative" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {(headerData.alternativeBom || '01').toUpperCase()}
+                    </td>
+                    <td data-label="Valid from" data-testid="confirm-detail-validfrom" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {headerData.validFrom || '-'}
+                    </td>
+                    <td data-label="Base quantity" data-testid="confirm-detail-baseqty" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {`${headerData.baseQty || '1'} ${(resolvedBaseUnit || preflightData?.baseUnit || '').toUpperCase()}`.trim()}
+                    </td>
+                    <td data-label="BOM status" data-testid="confirm-detail-status" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                      {headerData.bomStatus || '01'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             {/* Components section: aligned list with sticky header row */}
@@ -1494,75 +1556,64 @@ export default function CreateBomView({
                 Components ({components.length})
               </div>
               <div
-                className="confirm-bom-components-container"
+                className="confirm-bom-components-container rx-confirm-table-container"
                 data-testid="confirm-bom-components-container"
                 style={{
-                  maxHeight: 260,
+                  maxHeight: 252,
                   overflowY: 'auto',
-                  overflowX: 'hidden',
-                  border: '1px solid var(--sap-border-color, #dde6f0)',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  background: 'var(--sap-surface-subtle, #f8fafc)'
+                  overflowX: 'auto',
+                  border: '1px solid var(--table-header-border, #DDE6F0)',
+                  borderRadius: 4,
+                  background: 'var(--sap-card-bg, #ffffff)'
                 }}
               >
-                {/* Sticky Header Row */}
-                <div
+                <table
+                  className="confirm-single-components-table rx-confirm-table"
+                  data-testid="confirm-bom-components-table"
                   style={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 2,
-                    display: 'grid',
-                    gridTemplateColumns: '48px 1fr 60px 85px 105px',
-                    gap: 8,
-                    padding: '7px 10px',
-                    background: 'var(--color-blue-100, #EAF1FB)',
-                    borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: 'var(--sap-text-secondary, #475569)',
-                    lineHeight: 1.2
+                    minWidth: 540
                   }}
                 >
-                  <div>Item</div>
-                  <div>Component</div>
-                  <div>Quantity</div>
-                  <div>Item category</div>
-                  <div>Storage location</div>
-                </div>
-
-                {/* Rows */}
-                {components.map((c, idx) => {
-                  const itemNo = c.itemNo || String((idx + 1) * 10).padStart(4, '0');
-                  const compMat = (c.component || '-').trim().toUpperCase();
-                  const qty = (c.quantity || '1').trim();
-                  const cat = (c.itemCategory || 'L').trim().toUpperCase();
-                  const loc = (c.storageLocation || '-').trim().toUpperCase();
-                  return (
-                    <div
-                      key={c.id || idx}
-                      data-testid={`confirm-component-row-${idx}`}
+                  <thead>
+                    <tr
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: '48px 1fr 60px 85px 105px',
-                        gap: 8,
-                        padding: '6px 10px',
-                        alignItems: 'center',
-                        background: idx % 2 === 0 ? 'var(--sap-card-bg, #ffffff)' : 'transparent',
-                        borderBottom: idx === components.length - 1 ? 'none' : '1px solid var(--sap-border-color, #f1f5f9)',
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontSize: 13,
-                        color: 'var(--sap-text-dark, #0f172a)',
-                        lineHeight: 1.3
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 2
                       }}
                     >
-                      <div>{itemNo}</div>
-                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={compMat}>{compMat}</div>
-                      <div>{qty}</div>
-                      <div>{cat}</div>
-                      <div>{loc}</div>
-                    </div>
-                  );
-                })}
+                      <th style={{ width: 60 }}>Item</th>
+                      <th>Component</th>
+                      <th style={{ width: 80 }}>Quantity</th>
+                      <th style={{ width: 110 }}>Item category</th>
+                      <th style={{ width: 130 }}>Storage location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {components.map((c, idx) => {
+                      const itemNo = c.itemNo || String((idx + 1) * 10).padStart(4, '0');
+                      const compMat = (c.component || '-').trim().toUpperCase();
+                      const qty = (c.quantity || '1').trim();
+                      const cat = (c.itemCategory || 'L').trim().toUpperCase();
+                      const loc = (c.storageLocation || '-').trim().toUpperCase();
+                      return (
+                        <tr
+                          key={c.id || idx}
+                          data-testid={`confirm-component-row-${idx}`}
+                          style={{
+                            borderBottom: idx === components.length - 1 ? 'none' : '1px solid var(--table-header-border, #DDE6F0)'
+                          }}
+                        >
+                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{itemNo}</td>
+                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }} title={compMat}>{compMat}</td>
+                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{qty}</td>
+                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{cat}</td>
+                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{loc}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 

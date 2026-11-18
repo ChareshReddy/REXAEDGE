@@ -2742,71 +2742,69 @@ select:-webkit-autofill:focus {
     height: calc(100dvh - 104px);
   }
 
-  /* 4. Table on Mobile (Card Layout) */
+  /* 4. Table on Mobile: Native Table in Horizontal Scroll Container */
   .sap-table-title-bar {
     padding: 10px 12px;
     gap: 8px;
   }
 
-  .sap-table-container {
-    overflow-x: visible;
+  .sap-table-container,
+  .sap-card-table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative;
+    box-sizing: border-box !important;
   }
 
   .sap-table {
-    display: block;
-    width: 100%;
+    display: table !important;
+    width: 100% !important;
+    min-width: 820px !important;
+    border-collapse: collapse !important;
   }
 
   .sap-table thead {
-    display: none;
+    display: table-header-group !important;
+  }
+
+  .sap-table thead tr {
+    display: table-row !important;
   }
 
   .sap-table tbody {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px;
+    display: table-row-group !important;
   }
 
   .sap-table tr {
-    display: block;
-    background: #ffffff;
-    border: 1px solid var(--sap-border);
-    border-radius: var(--radius-md);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    padding: 12px;
+    display: table-row !important;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
   }
 
-  .sap-table tbody tr:hover {
-    background: #ffffff;
-  }
-
+  .sap-table th,
   .sap-table td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 7px 0;
-    border-bottom: 1px solid var(--sap-border-subtle);
-    font-size: 13px;
-    text-align: right;
+    display: table-cell !important;
+    text-align: left;
+    white-space: nowrap;
+    padding: 8px 10px !important;
+    min-width: 90px;
+    box-sizing: border-box;
   }
 
-  .sap-table td:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-
-  .sap-table td:first-child {
-    padding-top: 0;
+  .sap-table th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    background-color: var(--table-header-bg, #EDF2F9) !important;
   }
 
   .sap-table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: var(--sap-text-muted);
-    font-size: 11px;
-    text-transform: none; text-align: left; margin-right: 12px;
-    flex-shrink: 0;
+    display: none !important;
+    content: none !important;
   }
 
   .sap-pagination-bar {
@@ -8256,8 +8254,12 @@ a.fiori-ph-orange-back:focus-visible {
     box-sizing: border-box !important;
   }
 
-  /* Topbar Responsive Rules: Clean Single Row with Search Icon, Server, Sandbox, Avatar */
+  /* Topbar Responsive Rules for Tablet: Single Row, No Clipping */
   .sap-shell-header {
+    height: 60px !important;
+    min-height: 60px !important;
+    max-height: 60px !important;
+    padding: 0 16px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -8269,7 +8271,21 @@ a.fiori-ph-orange-back:focus-visible {
     display: flex !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    gap: 6px !important;
+    gap: 8px !important;
+  }
+
+  .rx-topbar-search-kbd {
+    display: none !important;
+  }
+
+  .sap-system-select {
+    max-width: 180px !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .rx-server-env-badge,
+  .sap-user-avatar-btn {
+    flex-shrink: 0 !important;
   }
 
   .sap-mobile-menu-btn,
@@ -8278,16 +8294,28 @@ a.fiori-ph-orange-back:focus-visible {
   }
 
   /* 2. Touch Targets (At least 44x44px hit area) */
-  .sap-button, .rx-btn, .sap-btn, .fiori-ph-btn,
-  .sap-admin-nav-tab, .fiori-home-tab,
-  .rx-switch-btn, .rx-topbar-sidebar-toggle, .rx-topbar-search-btn {
+  button,
+  .sap-button,
+  .rx-btn,
+  .sap-btn,
+  .fiori-ph-btn,
+  .sap-admin-nav-tab,
+  .fiori-home-tab,
+  .rx-switch-btn,
+  .rx-topbar-sidebar-toggle,
+  .rx-topbar-search-btn,
+  .sap-user-avatar-btn {
     min-height: var(--touch-target-min, 44px) !important;
   }
 
   .sap-action-icon-btn,
   .rx-icon-btn,
   button.sap-row-action-btn,
-  .sap-table-btn {
+  .sap-table-btn,
+  .rx-topbar-sidebar-toggle,
+  .rx-topbar-search-btn,
+  .sap-user-avatar-btn,
+  .rx-table-action-delete {
     min-width: var(--touch-target-min, 44px) !important;
     min-height: var(--touch-target-min, 44px) !important;
     display: inline-flex !important;
@@ -8311,8 +8339,9 @@ a.fiori-ph-orange-back:focus-visible {
     gap: 16px !important;
   }
 
-  /* 4. Table Containers: Horizontal Scroll with Preserved Sticky Headers */
+  /* 4. Table Containers: Horizontal Scroll with Preserved Sticky Headers & Scroll Hint */
   .sap-table-container,
+  .sap-card-table-scroll,
   .fiori-table-wrapper,
   .rx-components-table-container,
   .sap-table-scroll-container,
@@ -8325,13 +8354,34 @@ a.fiori-ph-orange-back:focus-visible {
     max-width: 100% !important;
     position: relative;
     box-sizing: border-box !important;
+    background: 
+      linear-gradient(to right, white 30%, rgba(255, 255, 255, 0)),
+      linear-gradient(to right, rgba(255, 255, 255, 0), white 70%) 0 100%,
+      radial-gradient(farthest-side at 0% 50%, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0)),
+      radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0)) 0 100%;
+    background-repeat: no-repeat;
+    background-color: #ffffff;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-position: 0 0, 100% 0, 0 0, 100% 0;
+    background-attachment: local, local, scroll, scroll;
   }
 
   .rx-components-table,
   .sap-table,
   .sap-bulk-table,
+  .preflight-preview-table,
   .sap-admin-table {
-    min-width: 760px !important;
+    min-width: 820px !important;
+  }
+
+  .rx-components-table {
+    min-width: 960px !important;
+    width: 960px !important;
+    table-layout: auto !important;
+  }
+
+  .rx-components-table colgroup col {
+    width: auto !important;
   }
 
   /* 5. Bulk Upload Two-Column Stacking */
@@ -8382,77 +8432,79 @@ a.fiori-ph-orange-back:focus-visible {
    ---------------------------------------------------------------------------- */
 @media (max-width: 640px) {
   /* 1. Prevent iOS Auto-Zoom on Form Focus (Inputs at least 16px) */
-  input, select, textarea,
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
   .sap-form-input, .sap-input, .rx-input, .sap-form-select,
   .sap-input-wrap input, .lg-input {
     font-size: 16px !important;
   }
 
-  /* Topbar phone compactness: single non-wrapping row containing all items */
+  /* Topbar phone layout: two compact rows without clipping or squashing */
   .sap-shell-header,
   header.sap-shell-header,
   .sap-toolbar.sap-shell-header {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    height: 52px !important;
-    min-height: 52px !important;
-    max-height: 52px !important;
-    padding: 0 8px !important;
-    overflow: hidden !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto auto !important;
+    grid-template-rows: auto auto !important;
+    height: auto !important;
+    min-height: 84px !important;
+    max-height: none !important;
+    padding: 8px 12px 10px 12px !important;
+    row-gap: 8px !important;
+    column-gap: 8px !important;
+    overflow: visible !important;
     box-sizing: border-box !important;
   }
 
   .sap-shell-header-left {
-    display: inline-flex !important;
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    flex: 0 0 auto !important;
+    gap: 8px !important;
     min-width: 0 !important;
-    height: 100% !important;
+    height: 38px !important;
   }
 
   .rx-topbar-sidebar-toggle {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
     padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     flex-shrink: 0 !important;
   }
 
   .sap-brand {
     display: inline-flex !important;
     align-items: center !important;
+    min-width: 95px !important;
+    max-width: 130px !important;
     flex-shrink: 0 !important;
-    max-width: 90px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   .sap-brand-logo-container {
-    height: 24px !important;
-    max-height: 24px !important;
+    height: 28px !important;
+    max-height: 28px !important;
     display: flex !important;
     align-items: center !important;
   }
 
   .sap-brand-logo-img {
-    height: 24px !important;
-    max-height: 24px !important;
-    max-width: 85px !important;
+    height: 26px !important;
+    max-height: 26px !important;
+    width: auto !important;
+    max-width: 120px !important;
     object-fit: contain !important;
   }
 
   .sap-shell-actions {
-    display: inline-flex !important;
-    align-items: center !important;
-    flex-wrap: nowrap !important;
-    gap: 5px !important;
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    height: 100% !important;
+    display: contents !important;
   }
 
   .rx-topbar-search-text,
@@ -8462,49 +8514,96 @@ a.fiori-ph-orange-back:focus-visible {
   }
 
   .rx-topbar-search-btn {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / 2 !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
     padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     flex-shrink: 0 !important;
   }
 
-  .sap-system-select-wrapper {
-    display: inline-flex !important;
+  .sap-user-menu-wrapper {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    display: flex !important;
     align-items: center !important;
-    gap: 3px !important;
-    max-width: 125px !important;
-    flex-shrink: 1 !important;
+    justify-content: flex-end !important;
+    position: relative !important;
+  }
+
+  .sap-user-avatar-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+    margin-right: 0px !important;
+  }
+
+  .sap-user-avatar-circle {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 14px !important;
+  }
+
+  /* Row 2: Status Dot + Server Selector + Badge */
+  .sap-connection-dot-container {
+    grid-column: 1 / 2 !important;
+    grid-row: 2 / 3 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    width: 18px !important;
+    z-index: 2 !important;
+  }
+
+  .sap-system-select-wrapper {
+    grid-column: 1 / 4 !important;
+    grid-row: 2 / 3 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 22px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sap-system-select-wrapper > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
   }
 
   .sap-system-select,
   select.sap-system-select {
-    max-width: 65px !important;
-    width: auto !important;
-    font-size: 11px !important;
-    padding: 2px 4px !important;
-    height: 28px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    height: 34px !important;
+    padding: 4px 8px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
   }
 
   .rx-server-env-badge {
-    font-size: 9.5px !important;
-    padding: 1px 4px !important;
+    font-size: 11px !important;
+    padding: 3px 8px !important;
     flex-shrink: 0 !important;
-  }
-
-  .sap-user-avatar-btn {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    padding: 0 !important;
-  }
-
-  .sap-user-avatar-circle {
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 12px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
   }
 
   /* 2. Page Container Gutter Padding */
@@ -8516,6 +8615,13 @@ a.fiori-ph-orange-back:focus-visible {
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
+  }
+
+  .sap-page-container .sap-form-view-section,
+  .sap-page-container .sap-proposal-view-section,
+  .sap-page-container .sap-result-view-section {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
   }
 
   /* 3. Page Header Band: Title/Subtitle Wrap & Full-Width Single/Bulk Switch */
@@ -8590,6 +8696,19 @@ a.fiori-ph-orange-back:focus-visible {
     padding: 10px 12px !important;
     height: auto !important;
     min-height: var(--size-card-header-height, 48px) !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .rx-form-section-header-tinted > div:first-child,
+  .rx-card-header > div:first-child,
+  .rx-form-section-header > div:first-child {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
   }
 
   .rx-form-section-header-tinted > div:last-child,
@@ -8599,8 +8718,22 @@ a.fiori-ph-orange-back:focus-visible {
     width: 100% !important;
     display: flex !important;
     flex-wrap: wrap !important;
-    justify-content: flex-end !important;
+    justify-content: stretch !important;
     gap: 8px !important;
+  }
+
+  .rx-form-section-header-tinted .rx-btn-add-component,
+  .rx-form-section-header .rx-btn-add-component {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 38px !important;
+  }
+
+  .rx-form-section-header-tinted .rx-search-input-wrapper,
+  .rx-form-section-header .rx-search-input-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
   }
 
   .rx-card, .sap-card, .rx-form-section, .sap-form-section {
@@ -8613,30 +8746,63 @@ a.fiori-ph-orange-back:focus-visible {
     padding: 12px !important;
   }
 
+  /* BOM Result Meta Summary Strip: Clean 2x2 Grid on Phones */
+  .sap-result-meta-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px 12px !important;
+  }
+
   /* 5. Form Grids on Phone (1 Column) */
   .sap-form-grid,
   .rx-form-grid,
   .grid-cols-4,
   .grid-cols-3,
   .grid-cols-2,
+  div.grid.grid-cols-2,
+  .rx-copy-bom-form .grid,
+  .rx-copy-bom-form .grid-cols-2,
   .confirm-bom-details-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
+  /* Form Actions: Stack Vertically at Full Width on Phones */
   .sap-card-action-row,
   .rx-form-actions,
   .sap-form-card-actions {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .sap-card-action-row > div,
+  .rx-form-actions > div,
+  .sap-card-action-row [class*="gap-2"],
+  .rx-form-actions [class*="gap-2"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    flex-wrap: wrap !important;
   }
 
   .sap-card-action-row button,
   .rx-form-actions button,
-  .sap-form-card-actions button {
+  .sap-form-card-actions button,
+  .sap-card-action-row .sap-button,
+  .rx-form-actions .sap-button {
     width: 100% !important;
+    max-width: 100% !important;
     justify-content: center !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
   }
 
   /* 6. Bulk Workflow Progress Stepper (Numbers Only, Active Step Label Shown) */
@@ -8706,6 +8872,7 @@ a.fiori-ph-orange-back:focus-visible {
   .rx-results-action-buttons {
     flex-direction: column !important;
     width: 100% !important;
+    gap: 8px !important;
   }
 
   .rx-results-action-buttons button,
@@ -8713,6 +8880,7 @@ a.fiori-ph-orange-back:focus-visible {
     width: 100% !important;
     justify-content: center !important;
     text-align: center !important;
+    min-height: 44px !important;
   }
 
   .rx-results-banner {
@@ -8722,41 +8890,51 @@ a.fiori-ph-orange-back:focus-visible {
     padding: 12px 14px !important;
   }
 
-  /* 10. Modals & Popups: Near Full-Width on Phone (16px margins, max-height 90vh) */
+  /* 10. Modals & Popups: Near Full-Width on Phone (8px margins, max-height 90vh) */
   .sap-f4-modal-dialog,
   .sap-f4-modal-dialog.bom-usage,
   .sap-f4-modal-dialog.material,
   .sap-f4-modal-dialog.plant,
   .sap-f4-modal-dialog.storage-location,
   .sap-restrict-modal-dialog,
-  .rx-modal-dialog,
   .rx-command-palette-dialog,
   .sap-modal-dialog,
+  .sap-modal-card,
+  .confirm-bom-creation-modal-card,
+  .rx-bulk-confirm-modal,
   .sap-modal {
-    width: calc(100vw - 32px) !important;
-    min-width: calc(100vw - 32px) !important;
-    max-width: calc(100vw - 32px) !important;
-    margin: 16px auto !important;
+    width: calc(100vw - 16px) !important;
+    min-width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
     max-height: 90vh !important;
-    left: 16px !important;
-    right: 16px !important;
+    left: 8px !important;
+    right: 8px !important;
     top: 5vh !important;
     transform: none !important;
     box-sizing: border-box !important;
   }
 
   .rx-modal-body,
+  .sap-modal-body,
+  .confirm-bom-creation-modal-card .sap-modal-body,
+  .rx-bulk-confirm-modal .sap-modal-body,
   .sap-f4-table-container,
   .sap-f4-content {
     overflow-y: auto !important;
     max-height: calc(90vh - 120px) !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px !important;
   }
 
   .sap-f4-table-container,
-  .sap-f4-table-wrap {
+  .sap-f4-table-wrap,
+  .confirm-bom-components-container {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .sap-f4-table {
@@ -8764,18 +8942,24 @@ a.fiori-ph-orange-back:focus-visible {
   }
 
   .rx-modal-footer,
-  .sap-f4-footer,
-  .sap-modal-footer {
-    flex-wrap: wrap !important;
+  .sap-modal-footer,
+  .confirm-bom-creation-modal-card .sap-modal-footer,
+  .rx-bulk-confirm-modal .sap-modal-footer,
+  .sap-f4-footer {
+    display: flex !important;
+    flex-direction: column !important;
     gap: 8px !important;
-    padding: 12px 16px !important;
+    padding: 12px 14px !important;
+    width: 100% !important;
   }
 
   .rx-modal-footer button,
+  .sap-modal-footer button,
   .sap-f4-footer button,
-  .sap-modal-footer button {
-    flex: 1 1 auto !important;
-    min-width: 120px !important;
+  .sap-modal-footer .sap-button,
+  .rx-modal-footer .sap-button {
+    width: 100% !important;
+    min-height: 44px !important;
   }
 
   /* 11. Toasts: Full Width Minus 16px Margins Below Topbar */
@@ -8859,23 +9043,48 @@ a.fiori-ph-orange-back:focus-visible {
    D. LANDSCAPE PHONE & SHORT VIEWPORTS (max-height: 500px)
    ---------------------------------------------------------------------------- */
 @media (max-height: 500px) {
-  .sap-shell-header {
-    height: 48px !important;
-    min-height: 48px !important;
-    max-height: 48px !important;
+  .sap-shell-header,
+  header.sap-shell-header,
+  .sap-toolbar.sap-shell-header {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 2px 12px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
+  .sap-shell-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+
+  .sap-system-select-wrapper {
+    padding-left: 0 !important;
+  }
+
+  .sap-system-select {
+    max-width: 140px !important;
+    height: 30px !important;
   }
 
   .sap-f4-modal-dialog,
   .sap-restrict-modal-dialog,
-  .rx-modal-dialog,
   .sap-modal-dialog,
+  .confirm-bom-creation-modal-card,
+  .rx-bulk-confirm-modal,
   .sap-modal {
     top: 8px !important;
+    transform: translate(-50%, 0) !important;
     max-height: calc(100vh - 16px) !important;
     margin: 8px auto !important;
   }
 
   .rx-modal-body,
+  .sap-modal-body,
   .sap-f4-table-container,
   .sap-f4-content {
     max-height: calc(100vh - 96px) !important;

@@ -1,34 +1,24 @@
 import * as XLSX from 'xlsx';
 
 export function createSampleBulkCreateFile() {
-  const data = [
-    {
-      Material: 'A1BH0214C',
-      Plant: '1010',
-      Component: 'C3DH0416E',
-      Quantity: 5,
-      'Storage Location': '0001',
-      'BOM Usage': '1',
-      'Alternative BOM': '01',
-      'Item Category': 'L',
-      'Valid From': '01.01.2026',
-      'Base Qty': 1,
-      'BOM Status': '01'
-    },
-    {
-      Material: 'B2CH0315D',
-      Plant: '1010',
-      Component: 'D4EH0517F',
-      Quantity: 10,
-      'Storage Location': '0001',
-      'BOM Usage': '1',
-      'Alternative BOM': '01',
-      'Item Category': 'L',
-      'Valid From': '01.01.2026',
-      'Base Qty': 1,
-      'BOM Status': '01'
-    }
+  const mats = [
+    'A1BH0214C', 'B2CH0315D', 'C3DH0416E', 'D4EH0517F', 'E5FH0618G',
+    'F6GH0719H', 'G7HH0820I', 'H8IH0921J', 'I9JH1022K', 'J0KH1123L',
+    'K1LH1224M', 'L2MH1325N', 'M3NH1426O', 'N4OH1527P'
   ];
+  const data = mats.map((mat, idx) => ({
+    Material: mat,
+    Plant: '1010',
+    Component: 'C3DH0416E',
+    Quantity: (idx + 1) * 2,
+    'Storage Location': '0001',
+    'BOM Usage': '1',
+    'Alternative BOM': '01',
+    'Item Category': 'L',
+    'Valid From': '01.01.2026',
+    'Base Qty': 1,
+    'BOM Status': '01'
+  }));
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
