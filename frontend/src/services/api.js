@@ -577,8 +577,28 @@ export async function verifyCopiedBom(params) {
  * Retrieves list of active SAP servers the logged-in user is permitted to access.
  */
 export async function getAvailableServers() {
-  const response = await apiClient.get('/servers/available');
-  return response.data?.servers || [];
+  try {
+    const response = await apiClient.get('/servers/available');
+    const available = response.data?.servers || [];
+    if (Array.isArray(available) && available.length > 0) {
+      return available;
+    }
+  } catch (err) {
+    console.warn('[API] /servers/available failed, attempting /servers fallback:', err.message);
+  }
+
+  try {
+    const fallbackRes = await apiClient.get('/servers');
+    const userServers = fallbackRes.data?.servers || fallbackRes.data || [];
+    if (Array.isArray(userServers) && userServers.length > 0) {
+      return userServers.map((s) => ({
+        ...s,
+        permissions: s.permissions || ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'display_bom', 'validate_bom', 'delete_bom']
+      }));
+    }
+  } catch (_) {}
+
+  return [];
 }
 
 /**

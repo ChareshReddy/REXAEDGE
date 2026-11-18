@@ -171,7 +171,7 @@ export function isBlockedSsrfTarget(hostOrIp) {
 }
 
 /**
- * Extracts and validates all router hops from an SAP router string.
+ * Extracts and validates all router hops from a SAP router string.
  * Example router string: /H/103.206.249.51/S/3299/H/
  *
  * Enforces:
@@ -263,7 +263,7 @@ export async function validateRouterString(routerString, allowlist = []) {
 }
 
 /**
- * Validates an SAP server connection target against:
+ * Validates a SAP server connection target against:
  * 1. SNC check (SNC is rejected per specification)
  * 2. Message server check (Message server logon is rejected per specification)
  * 3. Router string check (No /P/, no SSRF hops, all hops allowlisted)

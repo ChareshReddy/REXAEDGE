@@ -24,7 +24,8 @@ import {
   Send,
   Phone,
   MapPin,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 import Login from './components/Login';
 import ChatBox from './components/ChatBox';
@@ -673,14 +674,35 @@ function AppContent({
     loadModules();
   }, [selectedServer?.id, user?.role]);
 
-  const handleServerChange = (serverId) => {
+  const handleServerChange = (serverId, serverList = availableServers) => {
     toast.clearAll();
-    const chosen = availableServers.find((s) => s.id === serverId);
+    const list = Array.isArray(serverList) && serverList.length > 0 ? serverList : availableServers;
+    const chosen = list.find((s) => s.id === serverId) || (typeof serverId === 'object' && serverId !== null ? serverId : null);
     if (chosen) {
       setSelectedServer(chosen);
       setSelectedServerHeader(chosen.id);
       setCurrentSystem(chosen.environment || 'DEV');
       setSelectedHomeGroup('');
+    }
+  };
+
+  const refreshServersAndAutoSelect = async (savedServer = null) => {
+    try {
+      const servers = await getAvailableServers();
+      const list = Array.isArray(servers) ? servers : [];
+      setAvailableServers(list);
+
+      // Auto-select in this tab if none is selected, or if savedServer was provided
+      if (!selectedServer || (savedServer && savedServer.id)) {
+        const targetId = savedServer?.id || (list.find((s) => s.is_default)?.id) || list[0]?.id;
+        if (targetId) {
+          handleServerChange(targetId, list);
+        }
+      }
+      return list;
+    } catch (err) {
+      console.error('[App] Failed to refresh servers:', err);
+      return [];
     }
   };
 
@@ -1485,8 +1507,8 @@ function AppContent({
           />
         )}
 
-        {/* Inline Alert when no SAP server is selected on operational pages */}
-        {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && !selectedServer && (
+        {/* Inline Info when a SAP server is not selected on operational pages */}
+        {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && availableServers.length > 0 && !selectedServer && (
           <div style={{ maxWidth: 'var(--sap-layout-max-width, 1680px)', margin: '16px auto 0', padding: '0 var(--page-gutter, 32px)', boxSizing: 'border-box', width: '100%' }}>
             <div
               className="rx-no-server-alert"
@@ -1497,82 +1519,18 @@ function AppContent({
                 gap: 12,
                 padding: '12px 16px',
                 borderRadius: 'var(--radius-md, 8px)',
-                backgroundColor: 'var(--color-warning-bg, #FFFBEB)',
-                border: '1px solid var(--color-warning-border, #FDE68A)',
-                color: 'var(--color-warning, #B45309)',
+                backgroundColor: 'var(--color-blue-50, #F0F6FA)',
+                border: '1px solid var(--color-blue-200, #BFDBFE)',
+                color: 'var(--color-navy-900, #00204E)',
                 fontSize: 13,
                 fontFamily: 'var(--font-sans)'
               }}
             >
-              <AlertTriangle size={18} style={{ color: 'var(--color-warning, #B45309)', flexShrink: 0 }} />
+              <Info size={18} style={{ color: 'var(--color-navy-700, #0A4D68)', flexShrink: 0 }} />
               <div>
-                <strong style={{ display: 'block', fontWeight: 600 }}>Select an SAP server to continue</strong>
+                <strong style={{ display: 'block', fontWeight: 600 }}>Select a SAP server</strong>
                 <span>No SAP server is selected. Please choose a server from the top bar before performing operations.</span>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Admin Serverless Gate: When an admin opens an operational card requiring an SAP server, but 0 servers exist */}
-        {activeTab !== 'home' && activeTab !== 'launchpad' && activeTab !== 'admin' && !selectedServer && user?.role === 'admin' && (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '60px 24px',
-              textAlign: 'center',
-              maxWidth: 540,
-              margin: '60px auto',
-              background: 'var(--sap-card-bg)',
-              borderRadius: 'var(--radius-xl)',
-              border: '1px solid var(--sap-border-subtle)',
-              boxShadow: 'var(--sap-shadow-md)'
-            }}
-          >
-            <div
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(10, 110, 209, 0.1)',
-                color: 'var(--sap-primary, #0a6ed1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16
-              }}
-            >
-              <Server size={30} />
-            </div>
-            <h2 className="sap-section-header" style={{ fontSize: 16, margin: '0 0 8px' }}>
-              Add a SAP server first
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--sap-text-muted)', margin: '0 0 24px', lineHeight: 1.5 }}>
-              No SAP server has been added to the system yet. To perform operations in this module, please add and configure an SAP server in the Administration panel.
-            </p>
-            <div className="sap-toolbar" style={{ display: 'flex', gap: 12 }}>
-              <button
-                type="button"
-                className="sap-button sap-btn sap-btn-primary"
-                onClick={() => navigateToView('admin_servers')}
-                style={{ padding: '8px 18px', fontSize: 13 }}
-              >
-                <ShieldCheck size={16} />
-                <span>Go to Admin &gt; Servers</span>
-              </button>
-              <button
-                type="button"
-                className="sap-button sap-btn sap-btn-secondary"
-                onClick={() => {
-                  setActiveTab('launchpad');
-                  setLaunchpadSubView('bom_operations');
-                }}
-                style={{ padding: '8px 18px', fontSize: 13 }}
-              >
-                Return to BOM Hub
-              </button>
             </div>
           </div>
         )}
@@ -1611,9 +1569,8 @@ function AppContent({
         {/* My SAP Servers View */}
         {activeTab === 'my_servers' && (
           <MyServersView
-            onServerChanged={async () => {
-              const servers = await getAvailableServers();
-              setAvailableServers(servers || []);
+            onServerChanged={async (savedServer) => {
+              await refreshServersAndAutoSelect(savedServer);
             }}
             onNavigateHome={() => navigateToView('home')}
           />
@@ -1655,25 +1612,46 @@ function AppContent({
             <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
               You need at least one configured SAP server to view, create, or modify Bills of Materials.
             </p>
-            <button
-              type="button"
-              onClick={() => setIsOnboardingModalOpen(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '9px 18px',
-                fontSize: '13px',
-                fontWeight: 600,
-                backgroundColor: 'var(--color-navy-900, #00204E)',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 'var(--radius-md, 6px)',
-                cursor: 'pointer'
-              }}
-            >
-              Add your SAP server
-            </button>
+            <div style={{ display: 'inline-flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setIsOnboardingModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 18px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--color-navy-900, #00204E)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md, 6px)',
+                  cursor: 'pointer'
+                }}
+              >
+                Add a SAP server
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateToView('my_servers')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 18px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  backgroundColor: 'transparent',
+                  color: 'var(--color-navy-900, #00204E)',
+                  border: '1px solid var(--color-border, #CBD5E1)',
+                  borderRadius: 'var(--radius-md, 6px)',
+                  cursor: 'pointer'
+                }}
+              >
+                My Servers
+              </button>
+            </div>
           </div>
         )}
 
@@ -1944,11 +1922,7 @@ function AppContent({
         onSuccess={async (newServer) => {
           setIsOnboardingModalOpen(false);
           setHasDismissedOnboarding(true);
-          const servers = await getAvailableServers();
-          setAvailableServers(servers || []);
-          if (newServer || (servers && servers.length > 0)) {
-            handleServerChange(newServer?.id || servers[0].id);
-          }
+          await refreshServersAndAutoSelect(newServer);
         }}
       />
     </div>

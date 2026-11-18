@@ -235,7 +235,9 @@ router.post('/', requireAuth, async (req, res) => {
       per_user_limit: cappedUserLimit,
       queue_timeout_ms: finalQueueTimeoutMs,
       rfc_call_timeout_ms: finalRfcCallTimeoutMs,
-      is_default: Boolean(is_default)
+      is_default: Boolean(is_default),
+      owner_id: req.user.id,
+      created_by: req.user.id
     };
 
     const { data: created, error } = await supabaseService.createUserServer(newServerData, req.user.id);

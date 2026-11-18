@@ -490,7 +490,7 @@ export default function AdminView({
         setConfirmModal((prev) => ({ ...prev, isLoading: true }));
         try {
           await adminDeleteAllowlist(rule.id);
-          setAllowlist((prev) => prev.filter((r) => r.id !== rule.id));
+          setAllowlist((prev) => (Array.isArray(prev) ? prev.filter((r) => r.id !== rule.id) : []));
           triggerNotice(`Allowlist pattern "${rule.pattern}" removed successfully.`);
           setConfirmModal((prev) => ({ ...prev, isOpen: false, isLoading: false }));
         } catch (err) {

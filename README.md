@@ -147,7 +147,7 @@ The system features a persistent, self-maturing operational knowledge base:
 - **Dynamic Toggle**: Single environment flag `USE_MOCK_SAP=true` toggles between mock memory caches and live SAP Gateway calls.
 - **OData v2 Client**: Builds valid OData queries (`$filter`, `$top`, `$skip`, `$expand`, `$inlinecount=allpages`).
 - **CSRF Token Handshake**: Two-step handshake fetching `x-csrf-token: fetch` and session cookies before executing `POST`, `PATCH`, or `DELETE`.
-- **PATCH Fallback to MERGE**: Automatic fallback to `X-HTTP-Method: MERGE` if an SAP Gateway rejects HTTP `PATCH` with 405 Method Not Allowed.
+- **PATCH Fallback to MERGE**: Automatic fallback to `X-HTTP-Method: MERGE` if a SAP Gateway rejects HTTP `PATCH` with 405 Method Not Allowed.
 - **SAP Error Parser**: Extracts SAP Gateway JSON messages (`error.message.value`, `innererror.errordetails`) and maps HTTP codes (400, 401, 403, 404, 409, 500, 502/504) to actionable explanations.
 - **Schema Diagnostics Tool**: Terminal utility (`node backend/scripts/schemaCheck.js`) for Basis teams to compare schema models with live SAP metadata.
 

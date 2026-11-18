@@ -2532,71 +2532,28 @@ export const supabaseService = {
         throw new Error(`Database error fetching servers: ${error.message}`);
       }
 
-      return (data || []).map((s) => {
-        const hasPass = Boolean(s.sap_password_encrypted);
-        return {
-          id: s.id,
-          name: s.name,
-          environment: s.environment,
-          created_at: s.created_at,
-          is_active: s.is_active,
-        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
-        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
-        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
-        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
-          sap_username: s.sap_username,
-          has_password: hasPass,
-          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
-          permissions: [...ALL_BOM_APPS]
-        };
-      });
-    }
-
-    let data;
-    let error;
-
-    if (!this.knownMissingPermissionsColumn) {
-      const res = await liveSupabase
-        .from('user_server_permissions')
-        .select(`
-          permissions,
-          sap_servers (*)
-        `)
-        .eq('user_id', userId);
-      data = res.data;
-      error = res.error;
-    }
-
-    if (this.knownMissingPermissionsColumn || (error && isMissingPermissionsColumn(error))) {
-      this.knownMissingPermissionsColumn = true;
-      console.warn('[Database] permissions column missing in getAvailableServersForUser. Falling back to legacy query.');
-      const res = await liveSupabase
-        .from('user_server_permissions')
-        .select(`
-          sap_servers (*)
-        `)
-        .eq('user_id', userId);
-
-      if (res.error) {
-        throw new Error(`Database error fetching permitted servers: ${res.error.message}`);
-      }
-
-      return (res.data || [])
-        .filter((item) => item.sap_servers && item.sap_servers.is_active)
-        .map((item) => {
-          const s = item.sap_servers;
+      return (data || [])
+        .filter((s) => !s.is_disabled)
+        .map((s) => {
           const hasPass = Boolean(s.sap_password_encrypted);
           return {
             id: s.id,
             name: s.name,
+            ashost: s.ashost,
+            sysnr: s.sysnr,
+            client: s.client,
             environment: s.environment,
+            type: s.type || s.environment || 'Sandbox',
+            owner_id: s.owner_id,
+            is_default: Boolean(s.is_default),
+            is_disabled: Boolean(s.is_disabled),
             created_at: s.created_at,
             is_active: s.is_active,
-        max_connections: s.max_connections !== undefined ? s.max_connections : 3,
-        per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
-        queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
-        rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
-            sap_username: maskSapUsername(s.sap_username),
+            max_connections: s.max_connections !== undefined ? s.max_connections : 3,
+            per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
+            queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
+            rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
+            sap_username: s.sap_username,
             has_password: hasPass,
             credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
             permissions: [...ALL_BOM_APPS]
@@ -2604,30 +2561,74 @@ export const supabaseService = {
         });
     }
 
-    if (error) {
-      throw new Error(`Database error fetching permitted servers: ${error.message}`);
+    // 1. Fetch user-owned servers
+    let userOwned = [];
+    try {
+      const { data, error } = await liveSupabase
+        .from('sap_servers')
+        .select('*')
+        .eq('owner_id', userId)
+        .eq('is_active', true);
+      if (!error && Array.isArray(data)) {
+        userOwned = data.filter((s) => !s.is_disabled);
+      }
+    } catch (err) {
+      console.warn('[Database] Error fetching user-owned servers:', err.message);
     }
 
-    return (data || [])
-      .filter((item) => item.sap_servers && item.sap_servers.is_active)
-      .map((item) => {
-        const s = item.sap_servers;
-        const hasPass = Boolean(s.sap_password_encrypted);
-        return {
-          id: s.id,
-          name: s.name,
-          environment: s.environment,
-          is_active: s.is_active,
+    // 2. Fetch permitted servers from user_server_permissions (if table exists)
+    let permittedServers = [];
+    try {
+      const { data, error } = await liveSupabase
+        .from('user_server_permissions')
+        .select('permissions, sap_servers (*)')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data)) {
+        permittedServers = data
+          .filter((item) => item.sap_servers && item.sap_servers.is_active && !item.sap_servers.is_disabled)
+          .map((item) => ({
+            ...item.sap_servers,
+            permissions: item.permissions
+          }));
+      }
+    } catch (_) {}
+
+    // Combine servers by ID
+    const combinedMap = new Map();
+    for (const s of userOwned) {
+      combinedMap.set(s.id, { server: s, permissions: [...ALL_BOM_APPS] });
+    }
+    for (const p of permittedServers) {
+      if (!combinedMap.has(p.id)) {
+        combinedMap.set(p.id, { server: p, permissions: p.permissions || [...ALL_BOM_APPS] });
+      }
+    }
+
+    return Array.from(combinedMap.values()).map(({ server: s, permissions: perms }) => {
+      const hasPass = Boolean(s.sap_password_encrypted);
+      return {
+        id: s.id,
+        name: s.name,
+        ashost: s.ashost,
+        sysnr: s.sysnr,
+        client: s.client,
+        environment: s.environment,
+        type: s.type || s.environment || 'Sandbox',
+        owner_id: s.owner_id,
+        is_default: Boolean(s.is_default),
+        is_disabled: Boolean(s.is_disabled),
+        created_at: s.created_at,
+        is_active: s.is_active,
         max_connections: s.max_connections !== undefined ? s.max_connections : 3,
         per_user_limit: s.per_user_limit !== undefined ? s.per_user_limit : 2,
         queue_timeout_ms: s.queue_timeout_ms !== undefined ? s.queue_timeout_ms : 20000,
         rfc_call_timeout_ms: s.rfc_call_timeout_ms !== undefined ? s.rfc_call_timeout_ms : 45000,
-          sap_username: maskSapUsername(s.sap_username),
-          has_password: hasPass,
-          credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
-          permissions: normalizePermissions(item.permissions || [])
-        };
-      });
+        sap_username: maskSapUsername(s.sap_username),
+        has_password: hasPass,
+        credentials_status: (s.sap_username && hasPass) ? 'saved' : 'not_set',
+        permissions: normalizePermissions(perms || [...ALL_BOM_APPS])
+      };
+    });
   },
 
   // Security: Check Per-Server Access on Request (Dual-State Resilient)

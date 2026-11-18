@@ -777,7 +777,7 @@ export const TOOLS = [
     type: 'function',
     function: {
       name: 'propose_release_purchase_order',
-      description: 'Level 3 Sensitive: Proposes releasing an SAP Purchase Order (ME28 / ME29N). Requires mandatory human confirmation, audit logging, and a mandatory business justification reason.',
+      description: 'Level 3 Sensitive: Proposes releasing a SAP Purchase Order (ME28 / ME29N). Requires mandatory human confirmation, audit logging, and a mandatory business justification reason.',
       parameters: {
         type: 'object',
         properties: {
@@ -935,7 +935,7 @@ export const TOOLS = [
 
 const dynamicEntitiesDescription = getSystemPromptEntitiesDescription();
 
-const SYSTEM_PROMPT = `You are an SAP Assistant. You help users query, analyze, and manage SAP records across multiple data domains.
+const SYSTEM_PROMPT = `You are a SAP Assistant. You help users query, analyze, and manage SAP records across multiple data domains.
 
 AVAILABLE SAP ENTITIES:
 ${dynamicEntitiesDescription}
@@ -982,7 +982,7 @@ INTENT CLASSIFICATION & TOOL CALLING RULES (CRITICAL):
      --> Call 'check_material_maintenance' DIRECTLY.
      --> Extract the material identifier(s) (e.g. "SG21", "SG22", "MATERIAL-SG21", "A1BH0214C") into 'materials': ["SG21"] and the plant code (e.g. "1000") into 'plant': "1000".
      --> If the user mentions a BOM material to expand (e.g. "expand BOM A1BH0214C in 1001"), pass 'bomMaterial': "A1BH0214C" and 'plant': "1001".
-     --> Treat any term (such as SG21, SG22, MAT-01, 11021735, RAW_EVA_01) as a material number to check. Do NOT refuse or lecture the user by assuming it is an SAP view name or menu item; immediately execute 'check_material_maintenance'.
+     --> Treat any term (such as SG21, SG22, MAT-01, 11021735, RAW_EVA_01) as a material number to check. Do NOT refuse or lecture the user by assuming it is a SAP view name or menu item; immediately execute 'check_material_maintenance'.
 
 5. EDGE CASE / AMBIGUITY FALLBACK FOR READS:
    - If you genuinely must perform a read first (e.g. because the record's identity was ambiguous or missing and the user requested a change):

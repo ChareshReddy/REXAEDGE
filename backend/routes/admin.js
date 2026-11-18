@@ -588,7 +588,7 @@ router.delete('/servers/:id', async (req, res) => {
 
 /**
  * PATCH /api/admin/servers/:id/status
- * Kill switch: disable or enable an SAP server. When disabled, closes connection pools and cancels jobs.
+ * Kill switch: disable or enable a SAP server. When disabled, closes connection pools and cancels jobs.
  */
 router.patch('/servers/:id/status', async (req, res) => {
   const { id } = req.params;
