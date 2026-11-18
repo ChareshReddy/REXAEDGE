@@ -1,3 +1,4 @@
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import assert from 'assert';
 import http from 'http';
 import axios from 'axios';
@@ -15,10 +16,12 @@ let server;
 let baseUrl;
 
 function makeRequest(method, path, body = null, cookie = null) {
+  ensureMockOwnedServer('00000000-0000-0000-0000-000000000001');
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
     const headers = {
-      'Authorization': 'Bearer admin-test-token'
+      'Authorization': 'Bearer admin-test-token',
+      'x-sap-server-id': '10000000-0000-0000-0000-000000000001'
     };
 
     if (body) {

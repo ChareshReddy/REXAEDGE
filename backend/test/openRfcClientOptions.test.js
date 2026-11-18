@@ -56,7 +56,7 @@ async function runTests() {
     }
 
     const testServer = {
-      ashost: '192.168.1.100',
+      ashost: '192.168.12.100',
       sysnr: '00',
       client: '100',
       sap_username: 'TEST_USER',

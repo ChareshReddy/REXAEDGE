@@ -1,3 +1,4 @@
+import { withServerHeaders, ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import assert from 'assert';
 import http from 'http';
 import app from '../server.js';
@@ -12,9 +13,10 @@ let server;
 let baseUrl;
 
 function makeRequest(method, path, body = null, headers = {}) {
+  ensureMockOwnedServer();
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
-    const reqHeaders = { 'Authorization': 'Bearer admin-test-token', ...headers };
+    const reqHeaders = withServerHeaders({ 'Authorization': 'Bearer admin-test-token', ...headers });
 
     if (body) {
       reqHeaders['Content-Type'] = 'application/json';

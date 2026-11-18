@@ -310,7 +310,9 @@ async function runStage4Tests() {
   console.log('============================================================\n');
 }
 
-runStage4Tests().catch((err) => {
+runStage4Tests().then(() => {
+  process.exit(0);
+}).catch((err) => {
   console.error('Test failed with error:', err);
   process.exit(1);
 });

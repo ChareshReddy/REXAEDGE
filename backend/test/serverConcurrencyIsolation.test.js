@@ -71,12 +71,12 @@ async function runConcurrencyIsolationTests() {
   console.log('\n2. Testing 2 interleaved requests targeting Server A and Server B:');
   async function handleReq1() {
     await new Promise((r) => setTimeout(r, 40));
-    const client = await openRfcClient({ server: serverA }, CapturingClient);
+    const client = await openRfcClient(serverA, CapturingClient);
     return client.params;
   }
   async function handleReq2() {
     await new Promise((r) => setTimeout(r, 10));
-    const client = await openRfcClient({ server: serverB }, CapturingClient);
+    const client = await openRfcClient(serverB, CapturingClient);
     return client.params;
   }
 
@@ -98,7 +98,7 @@ async function runConcurrencyIsolationTests() {
     promises.push(
       (async () => {
         await new Promise((r) => setTimeout(r, delay));
-        const client = await openRfcClient({ server: target }, CapturingClient);
+        const client = await openRfcClient(target, CapturingClient);
         assert.strictEqual(
           client.params.ashost,
           target.ashost,
@@ -142,23 +142,23 @@ async function runConcurrencyIsolationTests() {
   });
 
   // Verify Alice can fetch her job, but Bob cannot fetch Alice's job
-  const aliceView = bomJobManager.getJob(jobA.jobId, userA);
+  const aliceView = await bomJobManager.getJob(jobA.jobId, userA);
   assert.strictEqual(aliceView.jobId, jobA.jobId);
   assert.strictEqual(aliceView.userId, userA.id);
 
-  assert.throws(
-    () => bomJobManager.getJob(jobA.jobId, userB),
-    /Forbidden/,
+  await assert.rejects(
+    async () => await bomJobManager.getJob(jobA.jobId, userB),
+    /not found|Forbidden/i,
     'Bob must be forbidden from accessing Alice\'s job summary'
   );
 
-  const bobView = bomJobManager.getJob(jobB.jobId, userB);
+  const bobView = await bomJobManager.getJob(jobB.jobId, userB);
   assert.strictEqual(bobView.jobId, jobB.jobId);
   assert.strictEqual(bobView.userId, userB.id);
 
-  assert.throws(
-    () => bomJobManager.getJob(jobB.jobId, userA),
-    /Forbidden/,
+  await assert.rejects(
+    async () => await bomJobManager.getJob(jobB.jobId, userA),
+    /not found|Forbidden/i,
     'Alice must be forbidden from accessing Bob\'s job summary'
   );
 

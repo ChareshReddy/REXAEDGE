@@ -1,3 +1,4 @@
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import assert from 'assert';
 import {
   toSapMatnr,
@@ -192,10 +193,13 @@ async function runTests() {
   console.log('\n7. Testing blank plant parameter safety in rfcReadBom & rfcGetBomDisplayData:');
   const { rfcGetBomDisplayData } = await import('../services/sapRfcClient.js');
 
+  const mockServerContext = ensureMockOwnedServer();
+
   const readBlankPlant = await rfcReadBom({
     material: '143',
     plant: '',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServerContext
   });
   assert.strictEqual(readBlankPlant.success, false);
   assert.strictEqual(readBlankPlant.errorCode, 'MATERIAL_PLANT_INVALID');
@@ -204,7 +208,8 @@ async function runTests() {
   const dispBlankPlant = await rfcGetBomDisplayData({
     material: '143',
     plant: '',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServerContext
   });
   assert.strictEqual(dispBlankPlant.success, false);
   assert.strictEqual(dispBlankPlant.errorCode, 'MATERIAL_PLANT_INVALID');
@@ -373,7 +378,7 @@ async function runTests() {
         capturedPayloadUnpadded = payload;
         return { RETURN: [] };
       }
-      if (fm === 'RFC_READ_TABLE') return { FIELDS: [], DATA: [] };
+      if (fm === 'RFC_READ_TABLE') return { FIELDS: [{ FIELDNAME: 'MEINS' }], DATA: [{ WA: 'EA' }] };
       return {};
     }
   };
@@ -394,7 +399,7 @@ async function runTests() {
         capturedPayloadPadded = payload;
         return { RETURN: [] };
       }
-      if (fm === 'RFC_READ_TABLE') return { FIELDS: [], DATA: [] };
+      if (fm === 'RFC_READ_TABLE') return { FIELDS: [{ FIELDNAME: 'MEINS' }], DATA: [{ WA: 'EA' }] };
       return {};
     }
   };
@@ -427,7 +432,7 @@ async function runTests() {
         capturedAlphaPayload = payload;
         return { RETURN: [] };
       }
-      if (fm === 'RFC_READ_TABLE') return { FIELDS: [], DATA: [] };
+      if (fm === 'RFC_READ_TABLE') return { FIELDS: [{ FIELDNAME: 'MEINS' }], DATA: [{ WA: 'EA' }] };
       return {};
     }
   };

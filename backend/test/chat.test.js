@@ -9,7 +9,7 @@ import { isPseudoToolCallContent, validateToolArgs } from '../routes/chat.js';
 let server;
 let baseUrl;
 
-function makeRequest(method, path, body = null, token = 'admin-test-token') {
+function makeRequest(method, path, body = null, token = 'admin-test-token', serverId = '10000000-0000-0000-0000-000000000001') {
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
     const headers = {};
@@ -19,6 +19,9 @@ function makeRequest(method, path, body = null, token = 'admin-test-token') {
     }
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (serverId) {
+      headers['x-sap-server-id'] = serverId;
     }
 
     const req = http.request(url, { method, headers }, (res) => {

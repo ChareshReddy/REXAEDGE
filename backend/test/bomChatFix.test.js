@@ -7,13 +7,16 @@ import { pendingActionStore } from '../services/pendingActions.js';
 import { resetMockData } from '../services/sapClient.js';
 import { TOOLS } from '../routes/chat.js';
 
+import { withServerHeaders, ensureMockOwnedServer } from './helpers/testServerHelper.js';
+
 let server;
 let baseUrl;
 
 function makeRequest(method, path, body = null, headers = {}) {
+  ensureMockOwnedServer();
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
-    const reqHeaders = { 'Authorization': 'Bearer admin-test-token', ...headers };
+    const reqHeaders = withServerHeaders({ 'Authorization': 'Bearer admin-test-token', ...headers });
 
     if (body) {
       reqHeaders['Content-Type'] = 'application/json';

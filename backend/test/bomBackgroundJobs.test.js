@@ -213,7 +213,7 @@ async function runTests() {
   });
 
   // Request cancel immediately
-  const cancelRes = bomJobManager.cancelJob(cancelJobStart.jobId, cancelUser.id);
+  const cancelRes = await bomJobManager.cancelJob(cancelJobStart.jobId, cancelUser.id);
   assert.strictEqual(cancelRes.success, true);
 
   const cancelledJob = await waitForJobCompletion(cancelJobStart.jobId);
@@ -377,7 +377,7 @@ async function runTests() {
   // Reload summaries as done on server boot (empty memory before load)
   bomJobManager.jobs.clear();
   bomJobManager.loadPersistedSummaries();
-  const recoveredJob = bomJobManager.getJob(restartJobId);
+  const recoveredJob = await bomJobManager.getJob(restartJobId);
 
   assert.strictEqual(recoveredJob.status, 'INTERRUPTED');
   assert.strictEqual(recoveredJob.successCount, 1);
@@ -412,13 +412,13 @@ async function runTests() {
   const isoJobId = isolatedJobStart.jobId;
 
   // User A (owner) can view their job
-  const jobForOwner = bomJobManager.getJob(isoJobId, userA);
+  const jobForOwner = await bomJobManager.getJob(isoJobId, userA);
   assert.ok(jobForOwner, 'Owner should view job');
 
   // User B (non-owner, non-admin) viewing User A's job must throw FORBIDDEN
-  assert.throws(
-    () => {
-      bomJobManager.getJob(isoJobId, userB);
+  await assert.rejects(
+    async () => {
+      await bomJobManager.getJob(isoJobId, userB);
     },
     (err) => {
       assert.strictEqual(err.code, 'FORBIDDEN');
@@ -429,9 +429,9 @@ async function runTests() {
   );
 
   // User B cancelling User A's job must throw FORBIDDEN
-  assert.throws(
-    () => {
-      bomJobManager.cancelJob(isoJobId, userB);
+  await assert.rejects(
+    async () => {
+      await bomJobManager.cancelJob(isoJobId, userB);
     },
     (err) => {
       assert.strictEqual(err.code, 'FORBIDDEN');
@@ -442,11 +442,11 @@ async function runTests() {
   );
 
   // Admin viewing User A's job must succeed
-  const jobForAdmin = bomJobManager.getJob(isoJobId, adminUser);
+  const jobForAdmin = await bomJobManager.getJob(isoJobId, adminUser);
   assert.strictEqual(jobForAdmin.jobId, isoJobId, 'Admin can view any user job');
 
   // Admin cancelling User A's job must succeed
-  const adminCancelRes = bomJobManager.cancelJob(isoJobId, adminUser);
+  const adminCancelRes = await bomJobManager.cancelJob(isoJobId, adminUser);
   assert.strictEqual(adminCancelRes.success, true, 'Admin can cancel any user job');
 
   await waitForJobCompletion(isoJobId);

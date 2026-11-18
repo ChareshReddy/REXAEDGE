@@ -69,7 +69,7 @@ async function runTests() {
   let finalJob = null;
   for (let i = 0; i < 40; i++) {
     await sleep(50);
-    finalJob = bomJobManager.getJob(jobId1, user1);
+    finalJob = await bomJobManager.getJob(jobId1, user1);
     if (finalJob && ['COMPLETED', 'COMPLETED_WITH_ERRORS', 'FAILED'].includes(finalJob.status)) {
       break;
     }
@@ -106,7 +106,7 @@ async function runTests() {
   // Runner does not exist in activeRunners and updatedAt is > 2 min ago
   bomJobManager.cleanStaleJobs();
 
-  const cleanedJob = bomJobManager.getJob(fakeStaleJob.jobId, user1);
+  const cleanedJob = await bomJobManager.getJob(fakeStaleJob.jobId, user1);
   assert.strictEqual(cleanedJob.status, 'INTERRUPTED');
   assert(cleanedJob.message.includes('interrupted'));
   console.log('   ✓ Stale job auto-marked INTERRUPTED.\n');
@@ -158,7 +158,7 @@ async function runTests() {
 
   assert.strictEqual(queuedRes.status, 'QUEUED');
   assert.strictEqual(queuedRes.queuedReason, 'Waiting for your running job to finish');
-  const queuedJobData = bomJobManager.getJob(queuedRes.jobId, { id: 'user-capacity-test', email: 'user-cap@test.com' });
+  const queuedJobData = await bomJobManager.getJob(queuedRes.jobId, { id: 'user-capacity-test', email: 'user-cap@test.com' });
   assert.strictEqual(queuedJobData.queuedReason, 'Waiting for your running job to finish');
   console.log('   ✓ Correct queuedReason returned and exposed in job summary.\n');
 
@@ -189,8 +189,9 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('6. Resource leak protection: locks and connections released on failure...');
   let lockAcquired = false;
+  let lock = null;
   try {
-    const lock = bomLockService.acquireLock({
+    lock = bomLockService.acquireLock({
       serverId: testServer.id,
       material: 'TEST-LOCK-MAT',
       plant: '1000',

@@ -229,6 +229,7 @@ async function runTests() {
   console.log('\n============================================================');
   console.log('  ALL ISSUE 1 & ISSUE 2 VERIFICATION TESTS PASSED CLEANLY!  ');
   console.log('============================================================\n');
+  process.exit(0);
 }
 
 runTests().catch((err) => {

@@ -1,3 +1,4 @@
+import { withServerHeaders, ensureMockOwnedServer } from './helpers/testServerHelper.js';
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCK_SAP = 'true';
 
@@ -15,9 +16,10 @@ let server;
 let baseUrl;
 
 function makeRequest(method, path, body = null, token = null) {
+  ensureMockOwnedServer('00000000-0000-0000-0000-000000000001');
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', ...withServerHeaders() };
     let payload = null;
 
     if (token) {

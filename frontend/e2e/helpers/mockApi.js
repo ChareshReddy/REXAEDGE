@@ -124,8 +124,15 @@ export const mockMaterials = [
 ];
 
 export const mockAdminUsers = [
-  { id: 'admin-1', email: 'admin@rexaedge.com', role: 'admin', created_at: '2026-01-01T00:00:00Z' },
-  { id: 'user-1', email: 'user@rexaedge.com', role: 'user', created_at: '2026-02-01T00:00:00Z' }
+  { id: 'admin-1', email: 'admin@rexaedge.com', role: 'admin', created_at: '2026-01-01T00:00:00Z', is_disabled: false },
+  { id: 'user-1', email: 'user@rexaedge.com', role: 'user', created_at: '2026-02-01T00:00:00Z', is_disabled: false },
+  { id: 'user-2', email: 'contractor@rexaedge.com', role: 'user', created_at: '2026-02-15T00:00:00Z', is_disabled: true }
+];
+
+export const mockAllowlist = [
+  { id: 'al-1', pattern: '103.206.249.51', type: 'Sandbox', comment: 'Sandbox Gateway', created_at: '2026-03-01T00:00:00Z' },
+  { id: 'al-2', pattern: '192.168.100.0/24', type: 'Development', comment: 'Internal Dev Network', created_at: '2026-03-02T00:00:00Z' },
+  { id: 'al-3', pattern: '10.*', type: 'QA', comment: 'QA VPC Range', created_at: '2026-03-03T00:00:00Z' }
 ];
 
 export const mockAdminLogs = [
@@ -221,43 +228,69 @@ export const mockAdminLogs = [
   }
 ];
 
+const sample16Components = [
+  { id: 1, itemNo: '0010', component: 'C3DH0416E', material: 'C3DH0416E', description: 'Cold Rolled Steel Plate 10mm', quantity: '25.000', unit: 'KG', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 2, itemNo: '0020', component: 'D4EH0517F', material: 'D4EH0517F', description: 'Hex Head Bolt M12 x 50', quantity: '120.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 3, itemNo: '0030', component: 'E5FH0618G', material: 'E5FH0618G', description: 'Spring Washer M12 DIN 127', quantity: '120.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 4, itemNo: '0040', component: 'F6GH0719H', material: 'F6GH0719H', description: 'Sub-Assembly Motor Bracket', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: true, validFrom: '2026-01-01' },
+  { id: 5, itemNo: '0050', component: 'G7HH0820I', material: 'G7HH0820I', description: 'Bracket Arm Aluminum 6061', quantity: '2.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 6, itemNo: '0060', component: 'H8IH0921J', material: 'H8IH0921J', description: 'Dowel Pin 8mm x 40mm', quantity: '4.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 3, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 7, itemNo: '0070', component: 'I9JH1022K', material: 'I9JH1022K', description: 'Gasket Neoprene High-Temp', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 8, itemNo: '0080', component: 'J0KH1123L', material: 'J0KH1123L', description: 'Stator Assembly 240V 50Hz', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: true, validFrom: '2026-01-01' },
+  { id: 9, itemNo: '0090', component: 'K1LH1224M', material: 'K1LH1224M', description: 'Copper Wire Spool 0.8mm', quantity: '150.000', unit: 'M', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 10, itemNo: '0100', component: 'L2MH1325N', material: 'L2MH1325N', description: 'Insulation Paper Nomex 0.25', quantity: '12.000', unit: 'M2', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 11, itemNo: '0110', component: 'M3NH1426O', material: 'M3NH1426O', description: 'Rotor Core Silicon Steel', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 12, itemNo: '0120', component: 'N4OH1527P', material: 'N4OH1527P', description: 'Deep Groove Ball Bearing 6205', quantity: '2.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 13, itemNo: '0130', component: 'O5PH1628Q', material: 'O5PH1628Q', description: 'Terminal Box Enclosure IP66', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 14, itemNo: '0140', component: 'P6QH1729R', material: 'P6QH1729R', description: 'Cable Gland M20 Brass Nickel', quantity: '3.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 15, itemNo: '0150', component: 'Q7RH1830S', material: 'Q7RH1830S', description: 'Grounding Screw Brass M5', quantity: '2.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 2, hasSubBom: false, validFrom: '2026-01-01' },
+  { id: 16, itemNo: '0160', component: 'R8SH1931T', material: 'R8SH1931T', description: 'Nameplate Aluminum Anodized', quantity: '1.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001', level: 1, hasSubBom: false, validFrom: '2026-01-01' }
+];
+
 export const mockBomExplorerData = {
   success: true,
   material: 'A1BH0214C',
   plant: '1010',
   usage: '1',
   alternative: '01',
-  components: [
-    { id: 1, itemNo: '0010', component: 'C3DH0416E', description: 'Cold Rolled Steel Plate 10mm', quantity: '25.000', unit: 'KG', itemCategory: 'L', storageLocation: '0001' },
-    { id: 2, itemNo: '0020', component: 'D4EH0517F', description: 'Hex Head Bolt M12 x 50', quantity: '120.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001' }
-  ],
+  header: {
+    bomNumber: '00001001',
+    stlnr: '00001001',
+    alternative: '01',
+    stlal: '01',
+    baseQty: '1',
+    baseUnit: 'PC',
+    material: 'A1BH0214C',
+    plant: '1010',
+    usage: '1',
+    description: 'Main Drive Motor Housing'
+  },
+  components: sample16Components,
   bom: {
     material: 'A1BH0214C',
     plant: '1010',
     alternative: '01',
     usage: '1',
     description: 'Main Drive Motor Housing',
-    components: [
-      { id: 1, itemNo: '0010', component: 'C3DH0416E', description: 'Cold Rolled Steel Plate 10mm', quantity: '25.000', unit: 'KG', itemCategory: 'L', storageLocation: '0001' },
-      { id: 2, itemNo: '0020', component: 'D4EH0517F', description: 'Hex Head Bolt M12 x 50', quantity: '120.000', unit: 'PC', itemCategory: 'L', storageLocation: '0001' }
-    ]
+    components: sample16Components
   }
 };
 
 /**
  * Setup route interception for a Playwright page.
  */
-export async function setupMocks(page, { authenticated = true, user = mockAdminUser, unmockedRequestsCollector = [] } = {}) {
-  // Setup localStorage before navigation
-  await page.addInitScript(({ isAuth, serverId }) => {
+export async function setupMocks(page, { authenticated = true, user = mockAdminUser, servers = mockServers, unmockedRequestsCollector = [] } = {}) {
+  // Setup initial token before navigation
+  await page.addInitScript(({ isAuth }) => {
     if (isAuth) {
       localStorage.setItem('sb_token', 'mock-valid-bearer-token');
-      localStorage.setItem('selected_server_id', serverId);
     } else {
       localStorage.removeItem('sb_token');
-      localStorage.removeItem('selected_server_id');
     }
-  }, { isAuth: authenticated, serverId: 'srv-1' });
+    try {
+      localStorage.removeItem('selected_server_id');
+    } catch (_) {}
+  }, { isAuth: authenticated });
 
   // Track failed network requests
   page.on('requestfailed', (req) => {
@@ -301,9 +334,12 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       }
     }
 
-    // 4. Logout
+    // 4. Logout & Password Change
     if (url.includes('/api/auth/logout')) {
       return respondJson({ success: true });
+    }
+    if (url.includes('/api/auth/change-password')) {
+      return respondJson({ success: true, message: 'Password changed successfully.' });
     }
 
     // 5. Servers
@@ -311,7 +347,16 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       if (url.includes('/modules')) {
         return respondJson({ modules: ['bom', 'admin'] });
       }
-      return respondJson({ success: true, servers: mockServers, data: mockServers });
+      if (url.includes('/test')) {
+        return respondJson({ success: true, message: 'Connection test successful.', type: 'Sandbox', responseTimeMs: 42 });
+      }
+      if (method === 'POST') {
+        const body = request.postDataJSON() || {};
+        const created = { id: `srv-${Date.now()}`, ...body, type: 'Sandbox', environment: 'Sandbox', is_default: true };
+        return respondJson({ success: true, server: created }, 201);
+      }
+      const serverList = servers !== undefined ? servers : mockServers;
+      return respondJson({ success: true, servers: serverList, data: serverList });
     }
 
     // 6. Server modules
@@ -443,13 +488,59 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
     }
 
     // 15. Admin Users
+    if (url.includes('/api/admin/users/') && url.includes('/reset-password')) {
+      return respondJson({ success: true, message: 'Password reset successfully.', initialPassword: 'TempInitialPass99!' });
+    }
+    if (url.includes('/api/admin/users/') && url.includes('/status')) {
+      return respondJson({ success: true, message: 'User status updated.' });
+    }
     if (url.includes('/api/admin/users')) {
+      if (method === 'POST') {
+        const body = request.postDataJSON() || {};
+        return respondJson({
+          success: true,
+          user: { id: `user-${Date.now()}`, email: body.email, role: body.role || 'user', must_change_password: true },
+          initialPassword: 'TempInitialPass99!'
+        }, 201);
+      }
       return respondJson({ success: true, data: mockAdminUsers, users: mockAdminUsers });
+    }
+
+    // 15b. Admin Server Allowlist
+    if (url.includes('/api/admin/allowlist')) {
+      if (method === 'POST') {
+        const postData = request.postDataJSON() || {};
+        const newEntry = {
+          id: `al-${Date.now()}`,
+          pattern: postData.pattern || '192.168.1.0/24',
+          type: postData.type || 'Sandbox',
+          comment: postData.comment || 'Test rule',
+          created_at: new Date().toISOString()
+        };
+        return respondJson(newEntry, 201);
+      }
+      if (method === 'DELETE') {
+        return respondJson({ success: true });
+      }
+      return respondJson(mockAllowlist);
     }
 
     // 16. Admin Servers
     if (url.includes('/api/admin/servers')) {
       return respondJson({ success: true, data: mockServers, servers: mockServers });
+    }
+
+    // 16c. User-Owned Servers (/api/servers)
+    if (url.includes('/api/servers') && !url.includes('/api/admin/servers')) {
+      if (url.includes('/test')) {
+        return respondJson({ success: true, message: 'Connection test successful.', environment: 'Sandbox', responseTimeMs: 42 });
+      }
+      if (method === 'POST') {
+        const body = request.postDataJSON() || {};
+        const created = { id: `srv-${Date.now()}`, ...body, environment: 'Sandbox', is_default: false };
+        return respondJson({ success: true, server: created }, 201);
+      }
+      return respondJson({ success: true, servers });
     }
 
     // 16b. Clear Admin F4 Cache
@@ -537,22 +628,38 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
 
     if (url.includes('/api/bom-jobs/') || url.includes('/api/bom/jobs/')) {
       const isPreflight = activeMockJobType === 'create_preflight';
+      const bulkMaterials = [
+        'A1BH0214C', 'B2CH0315D', 'C3DH0416E', 'D4EH0517F', 'E5FH0618G',
+        'F6GH0719H', 'G7HH0820I', 'H8IH0921J', 'I9JH1022K', 'J0KH1123L',
+        'K1LH1224M', 'L2MH1325N', 'M3NH1426O', 'N4OH1527P'
+      ];
+      const jobResults = bulkMaterials.map((mat, idx) => ({
+        sequenceNum: String(idx + 1),
+        material: mat,
+        plant: '1010',
+        bomUsage: '1',
+        alternativeBom: '01',
+        bomNumber: isPreflight ? undefined : `000010${String(idx + 1).padStart(2, '0')}`,
+        status: isPreflight ? 'Ready' : 'SUCCESS',
+        message: isPreflight ? 'Ready for creation' : 'Created successfully',
+        messageType: 'success',
+        type: 'success',
+        componentsCount: (idx % 3) + 1
+      }));
+
       return respondJson({
         success: true,
         job: {
           id: 'mock-job-001',
           type: activeMockJobType,
           status: 'COMPLETED',
-          processed: 2,
-          total: 2,
-          successCount: 2,
+          processed: jobResults.length,
+          total: jobResults.length,
+          successCount: jobResults.length,
           failedCount: 0,
           skippedCount: 0,
           notProcessedCount: 0,
-          results: [
-            { sequenceNum: '1', material: 'A1BH0214C', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001001', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', messageType: 'success', type: 'success', componentsCount: 1 },
-            { sequenceNum: '2', material: 'B2CH0315D', plant: '1010', bomUsage: '1', alternativeBom: '01', bomNumber: isPreflight ? undefined : '00001002', status: isPreflight ? 'Ready' : 'SUCCESS', message: isPreflight ? 'Ready for creation' : 'Created successfully', messageType: 'success', type: 'success', componentsCount: 1 }
-          ]
+          results: jobResults
         }
       });
     }

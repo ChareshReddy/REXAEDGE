@@ -1,3 +1,4 @@
+import { withServerHeaders, ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import assert from 'assert';
 import {
   checkMaterialMaintenance,
@@ -224,6 +225,7 @@ async function runTests() {
       plant: '1000'
     });
 
+    ensureMockOwnedServer();
     const apiRes = await new Promise((resolve, reject) => {
       const req = http.request(
         {
@@ -231,11 +233,11 @@ async function runTests() {
           port: serverPort,
           path: '/api/materials/check',
           method: 'POST',
-          headers: {
+          headers: withServerHeaders({
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(postData),
             'Authorization': 'Bearer admin-test-token'
-          }
+          })
         },
         (res) => {
           let body = '';

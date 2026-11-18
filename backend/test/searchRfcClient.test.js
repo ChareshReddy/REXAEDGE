@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { runSearchRfc, closeAllSearchClients } from '../services/searchRfcClient.js';
+import { openRfcClient } from '../services/sapRfcClient.js';
 
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCK_SAP = 'true';
@@ -25,7 +26,7 @@ class MockClient {
 const baseServer = {
   sap_username: 'TEST_USER',
   sap_password: 'TEST_PASSWORD',
-  ashost: '127.0.0.1',
+  ashost: '192.168.12.240',
   sysnr: '00',
   client: '100'
 };
@@ -320,6 +321,16 @@ console.log('9. Testing three quick searches in a row: previous searches aborted
   const finalResult = await p3;
   assert.strictEqual(finalResult, 'result_110_final', 'Third quick search completed successfully with real result');
   console.log('   ✓ Three quick searches in a row: slots freed on abort, final search succeeds with real result');
+}
+
+// 10. Search path unwraps nested { server } parameter cleanly without throwing HOST_REQUIRED
+console.log('\n10. Testing openRfcClient directly unwraps nested { server } search context parameter...');
+{
+  const searchContext = { server: { ...baseServer, id: 'SRV_NESTED_SEARCH' } };
+  const client = await openRfcClient(searchContext, MockClient);
+  assert(client, 'Client must open successfully from { server } wrapper');
+  assert.strictEqual(client.params.ashost, '192.168.12.240', 'Host must be resolved from nested server object');
+  console.log('   ✓ openRfcClient unwraps nested { server } without requiring top-level ashost');
 }
 
 await closeAllSearchClients();

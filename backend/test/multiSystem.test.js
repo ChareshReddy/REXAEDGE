@@ -1,3 +1,6 @@
+process.env.NODE_ENV = 'test';
+process.env.USE_MOCK_SAP = 'true';
+import { withServerHeaders, ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import assert from 'assert';
 import http from 'http';
 import axios from 'axios';
@@ -18,11 +21,12 @@ let server;
 let baseUrl;
 
 function makeRequest(method, path, body = null) {
+  ensureMockOwnedServer();
   return new Promise((resolve, reject) => {
     const url = new URL(path, baseUrl);
     const headers = {
       'Authorization': 'Bearer admin-test-token',
-      'x-server-id': '10000000-0000-0000-0000-000000000001'
+      'x-sap-server-id': '10000000-0000-0000-0000-000000000001'
     };
 
     if (body) {

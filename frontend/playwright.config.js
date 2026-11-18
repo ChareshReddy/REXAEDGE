@@ -54,10 +54,18 @@ export default defineConfig({
         browserName: 'chromium',
         viewport: { width: 390, height: 844 }
       }
+    },
+    {
+      name: '360x740',
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 360, height: 740 }
+      }
     }
   ],
   webServer: {
-    command: 'npx vite',
+    command: 'npx vite --force',
+    cwd: __dirname,
     url: 'http://localhost',
     reuseExistingServer: true,
     timeout: 30000
