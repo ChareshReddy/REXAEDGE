@@ -292,3 +292,44 @@ When deploying the SAP Application behind reverse proxies (such as **Nginx** or 
 - **Local Vite Dev Proxy**: Configured in `frontend/vite.config.js` to target `http://127.0.0.1:5000` (IPv4) with a dedicated non-keepalive agent (`agent: new http.Agent({ keepAlive: false })`) and structured JSON error responses.
 
 For complete production configurations, see [docs/DEPLOYMENT_NOTES.md](docs/DEPLOYMENT_NOTES.md).
+
+---
+
+## 12. User-Owned SAP Servers & Multi-Tenant Security Architecture
+
+The platform uses a decentralized **User-Owned SAP Servers** architecture. Each user configures and securely vaults their own SAP server endpoints and RFC credentials.
+
+### 12.1 Environment Variables Reference
+
+| Variable Name | Purpose | Default |
+|---|---|---|
+| `ENCRYPTION_KEY` | 32-byte hexadecimal string used for AES-256-GCM authenticated encryption of SAP user passwords at rest. | Generated fallback in development |
+| `GLOBAL_MAX_SAP_CONNECTIONS` | Strict global limit on concurrent active SAP RFC connections across all user pools. | `50` |
+| `DEFAULT_USER_SERVER_LIMIT` | Maximum number of SAP server definitions allowed per non-admin user account. | `5` |
+| `REQUIRE_TEST_CONNECTION_ON_SAVE` | Requires a successful live RFC test connection against the allowlist before persisting a new server. | `true` |
+| `AUTH_MAX_LOGIN_ATTEMPTS` | Number of consecutive failed password attempts before triggering account lockout. | `5` |
+| `AUTH_LOCKOUT_MINUTES` | Duration in minutes for which an account remains locked out after repeated failed logins. | `15` |
+| `IDLE_POOL_TIMEOUT_MINUTES` | Duration of inactivity after which idle SAP connection pools are automatically evicted and closed. | `10` |
+
+### 12.2 Database Migration
+
+- **Migration File**: `backend/schema/migration_user_owned_servers.sql`
+- **Execution Model**: Strictly additive. Contains NO `DROP`, `DELETE`, `TRUNCATE`, or column drops. Run manually in your Postgres / Supabase SQL Editor following a complete database backup.
+- **Tables & Columns Added**:
+  - `public.server_allowlist` (pattern, type, comment, created_by, created_at)
+  - `public.auth_login_attempts` (email, failed_attempts, locked_until, last_attempt_at)
+  - `public.user_server_settings` (user_id, default_server_id, updated_at)
+  - Columns added to `public.sap_servers`: `owner_id`, `is_disabled`, `is_default`, `sap_password_encrypted`
+  - Columns added to `public.users`: `must_change_password`, `is_disabled`
+
+### 12.3 Legacy Server Owner Assignment Step
+
+Pre-existing servers created prior to user-owned servers migration have `owner_id IS NULL`:
+1. **Admin Portal Assignment**: Navigate to **Admin > All servers**. Legacy servers display a `Legacy unowned` badge and an **Assign** action button allowing immediate assignment to any registered user account (`PATCH /api/admin/servers/:id/owner`).
+2. **SQL Batch Assignment**: Alternatively, assign all legacy servers to a designated administrator or primary account:
+   ```sql
+   UPDATE public.sap_servers
+   SET owner_id = '<target_user_uuid>'
+   WHERE owner_id IS NULL;
+   ```
+

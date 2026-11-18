@@ -24,3 +24,7 @@
      - `frontend-design`: Purposeful enterprise typography, intentional palette, no generic AI-look tells.
      - `web-design-guidelines`: Web interface quality, accessibility, touch targets, and contrast.
      - `vercel-react-best-practices`: Performance optimization, re-render avoidance, and bundle size discipline.
+
+## User-Owned Servers, Permissions & BOM Locking
+- **Per-Action Permissions Removed**: Per-action permissions are removed on purpose. An owner can run all BOM actions on their own server, and SAP's own authorizations for the user's configured SAP credentials apply.
+- **BOM Lock Leases Keyed by SAP System Identity**: Lock leases are keyed by SAP system identity (`(normalized host/router + system number + client) + BOM key`), NOT by server ID. Multiple users with different server records pointing to the same SAP system block each other on the same BOM. Best-effort normalization applies (the same system reached through different hostnames or IPs may not match).
