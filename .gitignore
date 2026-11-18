@@ -63,6 +63,8 @@ Thumbs.db
 # Scratch & temporary investigation files
 scratch/
 scratch_investigation_results.json
+grant_permissions_and_seed_admin.sql
+backend/schema/grant_permissions_and_seed_admin.sql
 .temp/
 supabase/.temp/
 .temp_preview_test_build/

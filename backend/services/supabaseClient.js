@@ -648,10 +648,6 @@ class InMemorySupabaseStore {
     return { data: { user: { id: user.id, email: user.email, role: user.role } }, error: null };
   }
 
-  getServerById(serverId) {
-    return this.servers.find((s) => s.id === serverId) || null;
-  }
-
   getServersByOwner(ownerId) {
     return this.servers.filter((s) => s.owner_id === ownerId);
   }
@@ -1596,19 +1592,6 @@ export const supabaseService = {
     return { error: null };
   },
 
-  async getServerById(serverId) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getServerById(serverId);
-    }
-    if (!liveSupabase) return null;
-    const { data } = await liveSupabase
-      .from('sap_servers')
-      .select('*')
-      .eq('id', serverId)
-      .maybeSingle();
-    return data || null;
-  },
-
   async getServersByOwner(ownerId) {
     if (shouldUseInMemory()) {
       return inMemorySupabase.getServersByOwner(ownerId);
@@ -2229,9 +2212,9 @@ export const supabaseService = {
     }
 
     let newEncryptedPassword;
-    if (serverData.is_disabled !== undefined) server.is_disabled = Boolean(serverData.is_disabled);
-    if (serverData.owner_id !== undefined) server.owner_id = serverData.owner_id;
-    if (serverData.is_default !== undefined) server.is_default = Boolean(serverData.is_default);
+    if (serverData.is_disabled !== undefined) updatePayload.is_disabled = Boolean(serverData.is_disabled);
+    if (serverData.owner_id !== undefined) updatePayload.owner_id = serverData.owner_id;
+    if (serverData.is_default !== undefined) updatePayload.is_default = Boolean(serverData.is_default);
 
     if (serverData.sap_username !== undefined) {
       updatePayload.sap_username = serverData.sap_username ? String(serverData.sap_username).trim() : null;

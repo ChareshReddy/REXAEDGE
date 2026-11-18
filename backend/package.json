@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node scripts/runTests.js"
+    "test": "node scripts/runTests.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
@@ -19,5 +20,10 @@
     "express-rate-limit": "^7.5.0",
     "open-rfc": "^0.2.4",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0"
   }
 }
