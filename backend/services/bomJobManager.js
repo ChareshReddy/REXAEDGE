@@ -92,8 +92,12 @@ class BomJobManager {
       if (job.status === 'RUNNING' || job.status === 'running') {
         const jobId = job.jobId || job.id;
         const hasRunner = this.activeRunners.has(jobId);
-        const lastHeartbeat = new Date(job.updatedAt || job.startedAt || job.createdAt || 0).getTime();
-        const createdAge = now - new Date(job.createdAt || 0).getTime();
+        const createdRaw = job.createdAt || job.created_at || job.startedAt || job.updatedAt;
+        const createdTime = createdRaw ? new Date(createdRaw).getTime() : now;
+        const createdAge = now - (isNaN(createdTime) ? now : createdTime);
+        const lastHeartbeatRaw = job.updatedAt || job.startedAt || job.createdAt || job.created_at;
+        const lastHeartbeatTime = lastHeartbeatRaw ? new Date(lastHeartbeatRaw).getTime() : now;
+        const lastHeartbeat = isNaN(lastHeartbeatTime) ? now : lastHeartbeatTime;
         const isHeartbeatStale = (now - lastHeartbeat) > 120000; // > 2 minutes
         const isRunnerMissingAndNotStarting = !hasRunner && createdAge > 10000; // 10s grace period for event loop spinup
 
@@ -270,12 +274,13 @@ class BomJobManager {
   async getJob(jobId, requestingUser = null) {
     this.cleanStaleJobs();
     let job = this.jobs.get(jobId);
+    let fromRepository = false;
     if (!job) {
-      // Async fallback to repository (dual-written DB or file store) if in-memory cache missed
       const found = await this.repository.getJob(jobId);
       if (found) {
         job = found;
         this.jobs.set(found.jobId || found.id, found);
+        fromRepository = true;
       } else {
         return null;
       }
@@ -289,9 +294,15 @@ class BomJobManager {
       const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId || job.user_id === uEmail;
 
       if (!isAdmin && !isOwner) {
-        const err = new Error(`Job ${jobId} not found.`);
-        err.code = 'NOT_FOUND';
-        err.status = 404;
+        if (fromRepository) {
+          const err = new Error(`Job ${job.jobId || job.id} not found.`);
+          err.code = 'NOT_FOUND';
+          err.status = 404;
+          throw err;
+        }
+        const err = new Error(`Forbidden: You do not have permission to access job ${job.jobId || job.id}.`);
+        err.code = 'FORBIDDEN';
+        err.status = 403;
         throw err;
       }
     }
@@ -315,11 +326,13 @@ class BomJobManager {
 
   async cancelJob(jobId, requestingUser = null) {
     let job = this.jobs.get(jobId);
+    let fromRepository = false;
     if (!job) {
       const found = await this.repository.getJob(jobId);
       if (found) {
         job = found;
         this.jobs.set(found.jobId || found.id, found);
+        fromRepository = true;
       } else {
         const err = new Error(`Job ${jobId} not found.`);
         err.code = 'NOT_FOUND';
@@ -336,9 +349,15 @@ class BomJobManager {
       const isOwner = job.userId === uId || job.userEmail === uEmail || job.userId === uEmail || job.user_id === uId || job.user_id === uEmail;
 
       if (!isAdmin && !isOwner) {
-        const err = new Error(`Job ${jobId} not found.`);
-        err.code = 'NOT_FOUND';
-        err.status = 404;
+        if (fromRepository) {
+          const err = new Error(`Job ${job.jobId || job.id} not found.`);
+          err.code = 'NOT_FOUND';
+          err.status = 404;
+          throw err;
+        }
+        const err = new Error(`Forbidden: You do not have permission to access job ${job.jobId || job.id}.`);
+        err.code = 'FORBIDDEN';
+        err.status = 403;
         throw err;
       }
     }
@@ -355,7 +374,7 @@ class BomJobManager {
       job.completedAt = new Date().toISOString();
       job.message = 'Cancelled by user before execution started.';
       this.repository.saveJob(job).catch(() => {});
-      const qIdx = this.queuedJobs.indexOf(jobId);
+      const qIdx = this.queuedJobs.indexOf(job.jobId || job.id);
       if (qIdx >= 0) this.queuedJobs.splice(qIdx, 1);
       return { success: true, message: 'Queued job cancelled immediately.' };
     }
@@ -365,6 +384,26 @@ class BomJobManager {
       success: true,
       message: 'Cancellation requested. Job will stop after the current chunk of 10 rows finishes.'
     };
+  }
+
+  async cancelJobsForServer(serverId, reason = 'Server disabled or deleted') {
+    const cancelled = [];
+    for (const [id, job] of this.jobs.entries()) {
+      const matchServer = job.serverId === serverId || job.server_id === serverId;
+      if (matchServer && (job.status === 'RUNNING' || job.status === 'QUEUED')) {
+        job.cancelRequested = true;
+        job.status = 'CANCELLED';
+        job.error = reason;
+        job.message = reason;
+        job.completedAt = new Date().toISOString();
+        job.updatedAt = new Date().toISOString();
+        await this.repository.saveJob(job).catch(() => {});
+        const qIdx = this.queuedJobs.indexOf(id);
+        if (qIdx >= 0) this.queuedJobs.splice(qIdx, 1);
+        cancelled.push(id);
+      }
+    }
+    return cancelled;
   }
 
   async listJobs(requestingUser = null, filters = {}) {
@@ -1482,6 +1521,9 @@ class BomJobManager {
           continue;
         }
 
+        let effectiveSrcAlt = null;
+        let resolvedTgtAlt = null;
+
         try {
           // Strictly resolve and verify source alternative exists (never trust frontend or blindly fallback)
           const srcAltRes = await resolveSourceAlternativeForCopy({
@@ -1512,7 +1554,7 @@ class BomJobManager {
             if (!skipErrors) break;
             continue;
           }
-          const effectiveSrcAlt = srcAltRes.sourceAlternative;
+          effectiveSrcAlt = srcAltRes.sourceAlternative;
 
           const targetKey = `${tgtMat}|${tgtPlant}|${tgtUsage}`;
           const allocatedList = allocatedByTargetKey.get(targetKey) || [];
@@ -1529,7 +1571,7 @@ class BomJobManager {
 
           const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
           allocatedByTargetKey.set(targetKey, [...allocatedList, resolvedNum]);
-          const resolvedTgtAlt = tgtAltRes.targetAlternative;
+          resolvedTgtAlt = tgtAltRes.targetAlternative;
 
           if (tgtAltRes.exists) {
             job.failedCount++;

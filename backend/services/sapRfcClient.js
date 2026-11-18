@@ -18,6 +18,10 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { validateServerHost } from './serverAllowlistService.js';
+import { supabaseService, getPersistedCredential } from './supabaseClient.js';
+import { decryptPassword } from '../utils/crypto.js';
+import { getSapConnectionPool, RFC_PRIORITY, getAllPoolStats } from './sapConnectionPool.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,10 +48,6 @@ export function getActiveMockBoms() {
   }
   return activeMockBoms;
 }
-
-import { supabaseService, getPersistedCredential } from './supabaseClient.js';
-import { decryptPassword } from '../utils/crypto.js';
-import { getSapConnectionPool, RFC_PRIORITY, getAllPoolStats } from './sapConnectionPool.js';
 
 /**
  * Sets the active RFC server for the current context/request.
@@ -198,7 +198,27 @@ export const DEFAULT_RFC_CLIENT_OPTIONS = Object.freeze({
  */
 export async function openRfcClient(customOverrides = {}, ClientClass = Client) {
   assertResolvedServer(customOverrides, 'openRfcClient');
-  const params = getRfcConnectionParams(customOverrides);
+
+  let activeConfig = customOverrides?.server
+    ? { ...customOverrides.server, ...customOverrides }
+    : { ...customOverrides };
+
+  // Allowlist & Host Validation (connect strictly by validated IP; reject SNC or blocked host)
+  const allowlist = await supabaseService.getAllowlist();
+  if (process.env.USE_MOCK_SAP !== 'true' || (allowlist && allowlist.length > 0)) {
+    const expectedIp = activeConfig.validated_ip || activeConfig.validatedIp || activeConfig.expectedIp;
+    const validation = await validateServerHost(activeConfig, allowlist || [], { expectedIp });
+    if (!validation.permitted) {
+      const err = new Error(validation.message);
+      err.code = validation.code;
+      throw err;
+    }
+    if (validation.validatedIp) {
+      activeConfig.ashost = validation.validatedIp; // Connect strictly by validated IP
+    }
+  }
+
+  const params = getRfcConnectionParams(activeConfig);
   const client = new ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
   await client.open();
   return client;
@@ -4444,6 +4464,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
     // 1. Read Target Hierarchy back from SAP in fast batched reads
     let targetTree;
     try {
+      const shouldCache = params.useCache !== undefined ? Boolean(params.useCache) : Boolean(params.client);
       targetTree = await batchReadBomHierarchy({
         material: cleanTgtMat,
         plant: cleanTgtPlt,
@@ -4452,7 +4473,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
         server,
         client: rfc,
         maxDepth,
-        useCache: false
+        useCache: shouldCache
       });
     } catch (targetErr) {
       return {
@@ -4501,7 +4522,14 @@ export async function verifyCopiedBomHierarchy(params = {}) {
 
     // 2. Read Source Hierarchy from SAP for strict verification
     let sourceTree = null;
-    if (cleanSrcMat && cleanSrcPlt) {
+    const isSameBom = cleanSrcMat === cleanTgtMat &&
+      cleanSrcPlt === cleanTgtPlt &&
+      cleanSrcUsg === cleanTgtUsg &&
+      cleanSrcAlt.padStart(2, '0') === cleanTgtAlt.padStart(2, '0');
+
+    if (isSameBom) {
+      sourceTree = targetTree;
+    } else if (cleanSrcMat && cleanSrcPlt) {
       try {
         sourceTree = await batchReadBomHierarchy({
           material: cleanSrcMat,
@@ -4511,7 +4539,7 @@ export async function verifyCopiedBomHierarchy(params = {}) {
           server,
           client: rfc,
           maxDepth,
-          useCache: false
+          useCache: true
         });
       } catch (sourceErr) {
         return {

@@ -43,11 +43,12 @@ export const RFC_PRIORITY = Object.freeze({
 });
 
 // Default configuration constants
+export const GLOBAL_MAX_SAP_CONNECTIONS = Number(process.env.GLOBAL_MAX_SAP_CONNECTIONS) || 20;
 const DEFAULT_MAX_CONNECTIONS = 3;
 const DEFAULT_PER_USER_LIMIT = 2;
 const DEFAULT_QUEUE_TIMEOUT_MS = 20000;   // 20s
 const DEFAULT_RFC_CALL_TIMEOUT_MS = 45000; // 45s
-const DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
+const DEFAULT_IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 min idle pool close
 const BULK_AGING_PROMOTION_MS = 30000;    // 30s aging promotion
 
 // Connection-level error code & message detector
@@ -132,6 +133,7 @@ export class SapConnectionPool {
     // User active connection counts: Map<userId, count>
     this.userActiveCount = new Map();
     this.circuitBreaker = getCircuitBreaker(this.serverId);
+    this.lastActiveAt = Date.now();
 
     // Telemetry & metrics
     this.stats = {
@@ -313,6 +315,7 @@ export class SapConnectionPool {
       this._discardClient(activeEntry.client);
     }
 
+    this.lastActiveAt = Date.now();
     this._processQueue();
   }
 
@@ -335,6 +338,12 @@ export class SapConnectionPool {
       });
 
       while (this.queue.length > 0) {
+        const globalActive = getTotalGlobalActiveConnections();
+        if (this.idleConnections.length === 0 && globalActive >= GLOBAL_MAX_SAP_CONNECTIONS) {
+          // Global maximum SAP connections limit reached
+          break;
+        }
+
         const totalConns = this.activeConnections.size + this.idleConnections.length + this.pendingConnections;
         const canAcquire = (this.idleConnections.length > 0) || (totalConns < this.maxConnections);
         if (!canAcquire) {
@@ -468,7 +477,7 @@ export class SapConnectionPool {
       this.stats.totalErrors++;
 
       const isConnErr = isConnectionLevelError(err);
-      if (isConnErr) {
+      if (isConnErr && err.code !== 'RFC_CALL_TIMEOUT') {
         err.code = 'CONNECTION_LOST';
       }
       this.circuitBreaker.onFailure(isConnErr, err.message);
@@ -775,4 +784,32 @@ export async function resetAllPools() {
     await pool.closeAll();
   }
   poolRegistry.clear();
+}
+
+/**
+ * Returns total active and pending connections across all server pools
+ */
+export function getTotalGlobalActiveConnections() {
+  let count = 0;
+  for (const pool of poolRegistry.values()) {
+    count += pool.activeConnections.size + pool.pendingConnections;
+  }
+  return count;
+}
+
+/**
+ * Scans all pools and closes any pool that has been idle for >= maxIdleMs (default 10 min)
+ */
+export async function checkAndCleanIdlePools(maxIdleMs = 10 * 60 * 1000) {
+  const now = Date.now();
+  const toDelete = [];
+  for (const [serverId, pool] of poolRegistry.entries()) {
+    if (pool.activeConnections.size === 0 && pool.queue.length === 0 && (now - (pool.lastActiveAt || 0)) >= maxIdleMs) {
+      toDelete.push(serverId);
+    }
+  }
+  for (const serverId of toDelete) {
+    await removePool(serverId);
+  }
+  return toDelete;
 }
