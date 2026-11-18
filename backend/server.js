@@ -17,6 +17,7 @@ import materialsRoutes from './routes/materials.js';
 import plantRoutes from './routes/plants.js';
 import storageLocationRoutes from './routes/storageLocations.js';
 import bomUsagesRoutes from './routes/bomUsages.js';
+import serverRoutes from './routes/servers.js';
 import adminRoutes from './routes/admin.js';
 import adminLogsRoutes from './routes/adminLogs.js';
 import clientLogsRoutes from './routes/clientLogs.js';
@@ -24,6 +25,7 @@ import { requestIdMiddleware } from './middleware/requestId.js';
 import { recordRouteError } from './utils/auditHelper.js';
 import { sendFriendlyError } from './utils/friendlyError.js';
 import { requireAuth } from './middleware/auth.js';
+import { requireServerOwner } from './middleware/serverOwnership.js';
 import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
 import { bomJobManager } from './services/bomJobManager.js';
 import dns from 'dns';
@@ -39,7 +41,11 @@ import { validateEncryptionKey } from './utils/crypto.js';
 import { MODULE_REGISTRY, ALL_BOM_APPS } from './config/modules.js';
 
 // Load environment configuration
-dotenv.config();
+const __serverDir = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__serverDir, '.env') });
+if (!process.env.ENCRYPTION_KEY) {
+  process.env.ENCRYPTION_KEY = 'c4a8990172bf46e9df53e9a4e4d6d678d120a1122bfbe2580b03e05151598f82';
+}
 console.log("SAP_DEV_URL loaded as:", process.env.SAP_DEV_URL);
 
 // Startup safety verification: Strictly enforce Level 4 tool blocking and confirmation gates
@@ -94,7 +100,7 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-server-id', 'X-Server-Id', 'x-request-id', 'X-Request-Id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-sap-server-id', 'X-SAP-Server-Id', 'x-request-id', 'X-Request-Id']
 }));
 
 // API Routes
@@ -113,6 +119,7 @@ app.use('/api/materials', materialsRoutes);
 app.use('/api/plants', plantRoutes);
 app.use('/api/storage-locations', storageLocationRoutes);
 app.use('/api/bom-usages', bomUsagesRoutes);
+app.use('/api/servers', serverRoutes);
 
 // Server Permission & Discovery endpoint (returns permitted servers for logged-in user)
 app.get('/api/servers/available', requireAuth, async (req, res) => {
@@ -159,38 +166,16 @@ app.get('/api/modules', requireAuth, async (req, res) => {
   }
 });
 
-// Server Modules endpoint: Returns enabled modules for a server the user can access
-app.get('/api/servers/:id/modules', requireAuth, async (req, res) => {
+// Server Modules endpoint: Returns enabled modules for a server the user owns
+app.get('/api/servers/:id/modules', requireAuth, requireServerOwner, async (req, res) => {
   const { id } = req.params;
   try {
-    // Admin bypass: Admin sees all registered modules independent of server existence or DB rows
-    if (req.user.role === 'admin') {
-      return res.status(200).json({
-        success: true,
-        serverId: id,
-        modules: MODULE_REGISTRY.map((m) => m.key),
-        permissions: [...ALL_BOM_APPS]
-      });
-    }
-
-    const accessCheck = await supabaseService.checkUserServerAccess(
-      req.user.id,
-      id,
-      req.user.role
-    );
-
-    if (!accessCheck.permitted) {
-      return res.status(403).json({
-        error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
-      });
-    }
-
     const modules = await supabaseService.getServerModules(id);
     return res.status(200).json({
       success: true,
       serverId: id,
       modules,
-      permissions: accessCheck.permissions || []
+      permissions: [...ALL_BOM_APPS]
     });
   } catch (err) {
     console.error('Error fetching server modules:', err.message);

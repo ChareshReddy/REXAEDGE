@@ -38,7 +38,7 @@ router.post(
         requestId: req.id,
         userId: req.user?.id,
         userEmail: req.user?.email,
-        serverId: req.headers['x-server-id'] || null,
+        serverId: req.headers['x-sap-server-id'] || null,
         source: 'frontend',
         method: req.method,
         route: route || req.headers['referer'] || 'unknown',

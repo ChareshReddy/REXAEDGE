@@ -10,6 +10,7 @@ import { pingRfcServer } from '../services/sapRfcClient.js';
 import { getServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { extractToken, requireAuth, requireServerAccess, requireAppPermission } from '../middleware/auth.js';
+import { requireServerOwner } from '../middleware/serverOwnership.js';
 import { sendFriendlyError, toFriendlyError } from '../utils/friendlyError.js';
 
 const router = express.Router();
@@ -22,7 +23,6 @@ async function resolveTargetServer(req) {
   if (req.selectedServer) return req.selectedServer;
 
   let serverId =
-    req.headers?.['x-server-id'] ||
     req.headers?.['x-sap-server-id'] ||
     req.query?.serverId ||
     req.query?.server_id;
@@ -73,7 +73,7 @@ async function resolveTargetServer(req) {
  * GET /api/sap/sessions
  * Returns all active SAP GUI or RFC sessions and the currently selected session.
  */
-router.get('/sessions', requireAuth, requireAppPermission('bom.*'), async (req, res) => {
+router.get('/sessions', requireAuth, requireServerOwner, requireAppPermission('bom.*'), async (req, res) => {
   try {
     const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
     if (useRfc) {
@@ -135,7 +135,7 @@ router.get('/sessions', requireAuth, requireAppPermission('bom.*'), async (req, 
  * POST /api/sap/sessions/select
  * Selects an active SAP session to be used for SAP operations.
  */
-router.post('/sessions/select', requireAuth, requireAppPermission('bom.*'), async (req, res) => {
+router.post('/sessions/select', requireAuth, requireServerOwner, requireAppPermission('bom.*'), async (req, res) => {
   try {
     const { sessionId } = req.body || {};
     if (!sessionId || typeof sessionId !== 'string') {
@@ -197,7 +197,7 @@ router.post('/sessions/select', requireAuth, requireAppPermission('bom.*'), asyn
  * GET /api/sap/session-status
  * Health check endpoint for dynamic SAP RFC or GUI session monitoring.
  */
-router.get('/session-status', requireAuth, requireAppPermission('bom.*'), async (req, res) => {
+router.get('/session-status', requireAuth, requireServerOwner, requireAppPermission('bom.*'), async (req, res) => {
   try {
     const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
     if (useRfc) {

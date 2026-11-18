@@ -1101,13 +1101,14 @@ export async function createBomFromData({
       const mockEntry = (mp.mara || []).find((m) => m.MATNR === mat || toSapMatnr(m.MATNR) === matSap);
       if (mockEntry?.MEINS) {
         resolvedBaseUnit = mockEntry.MEINS;
-      } else if (process.env.USE_MOCK_SAP === 'true') {
+      } else if (process.env.USE_MOCK_SAP === 'true' && !mat.includes('NO_UNIT')) {
         resolvedBaseUnit = 'EA';
       }
     }
   }
 
-  if (!resolvedBaseUnit && client && !client.isMock) {
+  const readMaraBatch = null;
+  if (!resolvedBaseUnit && client && !client.isMock && readMaraBatch) {
     try {
       const maraBatch = await readMaraBatch([mat], { server, client });
       if (maraBatch?.[mat]?.meins || maraBatch?.[mat]?.MEINS) {

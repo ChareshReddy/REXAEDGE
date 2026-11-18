@@ -64,6 +64,7 @@ import {
   validateUpdateChanges
 } from '../config/entitySchemas/index.js';
 import { requireAuth, requireServerAccess } from '../middleware/auth.js';
+import { requireServerOwner } from '../middleware/serverOwnership.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { MODULE_KEYS } from '../config/modules.js';
 
@@ -1340,7 +1341,7 @@ function logOpenRouterError(stage, err) {
  * POST /api/chat
  * Multi-entity conversational endpoint supporting read & human-confirmed writes.
  */
-router.post('/', requireAuth, requireServerAccess(), async (req, res, next) => {
+router.post('/', requireAuth, requireServerOwner, requireServerAccess(), async (req, res, next) => {
   const username = getSessionUsername(req);
   const systemKey = req.body?.systemKey && isValidSystemKey(req.body.systemKey)
     ? req.body.systemKey

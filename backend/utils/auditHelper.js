@@ -19,7 +19,7 @@ export function recordRouteAudit(req, {
       (req.body?.email ? String(req.body.email).trim() : null) ||
       (req.body?.username ? String(req.body.username).trim() : null);
 
-    const serverId = req.selectedServer?.id || req.headers['x-server-id'] || null;
+    const serverId = req.selectedServer?.id || req.headers['x-sap-server-id'] || null;
     const serverName = req.selectedServer?.name || req.selectedServer?.system_name || null;
 
     logAudit({
@@ -56,7 +56,7 @@ export function recordRouteError(req, err, {
 } = {}) {
   const errorRef = err?.error_ref || generateErrorRef();
   try {
-    const serverId = req.selectedServer?.id || req.headers['x-server-id'] || null;
+    const serverId = req.selectedServer?.id || req.headers['x-sap-server-id'] || null;
     const serverName = req.selectedServer?.name || req.selectedServer?.system_name || null;
 
     logError({

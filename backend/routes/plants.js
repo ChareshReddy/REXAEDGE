@@ -1,6 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { requireAuth, requireServerAccess, requireModuleAccess, requireAppPermission } from '../middleware/auth.js';
+import { requireServerOwner } from '../middleware/serverOwnership.js';
 import { MODULE_KEYS } from '../config/modules.js';
 import { getPlants } from '../services/plantService.js';
 import { f4CacheService } from '../services/f4CacheService.js';
@@ -20,8 +21,9 @@ export const plantRateLimiter = rateLimit({
   }
 });
 
-// Enforce authentication, BOM module enablement, and server access
+// Enforce authentication, server ownership, BOM module enablement, and server access
 router.use(requireAuth);
+router.use(requireServerOwner);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
 router.use(requireAppPermission('bom.*'));
 

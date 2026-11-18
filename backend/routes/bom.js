@@ -30,11 +30,13 @@ import { recordRouteAudit } from '../utils/auditHelper.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
 import { bomJobManager, MAX_BOMS } from '../services/bomJobManager.js';
 import { bomLockService } from '../services/bomLockService.js';
+import { requireServerOwner } from '../middleware/serverOwnership.js';
 
 const router = express.Router();
 
-// Enforce authentication and BOM module enablement on all BOM routes
+// Enforce authentication, server ownership, and BOM module enablement on all BOM routes
 router.use(requireAuth);
+router.use(requireServerOwner);
 router.use(requireModuleAccess(MODULE_KEYS.BOM));
 
 /**
@@ -208,6 +210,7 @@ router.post('/create', requireAppPermission('bom.create'), async (req, res) => {
     const userId = req.user?.id || req.user?.email || 'anonymous';
 
     const result = await bomLockService.withLock({
+      server: req.selectedServer,
       serverId,
       material,
       plant,
@@ -326,6 +329,7 @@ router.post('/copy', requireAppPermission('bom.copy'), async (req, res) => {
     const effTargetAlt = targetAlternative || alternativeBom || '01';
 
     const result = await bomLockService.withLock({
+      server: req.selectedServer,
       serverId,
       material: targetMaterial,
       plant: targetPlant,
@@ -456,6 +460,7 @@ router.post('/delete', requireAppPermission('bom.delete'), async (req, res) => {
     const userId = req.user?.id || req.user?.email || 'anonymous';
 
     const result = await bomLockService.withLock({
+      server: req.selectedServer,
       serverId,
       material,
       plant,
@@ -701,6 +706,64 @@ router.get('/template', requireAppPermission('bom.copy'), (req, res) => {
   }
 });
 
+// Short-lived download ticket map: ticketId -> { userId, serverId, expiresAt }
+const downloadTickets = new Map();
+
+/**
+ * POST /api/bom/download-ticket
+ * Generates a short-lived download ticket (60s) tied to the authenticated user and their selected server.
+ */
+router.post('/download-ticket', requireServerOwner, (req, res) => {
+  const ticketId = crypto.randomUUID();
+  downloadTickets.set(ticketId, {
+    userId: req.user.id,
+    serverId: req.selectedServer.id,
+    expiresAt: Date.now() + 60 * 1000
+  });
+  return res.status(200).json({ success: true, ticket: ticketId });
+});
+
+/**
+ * GET /api/bom/download/:ticket
+ * Consumes a short-lived download ticket tied to user + server without requiring explicit header.
+ */
+router.get('/download/:ticket', (req, res) => {
+  const ticket = downloadTickets.get(req.params.ticket);
+  if (!ticket || Date.now() > ticket.expiresAt || (req.user && ticket.userId && req.user.id !== ticket.userId)) {
+    if (ticket) downloadTickets.delete(req.params.ticket);
+    return res.status(404).json({ error: 'Download ticket expired or invalid.' });
+  }
+  downloadTickets.delete(req.params.ticket);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet([{ Sample: 'BOM_Item_Data' }]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Download');
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', 'attachment; filename="BOM_Export.xlsx"');
+  return res.send(buffer);
+});
+
+/**
+ * POST /api/bom/template
+ * Direct POST file download carrying explicit x-sap-server-id header.
+ */
+router.post('/template', requireServerOwner, (req, res) => {
+  try {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet([{ 'Source Material': 'A1BH0214C', 'Source Plant': '1012' }]);
+    XLSX.utils.book_append_sheet(wb, ws, 'BOM_Copy_Template');
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="BOM_Copy_Template.xlsx"');
+    return res.send(buffer);
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
+
 /**
  * Helper to enforce PROD typing "CONFIRM" and non-empty business reason
  */
@@ -806,6 +869,7 @@ router.post('/create-single', requireAppPermission('bom.create'), async (req, re
     const userId = req.user?.id || req.user?.email || 'anonymous';
 
     const result = await bomLockService.withLock({
+      server: req.selectedServer,
       serverId,
       material: bom.material,
       plant: bom.plant,
@@ -1091,6 +1155,8 @@ router.get('/create-template', requireAppPermission('bom.create'), (req, res) =>
     });
   }
 });
+
+
 
 // =========================================================================
 // BACKGROUND JOB ENDPOINTS (Safe Bulk Processing for Hundreds of BOMs)

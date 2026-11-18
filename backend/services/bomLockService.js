@@ -12,13 +12,29 @@
  * ============================================================================
  */
 
-export function normalizeBomLockKey({ serverId, material, plant, bomUsage, alternative }) {
-  const sId = String(serverId || 'default').trim();
+export function normalizeSapSystemIdentity(server = {}) {
+  if (!server || typeof server !== 'object') return 'default';
+  const host = String(server.validated_ip || server.ashost || server.host || 'localhost').trim().toLowerCase();
+  const router = String(server.router || server.saprouter || '').trim().toLowerCase();
+  const sysnr = String(server.sysnr || '00').trim().padStart(2, '0');
+  const client = String(server.client || '100').trim().padStart(3, '0');
+  return `${router ? router + '@' : ''}${host}:${sysnr}:${client}`;
+}
+
+export function normalizeBomLockKey({ server, serverId, material, plant, bomUsage, alternative, sapSystemIdentity }) {
+  let sysIdentity = sapSystemIdentity;
+  if (!sysIdentity) {
+    if (server && typeof server === 'object' && (server.ashost || server.host || server.validated_ip)) {
+      sysIdentity = normalizeSapSystemIdentity(server);
+    } else {
+      sysIdentity = String(serverId || 'default').trim();
+    }
+  }
   const mat = String(material || '').trim().toUpperCase();
   const plt = String(plant || '').trim().toUpperCase();
   const usg = String(bomUsage || '1').trim();
   const alt = String(alternative || '01').trim().padStart(2, '0');
-  return `${sId}:${mat}:${plt}:${usg}:${alt}`;
+  return `${sysIdentity}:${mat}:${plt}:${usg}:${alt}`;
 }
 
 export class BomLockError extends Error {
@@ -42,8 +58,8 @@ class BomLockService {
    * Attempts to acquire a lease on the specified BOM lock key.
    * Fails fast if locked by another user. Allows re-entry if requested by the same user.
    */
-  acquireLock({ serverId, material, plant, bomUsage, alternative, userId, leaseMs = this.defaultLeaseMs }) {
-    const key = normalizeBomLockKey({ serverId, material, plant, bomUsage, alternative });
+  acquireLock({ server, serverId, material, plant, bomUsage, alternative, sapSystemIdentity, userId, leaseMs = this.defaultLeaseMs }) {
+    const key = normalizeBomLockKey({ server, serverId, material, plant, bomUsage, alternative, sapSystemIdentity });
     const uId = String(userId || 'anonymous');
     const now = Date.now();
 
@@ -126,8 +142,8 @@ class BomLockService {
   /**
    * Helper that executes an operation with automatic lock acquisition and release.
    */
-  async withLock({ serverId, material, plant, bomUsage, alternative, userId, leaseMs }, fn) {
-    const lock = this.acquireLock({ serverId, material, plant, bomUsage, alternative, userId, leaseMs });
+  async withLock({ server, serverId, material, plant, bomUsage, alternative, sapSystemIdentity, userId, leaseMs }, fn) {
+    const lock = this.acquireLock({ server, serverId, material, plant, bomUsage, alternative, sapSystemIdentity, userId, leaseMs });
     try {
       return await fn();
     } finally {
