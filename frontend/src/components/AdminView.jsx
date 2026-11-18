@@ -21,20 +21,29 @@ import {
   EyeOff,
   Info,
   Activity,
-  Database
+  Database,
+  Copy,
+  UserX,
+  UserCheck,
+  UserPlus,
+  Shield,
+  Settings,
+  PowerOff
 } from 'lucide-react';
 import {
   getAdminUsers,
   createAdminUser,
   deleteAdminUser,
+  adminResetUserPassword,
+  adminUpdateUserStatus,
+  adminUpdateServerStatus,
+  adminAssignServerOwner,
+  adminGetAllowlist,
+  adminAddAllowlist,
+  adminDeleteAllowlist,
   getAdminServers,
-  createAdminServer,
-  updateAdminServer,
   deleteAdminServer,
-  clearAdminF4Cache,
-  getAdminPermissions,
-  grantAdminPermission,
-  revokeAdminPermission
+  clearAdminF4Cache
 } from '../services/api';
 import { MODULE_REGISTRY, MODULE_STATUS, MODULE_KEYS, BOM_APP_LIST, ALL_BOM_APPS, normalizePermissions, formatPermissionsSummary, getPermissionsSummaryParts } from '@shared/modules.js';
 import activityTracker from '../services/activityTracker';
@@ -125,6 +134,26 @@ export default function AdminView({
   const [permissions, setPermissions] = useState(initialPermissions);
   const [permissionsError, setPermissionsError] = useState('');
   const [migrationPending, setMigrationPending] = useState(false);
+  const [allowlist, setAllowlist] = useState([]);
+  const [allowlistError, setAllowlistError] = useState('');
+  const [allowlistSearch, setAllowlistSearch] = useState('');
+  const [isAllowlistModalOpen, setIsAllowlistModalOpen] = useState(false);
+  const [allowlistFormData, setAllowlistFormData] = useState({ pattern: '', type: 'Sandbox', comment: '' });
+  const [allowlistSubmitting, setAllowlistSubmitting] = useState(false);
+  const [allowlistModalError, setAllowlistModalError] = useState('');
+  const [resetResultModal, setResetResultModal] = useState({
+    isOpen: false,
+    user: null,
+    initialPassword: '',
+    copied: false
+  });
+  const [assignOwnerModal, setAssignOwnerModal] = useState({
+    isOpen: false,
+    server: null,
+    selectedUserId: '',
+    isSubmitting: false,
+    error: ''
+  });
 
   // Filter queries
   const [userSearch, setUserSearch] = useState('');
@@ -191,12 +220,12 @@ export default function AdminView({
   });
 
   useEffect(() => {
-    const isBusy = userSubmitting || serverSubmitting || grantSubmitting || confirmModal.isLoading;
+    const isBusy = userSubmitting || serverSubmitting || grantSubmitting || allowlistSubmitting || confirmModal.isLoading;
     activityTracker.setOperation('admin_ops', isBusy);
     return () => {
       activityTracker.setOperation('admin_ops', false);
     };
-  }, [userSubmitting, serverSubmitting, grantSubmitting, confirmModal.isLoading]);
+  }, [userSubmitting, serverSubmitting, grantSubmitting, allowlistSubmitting, confirmModal.isLoading]);
 
   // Load all admin data independently with Promise.allSettled
   const loadData = async () => {
@@ -204,12 +233,12 @@ export default function AdminView({
     setErrorMessage('');
     setUsersError('');
     setServersError('');
-    setPermissionsError('');
+    setAllowlistError('');
     try {
-      const [usersResult, serversResult, permsResult] = await Promise.allSettled([
+      const [usersResult, serversResult, allowlistResult] = await Promise.allSettled([
         getAdminUsers(),
         getAdminServers(),
-        getAdminPermissions()
+        adminGetAllowlist()
       ]);
 
       const globalErrors = [];
@@ -242,20 +271,15 @@ export default function AdminView({
         setServersError(serverErr);
       }
 
-      // 3. Access Permissions Tab
-      if (permsResult.status === 'fulfilled') {
-        const permsList = permsResult.value || [];
-        setPermissions(permsList);
-        setPermissionsError('');
-        if (permsList.migrationPending || permsList.some((p) => p.legacyFallback)) {
-          setMigrationPending(true);
-        } else {
-          setMigrationPending(false);
-        }
+      // 3. Server Allowlist Tab
+      if (allowlistResult.status === 'fulfilled') {
+        const list = allowlistResult.value || [];
+        setAllowlist(list);
+        setAllowlistError('');
       } else {
-        const permErr = permsResult.reason?.response?.data?.error || permsResult.reason?.message || 'Failed to retrieve permissions.';
-        console.error('[Admin] Error loading access permissions:', permsResult.reason);
-        setPermissionsError(permErr);
+        const alErr = allowlistResult.reason?.response?.data?.error || allowlistResult.reason?.message || 'Failed to retrieve allowlist.';
+        console.error('[Admin] Error loading allowlist:', allowlistResult.reason);
+        setAllowlistError(alErr);
       }
     } catch (err) {
       console.error('Failed to load admin data:', err);
@@ -322,18 +346,25 @@ export default function AdminView({
   // --- User Handlers ---
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!userFormData.email || !userFormData.password) {
-      setUserModalError('Email and initial password are required.');
+    if (!userFormData.email) {
+      setUserModalError('Email is required.');
       return;
     }
     setUserSubmitting(true);
     setUserModalError('');
     try {
-      await createAdminUser(userFormData);
+      const res = await createAdminUser(userFormData);
+      const initialPassword = res?.initialPassword || userFormData.password;
       triggerNotice(`User ${userFormData.email} created successfully.`);
       setUserFormData({ email: '', password: '', role: 'user' });
       setIsUserModalOpen(false);
       setUserModalError('');
+      setResetResultModal({
+        isOpen: true,
+        user: res?.user || { email: userFormData.email },
+        initialPassword,
+        copied: false
+      });
       await loadData();
     } catch (err) {
       setUserModalError(err.response?.data?.error || err.message || 'Failed to create user.');
@@ -368,6 +399,100 @@ export default function AdminView({
           await loadData();
         } catch (err) {
           triggerNotice(err.response?.data?.error || err.message || 'Failed to delete user.', true);
+          setConfirmModal((prev) => ({ ...prev, isLoading: false }));
+        }
+      }
+    });
+  };
+
+  const handleAdminResetPassword = async (user) => {
+    try {
+      const res = await adminResetUserPassword(user.id);
+      setResetResultModal({
+        isOpen: true,
+        user,
+        initialPassword: res?.initialPassword || '',
+        copied: false
+      });
+      triggerNotice(`Password reset for ${user.email}. Temporary password generated.`);
+      await loadData();
+    } catch (err) {
+      triggerNotice(err.response?.data?.error || err.message || 'Failed to reset user password.', true);
+    }
+  };
+
+  const handleToggleUserStatus = (user) => {
+    const nextDisabled = !user.is_disabled;
+    const actionLabel = nextDisabled ? 'disable' : 'enable';
+    setConfirmModal({
+      isOpen: true,
+      title: `${nextDisabled ? 'Disable' : 'Enable'} User Account`,
+      message: nextDisabled
+        ? `Are you sure you want to disable ${user.email}? Any running jobs will be cancelled and active connections closed.`
+        : `Are you sure you want to enable ${user.email}?`,
+      confirmText: nextDisabled ? 'Disable User' : 'Enable User',
+      isDanger: nextDisabled,
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isLoading: true }));
+        try {
+          await adminUpdateUserStatus(user.id, nextDisabled);
+          setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_disabled: nextDisabled } : u)));
+          triggerNotice(`User ${user.email} ${actionLabel}d successfully.`);
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isLoading: false }));
+          await loadData();
+        } catch (err) {
+          triggerNotice(err.response?.data?.error || err.message || `Failed to ${actionLabel} user.`, true);
+          setConfirmModal((prev) => ({ ...prev, isLoading: false }));
+        }
+      }
+    });
+  };
+
+  // --- Allowlist Handlers ---
+  const handleOpenAddAllowlistModal = () => {
+    setAllowlistFormData({ pattern: '', type: 'Sandbox', comment: '' });
+    setAllowlistModalError('');
+    setIsAllowlistModalOpen(true);
+  };
+
+  const handleCreateAllowlistRule = async (e) => {
+    e.preventDefault();
+    if (!allowlistFormData.pattern?.trim()) {
+      setAllowlistModalError('Pattern is required (e.g. 192.168.1.0/24, 103.206.249.51, or 10.*).');
+      return;
+    }
+    setAllowlistSubmitting(true);
+    setAllowlistModalError('');
+    try {
+      const created = await adminAddAllowlist(allowlistFormData);
+      setAllowlist((prev) => [created, ...prev]);
+      setIsAllowlistModalOpen(false);
+      triggerNotice(`Pattern "${created.pattern}" added to allowlist successfully.`);
+    } catch (err) {
+      setAllowlistModalError(err.response?.data?.error || err.message || 'Failed to add pattern to allowlist.');
+    } finally {
+      setAllowlistSubmitting(false);
+    }
+  };
+
+  const handleDeleteAllowlistRule = (rule) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Allowlist Pattern',
+      message: `Are you sure you want to delete pattern "${rule.pattern}"? Servers matching only this pattern will no longer be permitted to connect.`,
+      confirmText: 'Delete Pattern',
+      isDanger: true,
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isLoading: true }));
+        try {
+          await adminDeleteAllowlist(rule.id);
+          setAllowlist((prev) => prev.filter((r) => r.id !== rule.id));
+          triggerNotice(`Allowlist pattern "${rule.pattern}" removed successfully.`);
+          setConfirmModal((prev) => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          triggerNotice(err.response?.data?.error || err.message || 'Failed to delete pattern.', true);
           setConfirmModal((prev) => ({ ...prev, isLoading: false }));
         }
       }
@@ -430,119 +555,6 @@ export default function AdminView({
       triggerNotice(err.response?.data?.error || err.message || 'Failed to clear cache.', true);
     }
   };
-  const handleOpenAddServer = () => {
-    setServerFormErrors({});
-    setServerFormTouched({});
-    setServerSubmitted(false);
-    setEditingServerId(null);
-    setServerModalError('');
-    setServerFormData({
-      name: '',
-      ashost: '',
-      sysnr: '00',
-      client: '100',
-      lang: 'EN',
-      environment: 'SANDBOX',
-      router: '/H/103.206.249.51/H/',
-      gwserv: '3300',
-      is_active: true,
-      modules: [MODULE_KEYS.BOM],
-      sap_username: '',
-      sap_password: '',
-    max_connections: 3,
-    per_user_limit: 2,
-    queue_timeout_seconds: 20,
-    rfc_call_timeout_seconds: 45
-    });
-    setIsServerModalOpen(true);
-  };
-
-  const handleOpenEditServer = (server) => {
-    setServerFormErrors({});
-    setServerFormTouched({});
-    setServerSubmitted(false);
-    setEditingServerId(server.id);
-    setServerModalError('');
-    setServerFormData({
-      name: server.name,
-      ashost: server.ashost || '',
-      sysnr: server.sysnr || '00',
-      client: server.client || '100',
-      lang: server.lang || 'EN',
-      environment: server.environment || 'SANDBOX',
-      router: server.router || '',
-      gwserv: server.gwserv || '3300',
-      is_active: server.is_active !== undefined ? server.is_active : true,
-      modules: server.modules !== undefined ? server.modules : [MODULE_KEYS.BOM],
-      sap_username: server.sap_username || '',
-      sap_password: '',
-      max_connections: server.max_connections !== undefined ? server.max_connections : 3,
-      per_user_limit: server.per_user_limit !== undefined ? server.per_user_limit : 2,
-      queue_timeout_seconds: server.queue_timeout_ms ? Math.round(server.queue_timeout_ms / 1000) : 20,
-      rfc_call_timeout_seconds: server.rfc_call_timeout_ms ? Math.round(server.rfc_call_timeout_ms / 1000) : 45
-    });
-    setIsServerModalOpen(true);
-  };
-
-  const executeSaveServer = async () => {
-    setServerSubmitted(true);
-    const formErr = validateServerForm(serverFormData);
-    setServerFormErrors(formErr);
-    if (Object.keys(formErr).length > 0) {
-      setServerModalError('Please resolve the errors in the connection limits section.');
-      return;
-    }
-    const payload = {
-      ...serverFormData,
-      queue_timeout_ms: Math.round(Number(serverFormData.queue_timeout_seconds) * 1000),
-      rfc_call_timeout_ms: Math.round(Number(serverFormData.rfc_call_timeout_seconds) * 1000)
-    };
-    setServerSubmitting(true);
-    setServerModalError('');
-    try {
-      if (editingServerId) {
-        await updateAdminServer(editingServerId, payload);
-        triggerNotice(`Server "${serverFormData.name}" updated successfully.`);
-      } else {
-        await createAdminServer(payload);
-        triggerNotice(`Server "${serverFormData.name}" added successfully.`);
-      }
-      setIsServerModalOpen(false);
-      setServerModalError('');
-      await loadData();
-    } catch (err) {
-      setServerModalError(err.response?.data?.error || err.message || 'Failed to save server.');
-    } finally {
-      setServerSubmitting(false);
-    }
-  };
-
-  const handleSaveServer = async (e) => {
-    e.preventDefault();
-    if (!serverFormData.name || !serverFormData.ashost) {
-      triggerNotice('Server Name and Application Host (ashost) are required.', true);
-      return;
-    }
-
-    // Warning check for 0 enabled modules (Addition 4)
-    if (!serverFormData.modules || serverFormData.modules.length === 0) {
-      setConfirmModal({
-        isOpen: true,
-        title: 'No Modules Enabled',
-        message: 'Warning: No modules are enabled for this server. Users assigned to this server will see an empty launchpad. Do you want to proceed and save anyway?',
-        confirmText: 'Save Anyway',
-        isDanger: false,
-        isLoading: false,
-        onConfirm: async () => {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-          await executeSaveServer();
-        }
-      });
-      return;
-    }
-
-    await executeSaveServer();
-  };
 
   const handleDeleteServer = (server) => {
     setConfirmModal({
@@ -567,143 +579,63 @@ export default function AdminView({
     });
   };
 
-  // --- Permissions Handlers ---
-  const handleGrantPermission = async (e) => {
-    e.preventDefault();
-    if (!grantFormData.user_id || !grantFormData.server_id) {
-      setGrantModalError('Please select both a User and an SAP Server.');
-      return;
-    }
-    setGrantSubmitting(true);
-    setGrantModalError('');
-    try {
-      await grantAdminPermission({
-        user_id: grantFormData.user_id,
-        server_id: grantFormData.server_id,
-        permissions: normalizePermissions(grantFormData.permissions || [])
-      });
-      triggerNotice(isEditingPermission ? 'Feature permissions updated successfully.' : 'Access permission granted successfully.');
-      setGrantFormData({ user_id: '', server_id: '', permissions: [...ALL_BOM_APPS] });
-      setIsGrantModalOpen(false);
-      setIsEditingPermission(false);
-      setGrantModalError('');
-      await loadData();
-    } catch (err) {
-      setGrantModalError(err.response?.data?.error || err.message || 'Failed to grant permission.');
-    } finally {
-      setGrantSubmitting(false);
-    }
-  };
-
-  const handleOpenGrantModal = () => {
-    setIsEditingPermission(false);
-    setGrantFormData({
-      user_id: '',
-      server_id: '',
-      permissions: [...ALL_BOM_APPS]
-    });
-    setGrantModalError('');
-    setExpandedModules({ bom: true });
-    setIsGrantModalOpen(true);
-  };
-
-  const handleEditPermission = (perm) => {
-    setIsEditingPermission(true);
-    setGrantFormData({
-      user_id: perm.user_id,
-      server_id: perm.server_id,
-      permissions: normalizePermissions(perm.permissions || [])
-    });
-    setGrantModalError('');
-    setExpandedModules({ bom: true });
-    setIsGrantModalOpen(true);
-  };
-
-  const toggleModuleExpanded = (modKey) => {
-    setExpandedModules((prev) => ({
-      ...prev,
-      [modKey]: !prev[modKey]
-    }));
-  };
-
-  const handleToggleModule = (mod) => {
-    const modApps = mod.apps || [];
-    if (modApps.length === 0) return;
-    const modAppKeys = modApps.map((a) => a.key);
-    const currentPerms = grantFormData.permissions || [];
-    const selectedModApps = currentPerms.filter((k) => modAppKeys.includes(k));
-    const allChecked = selectedModApps.length === modAppKeys.length;
-
-    let updatedPerms;
-    if (allChecked) {
-      // Clear all apps of this module
-      updatedPerms = currentPerms.filter((k) => !modAppKeys.includes(k));
-    } else {
-      // Select all apps of this module
-      updatedPerms = Array.from(new Set([...currentPerms, ...modAppKeys]));
-    }
-    setGrantFormData({
-      ...grantFormData,
-      permissions: normalizePermissions(updatedPerms)
-    });
-  };
-
-  const hasWriteApp = (grantFormData.permissions || []).some((p) =>
-    p === 'bom.create' || p === 'bom.copy' || p === 'bom.delete'
-  );
-
-  const toggleAppPermission = (appKey) => {
-    const current = new Set(grantFormData.permissions || []);
-    if (appKey === 'bom.display' && hasWriteApp) {
-      return;
-    }
-    if (current.has(appKey)) {
-      current.delete(appKey);
-    } else {
-      current.add(appKey);
-    }
-    const nextList = normalizePermissions(Array.from(current));
-    setGrantFormData({ ...grantFormData, permissions: nextList });
-  };
-
-  const handleSelectAllApps = () => {
-    const allAvailableKeys = MODULE_REGISTRY
-      .filter((m) => m.status === MODULE_STATUS.AVAILABLE && Array.isArray(m.apps))
-      .flatMap((m) => m.apps.map((a) => a.key));
-    setGrantFormData({
-      ...grantFormData,
-      permissions: normalizePermissions(allAvailableKeys)
-    });
-  };
-
-  const handleClearAllApps = () => {
-    setGrantFormData({
-      ...grantFormData,
-      permissions: []
-    });
-  };
-
-  const handleRevokePermission = (perm) => {
+  const handleToggleServerStatus = (server) => {
+    const nextDisabled = !server.is_disabled;
+    const actionLabel = nextDisabled ? 'disable' : 'enable';
     setConfirmModal({
       isOpen: true,
-      title: 'Revoke Server Access',
-      message: `Revoke access for "${perm.user_email}" on server "${perm.server_name}"?`,
-      confirmText: 'Revoke Access',
-      isDanger: true,
+      title: `${nextDisabled ? 'Disable' : 'Enable'} SAP Server`,
+      message: nextDisabled
+        ? `Are you sure you want to disable server "${server.name}"? Active connection pools will be closed and any running bulk jobs on this server will be cancelled.`
+        : `Are you sure you want to enable server "${server.name}"?`,
+      confirmText: nextDisabled ? 'Disable Server' : 'Enable Server',
+      isDanger: nextDisabled,
       isLoading: false,
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, isLoading: true }));
         try {
-          await revokeAdminPermission(perm.id);
-          triggerNotice('Permission revoked successfully.');
+          await adminUpdateServerStatus(server.id, nextDisabled);
+          setServers((prev) => prev.map((s) => (s.id === server.id ? { ...s, is_disabled: nextDisabled } : s)));
+          triggerNotice(`Server "${server.name}" ${actionLabel}d successfully.`);
           setConfirmModal((prev) => ({ ...prev, isOpen: false, isLoading: false }));
           await loadData();
         } catch (err) {
-          triggerNotice(err.response?.data?.error || err.message || 'Failed to revoke permission.', true);
+          triggerNotice(err.response?.data?.error || err.message || `Failed to ${actionLabel} server.`, true);
           setConfirmModal((prev) => ({ ...prev, isLoading: false }));
         }
       }
     });
+  };
+
+  const handleOpenAssignOwner = (server) => {
+    setAssignOwnerModal({
+      isOpen: true,
+      server,
+      selectedUserId: server.owner_id || (users[0]?.id || ''),
+      isSubmitting: false,
+      error: ''
+    });
+  };
+
+  const handleAssignOwnerSubmit = async (e) => {
+    e.preventDefault();
+    if (!assignOwnerModal.selectedUserId) {
+      setAssignOwnerModal((prev) => ({ ...prev, error: 'Please select a user to own this server.' }));
+      return;
+    }
+    setAssignOwnerModal((prev) => ({ ...prev, isSubmitting: true, error: '' }));
+    try {
+      await adminAssignServerOwner(assignOwnerModal.server.id, assignOwnerModal.selectedUserId);
+      triggerNotice(`Owner assigned for server "${assignOwnerModal.server.name}".`);
+      setAssignOwnerModal({ isOpen: false, server: null, selectedUserId: '', isSubmitting: false, error: '' });
+      await loadData();
+    } catch (err) {
+      setAssignOwnerModal((prev) => ({
+        ...prev,
+        isSubmitting: false,
+        error: err.response?.data?.error || err.message || 'Failed to assign owner.'
+      }));
+    }
   };
 
   // Filtered lists
@@ -722,6 +654,12 @@ export default function AdminView({
     (p.user_email && p.user_email.toLowerCase().includes(permSearch.toLowerCase())) ||
     (p.server_name && p.server_name.toLowerCase().includes(permSearch.toLowerCase())) ||
     (p.permissions && formatPermissionsSummary(p.permissions).toLowerCase().includes(permSearch.toLowerCase()))
+  );
+
+  const filteredAllowlist = allowlist.filter((a) =>
+    (a.pattern && a.pattern.toLowerCase().includes(allowlistSearch.toLowerCase())) ||
+    (a.type && a.type.toLowerCase().includes(allowlistSearch.toLowerCase())) ||
+    (a.comment && a.comment.toLowerCase().includes(allowlistSearch.toLowerCase()))
   );
 
   const formatRelativeTime = (iso) => {
@@ -788,6 +726,7 @@ export default function AdminView({
     users: 'Users',
     servers: 'Servers',
     permissions: 'Permissions',
+    allowlist: 'Server Allowlist',
     'activity-logs': 'Logs'
   };
   const currentAdminTitle = adminTabTitles[activeTab] || 'System & User Management';
@@ -834,18 +773,18 @@ export default function AdminView({
             className={`sap-admin-nav-tab ${activeTab === 'servers' ? 'active' : ''}`}
           >
             <Server size={14} />
-            <span>SAP Servers</span>
+            <span>All servers</span>
             <span className="sap-admin-tab-badge">{servers.length}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => handleAdminTabChange('permissions', ROUTE_IDS.ADMIN_PERMISSIONS)}
-            className={`sap-admin-nav-tab ${activeTab === 'permissions' ? 'active' : ''}`}
+            onClick={() => handleAdminTabChange('allowlist', ROUTE_IDS.ADMIN_ALLOWLIST)}
+            className={`sap-admin-nav-tab ${activeTab === 'allowlist' ? 'active' : ''}`}
           >
-            <KeyRound size={14} />
-            <span>Access Permissions</span>
-            <span className="sap-admin-tab-badge">{permissionsError ? '!' : permissions.length}</span>
+            <Settings size={14} />
+            <span>Settings</span>
+            <span className="sap-admin-tab-badge">{allowlistError ? '!' : allowlist.length}</span>
           </button>
 
           <button
@@ -910,16 +849,22 @@ export default function AdminView({
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Users Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 250 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 110 }} />
+                  <col style={{ width: 200 }} />
+                  <col style={{ width: 85 }} />
+                  <col style={{ width: 85 }} />
+                  <col style={{ width: 75 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 105 }} />
+                  <col style={{ width: 145 }} />
+                  <col style={{ width: 155 }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th>Email address</th>
                     <th>Role</th>
+                    <th>Status</th>
+                    <th>Servers</th>
+                    <th>Last login</th>
                     <th>Created date</th>
                     <th>Password</th>
                     <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
@@ -932,6 +877,7 @@ export default function AdminView({
                         (activeUserId && u.id === activeUserId) ||
                         (activeUserEmail && u.email?.toLowerCase() === activeUserEmail.toLowerCase())
                       );
+                      const userServerCount = (servers || []).filter((s) => s.owner_id === u.id).length;
                       return (
                         <tr key={u.id}>
                           <td>
@@ -960,6 +906,29 @@ export default function AdminView({
                               {u.role === 'admin' ? 'Admin' : 'User'}
                             </span>
                           </td>
+                          <td>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--sap-radius-pill, 12px)',
+                              background: u.is_disabled ? 'var(--sap-error-light, #fee2e2)' : 'var(--sap-success-light, #dcfce7)',
+                              color: u.is_disabled ? 'var(--sap-error, #dc2626)' : 'var(--sap-positive, #15803d)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              {u.is_disabled ? 'Disabled' : 'Active'}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: 12, fontWeight: 600, color: 'var(--sap-text-dark)' }}>
+                            <span title={`${userServerCount} owned SAP server(s)`}>
+                              {userServerCount}
+                            </span>
+                          </td>
+                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
+                            {formatRelativeTime(u.last_sign_in_at)}
+                          </td>
                           <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
                             {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                           </td>
@@ -967,19 +936,16 @@ export default function AdminView({
                             <button
                               type="button"
                               className="sap-btn sap-btn-secondary"
-                              onClick={() => {
-                                setPasswordTargetUser(u);
-                                setIsPasswordModalOpen(true);
-                              }}
-                              title={`Set new password for ${u.email}`}
+                              onClick={() => handleAdminResetPassword(u)}
+                              title={`Reset password for ${u.email}`}
                               style={{ height: 26, fontSize: 11, padding: '0 8px', display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
                             >
                               <KeyRound size={12} />
-                              <span>Set password</span>
+                              <span>Reset password</span>
                             </button>
                           </td>
                           <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                               {isSelf ? (
                                 <span
                                   style={{
@@ -992,20 +958,33 @@ export default function AdminView({
                                     borderRadius: 'var(--sap-radius-pill)',
                                     display: 'inline-block'
                                   }}
-                                  title="You cannot delete your own logged-in account"
+                                  title="You cannot modify your own logged-in account"
                                 >
                                   Current User
                                 </span>
                               ) : (
-                                <button
-                                  type="button"
-                                  className="rx-table-action-delete"
-                                  onClick={() => handleDeleteUser(u)}
-                                  title="Deactivate / Remove User"
-                                  aria-label="Deactivate / Remove User"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
+                                <>
+                                  <button
+                                    type="button"
+                                    className="sap-button"
+                                    onClick={() => handleToggleUserStatus(u)}
+                                    title={u.is_disabled ? `Enable ${u.email}` : `Disable ${u.email}`}
+                                    aria-label={u.is_disabled ? `Enable ${u.email}` : `Disable ${u.email}`}
+                                    style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  >
+                                    {u.is_disabled ? <UserCheck size={13} color="var(--sap-positive)" /> : <UserX size={13} color="var(--sap-warning)" />}
+                                    <span>{u.is_disabled ? 'Enable' : 'Disable'}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="rx-table-action-delete"
+                                    onClick={() => handleDeleteUser(u)}
+                                    title="Deactivate / Remove User"
+                                    aria-label="Deactivate / Remove User"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -1014,7 +993,7 @@ export default function AdminView({
                     })
                   ) : (
                     <tr>
-                      <td colSpan={5} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
+                      <td colSpan={8} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
                         No users found matching query.
                       </td>
                     </tr>
@@ -1026,7 +1005,7 @@ export default function AdminView({
         )}
 
         {/* =========================================================================
-            TAB 2: SAP SERVERS MANAGEMENT
+            TAB 2: ALL SAP SERVERS OVERVIEW (READ-ONLY + KILL SWITCHES)
            ========================================================================= */}
         {activeTab === 'servers' && (
           <div style={{ width: '100%' }}>
@@ -1041,7 +1020,7 @@ export default function AdminView({
               />
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
                   <Search size={14} />
@@ -1050,51 +1029,47 @@ export default function AdminView({
                   type="text"
                   className="sap-input sap-input-with-icon"
                   style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
-                  placeholder="Search servers..."
+                  placeholder="Search servers or owners..."
                   value={serverSearch}
                   onChange={(e) => setServerSearch(e.target.value)}
                 />
               </div>
 
-              <button
-                type="button"
-                className="sap-button sap-btn sap-btn-primary"
-                onClick={handleOpenAddServer}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
-              >
-                <Plus size={14} />
-                <span>Add Server</span>
-              </button>
+              <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Shield size={14} color="var(--sap-primary)" />
+                <span>Read-only system overview · Disable/Delete kill switches apply immediately without credentials exposure</span>
+              </div>
             </div>
 
             {/* Servers Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '20%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '15%' }} />
-                  <col style={{ width: '17%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '11%' }} />
+                  <col style={{ width: 170 }} />
+                  <col style={{ width: 170 }} />
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 170 }} />
                 </colgroup>
                 <thead>
                   <tr>
                     <th>Server name</th>
+                    <th>Owner</th>
                     <th>Host / system</th>
                     <th>Live health</th>
-                    <th>Pool connections</th>
-                    <th>Last checked</th>
                     <th>Status</th>
-                    <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
+                    <th>Last used</th>
+                    <th className="actions-column" style={{ textAlign: 'center' }}>Kill Switches &amp; Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredServers.length > 0 ? (
-                    filteredServers.map((s) => (
-                      <React.Fragment key={s.id}>
-                        <tr>
+                    filteredServers.map((s) => {
+                      const isUnassigned = !s.owner_id || s.owner_email === 'unassigned';
+                      return (
+                        <tr key={s.id}>
                           <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                               <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
@@ -1114,6 +1089,30 @@ export default function AdminView({
                               </span>
                             </div>
                           </td>
+                          <td>
+                            {isUnassigned ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: 'var(--sap-warning-text, #b45309)',
+                                  background: 'var(--sap-warning-bg, #fef3c7)',
+                                  border: '1px solid var(--sap-warning-border, #fde68a)',
+                                  padding: '1px 6px',
+                                  borderRadius: 'var(--radius-sm, 4px)'
+                                }}>
+                                  Legacy unowned
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                                <Users size={13} color="var(--sap-text-muted)" style={{ flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: 'var(--sap-text-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.owner_email || s.owner_id}>
+                                  {s.owner_email || s.owner_id}
+                                </span>
+                              </div>
+                            )}
+                          </td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--sap-text-body)' }}>
                             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.ashost || 'N/A'}>{s.ashost || 'N/A'}</div>
                             <div style={{ fontSize: 10, color: 'var(--sap-text-subtle)', marginTop: 2 }}>
@@ -1124,42 +1123,52 @@ export default function AdminView({
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
                               {renderHealthBadge(s)}
                               <div style={{ fontSize: 10, color: 'var(--sap-text-subtle)' }}>
-                                Breaker: <span style={{ fontWeight: 600, color: 'var(--sap-text-body)' }}>{s.circuit_breaker ? (s.circuit_breaker === 'closed' ? 'Normal' : s.circuit_breaker === 'open' ? 'Tripped' : 'Probing') : 'Normal'}</span>
+                                {s.active_connections ?? 0} / {s.max_connections ?? 3} conn
                               </div>
                             </div>
                           </td>
                           <td>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--sap-text-dark)' }}>
-                              {s.active_connections ?? 0} / {s.max_connections ?? 3} in use
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--sap-text-subtle)', marginTop: 2 }}>
-                              {(s.queued_calls ?? 0) > 0 ? (
-                                <span style={{ color: 'var(--sap-warning-text, #b45309)', fontWeight: 600 }}>{s.queued_calls} queued</span>
-                              ) : (
-                                '0 queued'
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ fontSize: 11, color: 'var(--sap-text-subtle)', whiteSpace: 'nowrap' }}>
-                            {formatRelativeTime(s.last_checked)}
-                          </td>
-                          <td>
-                            <span className={`sap-status-pill ${s.is_active ? 'is-active' : 'is-inactive'}`}>
-                              <span className={`sap-status-dot ${s.is_active ? 'is-active' : 'is-inactive'}`} />
-                              {s.is_active ? 'Active' : 'Inactive'}
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: 'var(--sap-radius-pill, 12px)',
+                              background: s.is_disabled ? 'var(--sap-error-light, #fee2e2)' : (s.is_active ? 'var(--sap-success-light, #dcfce7)' : 'var(--sap-surface-subtle)'),
+                              color: s.is_disabled ? 'var(--sap-error, #dc2626)' : (s.is_active ? 'var(--sap-positive, #15803d)' : 'var(--sap-text-subtle)'),
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}>
+                              {s.is_disabled ? 'Disabled' : (s.is_active ? 'Active' : 'Inactive')}
                             </span>
                           </td>
+                          <td style={{ fontSize: 11, color: 'var(--sap-text-subtle)', whiteSpace: 'nowrap' }}>
+                            {formatRelativeTime(s.last_used_at || s.last_checked)}
+                          </td>
                           <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                              {isUnassigned && (
+                                <button
+                                  type="button"
+                                  className="sap-button"
+                                  onClick={() => handleOpenAssignOwner(s)}
+                                  title="Assign this server to a user"
+                                  style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                >
+                                  <UserPlus size={13} color="var(--sap-primary)" />
+                                  <span>Assign</span>
+                                </button>
+                              )}
                               <button
                                 type="button"
-                                className="sap-btn sap-btn-ghost"
-                                onClick={() => handleOpenEditServer(s)}
-                                title="Edit Server & Limits"
-                                aria-label={`Edit ${s.name}`}
-                                style={{ color: 'var(--sap-primary)', padding: '4px' }}
+                                className="sap-button"
+                                onClick={() => handleToggleServerStatus(s)}
+                                title={s.is_disabled ? `Enable ${s.name}` : `Disable ${s.name}`}
+                                aria-label={s.is_disabled ? `Enable ${s.name}` : `Disable ${s.name}`}
+                                style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                               >
-                                <Edit2 size={13} />
+                                {s.is_disabled ? <UserCheck size={13} color="var(--sap-positive)" /> : <PowerOff size={13} color="var(--sap-warning)" />}
+                                <span>{s.is_disabled ? 'Enable' : 'Disable'}</span>
                               </button>
                               <button
                                 type="button"
@@ -1175,7 +1184,7 @@ export default function AdminView({
                                 type="button"
                                 className="rx-table-action-delete"
                                 onClick={() => handleDeleteServer(s)}
-                                title="Delete Server"
+                                title="Delete Server (Kill Switch)"
                                 aria-label={`Delete ${s.name}`}
                               >
                                 <Trash2 size={13} />
@@ -1183,8 +1192,8 @@ export default function AdminView({
                             </div>
                           </td>
                         </tr>
-                      </React.Fragment>
-                    ))
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={7} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
@@ -1199,235 +1208,143 @@ export default function AdminView({
         )}
 
         {/* =========================================================================
-            TAB 3: PERMISSIONS MATRIX & MANAGEMENT
+            TAB 3: SETTINGS (ALLOWLIST & CONNECTION LIMITS)
            ========================================================================= */}
-        {activeTab === 'permissions' && (
+        {activeTab === 'allowlist' && (
           <div style={{ width: '100%' }}>
-            {/* Database Migration Pending Notice */}
-            {migrationPending && (
-              <div
-                style={{
-                  background: 'var(--sap-info-bg, #e8f4fd)',
-                  border: '1px solid var(--sap-info-border, #b8daff)',
-                  color: 'var(--sap-info-text, #004085)',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm, 4px)',
-                  marginBottom: 12,
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10
-                }}
-              >
-                <Info size={16} style={{ flexShrink: 0, marginTop: 2, color: 'var(--sap-primary)' }} />
-                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                  <strong>Database Migration Pending:</strong> The granular <code>permissions</code> column has not yet been applied to <code>public.user_server_permissions</code>. The system is operating in backward-compatible mode: existing server grants are displayed with full BOM feature access so users remain unblocked. To enable granular per-feature permissions, run <code>supabase/migrations/20261027_per_user_per_server_app_permissions.sql</code> in your Supabase SQL Editor.
-                </div>
-              </div>
-            )}
-
-            {/* Permissions Tab Specific Error */}
-            {permissionsError && (
+            {allowlistError && (
               <Notification
                 placement="inline"
                 type="error"
-                title="Access Permissions unavailable"
-                message={permissionsError}
-                onClose={() => setPermissionsError('')}
+                title="Allowlist unavailable"
+                message={allowlistError}
+                onClose={() => setAllowlistError('')}
                 style={{ marginBottom: 12 }}
               />
             )}
 
-            {/* Header row with search and Grant Permission button */}
-            <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  className="sap-input sap-input-with-icon"
-                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
-                  placeholder="Search permissions..."
-                  value={permSearch}
-                  onChange={(e) => setPermSearch(e.target.value)}
-                />
+            {/* Connection Limits and Security Policy Card */}
+            <div style={{
+              background: 'var(--sap-surface-elevated, #ffffff)',
+              border: '1px solid var(--sap-border-subtle, #e2e8f0)',
+              borderRadius: 'var(--radius-md, 8px)',
+              padding: '16px 20px',
+              marginBottom: 20
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Settings size={16} color="var(--sap-primary)" />
+                <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--sap-text-dark)' }}>Platform Connection Limits &amp; Policies</h3>
               </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: 11.5, color: 'var(--sap-text-muted)' }}>
-                  Total Active Grants: <strong>{permissions.length}</strong>
-                </span>
-                <button
-                  type="button"
-                  className="sap-button sap-btn sap-btn-primary"
-                  onClick={handleOpenGrantModal}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, fontSize: 12, padding: '0 12px' }}
-                >
-                  <Plus size={14} />
-                  <span>Grant Permission</span>
-                </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Per-User Server Limit</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>5 Servers</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Configurable default limit per non-admin account</div>
+                </div>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Global SAP Connection Cap</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>50 Connections</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Maximum active SAP RFC pool connections platform-wide</div>
+                </div>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>RFC Call Timeout</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>45 Seconds</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Max execution duration per synchronous RFC invocation</div>
+                </div>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Idle Pool Timeout</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>10 Minutes</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Automatic teardown of inactive RFC connections</div>
+                </div>
               </div>
             </div>
 
-            {/* Permissions Table - Fixed Layout with Explicit Content-Based Widths */}
-            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Access Permissions Table" style={{ width: '100%' }}>
+            <div className="sap-toolbar sap-admin-users-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, maxWidth: 360 }}>
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-muted)' }} />
+                  <input
+                    type="text"
+                    className="sap-input"
+                    placeholder="Filter allowlist patterns..."
+                    value={allowlistSearch}
+                    onChange={(e) => setAllowlistSearch(e.target.value)}
+                    style={{ width: '100%', height: 32, paddingLeft: 28 }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="sap-button primary"
+                onClick={handleOpenAddAllowlistModal}
+                style={{ height: 32, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 14px' }}
+              >
+                <Plus size={14} />
+                <span>Add Allowlist Pattern</span>
+              </button>
+            </div>
+
+            <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="Allowlist Table">
               <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 210 }} />
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 160 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 110 }} />
+                  <col style={{ width: 260 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 280 }} />
+                  <col style={{ width: 140 }} />
+                  <col style={{ width: 90 }} />
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>User email</th>
-                    <th>Target SAP server</th>
+                    <th>Host / IP / CIDR Pattern</th>
                     <th>Environment</th>
-                    <th>Permitted features</th>
-                    <th>Granted at</th>
+                    <th>Comment</th>
+                    <th>Created date</th>
                     <th className="actions-column" style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPermissions.length > 0 ? (
-                    filteredPermissions.map((p) => {
-                      const summaryParts = getPermissionsSummaryParts(p.permissions);
+                  {filteredAllowlist.length > 0 ? (
+                    filteredAllowlist.map((rule) => {
+                      const envKey = (rule.type || '').toLowerCase().startsWith('prod') ? 'prod' :
+                                     (rule.type || '').toLowerCase().startsWith('dev') ? 'dev' :
+                                     (rule.type || '').toLowerCase().startsWith('qa') ? 'qa' : 'sandbox';
                       return (
-                        <tr key={p.id}>
-                          <td style={{ fontWeight: 500, color: 'var(--sap-text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.user_email}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-                              <Users size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.user_email}>
-                                {p.user_email}
-                              </span>
-                            </div>
+                        <tr key={rule.id}>
+                          <td>
+                            <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--sap-text-dark)', fontSize: 12 }}>
+                              {rule.pattern}
+                            </code>
                           </td>
-                          <td style={{ fontWeight: 600, color: 'var(--sap-text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.server_name}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-                              <Server size={14} color="var(--sap-primary)" style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.server_name}>
-                                {p.server_name}
-                              </span>
-                            </div>
+                          <td>
+                            <span className={`sap-env-badge sap-env-badge-${envKey}`}>
+                              {rule.type || 'Sandbox'}
+                            </span>
                           </td>
-                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <span className={`sap-env-badge ${
-                              p.server_environment === 'PROD'
-                                ? 'sap-env-badge-prod'
-                                : p.server_environment === 'QA'
-                                ? 'sap-env-badge-qa'
-                                : p.server_environment === 'SANDBOX'
-                                ? 'sap-env-badge-sandbox'
-                                : 'sap-env-badge-dev'
-                            }`}>
-                              {formatEnvironment(p.server_environment || 'DEV')}</span>
+                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 12 }}>
+                            {rule.comment || '—'}
                           </td>
-                          <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', maxWidth: '100%', verticalAlign: 'middle' }}>
-                              <span
-                                tabIndex={0}
-                                title={summaryParts.tooltip}
-                                aria-label={`Permitted features: ${summaryParts.tooltip}`}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 5,
-                                  padding: '2px 8px',
-                                  borderRadius: 'var(--radius-sm, 4px)',
-                                  fontSize: 11.5,
-                                  fontWeight: 600,
-                                  background: summaryParts.isNone
-                                    ? 'var(--sap-warning-bg, #fff3cd)'
-                                    : 'var(--sap-primary-light, #e8f0fe)',
-                                  color: summaryParts.isNone
-                                    ? 'var(--sap-warning-text, #856404)'
-                                    : 'var(--sap-primary, #0a6ed1)',
-                                  border: `1px solid ${summaryParts.isNone ? 'var(--sap-warning-border, #ffeeba)' : 'var(--sap-primary-border, #b3d7ff)'}`,
-                                  maxWidth: '100%',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  cursor: 'default'
-                                }}
-                              >
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {summaryParts.text}
-                                </span>
-                                {summaryParts.pillCount > 0 && (
-                                  <span
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      padding: '0 5px',
-                                      height: 16,
-                                      borderRadius: 8,
-                                      fontSize: 10,
-                                      fontWeight: 700,
-                                      background: 'var(--sap-primary, #0a6ed1)',
-                                      color: '#ffffff',
-                                      flexShrink: 0
-                                    }}
-                                  >
-                                    +{summaryParts.pillCount}
-                                  </span>
-                                )}
-                              </span>
-                              {(p.legacyFallback || migrationPending) && (
-                                <span
-                                  title="Legacy server grant - full feature access fallback"
-                                  tabIndex={0}
-                                  style={{
-                                    marginLeft: 6,
-                                    fontSize: 10,
-                                    padding: '1px 5px',
-                                    borderRadius: 3,
-                                    background: 'var(--sap-surface-empty, #f1f5f9)',
-                                    color: 'var(--sap-text-muted, #64748b)',
-                                    border: '1px solid var(--sap-border-subtle, #cbd5e1)',
-                                    fontWeight: 500,
-                                    flexShrink: 0
-                                  }}
-                                >
-                                  Legacy
-                                </span>
-                              )}
-                            </div>
+                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5 }}>
+                            {rule.created_at ? new Date(rule.created_at).toLocaleDateString() : 'N/A'}
                           </td>
-                          <td style={{ color: 'var(--sap-text-muted)', fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {p.granted_at ? new Date(p.granted_at).toLocaleDateString() : 'N/A'}
-                          </td>
-                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap', overflow: 'visible' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                              <button
-                                type="button"
-                                className="sap-btn sap-btn-ghost"
-                                onClick={() => handleEditPermission(p)}
-                                title="Edit Permitted Features"
-                                style={{ color: 'var(--sap-primary)', padding: '4px' }}
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                className="rx-table-action-delete"
-                                onClick={() => handleRevokePermission(p)}
-                                title="Revoke Permission"
-                                aria-label="Revoke Permission"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
+                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              className="rx-table-action-delete"
+                              onClick={() => handleDeleteAllowlistRule(rule)}
+                              title="Delete Pattern"
+                              aria-label="Delete Pattern"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan={6} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
-                        No permission grants found.
+                      <td colSpan={5} style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--sap-text-subtle)' }}>
+                        No allowlist patterns found.
                       </td>
                     </tr>
                   )}
@@ -1546,605 +1463,64 @@ export default function AdminView({
       </Modal>
 
       {/* =========================================================================
-          MODAL: ADD / EDIT SAP SERVER
+      {/* =========================================================================
+          MODAL: ASSIGN OWNER TO UNOWNED SAP SERVER
          ========================================================================= */}
       <Modal
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-        title={editingServerId ? 'Edit SAP Server' : 'Add SAP Server'}
-        icon={Server}
-        isLoading={serverSubmitting}
-        maxWidth={780}
-        width="min(780px, 95vw)"
-        padding="16px 20px"
-        style={{ maxHeight: 'min(980px, 94vh)' }}
-        footer={
-          <>
-            <button
-              type="button"
-              className="rx-btn rx-btn-secondary"
-              onClick={() => setIsServerModalOpen(false)}
-              disabled={serverSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="sap-server-form"
-              className="rx-btn rx-btn-primary min-w-[120px]"
-              disabled={serverSubmitting}
-            >
-              {serverSubmitting ? 'Saving...' : editingServerId ? 'Update Server' : 'Add Server'}
-            </button>
-          </>
-        }
+        isOpen={assignOwnerModal.isOpen}
+        onClose={() => !assignOwnerModal.isSubmitting && setAssignOwnerModal((prev) => ({ ...prev, isOpen: false }))}
+        title="Assign Server Owner"
+        subtitle={`Assign SAP server "${assignOwnerModal.server?.name || ''}" to a registered user`}
+        icon={UserPlus}
+        iconColor="var(--sap-primary)"
+        maxWidth={480}
       >
-        <form id="sap-server-form" onSubmit={handleSaveServer} className="rx-server-modal-form flex flex-col gap-4">
-          {serverModalError && (
-            <div className="rx-field-error text-xs p-3 rounded-[var(--radius-md)] bg-[var(--color-danger-bg)] border border-[var(--color-danger-border)] text-[var(--color-danger)] flex items-center gap-2" role="alert">
-              <AlertTriangle size={15} className="shrink-0" />
-              <span>{serverModalError}</span>
-            </div>
+        <form onSubmit={handleAssignOwnerSubmit}>
+          {assignOwnerModal.error && (
+            <Notification
+              placement="inline"
+              type="error"
+              message={assignOwnerModal.error}
+              onClose={() => setAssignOwnerModal((prev) => ({ ...prev, error: '' }))}
+              style={{ marginBottom: 12 }}
+            />
           )}
 
-          {/* Section 1: Server */}
-          <FormSection title="Server" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr] gap-4">
-              <FieldWrapper
-                label="Server Display Name"
-                htmlFor="server-name"
-                required
-                error={(serverSubmitted || serverFormTouched.name) ? serverFormErrors.name || null : null}
+          <FormSection>
+            <FieldWrapper label="Select Owner" required htmlFor="assign-owner-select" hint="The selected user will own this server and can use it for BOM operations">
+              <select
+                id="assign-owner-select"
+                className="sap-input"
+                value={assignOwnerModal.selectedUserId}
+                onChange={(e) => setAssignOwnerModal((prev) => ({ ...prev, selectedUserId: e.target.value }))}
+                style={{ width: '100%', height: 34 }}
               >
-                <input
-                  id="server-name"
-                  type="text"
-                  data-autofocus="true"
-                  className={`rx-input ${((serverSubmitted || serverFormTouched.name) && serverFormErrors.name) ? 'rx-input-error' : ''}`}
-                  placeholder="e.g. Relaxo S4A Sandbox"
-                  value={serverFormData.name}
-                  onChange={(e) => setServerFormData({ ...serverFormData, name: e.target.value })}
-                  required
-                  autoFocus
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="Environment"
-                htmlFor="server-env"
-              >
-                <select
-                  id="server-env"
-                  className="rx-select"
-                  value={serverFormData.environment}
-                  onChange={(e) => setServerFormData({ ...serverFormData, environment: e.target.value })}
-                >
-                  <option value="SANDBOX">Sandbox</option>
-                  <option value="DEV">Dev (Development)</option>
-                  <option value="QA">Qa (Quality/Staging)</option>
-                  <option value="PROD">Prod (Production)</option>
-                </select>
-              </FieldWrapper>
-            </div>
-          </FormSection>
-
-          {/* Section 2: Connection */}
-          <FormSection title="Connection" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldWrapper
-                label="Application Host"
-                htmlFor="server-ashost"
-                required
-                error={(serverSubmitted || serverFormTouched.ashost) ? serverFormErrors.ashost || null : null}
-              >
-                <input
-                  id="server-ashost"
-                  type="text"
-                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.ashost) && serverFormErrors.ashost) ? 'rx-input-error' : ''}`}
-                  placeholder="e.g. 192.168.12.241 or sapdev.corp.net"
-                  value={serverFormData.ashost}
-                  onChange={(e) => setServerFormData({ ...serverFormData, ashost: e.target.value })}
-                  required
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="SAP Router"
-                htmlFor="server-router"
-              >
-                <input
-                  id="server-router"
-                  type="text"
-                  className="rx-input rx-input-mono"
-                  placeholder="/H/103.206.249.51/H/"
-                  value={serverFormData.router}
-                  onChange={(e) => setServerFormData({ ...serverFormData, router: e.target.value })}
-                />
-              </FieldWrapper>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <FieldWrapper
-                label="Sysnr (Instance)"
-                htmlFor="server-sysnr"
-                required
-                error={(serverSubmitted || serverFormTouched.sysnr) ? serverFormErrors.sysnr || null : null}
-              >
-                <input
-                  id="server-sysnr"
-                  type="text"
-                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.sysnr) && serverFormErrors.sysnr) ? 'rx-input-error' : ''}`}
-                  placeholder="09"
-                  value={serverFormData.sysnr}
-                  onChange={(e) => setServerFormData({ ...serverFormData, sysnr: e.target.value })}
-                  required
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="Client"
-                htmlFor="server-client"
-                required
-                error={(serverSubmitted || serverFormTouched.client) ? serverFormErrors.client || null : null}
-              >
-                <input
-                  id="server-client"
-                  type="text"
-                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.client) && serverFormErrors.client) ? 'rx-input-error' : ''}`}
-                  placeholder="500"
-                  value={serverFormData.client}
-                  onChange={(e) => setServerFormData({ ...serverFormData, client: e.target.value })}
-                  required
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="Language"
-                htmlFor="server-lang"
-              >
-                <input
-                  id="server-lang"
-                  type="text"
-                  className="rx-input rx-input-mono"
-                  placeholder="EN"
-                  value={serverFormData.lang}
-                  onChange={(e) => setServerFormData({ ...serverFormData, lang: e.target.value })}
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="Gateway Service"
-                htmlFor="server-gwserv"
-              >
-                <input
-                  id="server-gwserv"
-                  type="text"
-                  className="rx-input rx-input-mono"
-                  placeholder="3309"
-                  value={serverFormData.gwserv}
-                  onChange={(e) => setServerFormData({ ...serverFormData, gwserv: e.target.value })}
-                />
-              </FieldWrapper>
-            </div>
-          </FormSection>
-
-          {/* Section 3: Credentials */}
-          <FormSection title="Credentials" className="rx-server-modal-section" bodyClassName="p-4 flex flex-col gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldWrapper
-                label="SAP Username"
-                htmlFor="server-username"
-                required
-                error={(serverSubmitted || serverFormTouched.sap_username) ? serverFormErrors.sap_username || null : null}
-              >
-                <input
-                  id="server-username"
-                  type="text"
-                  className={`rx-input rx-input-mono ${((serverSubmitted || serverFormTouched.sap_username) && serverFormErrors.sap_username) ? 'rx-input-error' : ''}`}
-                  placeholder="e.g. RFC_USER"
-                  value={serverFormData.sap_username}
-                  onChange={(e) => setServerFormData({ ...serverFormData, sap_username: e.target.value })}
-                  autoComplete="off"
-                  required
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="SAP Password"
-                htmlFor="server-password"
-                required={!editingServerId}
-                hint={editingServerId ? "Leave blank to keep the current password" : null}
-                error={(serverSubmitted || serverFormTouched.sap_password) ? serverFormErrors.sap_password || null : null}
-              >
-                <PasswordInput
-                  id="server-password"
-                  placeholder={editingServerId ? "Unchanged" : "Enter RFC password"}
-                  value={serverFormData.sap_password}
-                  onChange={(e) => setServerFormData({ ...serverFormData, sap_password: e.target.value })}
-                  autoComplete="new-password"
-                  required={!editingServerId}
-                  className="rx-input rx-input-mono"
-                  inputStyle={{ height: 'var(--size-form-input-height, 40px)' }}
-                />
-              </FieldWrapper>
-            </div>
-          </FormSection>
-
-          {/* Section 4: Connection limits */}
-          <FormSection
-            title="Connection limits"
-            badge={<span className="text-xs text-[var(--color-text-secondary)] font-normal">Applied live without restart</span>}
-            className="rx-server-modal-section"
-            bodyClassName="p-4 flex flex-col gap-4"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldWrapper
-                label="Max connections"
-                htmlFor="server-max-conn"
-                hint="1 to 20. Allowed parallel connections."
-                error={(serverSubmitted || serverFormTouched.max_connections) ? serverFormErrors.max_connections || null : null}
-              >
-                <input
-                  id="server-max-conn"
-                  type="number"
-                  min={1}
-                  max={20}
-                  className={`rx-input ${((serverSubmitted || serverFormTouched.max_connections) && serverFormErrors.max_connections) ? 'rx-input-error' : ''}`}
-                  value={serverFormData.max_connections}
-                  onChange={(e) => handleServerFieldChange('max_connections', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  onBlur={() => handleServerFieldBlur('max_connections')}
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="Per-user limit"
-                htmlFor="server-user-limit"
-                hint="1 to max connections. Prevents starvation."
-                error={(serverSubmitted || serverFormTouched.per_user_limit) ? serverFormErrors.per_user_limit || null : null}
-              >
-                <input
-                  id="server-user-limit"
-                  type="number"
-                  min={1}
-                  max={serverFormData.max_connections || 20}
-                  className={`rx-input ${((serverSubmitted || serverFormTouched.per_user_limit) && serverFormErrors.per_user_limit) ? 'rx-input-error' : ''}`}
-                  value={serverFormData.per_user_limit}
-                  onChange={(e) => handleServerFieldChange('per_user_limit', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  onBlur={() => handleServerFieldBlur('per_user_limit')}
-                />
-              </FieldWrapper>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FieldWrapper
-                label="Queue wait timeout (seconds)"
-                htmlFor="server-queue-timeout"
-                hint="5 to 120 seconds. Wait before fast fail."
-                error={(serverSubmitted || serverFormTouched.queue_timeout_seconds) ? serverFormErrors.queue_timeout_seconds || null : null}
-              >
-                <input
-                  id="server-queue-timeout"
-                  type="number"
-                  min={5}
-                  max={120}
-                  className={`rx-input ${((serverSubmitted || serverFormTouched.queue_timeout_seconds) && serverFormErrors.queue_timeout_seconds) ? 'rx-input-error' : ''}`}
-                  value={serverFormData.queue_timeout_seconds}
-                  onChange={(e) => handleServerFieldChange('queue_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  onBlur={() => handleServerFieldBlur('queue_timeout_seconds')}
-                />
-              </FieldWrapper>
-
-              <FieldWrapper
-                label="SAP call timeout (seconds)"
-                htmlFor="server-call-timeout"
-                hint="10 to 300 seconds. Abort slow calls."
-                error={(serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) ? serverFormErrors.rfc_call_timeout_seconds || null : null}
-              >
-                <input
-                  id="server-call-timeout"
-                  type="number"
-                  min={10}
-                  max={300}
-                  className={`rx-input ${((serverSubmitted || serverFormTouched.rfc_call_timeout_seconds) && serverFormErrors.rfc_call_timeout_seconds) ? 'rx-input-error' : ''}`}
-                  value={serverFormData.rfc_call_timeout_seconds}
-                  onChange={(e) => handleServerFieldChange('rfc_call_timeout_seconds', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
-                  onBlur={() => handleServerFieldBlur('rfc_call_timeout_seconds')}
-                />
-              </FieldWrapper>
-            </div>
-          </FormSection>
-
-          {/* Active Checkbox */}
-          <div className="flex items-center gap-2.5 px-1 pt-1 pb-1">
-            <input
-              type="checkbox"
-              id="server-active-check"
-              checked={serverFormData.is_active}
-              onChange={(e) => setServerFormData({ ...serverFormData, is_active: e.target.checked })}
-              className="rx-checkbox h-4 w-4 rounded cursor-pointer accent-[var(--color-blue-600)]"
-            />
-            <label htmlFor="server-active-check" className="text-[13px] font-medium text-[var(--color-navy-900)] cursor-pointer select-none">
-              Server is active and available for connections
-            </label>
-          </div>
-        </form>
-      </Modal>
-
-      {/* =========================================================================
-          MODAL: GRANT / EDIT PERMISSION
-         ========================================================================= */}
-      <Modal
-        isOpen={isGrantModalOpen}
-        onClose={() => setIsGrantModalOpen(false)}
-        title={isEditingPermission ? "Edit Permitted Features" : "Grant Server & Feature Permissions"}
-        subtitle="Configure which features this user can run on the SAP server"
-        icon={KeyRound}
-        isLoading={grantSubmitting}
-        maxWidth={540}
-        style={{ maxHeight: '90vh', overflowY: 'auto' }}
-      >
-        <form onSubmit={handleGrantPermission}>
-          
-          <div className="sap-form-group">
-            <label className="sap-form-label">Select User</label>
-            <select
-              className="sap-input"
-              value={grantFormData.user_id}
-              onChange={(e) => setGrantFormData({ ...grantFormData, user_id: e.target.value })}
-              required
-              disabled={isEditingPermission}
-              autoFocus={!isEditingPermission}
-            >
-              <option value="" disabled>-- Select a User --</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.email} ({u.role ? u.role.charAt(0).toUpperCase() + u.role.slice(1).toLowerCase() : 'User'})</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sap-form-group">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label className="sap-form-label" style={{ margin: 0 }}>Select SAP Server</label>
-              {servers.length > 5 && !isEditingPermission && (
-                <input
-                  type="text"
-                  placeholder="Filter servers..."
-                  value={grantServerFilter}
-                  onChange={(e) => setGrantServerFilter(e.target.value)}
-                  style={{
-                    fontSize: 11,
-                    padding: '2px 8px',
-                    height: 22,
-                    borderRadius: 'var(--radius-sm, 4px)',
-                    border: '1px solid var(--sap-border-subtle)',
-                    width: 140
-                  }}
-                />
-              )}
-            </div>
-            <select
-              className="sap-input"
-              value={grantFormData.server_id}
-              onChange={(e) => setGrantFormData({ ...grantFormData, server_id: e.target.value })}
-              required
-              disabled={isEditingPermission}
-            >
-              <option value="" disabled>-- Select a Server --</option>
-              {servers
-                .filter((s) => !grantServerFilter || s.name.toLowerCase().includes(grantServerFilter.toLowerCase()) || (s.environment && s.environment.toLowerCase().includes(grantServerFilter.toLowerCase())))
-                .map((s) => (
-                  <option key={s.id} value={s.id}>{s.name} ({formatEnvironment(s.environment)})</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.email} ({u.role})
+                  </option>
                 ))}
-            </select>
-          </div>
-
-          {/* Permitted Applications Accordion */}
-          <div style={{
-            marginTop: 14,
-            marginBottom: 16,
-            padding: '14px',
-            background: 'var(--sap-surface-subtle, #f8fafc)',
-            borderRadius: 'var(--radius-lg, 8px)',
-            border: '1px solid var(--sap-border-subtle, #e2e8f0)'
-          }}>
-            {migrationPending && (
-              <div style={{
-                background: 'var(--sap-info-bg, #e8f4fd)',
-                border: '1px solid var(--sap-info-border, #b8daff)',
-                color: 'var(--sap-info-text, #004085)',
-                padding: '6px 10px',
-                borderRadius: 'var(--radius-sm, 4px)',
-                fontSize: 11.5,
-                marginBottom: 12,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6
-              }}>
-                <Info size={14} style={{ flexShrink: 0 }} />
-                <span><strong>Migration pending:</strong> Grants are currently saved with full BOM feature access until the database column is added.</span>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <label className="sap-form-label" style={{ fontWeight: 700, margin: 0, fontSize: 13, color: 'var(--sap-text-dark)' }}>
-                Permitted Features
-              </label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-ghost"
-                  onClick={handleSelectAllApps}
-                  style={{ fontSize: 11, padding: '2px 8px', height: 'auto', fontWeight: 600, color: 'var(--sap-primary)' }}
-                >
-                  Select all
-                </button>
-                <span style={{ color: 'var(--sap-border-subtle)' }}>|</span>
-                <button
-                  type="button"
-                  className="sap-btn sap-btn-ghost"
-                  onClick={handleClearAllApps}
-                  style={{ fontSize: 11, padding: '2px 8px', height: 'auto', fontWeight: 600, color: 'var(--sap-text-muted)' }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            {/* Module Accordion List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {MODULE_REGISTRY.filter((mod) => mod.status === MODULE_STATUS.AVAILABLE).map((mod) => {
-                const modApps = mod.apps || [];
-                const totalApps = modApps.length;
-                const currentPerms = grantFormData.permissions || [];
-                const selectedModApps = currentPerms.filter((k) => modApps.some((a) => a.key === k));
-                const allChecked = totalApps > 0 && selectedModApps.length === totalApps;
-                const isIndeterminate = selectedModApps.length > 0 && selectedModApps.length < totalApps;
-                const isExpanded = Boolean(expandedModules[mod.key]);
-
-                // Available module: Tri-state checkbox, count, expand chevron, and sub-apps
-                return (
-                  <div
-                    key={mod.key}
-                    style={{
-                      borderRadius: 'var(--radius-md, 6px)',
-                      border: isExpanded
-                        ? '1px solid var(--sap-primary-border, #b3d7ff)'
-                        : '1px solid var(--sap-border-subtle, #cbd5e1)',
-                      background: '#fff',
-                      overflow: 'hidden',
-                      transition: 'border-color 0.15s ease'
-                    }}
-                  >
-                    {/* Module Accordion Header */}
-                    <div
-                      onClick={() => toggleModuleExpanded(mod.key)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 12px',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        background: isExpanded ? 'var(--sap-primary-light, #f0f7ff)' : '#fff'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                        <TriStateCheckbox
-                          checked={allChecked}
-                          indeterminate={isIndeterminate}
-                          onChange={() => handleToggleModule(mod)}
-                          ariaLabel={`Select all ${mod.label} features`}
-                        />
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
-                              {mod.label} – {selectedModApps.length} of {totalApps} features
-                            </span>
-                          </div>
-                          <span style={{ fontSize: 11.5, color: 'var(--sap-text-muted)', marginTop: 1 }}>
-                            {mod.desc}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', marginLeft: 8 }}>
-                        <ChevronDown
-                          size={16}
-                          style={{
-                            color: 'var(--sap-text-muted)',
-                            transform: isExpanded ? 'rotate(180deg)' : 'none',
-                            transition: 'transform 0.2s ease',
-                            flexShrink: 0
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sub-Apps List (when expanded) */}
-                    {isExpanded && (
-                      <div style={{
-                        padding: '10px 12px',
-                        background: 'var(--sap-surface-subtle, #f8fafc)',
-                        borderTop: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8
-                      }}>
-                        {modApps.map((app) => {
-                          const isChecked = currentPerms.includes(app.key);
-                          const isLocked = (app.key === 'bom.display' && hasWriteApp) ||
-                            (isChecked && modApps.some((other) => other.key !== app.key && currentPerms.includes(other.key) && other.implies?.includes(app.key)));
-
-                          return (
-                            <label
-                              key={app.key}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: 10,
-                                padding: '8px 10px',
-                                borderRadius: 'var(--radius-md, 6px)',
-                                border: isChecked
-                                  ? '1px solid var(--sap-primary-border, #b3d7ff)'
-                                  : '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                background: isChecked
-                                  ? '#ffffff'
-                                  : 'var(--sap-card-bg, #ffffff)',
-                                cursor: isLocked ? 'default' : 'pointer',
-                                userSelect: 'none',
-                                boxShadow: isChecked ? '0 1px 2px rgba(10,110,209,0.06)' : 'none'
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                disabled={isLocked}
-                                onChange={() => toggleAppPermission(app.key)}
-                                style={{ marginTop: 2, cursor: isLocked ? 'default' : 'pointer', accentColor: 'var(--sap-primary, #0a6ed1)' }}
-                              />
-                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--sap-text-dark)' }}>
-                                    {app.label}
-                                  </span>
-                                  {isLocked && (
-                                    <span style={{ fontSize: 10.5, color: 'var(--sap-text-muted)', fontStyle: 'italic' }}>
-                                      (Required by Create / Copy / Delete)
-                                    </span>
-                                  )}
-                                </div>
-                                <span style={{ fontSize: 11.5, color: 'var(--sap-text-muted)', marginTop: 2 }}>
-                                  {app.description}
-                                </span>
-                              </div>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+              </select>
+            </FieldWrapper>
+          </FormSection>
 
           <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
             <button
               type="button"
               className="sap-button"
-              onClick={() => setIsGrantModalOpen(false)}
-              disabled={grantSubmitting}
-              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
+              onClick={() => setAssignOwnerModal((prev) => ({ ...prev, isOpen: false }))}
+              disabled={assignOwnerModal.isSubmitting}
+              style={{ height: 32, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="sap-button primary"
-              disabled={grantSubmitting}
-              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
+              disabled={assignOwnerModal.isSubmitting}
+              style={{ height: 32, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
             >
-              {grantSubmitting ? 'Saving...' : isEditingPermission ? 'Save Permissions' : 'Grant Access'}
+              {assignOwnerModal.isSubmitting ? 'Assigning...' : 'Assign Owner'}
             </button>
           </div>
         </form>
@@ -2206,6 +1582,158 @@ export default function AdminView({
         targetUser={passwordTargetUser}
         onSuccess={(msg) => triggerNotice(msg)}
       />
+
+      {/* =========================================================================
+          MODAL: RESET PASSWORD RESULT (Display Temporary Password & Copy Button)
+         ========================================================================= */}
+      <Modal
+        isOpen={resetResultModal.isOpen}
+        onClose={() => setResetResultModal({ isOpen: false, user: null, initialPassword: '', copied: false })}
+        title="Password Reset Successfully"
+        subtitle={resetResultModal.user ? `Account: ${resetResultModal.user.email}` : ''}
+        icon={KeyRound}
+        iconColor="var(--sap-primary)"
+        maxWidth={480}
+      >
+        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-primary)', lineHeight: 1.5 }}>
+          A temporary password has been generated for this user. The user will be required to create a new password upon their next login.
+        </p>
+
+        <div style={{
+          background: 'var(--sap-surface-elevated, #f7f9fa)',
+          border: '1px solid var(--sap-border-subtle, #d1d5db)',
+          borderRadius: 'var(--sap-radius-card, 6px)',
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 16
+        }}>
+          <code style={{
+            fontFamily: 'var(--font-mono, monospace)',
+            fontSize: 14,
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            color: 'var(--sap-text-dark, #111827)',
+            wordBreak: 'break-all'
+          }}>
+            {resetResultModal.initialPassword}
+          </code>
+          <button
+            type="button"
+            className="sap-button"
+            onClick={() => {
+              if (navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(resetResultModal.initialPassword);
+                setResetResultModal((prev) => ({ ...prev, copied: true }));
+                setTimeout(() => setResetResultModal((prev) => ({ ...prev, copied: false })), 2000);
+              }
+            }}
+            style={{ height: 30, fontSize: 12, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
+          >
+            {resetResultModal.copied ? <Check size={13} color="var(--sap-positive)" /> : <Copy size={13} />}
+            <span>{resetResultModal.copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+
+        <div className="sap-toolbar" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <button
+            type="button"
+            className="sap-button primary"
+            onClick={() => setResetResultModal({ isOpen: false, user: null, initialPassword: '', copied: false })}
+            style={{ height: 32, fontSize: 'var(--sap-size-button)', padding: '0 20px', minWidth: 90 }}
+          >
+            Done
+          </button>
+        </div>
+      </Modal>
+
+      {/* =========================================================================
+          MODAL: ADD SERVER ALLOWLIST PATTERN
+         ========================================================================= */}
+      <Modal
+        isOpen={isAllowlistModalOpen}
+        onClose={() => !allowlistSubmitting && setIsAllowlistModalOpen(false)}
+        title="Add Server Allowlist Pattern"
+        subtitle="Specify allowed hostnames, IP addresses, or CIDR subnets"
+        icon={Shield}
+        iconColor="var(--sap-primary)"
+        maxWidth={500}
+      >
+        <form onSubmit={handleCreateAllowlistRule}>
+          {allowlistModalError && (
+            <Notification
+              placement="inline"
+              type="error"
+              message={allowlistModalError}
+              onClose={() => setAllowlistModalError('')}
+            />
+          )}
+
+          <FormSection>
+            <FieldWrapper label="Host / IP / CIDR Pattern" required htmlFor="allowlist-pattern" hint="e.g. 192.168.1.0/24, 103.206.249.51, 10.*, or *.corp">
+              <input
+                id="allowlist-pattern"
+                type="text"
+                className="sap-input"
+                placeholder="192.168.1.0/24 or 10.*"
+                value={allowlistFormData.pattern}
+                onChange={(e) => setAllowlistFormData((prev) => ({ ...prev, pattern: e.target.value }))}
+                required
+                style={{ width: '100%', height: 32 }}
+              />
+            </FieldWrapper>
+
+            <FieldWrapper label="Environment" required htmlFor="allowlist-type">
+              <select
+                id="allowlist-type"
+                className="sap-input"
+                value={allowlistFormData.type}
+                onChange={(e) => setAllowlistFormData((prev) => ({ ...prev, type: e.target.value }))}
+                style={{ width: '100%', height: 32 }}
+              >
+                <option value="Sandbox">Sandbox</option>
+                <option value="Development">Development</option>
+                <option value="QA">QA</option>
+                <option value="Production">Production</option>
+              </select>
+            </FieldWrapper>
+
+            <FieldWrapper label="Comment / Purpose" htmlFor="allowlist-comment" hint="Describe the destination or reason for this entry">
+              <input
+                id="allowlist-comment"
+                type="text"
+                className="sap-input"
+                placeholder="e.g. Corporate SAP ECC Gateway"
+                value={allowlistFormData.comment}
+                onChange={(e) => setAllowlistFormData((prev) => ({ ...prev, comment: e.target.value }))}
+                style={{ width: '100%', height: 32 }}
+              />
+            </FieldWrapper>
+          </FormSection>
+
+          <div className="sap-toolbar" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+            <button
+              type="button"
+              className="sap-button"
+              onClick={() => setIsAllowlistModalOpen(false)}
+              disabled={allowlistSubmitting}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 16px' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="sap-button primary"
+              disabled={allowlistSubmitting}
+              style={{ height: 30, fontSize: 'var(--sap-size-button)', padding: '0 18px', minWidth: 100 }}
+            >
+              {allowlistSubmitting ? 'Adding...' : 'Add Pattern'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -13,9 +13,9 @@ const plantsPromiseCache = new Map();
 
 export function getActiveServerId() {
   if (typeof localStorage !== 'undefined') {
-    return localStorage.getItem('selected_server_id') || 'default';
+    return localStorage.getItem('selected_server_id') || null;
   }
-  return 'default';
+  return null;
 }
 
 /**

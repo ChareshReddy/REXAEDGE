@@ -12,7 +12,7 @@ import {
   Trash2,
   Users,
   Server,
-  KeyRound,
+  Settings,
   FileSpreadsheet,
   Package,
   Route,
@@ -194,12 +194,14 @@ export function Sidebar({
   const isDeleteBomActive = activeView === 'delete_bom';
   const isBomGroupActive = isCreateBomActive || isCopyBomActive || isDisplayBomActive || isValidateBomActive || isDeleteBomActive || activeView === 'bom_operations';
 
-  // Admin active checks
   const currentPath = router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+  const isMyServersActive = activeView === 'my_servers' || currentPath === '/my-servers';
+
+  // Admin active checks
   const isAdminActive = activeView === 'admin' || currentPath.startsWith('/admin');
   const isAdminUsersActive = isAdminActive && (currentPath === '/admin/users' || currentPath === '/admin');
   const isAdminServersActive = isAdminActive && currentPath === '/admin/servers';
-  const isAdminPermissionsActive = isAdminActive && currentPath === '/admin/permissions';
+  const isAdminSettingsActive = isAdminActive && currentPath === '/admin/allowlist';
   const isAdminLogsActive = isAdminActive && (currentPath.startsWith('/admin/logs') || currentPath === '/admin/activity-logs');
 
   // Auto-expand group when a contained route is active
@@ -274,17 +276,17 @@ export function Sidebar({
     },
     {
       id: 'admin_servers',
-      label: 'Servers',
+      label: 'All servers',
       icon: Server,
       path: '/admin/servers',
       active: isAdminServersActive
     },
     {
-      id: 'admin_permissions',
-      label: 'Permissions',
-      icon: KeyRound,
-      path: '/admin/permissions',
-      active: isAdminPermissionsActive
+      id: 'admin_settings',
+      label: 'Settings',
+      icon: Settings,
+      path: '/admin/allowlist',
+      active: isAdminSettingsActive
     },
     {
       id: 'admin_logs',
@@ -505,6 +507,39 @@ export function Sidebar({
               </div>
             )}
           </div>
+
+          {/* My Servers Link */}
+          <button
+            type="button"
+            onClick={() => handleItemClick('my_servers', '/my-servers')}
+            title={isCollapsed ? 'My Servers' : undefined}
+            aria-label="My Servers"
+            aria-current={isMyServersActive ? 'page' : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: isCollapsed ? 'center' : 'flex-start',
+              gap: 12,
+              padding: isCollapsed ? '10px 0' : '10px 14px',
+              borderRadius: 'var(--radius-md, 8px)',
+              border: 'none',
+              cursor: 'pointer',
+              backgroundColor: isMyServersActive ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
+              borderLeft: isMyServersActive ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
+              color: isMyServersActive ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+              fontWeight: isMyServersActive ? 600 : 500,
+              fontSize: 'var(--font-size-14, 14px)',
+              fontFamily: 'var(--font-sans)',
+              width: '100%',
+              textAlign: 'left',
+              transition: 'background-color var(--transition-fast, 150ms ease)',
+              boxSizing: 'border-box',
+              outline: 'none'
+            }}
+          >
+            <Server size={18} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+            {!isCollapsed && <span>My Servers</span>}
+          </button>
 
           {/* 3. Available Future Modules from Registry */}
           {futureModules.map((mod) => {

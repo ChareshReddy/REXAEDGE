@@ -93,7 +93,7 @@ export function prefetchPlants(serverId) {
 export function getPrefetchedPlants(serverId) {
   const targetServerId =
     serverId ||
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null) ||
+    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null) ||
     'default';
   return globalPlantCache.get(targetServerId) || null;
 }
@@ -101,7 +101,7 @@ export function getPrefetchedPlants(serverId) {
 export function getActivePlantPrefetchPromise(serverId) {
   const targetServerId =
     serverId ||
-    (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null) ||
+    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null) ||
     'default';
   if (lastPrefetchedServerId === targetServerId && activePlantPrefetch) {
     return activePlantPrefetch;
@@ -110,15 +110,15 @@ export function getActivePlantPrefetchPromise(serverId) {
 }
 
 /**
- * Updates x-server-id header and synchronizes with localStorage
+ * Updates x-sap-server-id header and synchronizes with per-tab sessionStorage
  */
 export function setSelectedServerHeader(serverId) {
   if (serverId) {
-    try { localStorage.setItem('selected_server_id', serverId); } catch (_) {}
-    apiClient.defaults.headers.common['x-server-id'] = serverId;
+    try { sessionStorage.setItem('selected_server_id', serverId); } catch (_) {}
+    apiClient.defaults.headers.common['x-sap-server-id'] = serverId;
   } else {
-    try { localStorage.removeItem('selected_server_id'); } catch (_) {}
-    delete apiClient.defaults.headers.common['x-server-id'];
+    try { sessionStorage.removeItem('selected_server_id'); } catch (_) {}
+    delete apiClient.defaults.headers.common['x-sap-server-id'];
   }
 
   // Trigger non-blocking background prefetch for the newly selected server
@@ -131,17 +131,30 @@ export function setSelectedServerHeader(serverId) {
   }
 }
 
-// Restore saved session token and server ID on startup
+// Restore saved session token and per-tab server ID on startup
 try {
   const savedToken = localStorage.getItem('sb_token');
   if (savedToken) {
     apiClient.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
   }
-  const savedServerId = localStorage.getItem('selected_server_id');
+  const savedServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
   if (savedServerId) {
-    apiClient.defaults.headers.common['x-server-id'] = savedServerId;
+    apiClient.defaults.headers.common['x-sap-server-id'] = savedServerId;
   }
 } catch (_) {}
+
+// Request interceptor to ensure current tab's sessionStorage serverId is always sent
+apiClient.interceptors.request.use((config) => {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const tabServerId = sessionStorage.getItem('selected_server_id');
+      if (tabServerId) {
+        config.headers['x-sap-server-id'] = tabServerId;
+      }
+    }
+  } catch (_) {}
+  return config;
+});
 
 /**
  * Evaluates whether a login failure is safely retryable (infrastructure/network failure).
@@ -505,8 +518,8 @@ export async function downloadCreateBomTemplate() {
  * @returns {Promise<{ connected: boolean, status: string, system?: string, client?: string, user?: string, message?: string, code?: string, selectedSessionId?: string, sessions?: Array<object> }>}
  */
 export async function getSapSessionStatus(serverId) {
-  const sid = serverId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null);
-  const config = sid ? { params: { serverId: sid }, headers: { 'x-server-id': sid } } : {};
+  const sid = serverId || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null);
+  const config = sid ? { params: { serverId: sid }, headers: { 'x-sap-server-id': sid } } : {};
   const response = await apiClient.get('/sap/session-status', config);
   return response.data;
 }
@@ -517,8 +530,8 @@ export async function getSapSessionStatus(serverId) {
  * @returns {Promise<{ success: boolean, selectedSessionId: string|null, selectedUser: string|null, sessions: Array<object>, status?: string, connected?: boolean }>}
  */
 export async function getSapSessions(serverId) {
-  const sid = serverId || (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null);
-  const config = sid ? { params: { serverId: sid }, headers: { 'x-server-id': sid } } : {};
+  const sid = serverId || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null);
+  const config = sid ? { params: { serverId: sid }, headers: { 'x-sap-server-id': sid } } : {};
   const response = await apiClient.get('/sap/sessions', config);
   return response.data;
 }
@@ -636,6 +649,16 @@ export async function deleteAdminServer(id) {
   return response.data;
 }
 
+export async function adminUpdateServerStatus(id, is_disabled) {
+  const response = await apiClient.patch(`/admin/servers/${id}/status`, { is_disabled });
+  return response.data;
+}
+
+export async function adminAssignServerOwner(id, owner_id) {
+  const response = await apiClient.patch(`/admin/servers/${id}/owner`, { owner_id });
+  return response.data;
+}
+
 export async function getAdminPermissions() {
   const response = await apiClient.get('/admin/permissions');
   const perms = response.data?.permissions || [];
@@ -673,6 +696,46 @@ export async function adminSetUserPassword(userId, password, confirmPassword) {
     password,
     confirmPassword
   });
+  return response.data;
+}
+
+/**
+ * Resets a user's password, sets must_change_password=true, and returns temporary password.
+ */
+export async function adminResetUserPassword(userId) {
+  const response = await apiClient.post(`/admin/users/${userId}/reset-password`, {});
+  return response.data;
+}
+
+/**
+ * Disables or enables a user account (Admin only).
+ */
+export async function adminUpdateUserStatus(userId, isDisabled) {
+  const response = await apiClient.patch(`/admin/users/${userId}/status`, { isDisabled });
+  return response.data;
+}
+
+/**
+ * Retrieves the global server allowlist rules (Admin only).
+ */
+export async function adminGetAllowlist() {
+  const response = await apiClient.get('/admin/allowlist');
+  return response.data;
+}
+
+/**
+ * Adds a new server allowlist rule (Admin only).
+ */
+export async function adminAddAllowlist(entry) {
+  const response = await apiClient.post('/admin/allowlist', entry);
+  return response.data;
+}
+
+/**
+ * Deletes a server allowlist rule (Admin only).
+ */
+export async function adminDeleteAllowlist(id) {
+  const response = await apiClient.delete(`/admin/allowlist/${id}`);
   return response.data;
 }
 
@@ -832,6 +895,41 @@ export async function reportClientError(errorData = {}) {
     console.warn('[reportClientError] Failed to report error to server:', err.message);
     return null;
   }
+}
+
+// ============================================================================
+// My SAP Servers (Owner-Scoped)
+// ============================================================================
+
+export async function getMyServers() {
+  const response = await apiClient.get('/servers');
+  return response.data?.servers || [];
+}
+
+export async function createMyServer(serverData) {
+  const response = await apiClient.post('/servers', serverData);
+  return response.data?.server;
+}
+
+export async function updateMyServer(id, serverData) {
+  const response = await apiClient.put(`/servers/${id}`, serverData);
+  return response.data?.server;
+}
+
+export async function deleteMyServer(id) {
+  const response = await apiClient.delete(`/servers/${id}`);
+  return response.data;
+}
+
+export async function setMyDefaultServer(id) {
+  const response = await apiClient.post(`/servers/${id}/default`);
+  return response.data?.server;
+}
+
+export async function testServerConnection(serverConfig, id = null) {
+  const url = id ? `/servers/${id}/test` : '/servers/test-connection';
+  const response = await apiClient.post(url, serverConfig);
+  return response.data;
 }
 
 export default apiClient;

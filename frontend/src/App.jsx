@@ -38,6 +38,9 @@ import { ToastProvider, toast } from './context/ToastContext';
 import CreateBomView from './components/CreateBomView';
 import BulkCreateBomView from './components/BulkCreateBomView';
 import DesignSystemShowcase from './components/dev/DesignSystemShowcase';
+import ForcePasswordChange from './components/ForcePasswordChange';
+import AddServerModal from './components/AddServerModal';
+import MyServersView from './components/MyServersView';
 
 import AdminView from './components/AdminView';
 import Sidebar from './components/layout/Sidebar';
@@ -122,6 +125,7 @@ function AppContent({
     if (path === '/products/bom/display') return 'bom_explorer';
     if (path === '/products/bom/validate') return 'validate_bom';
     if (path === '/products/bom/delete') return 'delete_bom';
+    if (path === '/my-servers') return 'my_servers';
     if (path === '/products' || path === '/launchpad') return 'home';
     if (path.startsWith('/products')) return 'launchpad';
     if (path === '/home' || path === '/') return 'home';
@@ -152,10 +156,12 @@ function AppContent({
     if (tab === 'admin_users') return '/admin/users';
     if (tab === 'admin_servers') return '/admin/servers';
     if (tab === 'admin_permissions') return '/admin/permissions';
+    if (tab === 'admin_allowlist') return '/admin/allowlist';
     if (tab === 'admin_logs') return '/admin/logs/audit';
     if (tab === 'admin') {
       if (subView === 'servers') return '/admin/servers';
       if (subView === 'permissions') return '/admin/permissions';
+      if (subView === 'allowlist') return '/admin/allowlist';
       if (subView === 'logs' || subView === 'audit' || subView === 'activity-logs') return '/admin/logs/audit';
       return '/admin/users';
     }
@@ -166,6 +172,7 @@ function AppContent({
     if (tab === 'bom_explorer') return '/products/bom/display';
     if (tab === 'validate_bom') return '/products/bom/validate';
     if (tab === 'delete_bom') return '/products/bom/delete';
+    if (tab === 'my_servers') return '/my-servers';
     return `/${tab}`;
   };
 
@@ -184,6 +191,9 @@ function AppContent({
     } else if (tab === 'admin_permissions') {
       tab = 'admin';
       subView = 'permissions';
+    } else if (tab === 'admin_allowlist') {
+      tab = 'admin';
+      subView = 'allowlist';
     } else if (tab === 'admin_logs') {
       tab = 'admin';
       subView = 'logs';
@@ -224,7 +234,11 @@ function AppContent({
     )
   );
 
-  const currentPermittedApps = user?.role === 'admin'
+  const isOwnerOfSelectedServer = Boolean(
+    user?.role === 'admin' ||
+    (selectedServer && (!selectedServer.owner_id || selectedServer.owner_id === user?.id))
+  );
+  const currentPermittedApps = isOwnerOfSelectedServer
     ? ALL_BOM_APPS
     : normalizePermissions(selectedServer?.permissions || []);
   const activeAppKey = getAppKeyForAction(activeTab);
@@ -242,6 +256,8 @@ function AppContent({
   const userMenuHoverTimeoutRef = useRef(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
+  const [hasDismissedOnboarding, setHasDismissedOnboarding] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K listener and rexa:open-command-palette event listener
@@ -367,6 +383,10 @@ function AppContent({
       }
       if (path === '/products/bom/delete' || path === '/delete_bom' || hash === '#delete_bom') {
         setActiveTab('delete_bom');
+        return;
+      }
+      if (path === '/my-servers' || hash === '#my-servers') {
+        setActiveTab('my_servers');
         return;
       }
       if (path.startsWith('/admin') || hash === '#admin') {
@@ -566,6 +586,9 @@ function AppContent({
 
   // Load available SAP servers for the current authenticated user
   useEffect(() => {
+    if (isCheckingAuth) {
+      return;
+    }
     if (!user) {
       setAvailableServers([]);
       setSelectedServer(null);
@@ -581,12 +604,23 @@ function AppContent({
         setAvailableServers(servers || []);
 
         if (servers && servers.length > 0) {
-          // On load, select the most recently added active server the user has access to
-          const defaultServer = getNewestActiveServer(servers);
-          if (defaultServer) {
-            setSelectedServer(defaultServer);
-            setSelectedServerHeader(defaultServer.id);
-            setCurrentSystem(defaultServer.environment || 'DEV');
+          // Stage 3: Per-tab selection with sessionStorage; new tab uses default server, reload preserves selection
+          let targetServer = null;
+          try {
+            const savedTabServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
+            if (savedTabServerId) {
+              targetServer = servers.find((s) => s.id === savedTabServerId && !s.is_disabled);
+            }
+          } catch (_) {}
+
+          if (!targetServer) {
+            targetServer = servers.find((s) => s.is_default && !s.is_disabled) || getNewestActiveServer(servers) || servers[0];
+          }
+
+          if (targetServer) {
+            setSelectedServer(targetServer);
+            setSelectedServerHeader(targetServer.id);
+            setCurrentSystem(targetServer.environment || 'DEV');
           } else {
             setSelectedServer(null);
             setSelectedServerHeader(null);
@@ -603,7 +637,14 @@ function AppContent({
     }
 
     loadServers();
-  }, [user]);
+  }, [user, isCheckingAuth]);
+
+  // Stage 4: Trigger onboarding modal when authenticated user owns 0 servers and hasn't dismissed it
+  useEffect(() => {
+    if (!isCheckingAuth && user && !user.must_change_password && !isLoadingServers && availableServers.length === 0 && !hasDismissedOnboarding) {
+      setIsOnboardingModalOpen(true);
+    }
+  }, [isCheckingAuth, user, isLoadingServers, availableServers.length, hasDismissedOnboarding]);
 
   // Load enabled modules whenever selected server changes (Admin always sees all registered modules)
   useEffect(() => {
@@ -889,6 +930,21 @@ function AppContent({
     );
   }
 
+  // Stage 4: Forced password change screen when must_change_password === true (no sidebar, no top bar)
+  if (user?.must_change_password) {
+    return (
+      <ToastProvider suppressBanner={true}>
+        <ForcePasswordChange
+          user={user}
+          onSuccess={(updatedUser) => {
+            window.scrollTo(0, 0);
+            setUser((prev) => ({ ...prev, ...updatedUser, must_change_password: false }));
+          }}
+        />
+      </ToastProvider>
+    );
+  }
+
   return (
     <ToastProvider>
       <div className="sap-app-root">
@@ -1055,9 +1111,26 @@ function AppContent({
               }
 
               return (
-                <span className="sap-badge sap-badge-warning" style={{ fontSize: '11px', padding: '3px 8px' }}>
-                  No Permitted Servers
-                </span>
+                <button
+                  type="button"
+                  data-testid="add-server-empty-btn"
+                  onClick={() => setIsOnboardingModalOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    backgroundColor: 'var(--color-navy-900, #00204E)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: 'var(--radius-md, 6px)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add a SAP server to continue
+                </button>
               );
             })()}
           </div>
@@ -1172,6 +1245,19 @@ function AppContent({
                       <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Administration' : 'Enterprise Administration'}</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    className="sap-user-menu-item"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      navigateToView('my_servers');
+                    }}
+                    role="menuitem"
+                  >
+                    <Server size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
+                    <span className="sap-user-menu-label">My SAP Servers</span>
+                  </button>
 
                   <button
                     type="button"
@@ -1376,6 +1462,8 @@ function AppContent({
             user={user}
             sapSession={sapSession}
             selectedServer={selectedServer}
+            hasZeroServers={availableServers.length === 0 && !isLoadingServers}
+            onAddServer={() => setIsOnboardingModalOpen(true)}
           />
         )}
 
@@ -1520,7 +1608,76 @@ function AppContent({
           <AccessDeniedView reason="This section is restricted to enterprise administrators." />
         )}
 
-        {activeTab === 'create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
+        {/* My SAP Servers View */}
+        {activeTab === 'my_servers' && (
+          <MyServersView
+            onServerChanged={async () => {
+              const servers = await getAvailableServers();
+              setAvailableServers(servers || []);
+            }}
+            onNavigateHome={() => navigateToView('home')}
+          />
+        )}
+
+        {/* Friendly Empty State for BOM Operations when User has 0 Servers */}
+        {isBomScreen && availableServers.length === 0 && !isLoadingServers && (
+          <div
+            className="rx-bom-no-servers-card"
+            style={{
+              maxWidth: '560px',
+              margin: '48px auto',
+              padding: '40px 24px',
+              textAlign: 'center',
+              backgroundColor: 'var(--color-surface, #FFFFFF)',
+              borderRadius: 'var(--radius-lg, 8px)',
+              border: '1px solid var(--color-border, #E2E8F0)',
+              boxShadow: 'var(--shadow-card, 0 2px 8px rgba(0, 32, 78, 0.06))'
+            }}
+          >
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--color-blue-100, #DCE8F1)',
+                color: 'var(--color-navy-900, #00204E)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '16px'
+              }}
+            >
+              <Server size={26} />
+            </div>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text, #0F172A)', margin: '0 0 6px 0' }}>
+              Add a SAP server to continue
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              You need at least one configured SAP server to view, create, or modify Bills of Materials.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsOnboardingModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '9px 18px',
+                fontSize: '13px',
+                fontWeight: 600,
+                backgroundColor: 'var(--color-navy-900, #00204E)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: 'var(--radius-md, 6px)',
+                cursor: 'pointer'
+              }}
+            >
+              Add your SAP server
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'create_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('create_bom') || enabledModules.includes(getModuleKeyForAction('create_bom'))) && (
           <CreateBomView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -1532,7 +1689,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'bulk_create_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_create_bom') || enabledModules.includes(getModuleKeyForAction('bulk_create_bom'))) && (
+        {activeTab === 'bulk_create_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_create_bom') || enabledModules.includes(getModuleKeyForAction('bulk_create_bom'))) && (
           <BulkCreateBomView
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_create_operations')}
@@ -1542,7 +1699,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'copy_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('copy_bom') || enabledModules.includes(getModuleKeyForAction('copy_bom'))) && (
+        {activeTab === 'copy_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('copy_bom') || enabledModules.includes(getModuleKeyForAction('copy_bom'))) && (
           <CopyBomView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -1554,7 +1711,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'bulk_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_bom') || enabledModules.includes(getModuleKeyForAction('bulk_bom'))) && (
+        {activeTab === 'bulk_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bulk_bom') || enabledModules.includes(getModuleKeyForAction('bulk_bom'))) && (
           <BulkBomView
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
@@ -1564,7 +1721,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'delete_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('delete_bom') || enabledModules.includes(getModuleKeyForAction('delete_bom'))) && (
+        {activeTab === 'delete_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('delete_bom') || enabledModules.includes(getModuleKeyForAction('delete_bom'))) && (
           <DeleteBomView
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_operations')}
@@ -1574,7 +1731,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'bom_explorer' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bom_explorer') || enabledModules.includes(getModuleKeyForAction('bom_explorer'))) && (
+        {activeTab === 'bom_explorer' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('bom_explorer') || enabledModules.includes(getModuleKeyForAction('bom_explorer'))) && (
           <BomExplorerView
             systemKey={currentSystem}
             initialMaterial={prefilledMaterial}
@@ -1586,7 +1743,7 @@ function AppContent({
           />
         )}
 
-        {activeTab === 'validate_bom' && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('validate_bom') || enabledModules.includes(getModuleKeyForAction('validate_bom'))) && (
+        {activeTab === 'validate_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('validate_bom') || enabledModules.includes(getModuleKeyForAction('validate_bom'))) && (
           <ValidateBomView
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_operations')}
@@ -1775,6 +1932,25 @@ function AppContent({
         mode="user"
         onSuccess={(msg) => showToast(msg, 'success')}
       />
+
+      {/* Stage 4: Onboarding Add Server Modal */}
+      <AddServerModal
+        isOpen={isOnboardingModalOpen}
+        isOnboarding={true}
+        onClose={() => {
+          setIsOnboardingModalOpen(false);
+          setHasDismissedOnboarding(true);
+        }}
+        onSuccess={async (newServer) => {
+          setIsOnboardingModalOpen(false);
+          setHasDismissedOnboarding(true);
+          const servers = await getAvailableServers();
+          setAvailableServers(servers || []);
+          if (newServer || (servers && servers.length > 0)) {
+            handleServerChange(newServer?.id || servers[0].id);
+          }
+        }}
+      />
     </div>
     </ToastProvider>
   );
@@ -1813,6 +1989,8 @@ export default function App(props = {}) {
     initialPath = '/products/bom/validate';
   } else if (initialActiveTab === 'delete_bom') {
     initialPath = '/products/bom/delete';
+  } else if (initialActiveTab === 'my_servers') {
+    initialPath = '/my-servers';
   } else if (initialActiveTab && initialActiveTab !== 'home') {
     initialPath = `/${initialActiveTab}`;
   } else if (typeof window !== 'undefined' && window.location.pathname) {

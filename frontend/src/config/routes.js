@@ -30,9 +30,11 @@ export const ROUTE_IDS = Object.freeze({
   ADMIN_USERS: 'adminUsers',
   ADMIN_SERVERS: 'adminServers',
   ADMIN_PERMISSIONS: 'adminPermissions',
+  ADMIN_ALLOWLIST: 'adminAllowlist',
   ADMIN_LOGS_AUDIT: 'adminLogsAudit',
   ADMIN_LOGS_ERRORS: 'adminLogsErrors',
   DEV_DESIGN_SYSTEM: 'devDesignSystem',
+  MY_SERVERS: 'myServers',
   ACCESS_DENIED: 'accessDenied',
   NOT_FOUND: 'notFound'
 });
@@ -227,6 +229,15 @@ export const ROUTES = Object.freeze({
     adminTab: 'permissions',
     parent: ROUTE_IDS.ADMIN
   },
+  [ROUTE_IDS.ADMIN_ALLOWLIST]: {
+    id: ROUTE_IDS.ADMIN_ALLOWLIST,
+    path: '/admin/allowlist',
+    title: 'Server Allowlist · System & User Management',
+    breadcrumb: 'Allowlist',
+    access: 'admin',
+    adminTab: 'allowlist',
+    parent: ROUTE_IDS.ADMIN
+  },
   [ROUTE_IDS.ADMIN_LOGS_AUDIT]: {
     id: ROUTE_IDS.ADMIN_LOGS_AUDIT,
     path: '/admin/logs/audit',
@@ -246,6 +257,14 @@ export const ROUTES = Object.freeze({
     adminTab: 'activity-logs',
     adminSubTab: 'errors',
     parent: ROUTE_IDS.ADMIN
+  },
+  [ROUTE_IDS.MY_SERVERS]: {
+    id: ROUTE_IDS.MY_SERVERS,
+    path: '/my-servers',
+    title: 'My SAP Servers · RexaEdge',
+    breadcrumb: 'My SAP Servers',
+    access: 'authenticated',
+    parent: ROUTE_IDS.HOME
   },
   [ROUTE_IDS.DEV_DESIGN_SYSTEM]: {
     id: ROUTE_IDS.DEV_DESIGN_SYSTEM,

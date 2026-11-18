@@ -5,7 +5,8 @@ import {
   Package,
   Route,
   ShoppingCart,
-  Factory
+  Factory,
+  Server
 } from 'lucide-react';
 import { MODULE_REGISTRY } from '@shared/modules.js';
 import { formatDisplayName } from '../utils/textFormatters';
@@ -16,7 +17,8 @@ const ICON_MAP = {
   Package,
   Route,
   ShoppingCart,
-  Factory
+  Factory,
+  Server
 };
 
 // Flag to control category filter chips above the module cards
@@ -29,7 +31,9 @@ export default function HomePage({
   user,
   sapSession,
   selectedServer,
-  enabledModules = ['bom']
+  enabledModules = ['bom'],
+  hasZeroServers = false,
+  onAddServer
 }) {
   const handleOpenModule = (mod) => {
     if (mod.key === 'bom' || mod.status === 'available') {
@@ -141,6 +145,56 @@ export default function HomePage({
           </div>
         </div>
       </section>
+
+      {/* Stage 4: Persistent Home Banner when user has 0 servers configured */}
+      {hasZeroServers && (
+        <div
+          className="rx-home-no-servers-banner"
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            padding: '14px 20px',
+            margin: '20px 0',
+            backgroundColor: 'var(--color-blue-50, #F0F7FD)',
+            border: '1px solid var(--color-blue-200, #BAE6FD)',
+            borderRadius: 'var(--radius-lg, 8px)',
+            color: 'var(--color-navy-900, #00204E)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Server size={20} color="var(--color-navy-900, #00204E)" />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '14px' }}>Add a SAP server to continue</div>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)' }}>
+                Configure your SAP connection to unlock BOM management and corporate ERP features.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onAddServer}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: 'var(--color-navy-900, #00204E)',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 'var(--radius-md, 6px)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            Add your SAP server
+          </button>
+        </div>
+      )}
 
       {/* 2. CATEGORY FILTER CHIPS (Directly below hero with 20px spacing) */}
       {SHOW_MODULE_FILTERS && (
