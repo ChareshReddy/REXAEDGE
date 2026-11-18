@@ -38,6 +38,7 @@ import ValidateBomView from './components/ValidateBomView';
 import { ToastProvider, toast } from './context/ToastContext';
 import CreateBomView from './components/CreateBomView';
 import BulkCreateBomView from './components/BulkCreateBomView';
+import ChangeBomView from './components/ChangeBomView';
 import DesignSystemShowcase from './components/dev/DesignSystemShowcase';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import AddServerModal from './components/AddServerModal';
@@ -125,6 +126,7 @@ function AppContent({
     if (path === '/products/bom/create/bulk') return 'bulk_create_bom';
     if (path === '/products/bom/copy/single') return 'copy_bom';
     if (path === '/products/bom/copy/bulk') return 'bulk_bom';
+    if (path === '/products/bom/change/single' || path === '/products/bom/change') return 'change_bom';
     if (path === '/products/bom/display') return 'bom_explorer';
     if (path === '/products/bom/validate') return 'validate_bom';
     if (path === '/products/bom/delete') return 'delete_bom';
@@ -172,6 +174,7 @@ function AppContent({
     if (tab === 'bulk_create_bom') return '/products/bom/create/bulk';
     if (tab === 'copy_bom') return '/products/bom/copy/single';
     if (tab === 'bulk_bom') return '/products/bom/copy/bulk';
+    if (tab === 'change_bom') return '/products/bom/change/single';
     if (tab === 'bom_explorer') return '/products/bom/display';
     if (tab === 'validate_bom') return '/products/bom/validate';
     if (tab === 'delete_bom') return '/products/bom/delete';
@@ -232,7 +235,7 @@ function AppContent({
 
   const isBomScreen = Boolean(
     user && (
-      ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) ||
+      ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'change_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) ||
       (activeTab === 'launchpad' && typeof launchpadSubView === 'string' && launchpadSubView.startsWith('bom'))
     )
   );
@@ -380,6 +383,10 @@ function AppContent({
       }
       if (path === '/products/bom/copy/bulk' || path === '/bulk_bom' || hash === '#bulk_bom') {
         setActiveTab('bulk_bom');
+        return;
+      }
+      if (path === '/products/bom/change/single' || path === '/products/bom/change' || path === '/change_bom' || hash === '#change_bom') {
+        setActiveTab('change_bom');
         return;
       }
       if (path === '/products/bom/display' || path === '/bom_explorer' || hash === '#bom_explorer') {
@@ -1579,7 +1586,7 @@ function AppContent({
         )}
 
         {/* Inline Info when a SAP server is not selected on operational pages */}
-        {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && availableServers.length > 0 && !selectedServer && (
+        {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'change_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && availableServers.length > 0 && !selectedServer && (
           <div style={{ maxWidth: 'var(--sap-layout-max-width, 1680px)', margin: '16px auto 0', padding: '0 var(--page-gutter, 32px)', boxSizing: 'border-box', width: '100%' }}>
             <div
               className="rx-no-server-alert"
@@ -1807,6 +1814,18 @@ function AppContent({
           <BulkBomView
             systemKey={currentSystem}
             onBack={() => navigateToView('launchpad', 'bom_copy_operations')}
+            onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
+            onNavigateProducts={() => navigateToView('home')}
+            onNavigateHome={() => navigateToView('home')}
+          />
+        )}
+
+        {activeTab === 'change_bom' && availableServers.length > 0 && hasAppAccess && (selectedServer || user?.role !== 'admin') && (!getModuleKeyForAction('change_bom') || enabledModules.includes(getModuleKeyForAction('change_bom'))) && (
+          <ChangeBomView
+            systemKey={currentSystem}
+            initialMaterial={prefilledMaterial}
+            initialPlant={prefilledPlant}
+            onBack={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateBom={() => navigateToView('launchpad', 'bom_operations')}
             onNavigateProducts={() => navigateToView('home')}
             onNavigateHome={() => navigateToView('home')}

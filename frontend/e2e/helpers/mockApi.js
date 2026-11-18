@@ -421,6 +421,38 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       return respondJson({ success: true, data: mockMaterials, materials: mockMaterials });
     }
 
+    // 11b. BOM Change
+    if (url.includes('/api/bom/change')) {
+      let postData = {};
+      try { postData = request.postDataJSON() || {}; } catch {}
+      const items = postData.items || [];
+      const modifiedCount = items.filter(i => i.changeType === 'CHANGE').length;
+      const addedCount = items.filter(i => i.changeType === 'ADD').length;
+      const deletedCount = items.filter(i => i.changeType === 'DELETE').length;
+
+      return respondJson({
+        success: true,
+        verified: true,
+        code: 'OK',
+        material: postData.material || 'A1BH0214C',
+        plant: postData.plant || '1010',
+        bomUsage: postData.bomUsage || '1',
+        alternativeBom: postData.alternativeBom || '01',
+        summary: {
+          headerChanged: Boolean(postData.header && Object.keys(postData.header).length > 0),
+          itemsModified: modifiedCount,
+          itemsAdded: addedCount,
+          itemsDeleted: deletedCount,
+          totalComponentsAfter: Math.max(1, 16 - deletedCount + addedCount)
+        },
+        components: [
+          { item: '0010', itemNode: '00000001', component: 'P1GH1215A', description: 'Modified part', quantity: 25, unit: 'PC', storageLocation: '0001', itemText: 'Updated quantity' },
+          { item: '0020', itemNode: '00000002', component: 'RAW-NEW-99', description: 'Newly added part', quantity: 5, unit: 'EA', storageLocation: '0001', itemText: 'New component' }
+        ],
+        message: `BOM changed and verified successfully (${modifiedCount} modified, ${addedCount} added, ${deletedCount} deleted)`
+      });
+    }
+
     // 12. Preflight Single BOM
     if (url.includes('/api/boms/preflight') || url.includes('/api/boms/validate') || url.includes('/api/bom/create-preflight')) {
       return respondJson({

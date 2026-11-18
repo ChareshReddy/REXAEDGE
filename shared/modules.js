@@ -86,7 +86,7 @@ export const MODULE_REGISTRY = [
     kpiLabel: 'features',
     subView: 'bom_operations',
     // The specific UI actions / route tabs that belong to this module:
-    actions: ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'delete_bom', 'bom_explorer', 'validate_bom'],
+    actions: ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'change_bom', 'delete_bom', 'bom_explorer', 'validate_bom'],
     apps: BOM_APP_LIST,
     subApps: [
       {
@@ -136,6 +136,13 @@ export const MODULE_REGISTRY = [
             action: 'bulk_bom'
           }
         ]
+      },
+      {
+        id: 'change',
+        title: 'Change BOM',
+        desc: 'Change existing BOM header and components',
+        iconName: 'FileEdit',
+        action: 'change_bom'
       },
       {
         id: 'display',
@@ -350,6 +357,7 @@ export function getAppKeyForAction(action) {
   if (!action) return null;
   if (action === 'create_bom' || action === 'bulk_create_bom') return 'bom.create';
   if (action === 'copy_bom' || action === 'bulk_bom') return 'bom.copy';
+  if (action === 'change_bom') return 'bom.change';
   if (action === 'delete_bom') return 'bom.delete';
   if (action === 'bom_explorer') return 'bom.display';
   if (action === 'validate_bom') return 'bom.validate';
@@ -363,6 +371,7 @@ export function getAppKeyForCard(card) {
   if (!card) return null;
   if (card.id === 'create_group' || card.id === 'create' || card.id === 'bulk_create') return 'bom.create';
   if (card.id === 'copy_group' || card.id === 'copy' || card.id === 'bulk') return 'bom.copy';
+  if (card.id === 'change') return 'bom.change';
   if (card.id === 'delete') return 'bom.delete';
   if (card.id === 'display') return 'bom.display';
   if (card.id === 'validate') return 'bom.validate';

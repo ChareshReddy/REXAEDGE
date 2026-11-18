@@ -450,6 +450,15 @@ export async function createSingleBom(payload) {
 }
 
 /**
+ * Changes an existing BOM in SAP via CSAP_MAT_BOM_MAINTAIN.
+ * @param {object} payload { material, plant, bomUsage, alternativeBom, changeNo, validFrom, header, items }
+ */
+export async function changeBom(payload) {
+  const response = await apiClient.post('/bom/change', payload);
+  return response.data;
+}
+
+/**
  * Executes sequential bulk creation of BOMs in SAP.
  * @param {object} payload { boms: Array, fileName?: string, confirmText?: string, reason?: string }
  */
@@ -745,7 +754,8 @@ export async function adminUpdateUserStatus(userId, isDisabled) {
  */
 export async function adminGetAllowlist() {
   const response = await apiClient.get('/admin/allowlist');
-  return response.data?.allowlist ?? response.data ?? [];
+  const raw = response.data?.allowlist ?? response.data;
+  return Array.isArray(raw) ? raw : [];
 }
 
 /**

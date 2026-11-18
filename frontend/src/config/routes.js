@@ -23,6 +23,7 @@ export const ROUTE_IDS = Object.freeze({
   BOM_COPY_HUB: 'bomCopyHub',
   BOM_COPY_SINGLE: 'bomCopySingle',
   BOM_COPY_BULK: 'bomCopyBulk',
+  BOM_CHANGE_SINGLE: 'bomChangeSingle',
   BOM_DISPLAY: 'bomDisplay',
   BOM_VALIDATE: 'bomValidate',
   BOM_DELETE: 'bomDelete',
@@ -163,6 +164,16 @@ export const ROUTES = Object.freeze({
     feature: 'bom.copy',
     parent: ROUTE_IDS.BOM_COPY_HUB
   },
+  [ROUTE_IDS.BOM_CHANGE_SINGLE]: {
+    id: ROUTE_IDS.BOM_CHANGE_SINGLE,
+    path: '/products/bom/change/single',
+    title: 'Change BOM · RexaEdge',
+    breadcrumb: 'Change BOM',
+    access: 'authenticated',
+    module: 'bom',
+    feature: 'bom.change',
+    parent: ROUTE_IDS.BOM_OPERATIONS
+  },
   [ROUTE_IDS.BOM_DISPLAY]: {
     id: ROUTE_IDS.BOM_DISPLAY,
     path: '/products/bom/display',
@@ -301,6 +312,8 @@ export const LEGACY_REDIRECTS = Object.freeze({
   '/bulk_create_bom': '/products/bom/create/bulk',
   '/copy_bom': '/products/bom/copy/single',
   '/bulk_bom': '/products/bom/copy/bulk',
+  '/change_bom': '/products/bom/change/single',
+  '/products/bom/change': '/products/bom/change/single',
   '/bom_explorer': '/products/bom/display',
   '/validate_bom': '/products/bom/validate',
   '/delete_bom': '/products/bom/delete',
@@ -320,6 +333,7 @@ export const ACTION_TO_ROUTE_ID = Object.freeze({
   bulk_create_bom: ROUTE_IDS.BOM_CREATE_BULK,
   copy_bom: ROUTE_IDS.BOM_COPY_SINGLE,
   bulk_bom: ROUTE_IDS.BOM_COPY_BULK,
+  change_bom: ROUTE_IDS.BOM_CHANGE_SINGLE,
   bom_explorer: ROUTE_IDS.BOM_DISPLAY,
   validate_bom: ROUTE_IDS.BOM_VALIDATE,
   delete_bom: ROUTE_IDS.BOM_DELETE

@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   PlusSquare,
   Copy,
+  FileEdit,
   Eye,
   Trash2,
   Users,
@@ -189,10 +190,11 @@ export function Sidebar({
   const isHomeActive = activeView === 'home';
   const isCreateBomActive = activeView === 'create_bom' || activeView === 'bulk_create_bom';
   const isCopyBomActive = activeView === 'copy_bom' || activeView === 'bulk_bom';
+  const isChangeBomActive = activeView === 'change_bom';
   const isDisplayBomActive = activeView === 'bom_explorer';
   const isValidateBomActive = activeView === 'validate_bom';
   const isDeleteBomActive = activeView === 'delete_bom';
-  const isBomGroupActive = isCreateBomActive || isCopyBomActive || isDisplayBomActive || isValidateBomActive || isDeleteBomActive || activeView === 'bom_operations';
+  const isBomGroupActive = isCreateBomActive || isCopyBomActive || isChangeBomActive || isDisplayBomActive || isValidateBomActive || isDeleteBomActive || activeView === 'bom_operations';
 
   const currentPath = router?.pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
   const isMyServersActive = activeView === 'my_servers' || currentPath === '/my-servers';
@@ -241,6 +243,13 @@ export function Sidebar({
       icon: Copy,
       path: '/products/bom/copy/single',
       active: isCopyBomActive
+    },
+    {
+      id: 'change_bom',
+      label: 'Change BOM',
+      icon: FileEdit,
+      path: '/products/bom/change/single',
+      active: isChangeBomActive
     },
     {
       id: 'bom_explorer',
