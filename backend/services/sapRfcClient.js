@@ -1525,7 +1525,6 @@ export async function rfcChangeBom(params = {}) {
       PLANT: cleanPlt,
       BOM_USAGE: cleanUsg,
       ALTERNATIVE: cleanAltPadded,
-      FL_COMMIT_AND_WAIT: 'X',
       I_STKO: iStko,
       T_STPO: tStpo
     };
