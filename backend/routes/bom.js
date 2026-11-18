@@ -768,7 +768,8 @@ router.post('/template', requireServerOwner, (req, res) => {
  * Helper to enforce PROD typing "CONFIRM" and non-empty business reason
  */
 function checkProdConfirmation(req, res) {
-  if (req.selectedServer?.environment === 'PROD') {
+  const env = String(req.selectedServer?.environment || '').toUpperCase();
+  if (env === 'PROD' || env === 'PRODUCTION') {
     const { confirmText, reason } = req.body || {};
     if (confirmText !== 'CONFIRM') {
       res.status(400).json({

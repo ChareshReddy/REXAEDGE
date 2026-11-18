@@ -694,7 +694,7 @@ class InMemorySupabaseStore {
       sysnr: serverData.sysnr || '00',
       client: serverData.client || '100',
       lang: serverData.lang || 'EN',
-      environment: serverData.environment || serverData.type || 'Sandbox',
+      environment: normalizeEnvironmentForDb(serverData.environment || serverData.type),
       router: serverData.router || null,
       gwserv: serverData.gwserv || null,
       sap_username: serverData.sap_username || null,
@@ -735,7 +735,9 @@ class InMemorySupabaseStore {
     if (updateData.sysnr !== undefined) server.sysnr = updateData.sysnr;
     if (updateData.client !== undefined) server.client = updateData.client;
     if (updateData.lang !== undefined) server.lang = updateData.lang;
-    if (updateData.environment !== undefined) server.environment = updateData.environment;
+    if (updateData.environment !== undefined || updateData.type !== undefined) {
+      server.environment = normalizeEnvironmentForDb(updateData.environment || updateData.type);
+    }
     if (updateData.router !== undefined) server.router = updateData.router;
     if (updateData.gwserv !== undefined) server.gwserv = updateData.gwserv;
     if (updateData.sap_username !== undefined) server.sap_username = updateData.sap_username;
@@ -1196,6 +1198,15 @@ export const inMemorySupabase = new InMemorySupabaseStore();
  * Automatically routes to Live Supabase if configured, otherwise InMemory Store
  * ============================================================================
  */
+function normalizeEnvironmentForDb(envOrType) {
+  if (!envOrType) return 'SANDBOX';
+  const upper = String(envOrType).trim().toUpperCase();
+  if (upper === 'DEVELOPMENT' || upper === 'DEV') return 'DEV';
+  if (upper === 'PRODUCTION' || upper === 'PROD') return 'PROD';
+  if (upper === 'QA' || upper === 'QAS') return 'QA';
+  return 'SANDBOX';
+}
+
 const SAP_SERVERS_ALLOWED_COLUMNS = new Set([
   'id',
   'name',
@@ -1650,6 +1661,7 @@ export const supabaseService = {
       is_default: shouldBeDefault,
       owner_id: ownerId,
       created_by: ownerId,
+      environment: normalizeEnvironmentForDb(serverData.environment || serverData.type),
       max_connections: Math.min(Math.max(Number(serverData.max_connections) || 3, 1), 5),
       per_user_limit: Math.min(Math.max(Number(serverData.per_user_limit) || 2, 1), 5),
       queue_timeout_ms: queueTimeoutMs,
@@ -1693,6 +1705,10 @@ export const supabaseService = {
     const updatePayload = {
       updated_at: new Date().toISOString()
     };
+
+    if (updateData.environment !== undefined || updateData.type !== undefined) {
+      updatePayload.environment = normalizeEnvironmentForDb(updateData.environment || updateData.type);
+    }
 
     if (updateData.queue_timeout_ms !== undefined) {
       updatePayload.queue_timeout_ms = Number(updateData.queue_timeout_ms);

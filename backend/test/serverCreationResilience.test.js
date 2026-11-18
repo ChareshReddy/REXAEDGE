@@ -177,7 +177,9 @@ async function run() {
     // Verify unit conversions and field mappings
     assert.strictEqual(lastCreate.data.queue_timeout_ms, 15000, 'queue_timeout_seconds must be converted to queue_timeout_ms in ms');
     assert.strictEqual(lastCreate.data.rfc_call_timeout_ms, 30000, 'rfc_call_timeout_seconds must be converted to rfc_call_timeout_ms in ms');
-    assert.strictEqual(lastCreate.data.environment, 'Development', 'Environment must be mapped to allowlist type');
+    assert.strictEqual(lastCreate.data.environment, 'DEV', 'DB environment must satisfy sap_servers_environment_check constraint');
+    assert.strictEqual(createRes.body.server.environment, 'Development', 'API response environment must match allowlist type');
+    assert.strictEqual(createRes.body.server.type, 'Development', 'API response type must match allowlist type');
     assert.strictEqual('queue_timeout_seconds' in lastCreate.data, false, 'queue_timeout_seconds must not be written');
     assert.strictEqual('rfc_call_timeout_seconds' in lastCreate.data, false, 'rfc_call_timeout_seconds must not be written');
     assert.strictEqual('type' in lastCreate.data, false, 'type must not be written as database column');

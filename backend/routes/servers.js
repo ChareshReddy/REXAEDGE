@@ -32,6 +32,24 @@ function checkTestRateLimit(userId) {
   return { allowed: true, remaining: TEST_LIMIT - userLimit.count };
 }
 
+export function normalizeEnvironmentForDb(envOrType) {
+  if (!envOrType) return 'SANDBOX';
+  const upper = String(envOrType).trim().toUpperCase();
+  if (upper === 'DEVELOPMENT' || upper === 'DEV') return 'DEV';
+  if (upper === 'PRODUCTION' || upper === 'PROD') return 'PROD';
+  if (upper === 'QA' || upper === 'QAS') return 'QA';
+  return 'SANDBOX';
+}
+
+export function mapDbEnvToUiType(env) {
+  if (!env) return 'Sandbox';
+  const upper = String(env).trim().toUpperCase();
+  if (upper === 'DEV' || upper === 'DEVELOPMENT') return 'Development';
+  if (upper === 'PROD' || upper === 'PRODUCTION') return 'Production';
+  if (upper === 'QA') return 'QA';
+  return 'Sandbox';
+}
+
 // Helper to sanitize server for response (never return sap_password or encrypted ciphertext)
 function sanitizeServer(server) {
   if (!server) return null;
@@ -47,10 +65,15 @@ function sanitizeServer(server) {
       : (server.rfc_call_timeout_seconds !== undefined ? server.rfc_call_timeout_seconds * 1000 : 45000)
   );
 
+  const rawEnv = server.environment || server.type || 'SANDBOX';
+  const dbEnv = normalizeEnvironmentForDb(rawEnv);
+  const uiType = mapDbEnvToUiType(rawEnv);
+
   return {
     ...safe,
-    environment: server.environment || server.type || 'Sandbox',
-    type: server.environment || server.type || 'Sandbox',
+    environment: uiType,
+    type: uiType,
+    db_environment: dbEnv,
     queue_timeout_ms: queueTimeoutMs,
     rfc_call_timeout_ms: rfcCallTimeoutMs,
     queue_timeout_seconds: Math.round(queueTimeoutMs / 1000),
@@ -176,6 +199,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     // 4. Server type strictly derived from the allowlist entry
     const serverType = validation.matchedType || 'Sandbox';
+    const dbEnvironment = normalizeEnvironmentForDb(serverType);
 
     // 5. Cap connection settings at admin maximums
     const cappedMaxConnections = Math.min(Math.max(Number(max_connections) || 1, 1), 5);
@@ -202,7 +226,7 @@ router.post('/', requireAuth, async (req, res) => {
       sysnr: String(sysnr).trim(),
       client: String(client).trim(),
       lang: String(lang).trim().toUpperCase(),
-      environment: serverType,
+      environment: dbEnvironment,
       router: effectiveRouter,
       gwserv: gwserv ? String(gwserv).trim() : null,
       sap_username: sap_username ? String(sap_username).trim() : null,
@@ -319,7 +343,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // Update server type from allowlist
-    updatePayload.environment = validation.matchedType || existing.environment;
+    updatePayload.environment = normalizeEnvironmentForDb(validation.matchedType || existing.environment);
 
     if (name !== undefined) updatePayload.name = String(name).trim();
     if (ashost !== undefined) updatePayload.ashost = String(ashost).trim();
