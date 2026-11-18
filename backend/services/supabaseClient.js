@@ -233,35 +233,61 @@ class InMemorySupabaseStore {
   }
 
   reset() {
+    this._mockAuthUsers = new Map([
+      ['admin@nextitpoint.com', 'Admin@123456'],
+      ['user@nextitpoint.com', 'User@123456'],
+      ['sap_consultant', 'RealSAPPassword123'],
+      ['leelam_ext', 'Password@123']
+    ]);
+
     this.users = [
       {
         id: '00000000-0000-0000-0000-000000000001',
         email: 'admin@nextitpoint.com',
-        password: 'Admin@123456',
         role: 'admin',
+        must_change_password: false,
+        is_disabled: false,
+        disabled_at: null,
+        disabled_by: null,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
       {
         id: '00000000-0000-0000-0000-000000000002',
         email: 'user@nextitpoint.com',
-        password: 'User@123456',
         role: 'user',
+        must_change_password: false,
+        is_disabled: false,
+        disabled_at: null,
+        disabled_by: null,
         created_at: new Date('2026-01-02T00:00:00Z').toISOString()
       },
       {
         id: '00000000-0000-0000-0000-000000000003',
         email: 'SAP_CONSULTANT',
-        password: 'RealSAPPassword123',
         role: 'admin',
+        must_change_password: false,
+        is_disabled: false,
+        disabled_at: null,
+        disabled_by: null,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
       {
         id: '00000000-0000-0000-0000-000000000004',
         email: 'LEELAM_EXT',
-        password: 'Password@123',
         role: 'admin',
+        must_change_password: false,
+        is_disabled: false,
+        disabled_at: null,
+        disabled_by: null,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       }
+    ];
+
+    this.loginAttempts = new Map();
+    this.allowlist = [
+      { id: '1', pattern: '192.168.12.*', type: 'Sandbox', comment: 'Internal sandbox cluster' },
+      { id: '2', pattern: '10.*', type: 'Development', comment: 'Internal dev network' },
+      { id: '3', pattern: '103.206.249.51', type: 'Sandbox', comment: 'SAP router public host' }
     ];
 
     this.servers = [
@@ -277,6 +303,10 @@ class InMemorySupabaseStore {
         gwserv: '3309',
         sap_username: null,
         sap_password_encrypted: null,
+        owner_id: '00000000-0000-0000-0000-000000000001',
+        is_disabled: false,
+        is_default: true,
+        last_used_at: null,
         is_active: true,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
@@ -292,6 +322,10 @@ class InMemorySupabaseStore {
         gwserv: '3301',
         sap_username: null,
         sap_password_encrypted: null,
+        owner_id: '00000000-0000-0000-0000-000000000001',
+        is_disabled: false,
+        is_default: false,
+        last_used_at: null,
         is_active: true,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       },
@@ -307,6 +341,10 @@ class InMemorySupabaseStore {
         gwserv: '3300',
         sap_username: null,
         sap_password_encrypted: null,
+        owner_id: '00000000-0000-0000-0000-000000000001',
+        is_disabled: false,
+        is_default: false,
+        last_used_at: null,
         is_active: true,
         created_at: new Date('2026-01-01T00:00:00Z').toISOString()
       }
@@ -364,6 +402,48 @@ class InMemorySupabaseStore {
     this.sessions = new Map();
   }
 
+  // --- Login Lockout Tracking ---
+  getLoginAttempts(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const record = this.loginAttempts.get(cleanEmail) || { failed_attempts: 0, locked_until: null, last_attempt_at: null };
+    return { ...record };
+  }
+
+  recordFailedLogin(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const existing = this.loginAttempts.get(cleanEmail) || { failed_attempts: 0, locked_until: null };
+    const now = Date.now();
+    let locked_until = existing.locked_until;
+
+    // Reset count if lock period expired
+    if (locked_until && new Date(locked_until).getTime() <= now) {
+      existing.failed_attempts = 0;
+      locked_until = null;
+    }
+
+    const failed_attempts = (existing.failed_attempts || 0) + 1;
+    let isLocked = false;
+    if (failed_attempts >= 5) {
+      locked_until = new Date(now + 15 * 60 * 1000).toISOString();
+      isLocked = true;
+    }
+
+    const record = {
+      email: cleanEmail,
+      failed_attempts,
+      locked_until,
+      last_attempt_at: new Date(now).toISOString()
+    };
+    this.loginAttempts.set(cleanEmail, record);
+    return { ...record, isLocked };
+  }
+
+  resetLoginAttempts(email) {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    this.loginAttempts.delete(cleanEmail);
+    return { success: true };
+  }
+
   // --- Auth Operations ---
   signInWithPassword({ email, password }) {
     const cleanEmail = String(email || '').trim().toLowerCase();
@@ -371,22 +451,31 @@ class InMemorySupabaseStore {
       const matchEmail =
         u.email.toLowerCase() === cleanEmail ||
         u.email.toLowerCase() === `${cleanEmail}@nextitpoint.com`;
-      if (!matchEmail) return false;
-      if (u.email.toUpperCase() === 'SAP_CONSULTANT' || u.email.toUpperCase() === 'LEELAM_EXT') return true;
-      return u.password === password;
+      return Boolean(matchEmail);
     });
     if (!user) {
       return { data: null, error: { message: 'Invalid email or password' } };
     }
+    const storedAuthPwd = this._mockAuthUsers.get(user.email.toLowerCase());
+    if (storedAuthPwd && storedAuthPwd !== password && user.email.toUpperCase() !== 'SAP_CONSULTANT' && user.email.toUpperCase() !== 'LEELAM_EXT') {
+      return { data: null, error: { message: 'Invalid email or password' } };
+    }
     const token = `mock-token-${user.id}-${Date.now()}`;
+    const userObj = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      must_change_password: Boolean(user.must_change_password),
+      is_disabled: Boolean(user.is_disabled)
+    };
     this.sessions.set(token, {
-      user: { id: user.id, email: user.email, role: user.role },
+      user: userObj,
       expiresAt: Date.now() + 24 * 60 * 60 * 1000
     });
     return {
       data: {
         session: { access_token: token, expires_in: 86400 },
-        user: { id: user.id, email: user.email, role: user.role }
+        user: userObj
       },
       error: null
     };
@@ -405,34 +494,129 @@ class InMemorySupabaseStore {
     // Support static test token formats
     if (token === 'admin-test-token' || token.startsWith('admin-')) {
       const admin = this.users.find((u) => u.role === 'admin') || this.users[0];
-      return { data: { user: { id: admin.id, email: admin.email, role: 'admin' } }, error: null };
+      return {
+        data: {
+          user: {
+            id: admin.id,
+            email: admin.email,
+            role: 'admin',
+            must_change_password: Boolean(admin.must_change_password),
+            is_disabled: Boolean(admin.is_disabled)
+          }
+        },
+        error: null
+      };
     }
     if (token === 'user-test-token' || token.startsWith('user-')) {
       const regular = this.users.find((u) => u.role === 'user') || this.users[1];
-      return { data: { user: { id: regular.id, email: regular.email, role: 'user' } }, error: null };
+      return {
+        data: {
+          user: {
+            id: regular.id,
+            email: regular.email,
+            role: 'user',
+            must_change_password: Boolean(regular.must_change_password),
+            is_disabled: Boolean(regular.is_disabled)
+          }
+        },
+        error: null
+      };
     }
 
     const session = this.sessions.get(token);
     if (!session || session.expiresAt < Date.now()) {
       return { data: { user: null }, error: { message: 'Invalid or expired session token' } };
     }
-    return { data: { user: session.user }, error: null };
+    const userRec = this.users.find((u) => u.id === session.user?.id) || session.user;
+    return {
+      data: {
+        user: {
+          id: userRec.id,
+          email: userRec.email,
+          role: userRec.role,
+          must_change_password: Boolean(userRec.must_change_password),
+          is_disabled: Boolean(userRec.is_disabled)
+        }
+      },
+      error: null
+    };
   }
 
-  createUser({ email, password, role = 'user' }) {
-    const existing = this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  getUserProfile(userId) {
+    const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      must_change_password: Boolean(user.must_change_password),
+      is_disabled: Boolean(user.is_disabled),
+      disabled_at: user.disabled_at || null,
+      created_at: user.created_at
+    };
+  }
+
+  setUserMustChangePassword(userId, mustChange) {
+    const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
+    if (!user) return { error: { message: 'User not found' } };
+    user.must_change_password = Boolean(mustChange);
+    return { data: { user }, error: null };
+  }
+
+  updateProfileAsUser(userId, updates, token) {
+    // Enforces RLS: normal users have no UPDATE policy on users
+    if (updates && ('must_change_password' in updates || 'is_disabled' in updates || 'role' in updates)) {
+      return {
+        data: null,
+        error: {
+          message: 'new row violates row-level security policy for table "users"',
+          code: '42501'
+        }
+      };
+    }
+    return { data: null, error: null };
+  }
+
+  setUserDisabled(userId, isDisabled, disabledBy = null) {
+    const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
+    if (!user) return { error: { message: 'User not found' } };
+    user.is_disabled = Boolean(isDisabled);
+    user.disabled_at = isDisabled ? new Date().toISOString() : null;
+    user.disabled_by = isDisabled ? disabledBy : null;
+    return { data: { user }, error: null };
+  }
+
+  createUser({ email, password, role = 'user', must_change_password = true }) {
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = this.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (existing) {
       return { data: null, error: { message: 'A user with this email already exists' } };
     }
+    this._mockAuthUsers.set(cleanEmail, password);
     const newUser = {
       id: crypto.randomUUID(),
-      email: email.trim().toLowerCase(),
-      password,
+      email: cleanEmail,
       role: role === 'admin' ? 'admin' : 'user',
+      must_change_password: Boolean(must_change_password),
+      is_disabled: false,
+      disabled_at: null,
+      disabled_by: null,
       created_at: new Date().toISOString()
     };
     this.users.push(newUser);
-    return { data: { user: { id: newUser.id, email: newUser.email, role: newUser.role, created_at: newUser.created_at } }, error: null };
+    return {
+      data: {
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          role: newUser.role,
+          must_change_password: newUser.must_change_password,
+          is_disabled: newUser.is_disabled,
+          created_at: newUser.created_at
+        }
+      },
+      error: null
+    };
   }
 
   deleteUser(id) {
@@ -441,8 +625,13 @@ class InMemorySupabaseStore {
       return { error: { message: 'User not found' } };
     }
     this.users.splice(idx, 1);
-    // Cascade delete permissions
+    // Cascade delete permissions and sessions
     this.permissions = this.permissions.filter((p) => p.user_id !== id);
+    for (const [token, sess] of this.sessions.entries()) {
+      if (sess.user?.id === id) {
+        this.sessions.delete(token);
+      }
+    }
     return { error: null };
   }
 
@@ -453,8 +642,167 @@ class InMemorySupabaseStore {
     if (!user) {
       return { error: { message: 'User not found' } };
     }
-    user.password = newPassword;
+    this._mockAuthUsers.set(user.email.toLowerCase(), newPassword);
+    delete user.password;
+    delete user.password_hash;
     return { data: { user: { id: user.id, email: user.email, role: user.role } }, error: null };
+  }
+
+  getServerById(serverId) {
+    return this.servers.find((s) => s.id === serverId) || null;
+  }
+
+  getServersByOwner(ownerId) {
+    return this.servers.filter((s) => s.owner_id === ownerId);
+  }
+
+  deleteServersByOwner(ownerId) {
+    this.servers = this.servers.filter((s) => s.owner_id !== ownerId);
+    return { success: true };
+  }
+
+  createUserServer(serverData, ownerId) {
+    const existing = this.getServersByOwner(ownerId);
+    if (existing.length >= 5) {
+      return { data: null, error: { message: 'Maximum 5 servers per user allowed', code: 'LIMIT_EXCEEDED' } };
+    }
+    const isFirst = existing.length === 0;
+    const shouldBeDefault = Boolean(serverData.is_default || isFirst);
+
+    if (shouldBeDefault) {
+      for (const s of this.servers) {
+        if (s.owner_id === ownerId) s.is_default = false;
+      }
+    }
+
+    const newServer = {
+      id: crypto.randomUUID(),
+      name: serverData.name || 'SAP Server',
+      ashost: serverData.ashost,
+      sysnr: serverData.sysnr || '00',
+      client: serverData.client || '100',
+      lang: serverData.lang || 'EN',
+      environment: serverData.environment || serverData.type || 'Sandbox',
+      router: serverData.router || null,
+      gwserv: serverData.gwserv || null,
+      sap_username: serverData.sap_username || null,
+      sap_password: serverData.sap_password || null,
+      max_connections: Math.min(Math.max(Number(serverData.max_connections) || 3, 1), 5),
+      per_user_limit: Math.min(Math.max(Number(serverData.per_user_limit) || 2, 1), 5),
+      queue_timeout_seconds: Number(serverData.queue_timeout_seconds) || 20,
+      rfc_call_timeout_seconds: Number(serverData.rfc_call_timeout_seconds) || 45,
+      is_active: serverData.is_active !== false,
+      is_disabled: false,
+      is_default: shouldBeDefault,
+      owner_id: ownerId,
+      created_by: ownerId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    this.servers.push(newServer);
+    return { data: newServer, error: null };
+  }
+
+  updateUserServer(serverId, ownerId, updateData) {
+    const server = this.servers.find((s) => s.id === serverId && s.owner_id === ownerId);
+    if (!server) {
+      return { data: null, error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
+    }
+
+    if (updateData.is_default) {
+      for (const s of this.servers) {
+        if (s.owner_id === ownerId) s.is_default = false;
+      }
+    }
+
+    // Apply allowed updates
+    if (updateData.name !== undefined) server.name = updateData.name;
+    if (updateData.ashost !== undefined) server.ashost = updateData.ashost;
+    if (updateData.sysnr !== undefined) server.sysnr = updateData.sysnr;
+    if (updateData.client !== undefined) server.client = updateData.client;
+    if (updateData.lang !== undefined) server.lang = updateData.lang;
+    if (updateData.environment !== undefined) server.environment = updateData.environment;
+    if (updateData.router !== undefined) server.router = updateData.router;
+    if (updateData.gwserv !== undefined) server.gwserv = updateData.gwserv;
+    if (updateData.sap_username !== undefined) server.sap_username = updateData.sap_username;
+    // Leave blank to keep existing encrypted password:
+    if (updateData.sap_password && String(updateData.sap_password).trim()) {
+      server.sap_password = updateData.sap_password;
+    }
+    if (updateData.max_connections !== undefined) {
+      server.max_connections = Math.min(Math.max(Number(updateData.max_connections) || 1, 1), 5);
+    }
+    if (updateData.is_default !== undefined) server.is_default = Boolean(updateData.is_default);
+    if (updateData.is_active !== undefined) server.is_active = Boolean(updateData.is_active);
+    server.updated_at = new Date().toISOString();
+
+    return { data: server, error: null };
+  }
+
+  deleteUserServer(serverId, ownerId) {
+    const idx = this.servers.findIndex((s) => s.id === serverId && s.owner_id === ownerId);
+    if (idx === -1) {
+      return { error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
+    }
+    this.servers.splice(idx, 1);
+    return { success: true, error: null };
+  }
+
+  setUserDefaultServer(serverId, ownerId) {
+    const server = this.servers.find((s) => s.id === serverId && s.owner_id === ownerId);
+    if (!server) {
+      return { data: null, error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
+    }
+    for (const s of this.servers) {
+      if (s.owner_id === ownerId) s.is_default = false;
+    }
+    server.is_default = true;
+    server.updated_at = new Date().toISOString();
+    return { data: server, error: null };
+  }
+
+  getAllowlist() {
+    return this.server_allowlist || this.allowlist || [];
+  }
+
+  addAllowlistEntry({ pattern, type = 'Development', comment = null, created_by = null }) {
+    if (!this.allowlist) this.allowlist = [];
+    const entry = {
+      id: crypto.randomUUID(),
+      pattern: String(pattern).trim(),
+      type,
+      comment: comment ? String(comment).trim() : null,
+      created_by,
+      created_at: new Date().toISOString()
+    };
+    this.allowlist.unshift(entry);
+    return { data: entry, error: null };
+  }
+
+  getAdminSettings() {
+    if (!this.admin_settings) {
+      this.admin_settings = {
+        allow_untested_servers: false,
+        require_test_connection: true
+      };
+    }
+    return this.admin_settings;
+  }
+
+  updateAdminSettings(updates = {}) {
+    this.admin_settings = { ...this.getAdminSettings(), ...updates };
+    return this.admin_settings;
+  }
+
+  deleteAllowlistEntry(id) {
+    if (!this.allowlist) this.allowlist = [];
+    const idx = this.allowlist.findIndex((e) => e.id === id);
+    if (idx === -1) {
+      return { error: { message: 'Allowlist entry not found' } };
+    }
+    this.allowlist.splice(idx, 1);
+    return { success: true, error: null };
   }
 
   verifyPassword(email, currentPassword) {
@@ -468,7 +816,8 @@ class InMemorySupabaseStore {
     if (!user) {
       return { valid: false, error: { message: 'User not found' } };
     }
-    if (user.password !== currentPassword) {
+    const storedAuthPwd = this._mockAuthUsers.get(user.email.toLowerCase());
+    if (storedAuthPwd && storedAuthPwd !== currentPassword) {
       return { valid: false, error: { message: 'Current password is incorrect.' } };
     }
     return { valid: true, error: null };
@@ -488,7 +837,9 @@ class InMemorySupabaseStore {
       id: u.id,
       email: u.email,
       role: u.role,
-      created_at: u.created_at
+      created_at: u.created_at,
+      is_disabled: Boolean(u.is_disabled),
+      must_change_password: Boolean(u.must_change_password)
     }));
   }
 
@@ -651,6 +1002,10 @@ class InMemorySupabaseStore {
     if (serverData.queue_timeout_ms !== undefined) server.queue_timeout_ms = Number(serverData.queue_timeout_ms);
     if (serverData.rfc_call_timeout_ms !== undefined) server.rfc_call_timeout_ms = Number(serverData.rfc_call_timeout_ms);
 
+    if (serverData.is_disabled !== undefined) server.is_disabled = Boolean(serverData.is_disabled);
+    if (serverData.owner_id !== undefined) server.owner_id = serverData.owner_id;
+    if (serverData.is_default !== undefined) server.is_default = Boolean(serverData.is_default);
+
     if (serverData.sap_username !== undefined) {
       server.sap_username = serverData.sap_username ? String(serverData.sap_username).trim() : null;
     }
@@ -772,25 +1127,25 @@ class InMemorySupabaseStore {
     // If user is admin, they have access to all active servers with all apps
     if (role === 'admin') {
       return this.servers
-        .filter((s) => s.is_active)
+        .filter((s) => s.is_active !== false && !s.is_disabled)
         .map((s) => formatServer(s, ALL_BOM_APPS));
     }
 
-    // Join user permissions with active servers
+    // Join user-owned servers and user permissions
     const userPerms = this.permissions.filter((p) => p.user_id === userId);
     const permMap = new Map(userPerms.map((p) => [p.server_id, p.permissions]));
 
     return this.servers
-      .filter((s) => s.is_active && permMap.has(s.id))
-      .map((s) => formatServer(s, permMap.get(s.id)));
+      .filter((s) => !s.is_disabled && s.is_active !== false && (s.owner_id === userId || permMap.has(s.id)))
+      .map((s) => formatServer(s, permMap.get(s.id) || ALL_BOM_APPS));
   }
 
   checkUserServerAccess(userId, serverId, role) {
-    const server = this.servers.find((s) => s.id === serverId && s.is_active);
+    const server = this.servers.find((s) => s.id === serverId && !s.is_disabled);
     if (!server) {
       return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
     }
-    if (role === 'admin') {
+    if (role === 'admin' || (server.owner_id && server.owner_id === userId)) {
       return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
     }
     const perm = this.permissions.find(
@@ -833,7 +1188,7 @@ export const supabaseService = {
 
     const { data: profile, error: profileErr } = await liveSupabase
       .from('users')
-      .select('role')
+      .select('role, must_change_password, is_disabled')
       .eq('id', authData.user.id)
       .single();
 
@@ -846,7 +1201,9 @@ export const supabaseService = {
         user: {
           id: authData.user.id,
           email: authData.user.email,
-          role: profile?.role || 'user'
+          role: profile?.role || 'user',
+          must_change_password: Boolean(profile?.must_change_password),
+          is_disabled: Boolean(profile?.is_disabled)
         }
       },
       error: null
@@ -1001,9 +1358,9 @@ export const supabaseService = {
   },
 
   // Admin: Create User
-  async createUser({ email, password, role = 'user' }) {
+  async createUser({ email, password, role = 'user', must_change_password = true }) {
     if (shouldUseInMemory()) {
-      return inMemorySupabase.createUser({ email, password, role });
+      return inMemorySupabase.createUser({ email, password, role, must_change_password });
     }
     if (!liveSupabase) {
       throw new Error('Database: Supabase client is not initialized.');
@@ -1020,7 +1377,9 @@ export const supabaseService = {
     const { error: upsertErr } = await liveSupabase.from('users').upsert({
       id: authData.user.id,
       email: authData.user.email,
-      role
+      role,
+      must_change_password: Boolean(must_change_password),
+      is_disabled: false
     });
     if (upsertErr) {
       throw new Error(`Failed to create public user record: ${upsertErr.message}`);
@@ -1032,11 +1391,321 @@ export const supabaseService = {
           id: authData.user.id,
           email: authData.user.email,
           role,
+          must_change_password: Boolean(must_change_password),
+          is_disabled: false,
           created_at: authData.user.created_at
         }
       },
       error: null
     };
+  },
+
+  // Login Lockout Tracking
+  async getLoginAttempts(email) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getLoginAttempts(email);
+    }
+    if (!liveSupabase) return { failed_attempts: 0, locked_until: null, last_attempt_at: null };
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const { data, error } = await liveSupabase
+      .from('auth_login_attempts')
+      .select('failed_attempts, locked_until, last_attempt_at')
+      .eq('email', cleanEmail)
+      .maybeSingle();
+    if (error || !data) {
+      return { failed_attempts: 0, locked_until: null, last_attempt_at: null };
+    }
+    return data;
+  },
+
+  async recordFailedLogin(email) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.recordFailedLogin(email);
+    }
+    if (!liveSupabase) return { failed_attempts: 1, locked_until: null, isLocked: false };
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const existing = await this.getLoginAttempts(cleanEmail);
+    const now = Date.now();
+    let locked_until = existing.locked_until;
+
+    if (locked_until && new Date(locked_until).getTime() <= now) {
+      existing.failed_attempts = 0;
+      locked_until = null;
+    }
+
+    const failed_attempts = (existing.failed_attempts || 0) + 1;
+    let isLocked = false;
+    if (failed_attempts >= 5) {
+      locked_until = new Date(now + 15 * 60 * 1000).toISOString();
+      isLocked = true;
+    }
+
+    await liveSupabase
+      .from('auth_login_attempts')
+      .upsert({
+        email: cleanEmail,
+        failed_attempts,
+        locked_until,
+        last_attempt_at: new Date(now).toISOString()
+      }, { onConflict: 'email' });
+
+    return { email: cleanEmail, failed_attempts, locked_until, isLocked };
+  },
+
+  async resetLoginAttempts(email) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.resetLoginAttempts(email);
+    }
+    if (!liveSupabase) return { success: true };
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    await liveSupabase
+      .from('auth_login_attempts')
+      .delete()
+      .eq('email', cleanEmail);
+    return { success: true };
+  },
+
+  async getUserProfile(userId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getUserProfile(userId);
+    }
+    if (!liveSupabase) return null;
+    const { data, error } = await liveSupabase
+      .from('users')
+      .select('id, email, role, must_change_password, is_disabled, disabled_at, created_at')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      ...data,
+      must_change_password: Boolean(data.must_change_password),
+      is_disabled: Boolean(data.is_disabled)
+    };
+  },
+
+  async setUserMustChangePassword(userId, mustChange) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.setUserMustChangePassword(userId, mustChange);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const { error } = await liveSupabase
+      .from('users')
+      .update({ must_change_password: Boolean(mustChange), updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (error) return { error };
+    return { error: null };
+  },
+
+  async updateProfileAsUser(userId, updates, token) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.updateProfileAsUser(userId, updates, token);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    return {
+      data: null,
+      error: { message: 'new row violates row-level security policy for table "users"', code: '42501' }
+    };
+  },
+
+  async setUserDisabled(userId, isDisabled, disabledBy = null) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.setUserDisabled(userId, isDisabled, disabledBy);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const { error } = await liveSupabase
+      .from('users')
+      .update({
+        is_disabled: Boolean(isDisabled),
+        disabled_at: isDisabled ? new Date().toISOString() : null,
+        disabled_by: isDisabled ? disabledBy : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+    if (error) return { error };
+    return { error: null };
+  },
+
+  async getServerById(serverId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getServerById(serverId);
+    }
+    if (!liveSupabase) return null;
+    const { data } = await liveSupabase
+      .from('sap_servers')
+      .select('*')
+      .eq('id', serverId)
+      .maybeSingle();
+    return data || null;
+  },
+
+  async getServersByOwner(ownerId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getServersByOwner(ownerId);
+    }
+    if (!liveSupabase) return [];
+    const { data } = await liveSupabase
+      .from('sap_servers')
+      .select('*')
+      .eq('owner_id', ownerId);
+    return data || [];
+  },
+
+  async deleteServersByOwner(ownerId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.deleteServersByOwner(ownerId);
+    }
+    if (!liveSupabase) return { success: true };
+    await liveSupabase
+      .from('sap_servers')
+      .delete()
+      .eq('owner_id', ownerId);
+    return { success: true };
+  },
+
+  async createUserServer(serverData, ownerId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.createUserServer(serverData, ownerId);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const existing = await this.getServersByOwner(ownerId);
+    if (existing.length >= 5) {
+      return { data: null, error: { message: 'Maximum 5 servers per user allowed', code: 'LIMIT_EXCEEDED' } };
+    }
+    const isFirst = existing.length === 0;
+    const shouldBeDefault = Boolean(serverData.is_default || isFirst);
+
+    if (shouldBeDefault) {
+      await liveSupabase
+        .from('sap_servers')
+        .update({ is_default: false })
+        .eq('owner_id', ownerId);
+    }
+
+    const insertPayload = {
+      ...serverData,
+      is_default: shouldBeDefault,
+      owner_id: ownerId,
+      created_by: ownerId,
+      max_connections: Math.min(Math.max(Number(serverData.max_connections) || 3, 1), 5),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await liveSupabase
+      .from('sap_servers')
+      .insert([insertPayload])
+      .select()
+      .single();
+
+    return { data, error };
+  },
+
+  async updateUserServer(serverId, ownerId, updateData) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.updateUserServer(serverId, ownerId, updateData);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    if (updateData.is_default) {
+      await liveSupabase
+        .from('sap_servers')
+        .update({ is_default: false })
+        .eq('owner_id', ownerId);
+    }
+    const { data, error } = await liveSupabase
+      .from('sap_servers')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', serverId)
+      .eq('owner_id', ownerId)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  async deleteUserServer(serverId, ownerId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.deleteUserServer(serverId, ownerId);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const { error } = await liveSupabase
+      .from('sap_servers')
+      .delete()
+      .eq('id', serverId)
+      .eq('owner_id', ownerId);
+    return { error: error || null, success: !error };
+  },
+
+  async setUserDefaultServer(serverId, ownerId) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.setUserDefaultServer(serverId, ownerId);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    await liveSupabase
+      .from('sap_servers')
+      .update({ is_default: false })
+      .eq('owner_id', ownerId);
+    const { data, error } = await liveSupabase
+      .from('sap_servers')
+      .update({ is_default: true, updated_at: new Date().toISOString() })
+      .eq('id', serverId)
+      .eq('owner_id', ownerId)
+      .select()
+      .single();
+    return { data, error };
+  },
+
+  async getAllowlist() {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getAllowlist();
+    }
+    if (!liveSupabase) return [];
+    const { data } = await liveSupabase
+      .from('server_allowlist')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return data || [];
+  },
+
+  async addAllowlistEntry({ pattern, type, comment, created_by }) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.addAllowlistEntry({ pattern, type, comment, created_by });
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const { data, error } = await liveSupabase
+      .from('server_allowlist')
+      .insert([{ pattern, type, comment, created_by }])
+      .select()
+      .single();
+    if (error) return { data: null, error };
+    return { data, error: null };
+  },
+
+  async deleteAllowlistEntry(id) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.deleteAllowlistEntry(id);
+    }
+    if (!liveSupabase) throw new Error('Database not configured');
+    const { error } = await liveSupabase
+      .from('server_allowlist')
+      .delete()
+      .eq('id', id);
+    if (error) return { error };
+    return { success: true, error: null };
+  },
+
+  async getAdminSettings() {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.getAdminSettings();
+    }
+    return { allow_untested_servers: false, require_test_connection: true };
+  },
+
+  async updateAdminSettings(updates) {
+    if (shouldUseInMemory()) {
+      return inMemorySupabase.updateAdminSettings(updates);
+    }
+    return { allow_untested_servers: false, ...updates };
   },
 
   // Admin: Delete User
@@ -1124,7 +1793,7 @@ export const supabaseService = {
 
     const { data, error } = await liveSupabase
       .from('users')
-      .select('id, email, role, created_at')
+      .select('id, email, role, created_at, is_disabled, must_change_password')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -1436,6 +2105,10 @@ export const supabaseService = {
     }
 
     let newEncryptedPassword;
+    if (serverData.is_disabled !== undefined) server.is_disabled = Boolean(serverData.is_disabled);
+    if (serverData.owner_id !== undefined) server.owner_id = serverData.owner_id;
+    if (serverData.is_default !== undefined) server.is_default = Boolean(serverData.is_default);
+
     if (serverData.sap_username !== undefined) {
       updatePayload.sap_username = serverData.sap_username ? String(serverData.sap_username).trim() : null;
     }
@@ -1857,10 +2530,10 @@ export const supabaseService = {
     }
 
     const server = await this.getServerById(serverId);
-    if (!server || !server.is_active) {
-      return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
+    if (!server || server.is_disabled) {
+      return { permitted: false, reason: 'Access denied: Server not found or disabled', server: null, permissions: [] };
     }
-    if (role === 'admin') {
+    if (role === 'admin' || (server.owner_id && server.owner_id === userId)) {
       return { permitted: true, server, permissions: [...ALL_BOM_APPS] };
     }
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { loginRateLimiter, changePasswordRateLimiter } from '../middleware/security.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, invalidateUserStatusCache } from '../middleware/auth.js';
 import { supabaseService, isNetworkOrRetryableError, warmupDatabaseConnection } from '../services/supabaseClient.js';
 import { validatePasswordPolicy } from '../utils/passwordPolicy.js';
 import { auditLogger } from '../services/auditLog.js';
@@ -83,20 +83,64 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     });
   }
 
+  const cleanEmail = userIdentifier.toLowerCase();
+
   try {
+    // 1. Check Sign-In Lockout (15 minutes after 5 failed attempts per account)
+    const lockoutInfo = await supabaseService.getLoginAttempts(cleanEmail);
+    if (lockoutInfo?.locked_until && new Date(lockoutInfo.locked_until).getTime() > Date.now()) {
+      const remainingMinutes = Math.max(1, Math.ceil((new Date(lockoutInfo.locked_until).getTime() - Date.now()) / 60000));
+      recordRouteAudit(req, {
+        action: 'auth.login_locked',
+        feature: 'auth',
+        status: 'failed',
+        message: `Account ${cleanEmail} is locked`,
+        durationMs: Date.now() - startTime,
+        details: { email: cleanEmail, remainingMinutes }
+      });
+      return res.status(429).json({
+        error: `Account is temporarily locked due to too many failed attempts. Try again in ${remainingMinutes} minute(s).`,
+        code: 'ACCOUNT_LOCKED'
+      });
+    }
+
     const { data, error } = await supabaseService.signInWithPassword({
       email: userIdentifier,
       password: String(password)
     });
 
     if (error || !data?.session) {
+      // Record failed attempt and check for 5-attempt lockout
+      const attempt = await supabaseService.recordFailedLogin(cleanEmail);
+      if (attempt.isLocked) {
+        auditLogger.logAction({
+          user: cleanEmail,
+          sapUsername: cleanEmail,
+          actionType: 'auth_account_locked',
+          task: `Account ${cleanEmail} locked for 15 minutes after 5 failed login attempts`,
+          reason: 'Security lockout policy'
+        });
+        recordRouteAudit(req, {
+          action: 'auth.account_locked',
+          feature: 'auth',
+          status: 'failed',
+          message: `Account ${cleanEmail} locked for 15 minutes`,
+          durationMs: Date.now() - startTime,
+          details: { email: cleanEmail, failedAttempts: attempt.failed_attempts }
+        });
+        return res.status(429).json({
+          error: 'Account is locked for 15 minutes due to 5 failed sign-in attempts.',
+          code: 'ACCOUNT_LOCKED'
+        });
+      }
+
       recordRouteAudit(req, {
         action: 'auth.login_failed',
         feature: 'auth',
         status: 'failed',
         message: error?.message || 'Invalid email or password',
         durationMs: Date.now() - startTime,
-        details: { email: userIdentifier }
+        details: { email: cleanEmail, attempts: attempt.failed_attempts }
       });
       if (isNetworkOrRetryableError(error) || error?.message?.includes("Can't reach")) {
         return res.status(503).json({
@@ -112,6 +156,23 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     const token = session.access_token;
     const cookieOpts = getCookieOptions();
 
+    // Reset failed login attempts on successful sign-in
+    await supabaseService.resetLoginAttempts(cleanEmail);
+
+    // Invalidate user status cache to guarantee fresh status read
+    invalidateUserStatusCache(user.id);
+    const profile = await supabaseService.getUserProfile(user.id);
+
+    // Check if user is disabled
+    if (profile?.is_disabled) {
+      return res.status(403).json({
+        error: 'Your account has been disabled. Please contact your administrator.',
+        code: 'USER_DISABLED'
+      });
+    }
+
+    const mustChangePassword = Boolean(profile ? profile.must_change_password : user.must_change_password);
+
     // Set secure HttpOnly cookies
     res.cookie(LEGACY_COOKIE_NAME, token, cookieOpts);
     res.cookie(COOKIE_NAME, token, cookieOpts);
@@ -122,16 +183,20 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       status: 'success',
       message: 'User logged in successfully',
       durationMs: Date.now() - startTime,
-      details: { role: user.role }
+      details: { role: user.role, must_change_password: mustChangePassword }
     });
 
     return res.status(200).json({
       success: true,
       token,
+      must_change_password: mustChangePassword,
+      is_disabled: Boolean(profile?.is_disabled),
       user: {
         id: user.id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        must_change_password: mustChangePassword,
+        is_disabled: Boolean(profile?.is_disabled)
       },
       username: user.email
     });
@@ -215,7 +280,9 @@ router.get('/me', requireAuth, (req, res) => {
     authenticated: true,
     user: req.user,
     username: req.user.email,
-    role: req.user.role
+    role: req.user.role,
+    must_change_password: Boolean(req.user.must_change_password),
+    is_disabled: Boolean(req.user.is_disabled)
   });
 });
 
@@ -223,7 +290,8 @@ router.get('/me', requireAuth, (req, res) => {
  * POST /api/auth/change-password
  * Allows authenticated users to change their own password.
  * Checks current password, enforces password policy, verifies new differs from current,
- * rate limits requests, signs out other sessions, and logs audit event without credentials.
+ * rate limits requests, signs out other sessions, clears must_change_password flag,
+ * and logs audit event without credentials.
  */
 router.post('/change-password', requireAuth, changePasswordRateLimiter, async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body || {};
@@ -244,7 +312,7 @@ router.post('/change-password', requireAuth, changePasswordRateLimiter, async (r
     return res.status(400).json({ error: 'New password must be different from current password.' });
   }
 
-  const policyCheck = validatePasswordPolicy(newPassword);
+  const policyCheck = validatePasswordPolicy(newPassword, currentPassword);
   if (!policyCheck.isValid) {
     return res.status(400).json({
       error: policyCheck.errors[0] || 'New password does not meet security requirements.',
@@ -267,19 +335,32 @@ router.post('/change-password', requireAuth, changePasswordRateLimiter, async (r
       });
     }
 
-    // 3. Terminate other sessions if supported, preserving current session
+    // 3. Clear must_change_password flag in database and evict status cache immediately
+    await supabaseService.setUserMustChangePassword(req.user.id, false);
+    invalidateUserStatusCache(req.user.id);
+
+    // 4. Terminate other sessions if supported, preserving current session
     const currentToken = req.cookies?.[COOKIE_NAME] || req.cookies?.[LEGACY_COOKIE_NAME] || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : null);
     await supabaseService.signOutOtherSessions(req.user.id, currentToken);
 
-    // 4. Audit log without sensitive passwords
+    // 5. Audit log without sensitive passwords
+    const wasFirstLogin = Boolean(req.user?.must_change_password);
     auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
-      actionType: 'user_change_password',
+      actionType: wasFirstLogin ? 'first_login_completed' : 'user_change_password',
       recordId: req.user.id,
-      afterValues: { email: req.user.email, password_updated: true },
-      task: `User ${req.user.email} updated their password`,
-      reason: 'User self-service password change'
+      afterValues: { email: req.user.email, password_updated: true, first_login_completed: wasFirstLogin },
+      task: wasFirstLogin ? `User ${req.user.email} completed initial password setup` : `User ${req.user.email} updated their password`,
+      reason: wasFirstLogin ? 'First-login mandatory password change completed' : 'User self-service password change'
+    });
+
+    recordRouteAudit(req, {
+      action: 'auth.password_changed',
+      feature: 'auth',
+      status: 'success',
+      message: `Password changed for user ${req.user.email}`,
+      details: { email: req.user.email }
     });
 
     return res.status(200).json({

@@ -1,6 +1,7 @@
 import express from 'express';
+import crypto from 'crypto';
 import { Client } from 'open-rfc';
-import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { requireAuth, requireAdmin, invalidateUserStatusCache } from '../middleware/auth.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { auditLogger } from '../services/auditLog.js';
 import { recordRouteAudit } from '../utils/auditHelper.js';
@@ -13,8 +14,22 @@ import { f4CacheService } from '../services/f4CacheService.js';
 import { jobPerformanceTracker } from '../services/jobPerformanceTracker.js';
 import { getServerHealth } from '../services/serverHealthService.js';
 import { bomJobRepository } from '../services/bomJobRepository.js';
+import { bomJobManager } from '../services/bomJobManager.js';
 
 const router = express.Router();
+
+function generateInitialPassword() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+  const digits = '23456789';
+  let pwd = '';
+  for (let i = 0; i < 8; i++) {
+    pwd += letters[crypto.randomInt(letters.length)];
+  }
+  for (let i = 0; i < 4; i++) {
+    pwd += digits[crypto.randomInt(digits.length)];
+  }
+  return pwd.split('').sort(() => 0.5 - Math.random()).join('') + '!';
+}
 
 // Enforce both Authentication and Administrator role on ALL /api/admin/* routes
 router.use(requireAuth);
@@ -51,8 +66,15 @@ router.post('/users', async (req, res) => {
     return res.status(400).json({ error: 'Email is required.' });
   }
 
-  if (!password || String(password).length < 6) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  // Generate initial password if not provided
+  const initialPassword = password ? String(password) : generateInitialPassword();
+
+  const policyCheck = validatePasswordPolicy(initialPassword);
+  if (!policyCheck.isValid) {
+    return res.status(400).json({
+      error: policyCheck.errors[0] || 'Password does not meet security requirements.',
+      errors: policyCheck.errors
+    });
   }
 
   const normalizedRole = role === 'admin' ? 'admin' : 'user';
@@ -60,20 +82,23 @@ router.post('/users', async (req, res) => {
   try {
     const result = await supabaseService.createUser({
       email: String(email).trim(),
-      password,
-      role: normalizedRole
+      password: initialPassword,
+      role: normalizedRole,
+      must_change_password: true
     });
 
     if (result.error) {
       return res.status(400).json({ error: result.error.message || 'Failed to create user.' });
     }
 
+    invalidateUserStatusCache(result.data.user.id);
+
     auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
       actionType: 'admin_create_user',
       recordId: result.data.user.id,
-      afterValues: { email: result.data.user.email, role: normalizedRole },
+      afterValues: { email: result.data.user.email, role: normalizedRole, must_change_password: true },
       task: `Admin created user ${result.data.user.email} (${normalizedRole})`,
       reason: 'Administrator action'
     });
@@ -90,7 +115,14 @@ router.post('/users', async (req, res) => {
     return res.status(201).json({
       success: true,
       message: 'User created successfully.',
-      user: result.data.user
+      user: {
+        id: result.data.user.id,
+        email: result.data.user.email,
+        role: normalizedRole,
+        must_change_password: true,
+        is_disabled: false
+      },
+      initialPassword // Shown once for copy button, never logged or stored in plain text
     });
   } catch (err) {
     console.error('[Admin] Error creating user:', err.message);
@@ -100,7 +132,7 @@ router.post('/users', async (req, res) => {
 
 /**
  * DELETE /api/admin/users/:id
- * Removes/deactivates a user and cascades their server permissions.
+ * Removes/deactivates a user, cleans up their servers, closes pools, and cancels running jobs.
  */
 router.delete('/users/:id', async (req, res) => {
   const { id } = req.params;
@@ -120,37 +152,200 @@ router.delete('/users/:id', async (req, res) => {
     if (targetUser && (targetUser.id === req.user.id || targetUser.email?.toLowerCase() === req.user.email?.toLowerCase())) {
       return res.status(400).json({ error: 'You cannot delete your own admin account.' });
     }
-    const result = await supabaseService.deleteUser(id);
 
+    const targetUserId = targetUser?.id || id;
+    const targetUserEmail = targetUser?.email || id;
+
+    // SECTION A CLEANUP:
+    // 1. Cancel running jobs owned by this user
+    try {
+      const jobs = await bomJobManager.listJobs({ role: 'admin' });
+      for (const job of (jobs || [])) {
+        if (job.userId === targetUserId && (job.status === 'RUNNING' || job.status === 'QUEUED')) {
+          await bomJobManager.cancelJob(job.id, { role: 'admin' }, 'Owner account deleted');
+        }
+      }
+    } catch (_) {}
+
+    // 2. Disable and delete their servers, close their pools
+    try {
+      const userServers = await supabaseService.getServersByOwner(targetUserId);
+      for (const s of (userServers || [])) {
+        await removePool(s.id);
+      }
+      await supabaseService.deleteServersByOwner(targetUserId);
+    } catch (_) {}
+
+    // 3. Delete user record (audit logs are retained with owner email)
+    const result = await supabaseService.deleteUser(targetUserId);
     if (result.error) {
       return res.status(400).json({ error: result.error.message || 'Failed to delete user.' });
     }
+
+    invalidateUserStatusCache(targetUserId);
 
     auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
       actionType: 'admin_delete_user',
-      recordId: id,
-      task: `Admin deleted user ${id}`,
+      recordId: targetUserId,
+      task: `Admin deleted user ${targetUserEmail} and cleaned up servers and pools`,
       reason: 'Administrator action'
     });
 
     recordRouteAudit(req, {
       action: 'admin.user_delete',
       feature: 'admin',
+      target: targetUserId,
+      status: 'success',
+      message: `User deleted: ${targetUserEmail}`,
+      details: { userId: targetUserId, email: targetUserEmail }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'User removed successfully and associated servers/pools cleaned up.'
+    });
+  } catch (err) {
+    console.error('[Admin] Error deleting user:', err.message);
+    return res.status(500).json({ error: 'Failed to delete user.' });
+  }
+});
+
+/**
+ * POST /api/admin/users/:id/reset-password
+ * Admin resets a user's password, generating a new initial password and setting must_change_password = true.
+ */
+router.post('/users/:id/reset-password', async (req, res) => {
+  const { id } = req.params;
+  const { password } = req.body || {};
+
+  if (!id) {
+    return res.status(400).json({ error: 'User ID is required.' });
+  }
+
+  const initialPassword = password ? String(password) : generateInitialPassword();
+  const policyCheck = validatePasswordPolicy(initialPassword);
+  if (!policyCheck.isValid) {
+    return res.status(400).json({
+      error: policyCheck.errors[0] || 'Password does not meet security requirements.',
+      errors: policyCheck.errors
+    });
+  }
+
+  try {
+    const updateResult = await supabaseService.updateUserPassword(id, initialPassword);
+    if (updateResult.error) {
+      return res.status(400).json({ error: updateResult.error.message || 'Failed to reset password.' });
+    }
+
+    // Set must_change_password = true in database
+    await supabaseService.setUserMustChangePassword(id, true);
+
+    // Clear any login lockout for this account
+    const userObj = updateResult.data?.user;
+    if (userObj?.email) {
+      await supabaseService.resetLoginAttempts(userObj.email);
+    }
+
+    invalidateUserStatusCache(id);
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: 'admin_reset_user_password',
+      recordId: id,
+      afterValues: { user_id: id, password_reset: true, must_change_password: true },
+      task: `Admin reset password for user ${id}`,
+      reason: 'Administrator password reset'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.user_password_reset',
+      feature: 'admin',
       target: id,
       status: 'success',
-      message: `User deleted: ${id}`,
+      message: `Password reset for user ${id}`,
       details: { userId: id }
     });
 
     return res.status(200).json({
       success: true,
-      message: 'User removed successfully.'
+      message: 'Password reset successfully.',
+      initialPassword // Shown once for copy button
     });
   } catch (err) {
-    console.error('[Admin] Error deleting user:', err.message);
-    return res.status(500).json({ error: 'Failed to delete user.' });
+    console.error('[Admin] Error resetting user password:', err.message);
+    return res.status(500).json({ error: 'Failed to reset user password.' });
+  }
+});
+
+/**
+ * PATCH /api/admin/users/:id/status
+ * Admin disables or enables a user.
+ */
+router.patch('/users/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { isDisabled, is_disabled } = req.body || {};
+  const disabledFlag = Boolean(isDisabled !== undefined ? isDisabled : is_disabled);
+
+  if (!id) {
+    return res.status(400).json({ error: 'User ID is required.' });
+  }
+
+  if (req.user.id === id || req.user.email?.toLowerCase() === id?.toLowerCase()) {
+    return res.status(400).json({ error: 'You cannot disable your own admin account.' });
+  }
+
+  try {
+    await supabaseService.setUserDisabled(id, disabledFlag, req.user.id);
+    invalidateUserStatusCache(id);
+
+    if (disabledFlag) {
+      // Disabling user: cancel running jobs and close connection pools
+      try {
+        const jobs = await bomJobManager.listJobs({ role: 'admin' });
+        for (const job of (jobs || [])) {
+          if (job.userId === id && (job.status === 'RUNNING' || job.status === 'QUEUED')) {
+            await bomJobManager.cancelJob(job.id, { role: 'admin' }, 'User account disabled');
+          }
+        }
+      } catch (_) {}
+
+      try {
+        const userServers = await supabaseService.getServersByOwner(id);
+        for (const s of (userServers || [])) {
+          await removePool(s.id);
+        }
+      } catch (_) {}
+    }
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: disabledFlag ? 'admin_disable_user' : 'admin_enable_user',
+      recordId: id,
+      task: `Admin ${disabledFlag ? 'disabled' : 'enabled'} user ${id}`,
+      reason: 'Administrator action'
+    });
+
+    recordRouteAudit(req, {
+      action: disabledFlag ? 'admin.user_disable' : 'admin.user_enable',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `User ${disabledFlag ? 'disabled' : 'enabled'}: ${id}`,
+      details: { userId: id, is_disabled: disabledFlag }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: disabledFlag ? 'User disabled successfully.' : 'User enabled successfully.',
+      is_disabled: disabledFlag
+    });
+  } catch (err) {
+    console.error('[Admin] Error updating user status:', err.message);
+    return res.status(500).json({ error: 'Failed to update user status.' });
   }
 });
 
@@ -190,12 +385,15 @@ router.post('/users/:id/password', async (req, res) => {
       return res.status(400).json({ error: result.error.message || 'Failed to set password.' });
     }
 
+    await supabaseService.setUserMustChangePassword(id, true);
+    invalidateUserStatusCache(id);
+
     auditLogger.logAction({
       user: req.user.email,
       sapUsername: req.user.email,
       actionType: 'admin_set_user_password',
       recordId: id,
-      afterValues: { user_id: id, password_updated: true },
+      afterValues: { user_id: id, password_updated: true, must_change_password: true },
       task: `Admin set new password for user ${id}`,
       reason: 'Administrator password reset'
     });
@@ -294,9 +492,11 @@ router.get('/servers', async (req, res) => {
     const servers = rawServers.map((s) => {
       const health = getServerHealth(s.id);
       const pStats = poolStatsMap[s.id] || null;
+      const { sap_password, sap_password_encrypted, ...safeServer } = s;
 
       return {
-        ...s,
+        ...safeServer,
+        has_password: Boolean(sap_password || sap_password_encrypted),
         max_connections: s.max_connections || 3,
         per_user_limit: s.per_user_limit || 2,
         queue_timeout_ms: s.queue_timeout_ms || 20000,
@@ -319,216 +519,15 @@ router.get('/servers', async (req, res) => {
 });
 
 /**
- * POST /api/admin/servers
- * Adds a new SAP server endpoint.
+ * Removed central server creation/modification routes (User-Owned Servers architecture).
+ * Users add and manage their own SAP servers via /api/servers.
  */
-router.post('/servers', async (req, res) => {
-  const {
-    name,
-    ashost,
-    sysnr,
-    client,
-    lang = 'EN',
-    environment,
-    router: sapRouter,
-    gwserv,
-    modules,
-    sap_username,
-    sap_password
-  } = req.body || {};
-
-  if (!name || !String(name).trim()) {
-    return res.status(400).json({ error: 'Server name is required.' });
-  }
-
-  if (!ashost || !String(ashost).trim()) {
-    return res.status(400).json({ error: 'Application Server host (ashost) is required.' });
-  }
-
-  if (!sysnr || !String(sysnr).trim()) {
-    return res.status(400).json({ error: 'System Number (sysnr) is required.' });
-  }
-
-  if (!client || !String(client).trim()) {
-    return res.status(400).json({ error: 'Client number is required.' });
-  }
-
-  const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
-  const env = String(environment || 'SANDBOX').toUpperCase();
-  if (!validEnvs.includes(env)) {
-    return res.status(400).json({ error: `Environment must be one of: ${validEnvs.join(', ')}.` });
-  }
-
-  const limitsRes = validateServerLimits(req.body);
-  if (!limitsRes.valid) {
-    return res.status(400).json({ error: limitsRes.error });
-  }
-
-  try {
-    const server = await supabaseService.createServer({
-      name: String(name).trim(),
-      ashost: String(ashost).trim(),
-      sysnr: String(sysnr).trim(),
-      client: String(client).trim(),
-      lang: String(lang || 'EN').toUpperCase(),
-      environment: env,
-      router: sapRouter,
-      gwserv,
-      modules,
-      max_connections: limitsRes.max_connections,
-      per_user_limit: limitsRes.per_user_limit,
-      queue_timeout_ms: limitsRes.queue_timeout_ms,
-      rfc_call_timeout_ms: limitsRes.rfc_call_timeout_ms,
-      is_active: req.body?.is_active !== undefined ? Boolean(req.body.is_active) : true,
-      sap_username: sap_username ? String(sap_username).trim() : null,
-      sap_password: sap_password ? String(sap_password).trim() : null,
-      createdBy: req.user.id
-    });
-
-    // Safe audit logging: NEVER log passwords
-        auditLogger.logAction({
-      user: req.user.email,
-      sapUsername: req.user.email,
-      actionType: 'admin_create_server',
-      recordId: server.id,
-      afterValues: {
-        name: server.name,
-        ashost: server.ashost,
-        sysnr: server.sysnr,
-        client: server.client,
-        environment: server.environment,
-        router: server.router,
-        gwserv: server.gwserv,
-        sap_username: server.sap_username,
-        has_password: Boolean(server.has_password),
-        modules: server.modules
-      },
-      task: `Admin created SAP server ${server.name} (${server.environment}) with modules: ${(server.modules || []).join(', ') || 'none'}`,
-      reason: 'Administrator action'
-    });
-
-    recordRouteAudit(req, {
-      action: 'admin.server_create',
-      feature: 'admin',
-      target: server.name,
-      status: 'success',
-      message: `Server created: ${server.name} (${server.environment})`,
-      details: {
-        serverId: server.id,
-        name: server.name,
-        environment: server.environment,
-        modules: server.modules
-      }
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'SAP server created successfully.',
-      server
-    });
-  } catch (err) {
-    console.error('[Admin] Error creating server:', err.message);
-    const pass = req.body?.sap_password ? String(req.body.sap_password).trim() : '';
-    const rawError = err.message || 'Failed to create SAP server.';
-    const sanitizedError = pass ? rawError.split(pass).join('***') : rawError;
-    return res.status(400).json({ error: sanitizedError });
-  }
+router.post('/servers', (req, res) => {
+  return res.status(404).json({ error: 'Endpoint removed: Users manage their own SAP servers via /api/servers.' });
 });
 
-router.put('/servers/:id', async (req, res) => {
-  const { id } = req.params;
-
-  if (!id) {
-    return res.status(400).json({ error: 'Server ID is required.' });
-  }
-
-  const existing = await supabaseService.getServerById(id);
-  if (!existing) {
-    return res.status(404).json({ error: 'Server not found.' });
-  }
-
-  if (req.body?.environment !== undefined) {
-    const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
-    const env = String(req.body.environment).toUpperCase();
-    if (!validEnvs.includes(env)) {
-      return res.status(400).json({ error: `Environment must be one of: ${validEnvs.join(', ')}.` });
-    }
-    req.body.environment = env;
-  }
-
-  const limitsRes = validateServerLimits(req.body, existing);
-  if (!limitsRes.valid) {
-    return res.status(400).json({ error: limitsRes.error });
-  }
-
-  try {
-    const updatePayload = {
-      ...req.body,
-      max_connections: limitsRes.max_connections,
-      per_user_limit: limitsRes.per_user_limit,
-      queue_timeout_ms: limitsRes.queue_timeout_ms,
-      rfc_call_timeout_ms: limitsRes.rfc_call_timeout_ms,
-      updatedBy: req.user.id
-    };
-
-    const updated = await supabaseService.updateServer(id, updatePayload);
-
-    if (!updated) {
-      return res.status(404).json({ error: 'Server not found.' });
-    }
-
-    // Apply new limits & active status live to connection pool without server restart
-    updatePoolConfig(id, {
-      max_connections: updated.max_connections,
-      per_user_limit: updated.per_user_limit,
-      queue_timeout_ms: updated.queue_timeout_ms,
-      rfc_call_timeout_ms: updated.rfc_call_timeout_ms,
-      is_active: updated.is_active
-    });
-
-    // Safe audit logging: NEVER log passwords
-    const safeAuditValues = { ...req.body };
-    delete safeAuditValues.sap_password;
-    delete safeAuditValues.sap_password_encrypted;
-
-        auditLogger.logAction({
-      user: req.user.email,
-      sapUsername: req.user.email,
-      actionType: 'admin_edit_server',
-      recordId: id,
-      afterValues: {
-        ...safeAuditValues,
-        sap_username: updated.sap_username,
-        has_password: Boolean(updated.has_password),
-        modules: updated.modules
-      },
-      task: `Admin updated SAP server ${updated.name} (modules: ${(updated.modules || []).join(', ') || 'none'})`,
-      reason: 'Administrator action'
-    });
-
-    recordRouteAudit(req, {
-      action: 'admin.server_update',
-      feature: 'admin',
-      target: updated.name,
-      status: 'success',
-      message: `Server updated: ${updated.name}`,
-      details: {
-        serverId: id,
-        name: updated.name,
-        environment: updated.environment,
-        modules: updated.modules
-      }
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'SAP server updated successfully.',
-      server: updated
-    });
-  } catch (err) {
-    console.error('[Admin] Error updating server:', err.message);
-    return res.status(400).json({ error: err.message || 'Failed to update SAP server.' });
-  }
+router.put('/servers/:id', (req, res) => {
+  return res.status(404).json({ error: 'Endpoint removed: Users manage their own SAP servers via /api/servers.' });
 });
 
 /**
@@ -543,12 +542,11 @@ router.delete('/servers/:id', async (req, res) => {
   }
 
   try {
-    // Block deleting a server if bulk jobs are currently running on it
-    const runningJobs = await bomJobRepository.countRunningJobsForServer(id);
-    if (runningJobs > 0) {
-      return res.status(409).json({
-        error: `Cannot delete server while ${runningJobs} bulk job(s) are running on it. Please wait for the jobs to finish or cancel them first.`
-      });
+    // Admin kill switch: cancel any running or queued jobs on this server
+    try {
+      await bomJobManager.cancelJobsForServer(id, 'Server deleted by administrator kill switch');
+    } catch (jobErr) {
+      console.warn('[Admin] Failed to cancel jobs during server deletion:', jobErr.message);
     }
 
     const deleted = await supabaseService.deleteServer(id);
@@ -589,134 +587,120 @@ router.delete('/servers/:id', async (req, res) => {
 });
 
 /**
+ * PATCH /api/admin/servers/:id/status
+ * Kill switch: disable or enable an SAP server. When disabled, closes connection pools and cancels jobs.
+ */
+router.patch('/servers/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { is_disabled } = req.body || {};
+
+  if (typeof is_disabled !== 'boolean') {
+    return res.status(400).json({ error: 'is_disabled (boolean) is required.' });
+  }
+
+  try {
+    const updated = await supabaseService.updateServer(id, { is_disabled });
+    if (!updated) {
+      return res.status(404).json({ error: 'Server not found.' });
+    }
+
+    if (is_disabled) {
+      await removePool(id);
+      await bomJobManager.cancelJobsForServer(id, 'Server disabled by administrator');
+    }
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: is_disabled ? 'admin_disable_server' : 'admin_enable_server',
+      recordId: id,
+      task: `Admin ${is_disabled ? 'disabled' : 'enabled'} server ${id}`,
+      reason: 'Administrator kill-switch action'
+    });
+
+    recordRouteAudit(req, {
+      action: is_disabled ? 'admin.server_disable' : 'admin.server_enable',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `Server ${is_disabled ? 'disabled' : 'enabled'}: ${id}`,
+      details: { serverId: id, is_disabled }
+    });
+
+    return res.status(200).json({ success: true, server: updated });
+  } catch (err) {
+    console.error('[Admin] Error updating server status:', err.message);
+    return res.status(500).json({ error: 'Failed to update server status.' });
+  }
+});
+
+/**
+ * PATCH /api/admin/servers/:id/owner
+ * Assigns an owner to an unassigned/legacy SAP server.
+ */
+router.patch('/servers/:id/owner', async (req, res) => {
+  const { id } = req.params;
+  const { owner_id } = req.body || {};
+
+  if (!owner_id) {
+    return res.status(400).json({ error: 'owner_id is required.' });
+  }
+
+  try {
+    const targetUser = await supabaseService.getUserById(owner_id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found.' });
+    }
+
+    const updated = await supabaseService.updateServer(id, { owner_id });
+    if (!updated) {
+      return res.status(404).json({ error: 'Server not found.' });
+    }
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: 'admin_assign_server_owner',
+      recordId: id,
+      task: `Admin assigned server ${id} to user ${targetUser.email}`,
+      reason: 'Administrator owner assignment'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.server_assign_owner',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `Server ${id} assigned to ${targetUser.email}`,
+      details: { serverId: id, owner_id, owner_email: targetUser.email }
+    });
+
+    return res.status(200).json({ success: true, server: updated });
+  } catch (err) {
+    console.error('[Admin] Error assigning server owner:', err.message);
+    return res.status(500).json({ error: 'Failed to assign server owner.' });
+  }
+});
+
+/**
  * ============================================================================
  * PERMISSION MANAGEMENT ROUTES
  * ============================================================================
  */
 
 /**
- * GET /api/admin/permissions
- * Lists all active user-server permissions with joined emails and server names.
- * Resilient to pre-migration database state (returns migrationPending: true and full BOM app grants).
+ * Removed permissions routes (User-Owned Servers architecture: per-action permissions removed).
  */
-router.get('/permissions', async (req, res) => {
-  try {
-    const permissions = await supabaseService.listPermissions();
-    const migrationPending = Boolean(
-      permissions?.migrationPending ||
-      (Array.isArray(permissions) && permissions.some((p) => p.legacyFallback))
-    );
-    return res.status(200).json({
-      success: true,
-      permissions,
-      migrationPending
-    });
-  } catch (err) {
-    console.error('[Admin] Error listing permissions:', err.message);
-    return res.status(500).json({ error: 'Failed to retrieve permissions.' });
-  }
+router.get('/permissions', (req, res) => {
+  return res.status(404).json({ error: 'Endpoint removed: Per-action permissions have been removed.' });
 });
 
-/**
- * POST /api/admin/permissions
- * Grants a user access to a SAP server.
- */
-router.post('/permissions', async (req, res) => {
-  const userId = req.body?.user_id || req.body?.userId;
-  const serverId = req.body?.server_id || req.body?.serverId;
-  const permissions = req.body?.permissions;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'user_id or userId is required.' });
-  }
-
-  if (!serverId) {
-    return res.status(400).json({ error: 'server_id or serverId is required.' });
-  }
-
-  try {
-    const permission = await supabaseService.grantPermission({
-      userId: userId,
-      serverId: serverId,
-      grantedBy: req.user.id,
-      permissions: permissions !== undefined ? permissions : ALL_BOM_APPS
-    });
-
-    auditLogger.logAction({
-      user: req.user.email,
-      sapUsername: req.user.email,
-      actionType: 'admin_grant_permission',
-      recordId: permission.id,
-      afterValues: { user_id: userId, server_id: serverId, permissions: permission.permissions },
-      task: `Admin granted permission to user ${userId} on server ${serverId}`,
-      reason: 'Administrator action'
-    });
-
-    recordRouteAudit(req, {
-      action: 'admin.permission_grant',
-      feature: 'admin',
-      target: `${userId}@${serverId}`,
-      status: 'success',
-      message: `Permission granted to user ${userId} on server ${serverId}`,
-      details: { userId, serverId, permissions: permission.permissions }
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: 'Permission granted successfully.',
-      permission,
-      migrationPending: Boolean(permission.legacyFallback)
-    });
-  } catch (err) {
-    console.error('[Admin] Error granting permission:', err.message);
-    return res.status(400).json({ error: err.message || 'Failed to grant permission.' });
-  }
+router.post('/permissions', (req, res) => {
+  return res.status(404).json({ error: 'Endpoint removed: Per-action permissions have been removed.' });
 });
 
-/**
- * DELETE /api/admin/permissions/:id
- * Revokes an existing permission.
- */
-router.delete('/permissions/:id', async (req, res) => {
-  const { id } = req.params;
-
-  if (!id) {
-    return res.status(400).json({ error: 'Permission ID is required.' });
-  }
-
-  try {
-    const revoked = await supabaseService.revokePermission(id);
-
-    if (!revoked) {
-      return res.status(404).json({ error: 'Permission not found.' });
-    }
-
-    auditLogger.logAction({
-      user: req.user.email,
-      sapUsername: req.user.email,
-      actionType: 'admin_revoke_permission',
-      recordId: id,
-      task: `Admin revoked permission ${id}`,
-      reason: 'Administrator action'
-    });
-
-    recordRouteAudit(req, {
-      action: 'admin.permission_revoke',
-      feature: 'admin',
-      target: id,
-      status: 'success',
-      message: `Permission revoked: ${id}`,
-      details: { permissionId: id }
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Permission revoked successfully.'
-    });
-  } catch (err) {
-    console.error('[Admin] Error revoking permission:', err.message);
-    return res.status(500).json({ error: 'Failed to revoke permission.' });
-  }
+router.delete('/permissions/:id', (req, res) => {
+  return res.status(404).json({ error: 'Endpoint removed: Per-action permissions have been removed.' });
 });
 
 /**
@@ -773,6 +757,123 @@ router.get('/jobs/:jobId/timeline', (req, res) => {
     success: true,
     timeline
   });
+});
+
+/**
+ * ============================================================================
+ * SERVER ALLOWLIST MANAGEMENT ROUTES (Admin Only)
+ * ============================================================================
+ */
+
+/**
+ * GET /api/admin/allowlist
+ * Lists all active server allowlist rules.
+ */
+router.get('/allowlist', async (req, res) => {
+  try {
+    const allowlist = await supabaseService.getAllowlist();
+    return res.status(200).json({ success: true, allowlist });
+  } catch (err) {
+    console.error('[Admin] Error fetching allowlist:', err.message);
+    return res.status(500).json({ error: 'Failed to retrieve allowlist.' });
+  }
+});
+
+/**
+ * POST /api/admin/allowlist
+ * Adds a new server allowlist rule (pattern, type, comment).
+ */
+router.post('/allowlist', async (req, res) => {
+  const { pattern, type, comment } = req.body || {};
+  if (!pattern || !String(pattern).trim()) {
+    return res.status(400).json({ error: 'Pattern is required (e.g. 192.168.12.*, 10.0.0.0/16).' });
+  }
+
+  const validTypes = ['Sandbox', 'Development', 'Production', 'QA'];
+  if (!type || !validTypes.includes(type)) {
+    return res.status(400).json({
+      error: 'Allowlist entry type is required and must be Sandbox, Development, Production, or QA.'
+    });
+  }
+  const entryType = type;
+
+  try {
+    const result = await supabaseService.addAllowlistEntry({
+      pattern: String(pattern).trim(),
+      type: entryType,
+      comment: comment ? String(comment).trim() : null,
+      created_by: req.user.id
+    });
+
+    if (result.error) {
+      return res.status(400).json({ error: result.error.message || 'Failed to add allowlist entry.' });
+    }
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: 'admin_add_allowlist',
+      recordId: result.data?.id || pattern,
+      afterValues: { pattern, type: entryType, comment },
+      task: `Admin added allowlist pattern "${pattern}" (${entryType})`,
+      reason: 'Administrator allowlist management'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.allowlist_add',
+      feature: 'admin',
+      target: result.data?.id,
+      status: 'success',
+      message: `Allowlist rule added: ${pattern}`,
+      details: { pattern, type: entryType }
+    });
+
+    return res.status(201).json({ success: true, entry: result.data });
+  } catch (err) {
+    console.error('[Admin] Error adding allowlist rule:', err.message);
+    return res.status(500).json({ error: 'Failed to add allowlist rule.' });
+  }
+});
+
+/**
+ * DELETE /api/admin/allowlist/:id
+ * Removes a server allowlist rule.
+ */
+router.delete('/allowlist/:id', async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'Allowlist rule ID is required.' });
+  }
+
+  try {
+    const result = await supabaseService.deleteAllowlistEntry(id);
+    if (result.error) {
+      return res.status(400).json({ error: result.error.message || 'Failed to delete allowlist entry.' });
+    }
+
+    auditLogger.logAction({
+      user: req.user.email,
+      sapUsername: req.user.email,
+      actionType: 'admin_delete_allowlist',
+      recordId: id,
+      task: `Admin deleted allowlist rule ${id}`,
+      reason: 'Administrator allowlist management'
+    });
+
+    recordRouteAudit(req, {
+      action: 'admin.allowlist_delete',
+      feature: 'admin',
+      target: id,
+      status: 'success',
+      message: `Allowlist rule deleted: ${id}`,
+      details: { id }
+    });
+
+    return res.status(200).json({ success: true, message: 'Allowlist rule removed.' });
+  } catch (err) {
+    console.error('[Admin] Error deleting allowlist rule:', err.message);
+    return res.status(500).json({ error: 'Failed to delete allowlist rule.' });
+  }
 });
 
 export default router;

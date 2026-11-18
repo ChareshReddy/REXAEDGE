@@ -2,25 +2,24 @@
  * Password Policy & Validation Rules
  * 
  * Rules:
- * 1. At least 10 characters
- * 2. At least one uppercase letter (A-Z)
- * 3. At least one lowercase letter (a-z)
- * 4. At least one number (0-9)
+ * 1. Minimum 12 characters
+ * 2. At least one letter (a-z or A-Z)
+ * 3. At least one digit (0-9)
  */
 
 export const PASSWORD_RULES = {
-  minLength: 10,
-  hasUpperCase: /[A-Z]/,
-  hasLowerCase: /[a-z]/,
+  minLength: 12,
+  hasLetter: /[a-zA-Z]/,
   hasNumber: /[0-9]/
 };
 
 /**
  * Validates a password against system security rules.
  * @param {string} password - Raw password to test
+ * @param {string} [initialPassword] - Optional previous/initial password to prevent re-use
  * @returns {{ isValid: boolean, errors: string[] }}
  */
-export function validatePasswordPolicy(password) {
+export function validatePasswordPolicy(password, initialPassword = null) {
   const errors = [];
 
   if (!password || typeof password !== 'string') {
@@ -34,16 +33,16 @@ export function validatePasswordPolicy(password) {
     errors.push(`Password must be at least ${PASSWORD_RULES.minLength} characters long.`);
   }
 
-  if (!PASSWORD_RULES.hasUpperCase.test(password)) {
-    errors.push('Password must contain at least one uppercase letter (A-Z).');
-  }
-
-  if (!PASSWORD_RULES.hasLowerCase.test(password)) {
-    errors.push('Password must contain at least one lowercase letter (a-z).');
+  if (!PASSWORD_RULES.hasLetter.test(password)) {
+    errors.push('Password must contain at least one letter.');
   }
 
   if (!PASSWORD_RULES.hasNumber.test(password)) {
-    errors.push('Password must contain at least one number (0-9).');
+    errors.push('Password must contain at least one digit.');
+  }
+
+  if (initialPassword && password === initialPassword) {
+    errors.push('New password cannot be equal to the initial or current password.');
   }
 
   return {

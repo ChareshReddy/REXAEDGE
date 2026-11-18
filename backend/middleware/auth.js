@@ -14,10 +14,22 @@ export function extractToken(req) {
   return req.cookies?.[COOKIE_NAME] || req.cookies?.sap_session_id || null;
 }
 
+// In-memory user status cache (evicted immediately whenever status or password changes)
+export const userStatusCache = new Map();
+
+export function invalidateUserStatusCache(userId) {
+  if (userId) {
+    userStatusCache.delete(String(userId));
+  } else {
+    userStatusCache.clear();
+  }
+}
+
 /**
  * Authentication Middleware
  * Requires a valid Supabase Auth session token on every protected route.
- * Attaches verified user { id, email, role } to req.user.
+ * Reads must_change_password and is_disabled from database on each request.
+ * Attaches verified user { id, email, role, must_change_password, is_disabled } to req.user.
  */
 export async function requireAuth(req, res, next) {
   const token = extractToken(req);
@@ -36,14 +48,56 @@ export async function requireAuth(req, res, next) {
     });
   }
 
-  req.user = data.user;
+  const userId = data.user.id;
+  let userStatus = userStatusCache.get(userId);
+  if (!userStatus) {
+    const profile = await supabaseService.getUserProfile(userId);
+    userStatus = {
+      must_change_password: Boolean(profile ? profile.must_change_password : data.user.must_change_password),
+      is_disabled: Boolean(profile ? profile.is_disabled : data.user.is_disabled),
+      role: profile?.role || data.user.role || 'user'
+    };
+    userStatusCache.set(userId, userStatus);
+  }
+
+  // 1. Refuse disabled users immediately
+  if (userStatus.is_disabled) {
+    return res.status(403).json({
+      error: 'Your account has been disabled. Please contact your administrator.',
+      code: 'USER_DISABLED'
+    });
+  }
+
+  // 2. Enforce must_change_password: reject every route except change-password, me, logout, config
+  if (userStatus.must_change_password) {
+    const reqPath = (req.path || req.originalUrl || '').split('?')[0];
+    const isExempt =
+      reqPath.endsWith('/change-password') ||
+      reqPath.endsWith('/me') ||
+      reqPath.endsWith('/logout') ||
+      reqPath.endsWith('/config');
+
+    if (!isExempt) {
+      return res.status(403).json({
+        error: 'Password change required before accessing other resources.',
+        code: 'PASSWORD_CHANGE_REQUIRED'
+      });
+    }
+  }
+
+  req.user = {
+    ...data.user,
+    role: userStatus.role,
+    must_change_password: userStatus.must_change_password,
+    is_disabled: userStatus.is_disabled
+  };
 
   // Backward compatibility attachment
   req.sapSession = {
     sessionId: token,
     username: data.user.email,
     email: data.user.email,
-    user: data.user
+    user: req.user
   };
 
   next();
@@ -81,7 +135,7 @@ export function requireServerAccess(requiredLevel = 'read_only') {
 
     // Resolve target serverId from headers, body, or query
     let serverId =
-      req.headers?.['x-server-id'] ||
+      req.headers?.['x-sap-server-id'] ||
       req.body?.serverId ||
       req.body?.server_id ||
       req.query?.serverId ||
@@ -146,11 +200,20 @@ export function requireModuleAccess(moduleKey) {
       });
     }
 
+    // Job status/cancel and ticketed downloads are authorized by job/ticket ownership
+    if (
+      req.params?.jobId ||
+      (req.path && req.path.match(/^\/jobs\/[^/]+(\/cancel)?$/)) ||
+      (req.path && req.path.match(/^\/download\/[^/]+$/))
+    ) {
+      return next();
+    }
+
     // Resolve target serverId
     let serverId = req.selectedServer?.id;
     if (!serverId) {
       serverId =
-        req.headers?.['x-server-id'] ||
+        req.headers?.['x-sap-server-id'] ||
         req.body?.serverId ||
         req.body?.server_id ||
         req.query?.serverId ||
@@ -222,7 +285,7 @@ export function requireAppPermission(targetApp) {
     // Resolve target serverId from headers, body, query, or req.selectedServer
     let serverId =
       req.selectedServer?.id ||
-      req.headers?.['x-server-id'] ||
+      req.headers?.['x-sap-server-id'] ||
       req.body?.serverId ||
       req.body?.server_id ||
       req.query?.serverId ||
