@@ -94,6 +94,58 @@ function TriStateCheckbox({ checked, indeterminate, onChange, disabled, id, aria
   );
 }
 
+function AdminTabErrorState({ title, message, onRetry, isLoading }) {
+  return (
+    <div
+      className="rx-admin-tab-error"
+      role="alert"
+      style={{
+        padding: '48px 24px',
+        textAlign: 'center',
+        maxWidth: 520,
+        margin: '32px auto',
+        backgroundColor: 'var(--color-surface, #ffffff)',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        borderRadius: 'var(--radius-lg, 8px)',
+        boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0, 32, 78, 0.06))'
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
+          color: 'var(--color-danger, #B42318)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 14
+        }}
+        aria-hidden="true"
+      >
+        <AlertTriangle size={22} />
+      </div>
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text, #0F172A)', margin: '0 0 6px 0' }}>
+        {title}
+      </h3>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted, #64748B)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+        {message}
+      </p>
+      <button
+        type="button"
+        className="sap-button sap-btn sap-btn-primary"
+        onClick={onRetry}
+        disabled={isLoading}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', fontSize: 13 }}
+      >
+        <RefreshCw size={14} className={isLoading ? 'sap-spin' : ''} />
+        <span>{isLoading ? 'Retrying...' : 'Retry'}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function AdminView({
   currentUser,
   onBack,
@@ -809,18 +861,16 @@ export default function AdminView({
            ========================================================================= */}
         {activeTab === 'users' && (
           <div style={{ width: '100%' }}>
-            {usersError && (
-              <Notification
-                placement="inline"
-                type="error"
-                title="Users unavailable"
+            {usersError ? (
+              <AdminTabErrorState
+                title="Failed to Load Users"
                 message={usersError}
-                onClose={() => setUsersError('')}
-                style={{ marginBottom: 12 }}
+                onRetry={loadData}
+                isLoading={isLoading}
               />
-            )}
-
-            {/* Header row with search and Add User button */}
+            ) : (
+              <>
+                {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
@@ -879,7 +929,7 @@ export default function AdminView({
                         (activeUserId && u.id === activeUserId) ||
                         (activeUserEmail && u.email?.toLowerCase() === activeUserEmail.toLowerCase())
                       );
-                      const userServerCount = (servers || []).filter((s) => s.owner_id === u.id).length;
+                      const userServerCount = (Array.isArray(servers) ? servers : []).filter((s) => s.owner_id === u.id).length;
                       return (
                         <tr key={u.id}>
                           <td>
@@ -1003,26 +1053,26 @@ export default function AdminView({
                 </tbody>
               </table>
             </div>
-          </div>
+          </>
         )}
+      </div>
+    )}
 
         {/* =========================================================================
             TAB 2: ALL SAP SERVERS OVERVIEW (READ-ONLY + KILL SWITCHES)
            ========================================================================= */}
         {activeTab === 'servers' && (
           <div style={{ width: '100%' }}>
-            {serversError && (
-              <Notification
-                placement="inline"
-                type="error"
-                title="SAP Servers unavailable"
+            {serversError ? (
+              <AdminTabErrorState
+                title="Failed to Load SAP Servers"
                 message={serversError}
-                onClose={() => setServersError('')}
-                style={{ marginBottom: 12 }}
+                onRetry={loadData}
+                isLoading={isLoading}
               />
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
               <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
                   <Search size={14} />
@@ -1206,26 +1256,26 @@ export default function AdminView({
                 </tbody>
               </table>
             </div>
-          </div>
+          </>
         )}
+      </div>
+    )}
 
         {/* =========================================================================
             TAB 3: SETTINGS (ALLOWLIST & CONNECTION LIMITS)
            ========================================================================= */}
         {activeTab === 'allowlist' && (
           <div style={{ width: '100%' }}>
-            {allowlistError && (
-              <Notification
-                placement="inline"
-                type="error"
-                title="Allowlist unavailable"
+            {allowlistError ? (
+              <AdminTabErrorState
+                title="Failed to Load Server Allowlist"
                 message={allowlistError}
-                onClose={() => setAllowlistError('')}
-                style={{ marginBottom: 12 }}
+                onRetry={loadData}
+                isLoading={isLoading}
               />
-            )}
-
-            {/* Connection Limits and Security Policy Card */}
+            ) : (
+              <>
+                {/* Connection Limits and Security Policy Card */}
             <div style={{
               background: 'var(--sap-surface-elevated, #ffffff)',
               border: '1px solid var(--sap-border-subtle, #e2e8f0)',
@@ -1353,8 +1403,10 @@ export default function AdminView({
                 </tbody>
               </table>
             </div>
-          </div>
+          </>
         )}
+      </div>
+    )}
 
         {/* =========================================================================
             TAB 4: ACTIVITY LOGS (AUDIT & ERRORS)

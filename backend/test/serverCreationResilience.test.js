@@ -13,6 +13,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import app from '../server.js';
 import { inMemorySupabase, supabaseService, SAP_SERVERS_ALLOWED_COLUMNS } from '../services/supabaseClient.js';
+import { normalizeEnvironmentForDb } from '../routes/servers.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -228,6 +229,44 @@ async function run() {
       assert.ok(schemaColumns.has(col), `SAP_SERVERS_ALLOWED_COLUMNS entry "${col}" not found in schema files`);
     }
     console.log('   ✓ Verified SAP_SERVERS_ALLOWED_COLUMNS whitelist strictly matches schema files');
+
+    // 8. Test normalizeEnvironmentForDb: unknown type rejected; Production stays PROD
+    assert.strictEqual(normalizeEnvironmentForDb('Production'), 'PROD', 'Production must map to PROD');
+    assert.strictEqual(normalizeEnvironmentForDb('PROD'), 'PROD', 'PROD must stay PROD');
+    assert.strictEqual(normalizeEnvironmentForDb('  production  '), 'PROD', 'production with whitespace must map to PROD');
+    assert.strictEqual(normalizeEnvironmentForDb('Development'), 'DEV', 'Development must map to DEV');
+    assert.strictEqual(normalizeEnvironmentForDb('dev'), 'DEV', 'dev must map to DEV');
+    assert.strictEqual(normalizeEnvironmentForDb('QA'), 'QA', 'QA must map to QA');
+    assert.strictEqual(normalizeEnvironmentForDb('qa'), 'QA', 'qa must map to QA');
+    assert.strictEqual(normalizeEnvironmentForDb('Sandbox'), 'SANDBOX', 'Sandbox must map to SANDBOX');
+    assert.strictEqual(normalizeEnvironmentForDb('sandbox'), 'SANDBOX', 'sandbox must map to SANDBOX');
+
+    // Unknown types must throw clear errors
+    const unknownInputs = ['UNKNOWN', 'Staging', 'test', 'QAS', '', null, undefined];
+    for (const unknown of unknownInputs) {
+      assert.throws(
+        () => normalizeEnvironmentForDb(unknown),
+        /Invalid environment type|Environment type is required/,
+        `Expected unknown environment type "${unknown}" to be rejected`
+      );
+    }
+
+    // Server write with Production type stays PROD in DB
+    const prodServerRes = await makeRequest('POST', '/api/servers', {
+      name: 'Prod System',
+      ashost: '192.168.1.100',
+      sysnr: '00',
+      client: '100',
+      lang: 'EN',
+      sap_password: 'Password123',
+      allow_untested: true
+    });
+
+    assert.strictEqual(prodServerRes.status, 201, `Failed to create prod server: ${JSON.stringify(prodServerRes.body)}`);
+    const lastProdCreate = writtenServerPayloads.filter(p => p.action === 'create').pop();
+    assert.strictEqual(lastProdCreate.data.environment, 'PROD', 'Production server in database must stay PROD');
+    assert.strictEqual(prodServerRes.body.server.environment, 'Production', 'UI response environment for PROD server must be Production');
+    console.log('   ✓ Verified normalizeEnvironmentForDb: unknown type rejected, Production stays PROD in DB');
 
     console.log('✓ serverCreationResilience.test.js: All schema integrity and allowlist type tests passed');
   } finally {

@@ -1198,13 +1198,16 @@ export const inMemorySupabase = new InMemorySupabaseStore();
  * Automatically routes to Live Supabase if configured, otherwise InMemory Store
  * ============================================================================
  */
-function normalizeEnvironmentForDb(envOrType) {
-  if (!envOrType) return 'SANDBOX';
-  const upper = String(envOrType).trim().toUpperCase();
-  if (upper === 'DEVELOPMENT' || upper === 'DEV') return 'DEV';
-  if (upper === 'PRODUCTION' || upper === 'PROD') return 'PROD';
-  if (upper === 'QA' || upper === 'QAS') return 'QA';
-  return 'SANDBOX';
+export function normalizeEnvironmentForDb(envOrType) {
+  if (!envOrType || !String(envOrType).trim()) {
+    throw new Error('Environment type is required and must be Sandbox, Development, QA, or Production.');
+  }
+  const clean = String(envOrType).trim().toUpperCase();
+  if (clean === 'SANDBOX') return 'SANDBOX';
+  if (clean === 'DEVELOPMENT' || clean === 'DEV') return 'DEV';
+  if (clean === 'QA') return 'QA';
+  if (clean === 'PRODUCTION' || clean === 'PROD') return 'PROD';
+  throw new Error(`Invalid environment type: "${envOrType}". Must be one of: Sandbox, Development, QA, Production.`);
 }
 
 const SAP_SERVERS_ALLOWED_COLUMNS = new Set([

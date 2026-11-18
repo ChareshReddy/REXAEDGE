@@ -33,12 +33,15 @@ function checkTestRateLimit(userId) {
 }
 
 export function normalizeEnvironmentForDb(envOrType) {
-  if (!envOrType) return 'SANDBOX';
-  const upper = String(envOrType).trim().toUpperCase();
-  if (upper === 'DEVELOPMENT' || upper === 'DEV') return 'DEV';
-  if (upper === 'PRODUCTION' || upper === 'PROD') return 'PROD';
-  if (upper === 'QA' || upper === 'QAS') return 'QA';
-  return 'SANDBOX';
+  if (!envOrType || !String(envOrType).trim()) {
+    throw new Error('Environment type is required and must be Sandbox, Development, QA, or Production.');
+  }
+  const clean = String(envOrType).trim().toUpperCase();
+  if (clean === 'SANDBOX') return 'SANDBOX';
+  if (clean === 'DEVELOPMENT' || clean === 'DEV') return 'DEV';
+  if (clean === 'QA') return 'QA';
+  if (clean === 'PRODUCTION' || clean === 'PROD') return 'PROD';
+  throw new Error(`Invalid environment type: "${envOrType}". Must be one of: Sandbox, Development, QA, Production.`);
 }
 
 export function mapDbEnvToUiType(env) {
@@ -198,8 +201,13 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // 4. Server type strictly derived from the allowlist entry
-    const serverType = validation.matchedType || 'Sandbox';
-    const dbEnvironment = normalizeEnvironmentForDb(serverType);
+    const serverType = validation.matchedType;
+    let dbEnvironment;
+    try {
+      dbEnvironment = normalizeEnvironmentForDb(serverType);
+    } catch (err) {
+      return res.status(400).json({ error: err.message || 'Invalid server environment type derived from allowlist.' });
+    }
 
     // 5. Cap connection settings at admin maximums
     const cappedMaxConnections = Math.min(Math.max(Number(max_connections) || 1, 1), 5);
@@ -345,7 +353,11 @@ router.put('/:id', requireAuth, async (req, res) => {
     }
 
     // Update server type from allowlist
-    updatePayload.environment = normalizeEnvironmentForDb(validation.matchedType || existing.environment);
+    try {
+      updatePayload.environment = normalizeEnvironmentForDb(validation.matchedType || existing.environment);
+    } catch (err) {
+      return res.status(400).json({ error: err.message || 'Invalid server environment type derived from allowlist.' });
+    }
 
     if (name !== undefined) updatePayload.name = String(name).trim();
     if (ashost !== undefined) updatePayload.ashost = String(ashost).trim();

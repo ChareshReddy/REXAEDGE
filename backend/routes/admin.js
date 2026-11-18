@@ -15,6 +15,7 @@ import { jobPerformanceTracker } from '../services/jobPerformanceTracker.js';
 import { getServerHealth } from '../services/serverHealthService.js';
 import { bomJobRepository } from '../services/bomJobRepository.js';
 import { bomJobManager } from '../services/bomJobManager.js';
+import { normalizeEnvironmentForDb, mapDbEnvToUiType } from './servers.js';
 
 const router = express.Router();
 
@@ -789,13 +790,15 @@ router.post('/allowlist', async (req, res) => {
     return res.status(400).json({ error: 'Pattern is required (e.g. 192.168.12.*, 10.0.0.0/16).' });
   }
 
-  const validTypes = ['Sandbox', 'Development', 'Production', 'QA'];
-  if (!type || !validTypes.includes(type)) {
+  let entryType;
+  try {
+    const dbEnv = normalizeEnvironmentForDb(type);
+    entryType = mapDbEnvToUiType(dbEnv);
+  } catch (_) {
     return res.status(400).json({
-      error: 'Allowlist entry type is required and must be Sandbox, Development, Production, or QA.'
+      error: 'Allowlist entry type is required and must be Sandbox, Development, QA, or Production.'
     });
   }
-  const entryType = type;
 
   try {
     const result = await supabaseService.addAllowlistEntry({
