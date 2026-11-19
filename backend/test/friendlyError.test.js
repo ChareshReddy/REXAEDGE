@@ -94,6 +94,18 @@ assert.strictEqual(
 assert.strictEqual(notFoundResult.retryable, false, 'Not available must not be retryable');
 console.log('   ✓ Missing function/table mapped to friendly SAP_NOT_AVAILABLE');
 
+// 1e-2. SAP Incompatible Call Rejected (SAP Note 2295840 / blocked CSAP_MAT_BOM_MAINTAIN)
+const incompatibleMsg = 'Incompatible Call Rejected, see note 2295840; Called Incompatible Function: CSAP_MAT_BOM_MAINTAIN';
+const incompatibleResult = toFriendlyError(incompatibleMsg);
+assert.strictEqual(incompatibleResult.code, 'SAP_NOT_AVAILABLE', 'Must map to SAP_NOT_AVAILABLE');
+assert.strictEqual(
+  incompatibleResult.message,
+  'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.',
+  'Must map to friendly message'
+);
+assert.strictEqual(incompatibleResult.retryable, false);
+console.log('   ✓ Incompatible Call Rejected (Note 2295840) mapped to friendly SAP_NOT_AVAILABLE');
+
 // 1f. Supabase / Database errors
 const dbMsg = 'PostgreSQL database error: failed to connect to supabase database relation "users"';
 const dbResult = toFriendlyError(dbMsg);

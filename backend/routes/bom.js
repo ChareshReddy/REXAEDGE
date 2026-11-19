@@ -353,6 +353,7 @@ router.post('/change', requireAppPermission(['bom.change', 'bom.create']), async
         server: req.selectedServer,
         user: req.user,
         simulateOutcomeUnknown: Boolean(req.body.simulateOutcomeUnknown),
+        simulateIncompatibleCall: Boolean(req.body.simulateIncompatibleCall),
         simulateSapBusinessError: req.body.simulateSapBusinessError,
         req
       });

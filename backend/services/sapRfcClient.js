@@ -148,28 +148,65 @@ export function getRfcConnectionParams(customOverrides = {}) {
     throw new Error('No SAP credentials configured for this server');
   }
 
-  const router = server.router || server.saprouter || process.env.SAP_RFC_ROUTER || '/H/103.206.249.51/H/';
-  const ashost = server.ashost || process.env.SAP_RFC_ASHOST || '192.168.12.241';
-  const sysnr = server.sysnr !== undefined ? String(server.sysnr).padStart(2, '0') : (process.env.SAP_RFC_SYSNR || '09');
-  const client = server.client !== undefined ? String(server.client) : (process.env.SAP_RFC_CLIENT || '500');
-  const gwserv = server.gwserv || process.env.SAP_RFC_GWSERV || '3309';
-  const lang = server.lang || process.env.SAP_RFC_LANG || 'EN';
+  const rawHost = server.ashost || server.host || process.env.SAP_RFC_ASHOST;
+  const ashost = rawHost ? String(rawHost).trim() : '';
+  if (!ashost) {
+    throw new Error('Server host (ashost) is required');
+  }
+
+  const rawSysnr = server.sysnr !== undefined && server.sysnr !== null ? String(server.sysnr).trim() : (process.env.SAP_RFC_SYSNR || '00');
+  const sysnr = rawSysnr ? rawSysnr.padStart(2, '0') : '00';
+
+  const rawClient = server.client !== undefined && server.client !== null ? String(server.client).trim() : (process.env.SAP_RFC_CLIENT || '100');
+  const client = rawClient ? rawClient : '100';
 
   const params = {
     ashost,
     sysnr,
     client,
-    user,
+    user: String(user).trim(),
     passwd,
-    lang,
     cpic_streaming: 'enabled'
   };
 
-  if (router && String(router).trim()) {
-    params.saprouter = String(router).trim();
+  // Optional fields: NEVER send empty strings!
+  const rawLang = server.lang !== undefined && server.lang !== null
+    ? String(server.lang).trim().toUpperCase()
+    : (process.env.SAP_RFC_LANG ? String(process.env.SAP_RFC_LANG).trim().toUpperCase() : '');
+  if (rawLang) {
+    params.lang = rawLang;
   }
-  if (gwserv && String(gwserv).trim()) {
-    params.gwserv = String(gwserv).trim();
+
+  const rawGwserv = server.gwserv !== undefined && server.gwserv !== null
+    ? String(server.gwserv).trim()
+    : (process.env.SAP_RFC_GWSERV ? String(process.env.SAP_RFC_GWSERV).trim() : '');
+  if (rawGwserv) {
+    params.gwserv = rawGwserv;
+  }
+
+  const rawGroup = server.group !== undefined && server.group !== null ? String(server.group).trim() : '';
+  if (rawGroup) {
+    params.group = rawGroup;
+  }
+
+  // Router handling: only set when router string is non-empty after trim.
+  // Never default to a hardcoded router IP or env var! A server uses only its own router field; empty means direct connection.
+  const rawRouter = server.router !== undefined && server.router !== null
+    ? server.router
+    : (server.saprouter !== undefined && server.saprouter !== null ? server.saprouter : null);
+  const cleanRouter = rawRouter ? String(rawRouter).trim() : '';
+
+  if (cleanRouter) {
+    if (!cleanRouter.startsWith('/H/') && !cleanRouter.startsWith('/h/')) {
+      const err = new Error('SAP router string must start with /H/ (e.g. /H/router-host/H/)');
+      err.code = 'INVALID_ROUTER_FORMAT';
+      throw err;
+    }
+    let normalizedRouter = cleanRouter;
+    if (!normalizedRouter.endsWith('/H/') && !normalizedRouter.endsWith('/h/')) {
+      normalizedRouter = normalizedRouter.endsWith('/') ? `${normalizedRouter}H/` : `${normalizedRouter}/H/`;
+    }
+    params.saprouter = normalizedRouter;
   }
 
   return params;
@@ -220,8 +257,32 @@ export async function openRfcClient(customOverrides = {}, ClientClass = Client) 
 
   const params = getRfcConnectionParams(activeConfig);
   const client = new ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
-  await client.open();
-  return client;
+
+  const connectTimeoutMs = Number(activeConfig.connect_timeout_ms) || 10000;
+  let openTimer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    openTimer = setTimeout(() => {
+      const err = new Error(`RFC connection open timed out after ${connectTimeoutMs}ms`);
+      err.code = 'CONNECT_TIMEOUT';
+      reject(err);
+    }, connectTimeoutMs);
+  });
+
+  try {
+    await Promise.race([client.open(), timeoutPromise]);
+    if (openTimer) clearTimeout(openTimer);
+    return client;
+  } catch (err) {
+    if (openTimer) clearTimeout(openTimer);
+    if (typeof client.close === 'function') {
+      try {
+        const closePromise = Promise.resolve(client.close()).catch(() => {});
+        const closeTimeout = new Promise((resolve) => setTimeout(resolve, 1000));
+        await Promise.race([closePromise, closeTimeout]);
+      } catch (_) {}
+    }
+    throw err;
+  }
 }
 
 /**
@@ -328,17 +389,36 @@ export async function executeRfcFunction(functionName, parameters = {}, customCr
   }, { signal: customCredentials.signal, req: customCredentials.req });
 }
 
+let testPingOverride = null;
+export function setTestPingOverride(fn) {
+  testPingOverride = fn;
+}
+
 /**
  * Pings SAP RFC Gateway to test connectivity.
  * @returns {Promise<{ success: boolean, message: string, latencyMs?: number }>}
  */
 export async function pingRfcServer(customCredentials = {}) {
+  if (testPingOverride) {
+    return testPingOverride(customCredentials);
+  }
   assertResolvedServer(customCredentials, 'pingRfcServer');
   const startTime = Date.now();
+  let probeTimer = null;
+  const probeTimeoutMs = 5000; // 5s health probe hard timeout
+  const timeoutPromise = new Promise((_, reject) => {
+    probeTimer = setTimeout(() => {
+      const err = new Error(`RFC ping probe timed out after ${probeTimeoutMs}ms`);
+      err.code = 'PROBE_TIMEOUT';
+      reject(err);
+    }, probeTimeoutMs);
+  });
+
   try {
     const params = getRfcConnectionParams(customCredentials);
 
     if (process.env.USE_MOCK_SAP === 'true') {
+      if (probeTimer) clearTimeout(probeTimer);
       return { success: true, message: 'Mock RFC Ping Successful', latencyMs: 2 };
     }
 
@@ -346,12 +426,17 @@ export async function pingRfcServer(customCredentials = {}) {
     const pool = getSapConnectionPool(server);
     const userId = customCredentials.userId || customCredentials.user?.id || 'admin';
 
-    return await pool.run(RFC_PRIORITY.READ, userId, async (client) => {
+    const runPromise = pool.run(RFC_PRIORITY.READ, userId, async (client) => {
       await client.call('RFC_PING', {});
       const latencyMs = Date.now() - startTime;
       return { success: true, message: 'SAP RFC Ping Successful', latencyMs };
     }, { signal: customCredentials.signal, req: customCredentials.req });
+
+    const result = await Promise.race([runPromise, timeoutPromise]);
+    if (probeTimer) clearTimeout(probeTimer);
+    return result;
   } catch (err) {
+    if (probeTimer) clearTimeout(probeTimer);
     return {
       success: false,
       message: `RFC Ping Failed: ${err.message}`,
@@ -1263,7 +1348,22 @@ export async function rfcCreateBom(params = {}) {
 }
 
 /**
- * Changes an existing Material BOM via CSAP_MAT_BOM_MAINTAIN.
+ * Returns the configured SAP RFC function module name for modifying a BOM.
+ * Defaults to 'CSAP_MAT_BOM_MAINTAIN', or can be overridden via SAP_BOM_CHANGE_FUNCTION
+ * to a custom remote-enabled Z wrapper (e.g. 'Z_RFC_BOM_MAINTAIN').
+ *
+ * @returns {string}
+ */
+export function getBomChangeFunctionName() {
+  const custom = process.env.SAP_BOM_CHANGE_FUNCTION;
+  if (custom && typeof custom === 'string' && custom.trim()) {
+    return custom.trim();
+  }
+  return 'CSAP_MAT_BOM_MAINTAIN';
+}
+
+/**
+ * Changes an existing Material BOM via CSAP_MAT_BOM_MAINTAIN (or configured SAP_BOM_CHANGE_FUNCTION).
  * Replaces CS02 GUI scripting automation.
  *
  * @param {object} params
@@ -1333,6 +1433,16 @@ export async function rfcChangeBom(params = {}) {
         code: 'WRITE_OUTCOME_UNKNOWN',
         message: 'RFC connection timed out during CSAP_MAT_BOM_MAINTAIN execution. A re-read verification is required before any retry.',
         verifyRequired: true
+      };
+    }
+
+    if (params.simulateIncompatibleCall) {
+      console.error('[sapRfcClient.rfcChangeBom] Technical error: Incompatible Call Rejected, see note 2295840; Called Incompatible Function: CSAP_MAT_BOM_MAINTAIN');
+      return {
+        success: false,
+        verified: false,
+        code: 'SAP_NOT_AVAILABLE',
+        message: 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
       };
     }
 
@@ -1531,7 +1641,8 @@ export async function rfcChangeBom(params = {}) {
     if (changeNo) maintainPayload.CHANGE_NO = String(changeNo);
     if (validFrom) maintainPayload.VALID_FROM = String(validFrom);
 
-    await client.call('CSAP_MAT_BOM_MAINTAIN', maintainPayload);
+    const changeFunctionName = getBomChangeFunctionName();
+    await client.call(changeFunctionName, maintainPayload);
     await client.call('BAPI_TRANSACTION_COMMIT', { WAIT: 'X' });
 
     // Verification re-read
@@ -1555,11 +1666,12 @@ export async function rfcChangeBom(params = {}) {
       message: 'BOM changed and verified successfully in SAP'
     };
   } catch (err) {
-    const isConnBreak = err.message && (
-      err.message.includes('TIMEOUT') ||
-      err.message.includes('ECONNRESET') ||
-      err.code === 'TIMEOUT' ||
-      err.code === 'RFC_TIMEOUT'
+    const rawErrMsg = String(err?.message || err?.sapMessage || err || '');
+    const isConnBreak = rawErrMsg && (
+      rawErrMsg.includes('TIMEOUT') ||
+      rawErrMsg.includes('ECONNRESET') ||
+      err?.code === 'TIMEOUT' ||
+      err?.code === 'RFC_TIMEOUT'
     );
 
     if (isConnBreak) {
@@ -1567,8 +1679,26 @@ export async function rfcChangeBom(params = {}) {
         success: false,
         verified: false,
         code: 'WRITE_OUTCOME_UNKNOWN',
-        message: `RFC write outcome unknown due to connection timeout: ${err.message}. Re-reading BOM to verify state before retry.`,
+        message: `RFC write outcome unknown due to connection timeout: ${rawErrMsg}. Re-reading BOM to verify state before retry.`,
         verifyRequired: true
+      };
+    }
+
+    const isIncompatibleCall =
+      rawErrMsg.includes('Incompatible Call Rejected') ||
+      rawErrMsg.includes('2295840') ||
+      rawErrMsg.includes('Called Incompatible Function') ||
+      rawErrMsg.toLowerCase().includes('incompatible function') ||
+      rawErrMsg.toLowerCase().includes('incompatible call') ||
+      err?.code === 'SAP_INCOMPATIBLE_CALL';
+
+    if (isIncompatibleCall) {
+      console.error(`[sapRfcClient.rfcChangeBom] Technical error: ${rawErrMsg}`);
+      return {
+        success: false,
+        verified: false,
+        code: 'SAP_NOT_AVAILABLE',
+        message: 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
       };
     }
 
@@ -5094,6 +5224,8 @@ export default {
   rfcExplodeBomHierarchy,
   rfcValidateSourceBom,
   rfcCreateBom,
+  rfcChangeBom,
+  getBomChangeFunctionName,
   rfcSimulateCopyBom,
   isSubAssemblyBomExistingInTarget,
   rfcDeleteBom,

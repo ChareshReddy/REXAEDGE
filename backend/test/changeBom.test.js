@@ -11,7 +11,8 @@ import assert from 'node:assert/strict';
 import http from 'http';
 import { inMemorySupabase, supabaseService } from '../services/supabaseClient.js';
 import { bomLockService } from '../services/bomLockService.js';
-import { rfcCreateBom, rfcReadBom } from '../services/sapRfcClient.js';
+import { rfcCreateBom, rfcReadBom, rfcChangeBom, getBomChangeFunctionName } from '../services/sapRfcClient.js';
+import { toFriendlyError } from '../utils/friendlyError.js';
 
 const { default: app } = await import('../server.js');
 
@@ -406,5 +407,172 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
 
     assert.equal(res.status, 404);
     assert.ok(res.body.error.includes('Server not found') || res.body.code === 'SERVER_NOT_FOUND');
+  });
+
+  await t.test('10. SAP_BOM_CHANGE_FUNCTION: uses default CSAP_MAT_BOM_MAINTAIN when env var is unset', async () => {
+    const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
+    delete process.env.SAP_BOM_CHANGE_FUNCTION;
+
+    assert.equal(getBomChangeFunctionName(), 'CSAP_MAT_BOM_MAINTAIN');
+
+    let invokedFm = null;
+    let commitCalled = false;
+    let maintainPayload = null;
+
+    const mockClient = {
+      call: async (fm, payload) => {
+        if (fm === 'CSAP_MAT_BOM_MAINTAIN' || fm.startsWith('Z_')) {
+          invokedFm = fm;
+          maintainPayload = payload;
+          return {};
+        }
+        if (fm === 'BAPI_TRANSACTION_COMMIT') {
+          commitCalled = true;
+          return {};
+        }
+        if (fm === 'RFC_READ_TABLE') {
+          return { FIELDS: [{ FIELDNAME: 'STLAL' }], DATA: [] };
+        }
+        return {};
+      }
+    };
+
+    const res = await rfcChangeBom({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { headerText: 'Default FM Header' },
+      client: mockClient,
+      server: serverA
+    });
+
+    assert.equal(invokedFm, 'CSAP_MAT_BOM_MAINTAIN');
+    assert.equal(commitCalled, true);
+    assert.ok(maintainPayload, 'maintainPayload must be passed to RFC call');
+    assert.equal(maintainPayload.I_STKO.BKTXT, 'Default FM Header');
+    assert.ok(maintainPayload.T_STPO, 'T_STPO table must be passed');
+
+    if (origEnv !== undefined) {
+      process.env.SAP_BOM_CHANGE_FUNCTION = origEnv;
+    }
+  });
+
+  await t.test('11. SAP_BOM_CHANGE_FUNCTION: uses custom Z wrapper with SAME parameters & commit like Create', async () => {
+    const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
+    process.env.SAP_BOM_CHANGE_FUNCTION = 'Z_RFC_BOM_MAINTAIN';
+
+    assert.equal(getBomChangeFunctionName(), 'Z_RFC_BOM_MAINTAIN');
+
+    let invokedFm = null;
+    let commitCalled = false;
+    let maintainPayload = null;
+
+    const mockClient = {
+      call: async (fm, payload) => {
+        if (fm === 'Z_RFC_BOM_MAINTAIN') {
+          invokedFm = fm;
+          maintainPayload = payload;
+          return {};
+        }
+        if (fm === 'BAPI_TRANSACTION_COMMIT') {
+          commitCalled = true;
+          return {};
+        }
+        if (fm === 'RFC_READ_TABLE') {
+          return { FIELDS: [{ FIELDNAME: 'STLAL' }], DATA: [] };
+        }
+        return {};
+      }
+    };
+
+    const res = await rfcChangeBom({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { headerText: 'Z Wrapper Header' },
+      items: [{ item: '0010', component: 'RAW-01', quantity: 15, unit: 'EA', itemCategory: 'L' }],
+      client: mockClient,
+      server: serverA
+    });
+
+    assert.equal(invokedFm, 'Z_RFC_BOM_MAINTAIN');
+    assert.equal(commitCalled, true);
+    assert.ok(maintainPayload, 'maintainPayload must be passed to Z wrapper');
+    assert.equal(maintainPayload.I_STKO.BKTXT, 'Z Wrapper Header');
+    assert.equal(maintainPayload.T_STPO[0].COMP_QTY, '15');
+
+    if (origEnv !== undefined) {
+      process.env.SAP_BOM_CHANGE_FUNCTION = origEnv;
+    } else {
+      delete process.env.SAP_BOM_CHANGE_FUNCTION;
+    }
+  });
+
+  await t.test('12. Incompatible Call (Note 2295840): maps to friendly message without technical text', async () => {
+    const technicalSapErr = 'Incompatible Call Rejected, see note 2295840; Called Incompatible Function: CSAP_MAT_BOM_MAINTAIN';
+
+    const mockClient = {
+      call: async (fm) => {
+        if (fm === 'CSAP_MAT_BOM_MAINTAIN') {
+          throw new Error(technicalSapErr);
+        }
+        return {};
+      }
+    };
+
+    const res = await rfcChangeBom({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { headerText: 'Trigger Incompatible Call' },
+      client: mockClient,
+      server: serverA
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.code, 'SAP_NOT_AVAILABLE');
+    assert.equal(
+      res.message,
+      'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
+    );
+    assert.ok(!res.message.includes('2295840'), 'Technical note number must not appear in user message');
+    assert.ok(!res.message.includes('CSAP_MAT_BOM_MAINTAIN'), 'Technical function name must not appear in user message');
+
+    // Also verify toFriendlyError utility maps it identically
+    const friendly = toFriendlyError(technicalSapErr);
+    assert.equal(friendly.code, 'SAP_NOT_AVAILABLE');
+    assert.equal(
+      friendly.message,
+      'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
+    );
+    assert.ok(!friendly.message.includes('2295840'));
+
+    // Also verify simulated mock route returns the friendly message
+    const apiRes = await makeRequest(
+      'POST',
+      '/api/bom/change',
+      {
+        material: testMaterial,
+        plant: testPlant,
+        bomUsage: testUsage,
+        alternativeBom: testAlt,
+        header: { baseQty: '300' },
+        simulateIncompatibleCall: true
+      },
+      {
+        Authorization: `Bearer ${userAToken}`,
+        'x-sap-server-id': serverA.id
+      }
+    );
+
+    assert.equal(apiRes.status, 400);
+    assert.equal(apiRes.body.code, 'SAP_NOT_AVAILABLE');
+    assert.equal(
+      apiRes.body.message,
+      'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
+    );
   });
 });

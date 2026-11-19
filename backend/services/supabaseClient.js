@@ -139,6 +139,35 @@ export function isNetworkOrRetryableError(err) {
   return isDnsError || isConnReset || isTimeout || isFetchFailed;
 }
 
+import { supabaseCache, CACHE_TTL, DB_TIMEOUT_MS, withDbTimeout } from './supabaseCache.js';
+export { supabaseCache, CACHE_TTL, DB_TIMEOUT_MS, withDbTimeout };
+
+/**
+ * Measures real Supabase round-trip latency in milliseconds.
+ */
+export async function measureSupabaseLatency() {
+  const start = Date.now();
+  try {
+    if (shouldUseInMemory()) {
+      await Promise.resolve(inMemorySupabase.users);
+      const latencyMs = Math.max(1, Date.now() - start);
+      return { ok: true, latencyMs };
+    }
+    if (!liveSupabase) {
+      return { ok: false, error: 'Supabase client not configured', latencyMs: null };
+    }
+    const { error } = await liveSupabase.from('users').select('id').limit(1);
+    const latencyMs = Date.now() - start;
+    if (error && error.code !== 'PGRST116') {
+      return { ok: false, error: error.message, latencyMs };
+    }
+    return { ok: true, latencyMs };
+  } catch (err) {
+    const latencyMs = Date.now() - start;
+    return { ok: false, error: err.message, latencyMs };
+  }
+}
+
 /**
  * Asynchronously warms up the Supabase database connection and DNS/TLS pool on server startup.
  * Non-blocking: catches and ignores errors so server startup is never blocked.
@@ -148,12 +177,10 @@ export async function warmupDatabaseConnection() {
     return;
   }
   try {
-    await Promise.allSettled([
-      liveSupabase.from('users').select('id').limit(1),
-      liveAuthClient ? liveAuthClient.auth.getSession() : Promise.resolve()
-    ]);
-    if (process.env.DEBUG_AUTH) {
-      console.log('[Supabase Warmup] Connection pool warmed successfully.');
+    const latency = await measureSupabaseLatency();
+    console.log(`[Supabase Startup] Measured round-trip latency: ${latency.latencyMs}ms (${latency.ok ? 'connected' : latency.error})`);
+    if (liveAuthClient) {
+      await liveAuthClient.auth.getSession().catch(() => {});
     }
   } catch (_) {
     // Non-blocking warmup
@@ -400,6 +427,20 @@ class InMemorySupabaseStore {
     }
 
     this.sessions = new Map();
+    this._simulatedHangs = new Map();
+  }
+
+  setSimulatedHang(methodName, shouldHang = true) {
+    if (!this._simulatedHangs) this._simulatedHangs = new Map();
+    if (shouldHang) {
+      this._simulatedHangs.set(methodName, true);
+    } else {
+      this._simulatedHangs.delete(methodName);
+    }
+  }
+
+  isSimulatedHang(methodName) {
+    return Boolean(this._simulatedHangs && this._simulatedHangs.get(methodName));
   }
 
   // --- Login Lockout Tracking ---
@@ -484,14 +525,40 @@ class InMemorySupabaseStore {
   signOut(token) {
     if (token) {
       this.sessions.delete(token);
+      supabaseCache.invalidate(`auth:${token}`);
     }
     return { error: null };
   }
 
   getUser(token) {
+    if (this.isSimulatedHang('getUser')) return new Promise(() => {});
     if (!token) return { data: { user: null }, error: { message: 'No token provided' } };
 
-    // Support static test token formats
+    // 1. Check explicit active sessions first
+    const session = this.sessions.get(token);
+    if (session) {
+      if (session.expiresAt && session.expiresAt < Date.now()) {
+        return { data: { user: null }, error: { message: 'Invalid or expired session token' } };
+      }
+      const userRec = this.users.find((u) => u.id === session.user?.id);
+      if (!userRec) {
+        return { data: { user: null }, error: { message: 'User not found' } };
+      }
+      return {
+        data: {
+          user: {
+            id: userRec.id,
+            email: userRec.email,
+            role: userRec.role,
+            must_change_password: Boolean(userRec.must_change_password),
+            is_disabled: Boolean(userRec.is_disabled)
+          }
+        },
+        error: null
+      };
+    }
+
+    // 2. Fallback to static convenience test tokens
     if (token === 'admin-test-token' || token.startsWith('admin-')) {
       const admin = this.users.find((u) => u.role === 'admin') || this.users[0];
       return {
@@ -509,6 +576,7 @@ class InMemorySupabaseStore {
     }
     if (token === 'user-test-token' || token.startsWith('user-')) {
       const regular = this.users.find((u) => u.role === 'user') || this.users[1];
+      if (!regular) return { data: { user: null }, error: { message: 'User not found' } };
       return {
         data: {
           user: {
@@ -523,26 +591,11 @@ class InMemorySupabaseStore {
       };
     }
 
-    const session = this.sessions.get(token);
-    if (!session || session.expiresAt < Date.now()) {
-      return { data: { user: null }, error: { message: 'Invalid or expired session token' } };
-    }
-    const userRec = this.users.find((u) => u.id === session.user?.id) || session.user;
-    return {
-      data: {
-        user: {
-          id: userRec.id,
-          email: userRec.email,
-          role: userRec.role,
-          must_change_password: Boolean(userRec.must_change_password),
-          is_disabled: Boolean(userRec.is_disabled)
-        }
-      },
-      error: null
-    };
+    return { data: { user: null }, error: { message: 'Invalid or expired session token' } };
   }
 
   getUserProfile(userId) {
+    if (this.isSimulatedHang('getUserProfile')) return new Promise(() => {});
     const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
     if (!user) return null;
     return {
@@ -557,6 +610,7 @@ class InMemorySupabaseStore {
   }
 
   setUserMustChangePassword(userId, mustChange) {
+    supabaseCache.invalidateUser(userId);
     const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
     if (!user) return { error: { message: 'User not found' } };
     user.must_change_password = Boolean(mustChange);
@@ -578,6 +632,7 @@ class InMemorySupabaseStore {
   }
 
   setUserDisabled(userId, isDisabled, disabledBy = null) {
+    supabaseCache.invalidateUser(userId);
     const user = this.users.find((u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase());
     if (!user) return { error: { message: 'User not found' } };
     user.is_disabled = Boolean(isDisabled);
@@ -620,6 +675,7 @@ class InMemorySupabaseStore {
   }
 
   deleteUser(id) {
+    supabaseCache.invalidateUser(id);
     const idx = this.users.findIndex((u) => u.id === id);
     if (idx === -1) {
       return { error: { message: 'User not found' } };
@@ -636,6 +692,7 @@ class InMemorySupabaseStore {
   }
 
   updateUserPassword(userId, newPassword) {
+    supabaseCache.invalidateUser(userId);
     const user = this.users.find(
       (u) => u.id === userId || u.email.toLowerCase() === String(userId).toLowerCase()
     );
@@ -649,6 +706,7 @@ class InMemorySupabaseStore {
   }
 
   getServersByOwner(ownerId) {
+    if (this.isSimulatedHang('getServersByOwner')) return new Promise(() => {});
     return this.servers.filter((s) => s.owner_id === ownerId);
   }
 
@@ -710,10 +768,16 @@ class InMemorySupabaseStore {
     };
 
     this.servers.push(newServer);
+    // User-owned server: enable all BOM modules by default
+    try {
+      this.setServerModules(newServer.id, [MODULE_KEYS.BOM], ownerId);
+    } catch (_) {}
     return { data: newServer, error: null };
   }
 
   updateUserServer(serverId, ownerId, updateData) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     const server = this.servers.find((s) => s.id === serverId && s.owner_id === ownerId);
     if (!server) {
       return { data: null, error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
@@ -767,6 +831,8 @@ class InMemorySupabaseStore {
   }
 
   deleteUserServer(serverId, ownerId) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     const idx = this.servers.findIndex((s) => s.id === serverId && s.owner_id === ownerId);
     if (idx === -1) {
       return { error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
@@ -776,6 +842,8 @@ class InMemorySupabaseStore {
   }
 
   setUserDefaultServer(serverId, ownerId) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     const server = this.servers.find((s) => s.id === serverId && s.owner_id === ownerId);
     if (!server) {
       return { data: null, error: { message: 'Server not found', code: 'SERVER_NOT_FOUND' } };
@@ -789,10 +857,12 @@ class InMemorySupabaseStore {
   }
 
   getAllowlist() {
+    if (this.isSimulatedHang('getAllowlist')) return new Promise(() => {});
     return this.server_allowlist || this.allowlist || [];
   }
 
   addAllowlistEntry({ pattern, type = 'Development', comment = null, created_by = null }) {
+    supabaseCache.invalidateAllowlist();
     if (!this.allowlist) this.allowlist = [];
     const entry = {
       id: crypto.randomUUID(),
@@ -822,6 +892,7 @@ class InMemorySupabaseStore {
   }
 
   deleteAllowlistEntry(id) {
+    supabaseCache.invalidateAllowlist();
     if (!this.allowlist) this.allowlist = [];
     const idx = this.allowlist.findIndex((e) => e.id === id);
     if (idx === -1) {
@@ -871,17 +942,36 @@ class InMemorySupabaseStore {
 
   // --- Module Operations ---
   getServerModules(serverId) {
-    if (!this.configured_servers.has(serverId)) {
-      // Unconfigured server defaults to having BOM enabled per migration requirement
-      return [MODULE_KEYS.BOM];
+    if (this.isSimulatedHang('getServerModules')) return new Promise(() => {});
+    const server = this.servers.find((s) => s.id === serverId);
+    if (server && server.is_disabled) {
+      return [];
     }
-    return this.server_modules
+
+    const explicit = this.server_modules
       .filter((m) => m.server_id === serverId)
       .map((m) => m.module_key)
       .filter((k) => isModuleAvailable(k));
+
+    if (explicit.length > 0) {
+      return explicit;
+    }
+
+    // Owner-owned server fallback: if no module rows exist, owners get all BOM modules by default
+    if (server && server.owner_id) {
+      return [MODULE_KEYS.BOM];
+    }
+
+    if (!this.configured_servers.has(serverId)) {
+      // Unconfigured legacy server defaults to having BOM enabled per migration requirement
+      return [MODULE_KEYS.BOM];
+    }
+
+    return [];
   }
 
   setServerModules(serverId, moduleKeys = [], adminUserId = null) {
+    supabaseCache.invalidateModules(serverId);
     const invalid = (moduleKeys || []).filter((k) => !isModuleAvailable(k));
     if (invalid.length > 0) {
       throw new Error(`Cannot enable coming soon or invalid module(s): ${invalid.join(', ')}`);
@@ -907,7 +997,10 @@ class InMemorySupabaseStore {
   }
 
   isModuleEnabled(serverId, moduleKey) {
+    if (this.isSimulatedHang('isModuleEnabled') || this.isSimulatedHang('isModuleEnabledForServer')) return new Promise(() => {});
     if (!isModuleAvailable(moduleKey)) return false;
+    const server = this.servers.find((s) => s.id === serverId);
+    if (!server || server.is_disabled) return false;
     const modules = this.getServerModules(serverId);
     return modules.includes(moduleKey);
   }
@@ -948,6 +1041,7 @@ class InMemorySupabaseStore {
   }
 
   getServerById(id) {
+    if (this.isSimulatedHang('getServerById')) return new Promise(() => {});
     const s = this.servers.find((srv) => srv.id === id);
     if (!s) return null;
     return { ...s, modules: this.getServerModules(s.id) };
@@ -975,7 +1069,7 @@ class InMemorySupabaseStore {
       client: String(serverData.client || '100'),
       lang: (serverData.lang || 'EN').toUpperCase(),
       environment: env,
-      router: serverData.router || '/H/103.206.249.51/H/',
+      router: serverData.router ? String(serverData.router).trim() : null,
       gwserv: serverData.gwserv || '3309',
       sap_username: serverData.sap_username ? String(serverData.sap_username).trim() : null,
       sap_password_encrypted: encryptedPassword,
@@ -1012,6 +1106,8 @@ class InMemorySupabaseStore {
   }
 
   updateServer(id, serverData) {
+    supabaseCache.invalidateServer(id);
+    supabaseCache.invalidateAllServers();
     const server = this.servers.find((s) => s.id === id);
     if (!server) return null;
     if (serverData.name !== undefined) server.name = serverData.name;
@@ -1062,6 +1158,8 @@ class InMemorySupabaseStore {
   }
 
   deleteServer(id) {
+    supabaseCache.invalidateServer(id);
+    supabaseCache.invalidateAllServers();
     const idx = this.servers.findIndex((s) => s.id === id);
     if (idx === -1) return false;
     this.servers.splice(idx, 1);
@@ -1130,6 +1228,7 @@ class InMemorySupabaseStore {
   }
 
   getAvailableServersForUser(userId, role) {
+    if (this.isSimulatedHang('getAvailableServersForUser')) return new Promise(() => {});
     const formatServer = (s, perms) => {
       const hasPassword = Boolean(s.sap_password_encrypted);
       const isConfigured = Boolean(s.sap_username && hasPassword);
@@ -1167,6 +1266,7 @@ class InMemorySupabaseStore {
   }
 
   checkUserServerAccess(userId, serverId, role) {
+    if (this.isSimulatedHang('checkUserServerAccess')) return new Promise(() => {});
     const server = this.servers.find((s) => s.id === serverId && !s.is_disabled);
     if (!server) {
       return { permitted: false, reason: 'Access denied: Server not found or inactive', server: null, permissions: [] };
@@ -1239,42 +1339,62 @@ export const supabaseService = {
   isLive: () => isLiveSupabaseConfigured && !shouldUseInMemory(),
 
   // Reset in-memory store (useful for clean unit tests)
-  resetMemoryStore: () => inMemorySupabase.reset(),
+  resetMemoryStore: () => {
+    supabaseCache.clear();
+    return inMemorySupabase.reset();
+  },
+
+  // Mock test helper: simulate hanging database call
+  setSimulatedHang: (methodName, shouldHang = true) => inMemorySupabase.setSimulatedHang(methodName, shouldHang),
 
   // Auth: Verify token
-  async getUser(token) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getUser(token);
-    }
-    if (!liveSupabase) {
-      throw new Error('Database: Supabase client is not initialized.');
-    }
-    const { data: authData, error: authErr } = await liveSupabase.auth.getUser(token);
-    if (authErr) return { data: null, error: authErr };
-    if (!authData?.user) return { data: null, error: new Error('User not found') };
+  async getUser(token, options = {}) {
+    if (!token) return { data: { user: null }, error: { message: 'No token provided' } };
 
-    const { data: profile, error: profileErr } = await liveSupabase
-      .from('users')
-      .select('role, must_change_password, is_disabled')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (profileErr && profileErr.code !== 'PGRST116') {
-      throw new Error(`Database error fetching user role: ${profileErr.message}`);
-    }
-
-    return {
-      data: {
-        user: {
-          id: authData.user.id,
-          email: authData.user.email,
-          role: profile?.role || 'user',
-          must_change_password: Boolean(profile?.must_change_password),
-          is_disabled: Boolean(profile?.is_disabled)
+    const result = await supabaseCache.getOrFetch(
+      `auth:${token}`,
+      async () => {
+        if (shouldUseInMemory()) {
+          return inMemorySupabase.getUser(token);
         }
+        if (!liveSupabase) {
+          throw new Error('Database: Supabase client is not initialized.');
+        }
+        const { data: authData, error: authErr } = await liveSupabase.auth.getUser(token);
+        if (authErr) return { data: null, error: authErr };
+        if (!authData?.user) return { data: null, error: new Error('User not found') };
+
+        const { data: profile, error: profileErr } = await liveSupabase
+          .from('users')
+          .select('role, must_change_password, is_disabled')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileErr && profileErr.code !== 'PGRST116') {
+          throw new Error(`Database error fetching user role: ${profileErr.message}`);
+        }
+
+        return {
+          data: {
+            user: {
+              id: authData.user.id,
+              email: authData.user.email,
+              role: profile?.role || 'user',
+              must_change_password: Boolean(profile?.must_change_password),
+              is_disabled: Boolean(profile?.is_disabled)
+            }
+          },
+          error: null
+        };
       },
-      error: null
-    };
+      { ttlMs: CACHE_TTL.AUTH, allowStale: false, timeoutMs: options?.timeoutMs || DB_TIMEOUT_MS }
+    );
+
+    if (result?.data?.user?.id) {
+      supabaseCache.trackUserToken(result.data.user.id, token);
+    }
+
+    return result;
   },
 
   // Auth: Sign In
@@ -1415,6 +1535,9 @@ export const supabaseService = {
   },
 
   async signOut(token) {
+    if (token) {
+      supabaseCache.invalidate(`auth:${token}`);
+    }
     if (shouldUseInMemory()) {
       return inMemorySupabase.signOut(token);
     }
@@ -1532,25 +1655,33 @@ export const supabaseService = {
     return { success: true };
   },
 
-  async getUserProfile(userId) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getUserProfile(userId);
-    }
-    if (!liveSupabase) return null;
-    const { data, error } = await liveSupabase
-      .from('users')
-      .select('id, email, role, must_change_password, is_disabled, disabled_at, created_at')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error || !data) return null;
-    return {
-      ...data,
-      must_change_password: Boolean(data.must_change_password),
-      is_disabled: Boolean(data.is_disabled)
-    };
+  async getUserProfile(userId, options = {}) {
+    if (!userId) return null;
+    return supabaseCache.getOrFetch(
+      `user:${userId}`,
+      async () => {
+        if (shouldUseInMemory()) {
+          return inMemorySupabase.getUserProfile(userId);
+        }
+        if (!liveSupabase) return null;
+        const { data, error } = await liveSupabase
+          .from('users')
+          .select('id, email, role, must_change_password, is_disabled, disabled_at, created_at')
+          .eq('id', userId)
+          .maybeSingle();
+        if (error || !data) return null;
+        return {
+          ...data,
+          must_change_password: Boolean(data.must_change_password),
+          is_disabled: Boolean(data.is_disabled)
+        };
+      },
+      { ttlMs: CACHE_TTL.USER, allowStale: false, timeoutMs: options?.timeoutMs || DB_TIMEOUT_MS }
+    );
   },
 
   async setUserMustChangePassword(userId, mustChange) {
+    supabaseCache.invalidateUser(userId);
     if (shouldUseInMemory()) {
       return inMemorySupabase.setUserMustChangePassword(userId, mustChange);
     }
@@ -1575,6 +1706,7 @@ export const supabaseService = {
   },
 
   async setUserDisabled(userId, isDisabled, disabledBy = null) {
+    supabaseCache.invalidateUser(userId);
     if (shouldUseInMemory()) {
       return inMemorySupabase.setUserDisabled(userId, isDisabled, disabledBy);
     }
@@ -1592,19 +1724,22 @@ export const supabaseService = {
     return { error: null };
   },
 
-  async getServersByOwner(ownerId) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getServersByOwner(ownerId);
-    }
-    if (!liveSupabase) return [];
-    const { data } = await liveSupabase
-      .from('sap_servers')
-      .select('*')
-      .eq('owner_id', ownerId);
-    return data || [];
+  async getServersByOwner(ownerId, options = {}) {
+    return withDbTimeout(async () => {
+      if (shouldUseInMemory()) {
+        return inMemorySupabase.getServersByOwner(ownerId);
+      }
+      if (!liveSupabase) return [];
+      const { data } = await liveSupabase
+        .from('sap_servers')
+        .select('*')
+        .eq('owner_id', ownerId);
+      return data || [];
+    }, options?.timeoutMs || DB_TIMEOUT_MS, `Supabase getServersByOwner(${ownerId})`);
   },
 
   async deleteServersByOwner(ownerId) {
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.deleteServersByOwner(ownerId);
     }
@@ -1617,6 +1752,7 @@ export const supabaseService = {
   },
 
   async createUserServer(serverData, ownerId) {
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.createUserServer(serverData, ownerId);
     }
@@ -1673,10 +1809,28 @@ export const supabaseService = {
       .select()
       .single();
 
+    if (!error && data?.id) {
+      try {
+        await liveSupabase
+          .from('server_modules')
+          .insert([{
+            server_id: data.id,
+            module_key: MODULE_KEYS.BOM,
+            enabled_by: ownerId,
+            enabled_at: new Date().toISOString()
+          }]);
+      } catch (modErr) {
+        console.warn('[Database] Failed to insert initial server_modules for user server:', modErr.message);
+      }
+      inMemorySupabase.setServerModules(data.id, [MODULE_KEYS.BOM], ownerId);
+    }
+
     return { data, error };
   },
 
   async updateUserServer(serverId, ownerId, updateData) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.updateUserServer(serverId, ownerId, updateData);
     }
@@ -1731,6 +1885,8 @@ export const supabaseService = {
   },
 
   async deleteUserServer(serverId, ownerId) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.deleteUserServer(serverId, ownerId);
     }
@@ -1744,6 +1900,8 @@ export const supabaseService = {
   },
 
   async setUserDefaultServer(serverId, ownerId) {
+    supabaseCache.invalidateServer(serverId);
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.setUserDefaultServer(serverId, ownerId);
     }
@@ -1762,19 +1920,30 @@ export const supabaseService = {
     return { data, error };
   },
 
-  async getAllowlist() {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getAllowlist();
-    }
-    if (!liveSupabase) return [];
-    const { data } = await liveSupabase
-      .from('server_allowlist')
-      .select('*')
-      .order('created_at', { ascending: false });
-    return data || [];
+  async getAllowlist(timeoutMs = DB_TIMEOUT_MS) {
+    const effectiveTimeout = Number(process.env.DB_TIMEOUT_MS) || timeoutMs || 5000;
+    return supabaseCache.getOrFetch(
+      'allowlist',
+      async () => {
+        if (shouldUseInMemory()) {
+          return inMemorySupabase.getAllowlist();
+        }
+        if (!liveSupabase) return [];
+        const { data, error } = await liveSupabase
+          .from('server_allowlist')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) {
+          throw new Error(`Database error fetching allowlist: ${error.message}`);
+        }
+        return data || [];
+      },
+      { ttlMs: CACHE_TTL.ALLOWLIST, allowStale: true, staleTtlMs: 300000, timeoutMs: effectiveTimeout }
+    );
   },
 
   async addAllowlistEntry({ pattern, type, comment, created_by }) {
+    supabaseCache.invalidateAllowlist();
     if (shouldUseInMemory()) {
       return inMemorySupabase.addAllowlistEntry({ pattern, type, comment, created_by });
     }
@@ -1789,6 +1958,7 @@ export const supabaseService = {
   },
 
   async deleteAllowlistEntry(id) {
+    supabaseCache.invalidateAllowlist();
     if (shouldUseInMemory()) {
       return inMemorySupabase.deleteAllowlistEntry(id);
     }
@@ -1817,6 +1987,7 @@ export const supabaseService = {
 
   // Admin: Delete User
   async deleteUser(userId) {
+    supabaseCache.invalidateUser(userId);
     if (shouldUseInMemory()) {
       return inMemorySupabase.deleteUser(userId);
     }
@@ -1836,6 +2007,7 @@ export const supabaseService = {
 
   // Password Management
   async updateUserPassword(userId, newPassword) {
+    supabaseCache.invalidateUser(userId);
     if (shouldUseInMemory()) {
       return inMemorySupabase.updateUserPassword(userId, newPassword);
     }
@@ -1910,33 +2082,65 @@ export const supabaseService = {
   },
 
   // Modules: Get enabled modules for a server
-  async getServerModules(serverId) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getServerModules(serverId);
+  async getServerModules(serverId, options = {}) {
+    if (!serverId) return [];
+    const req = options?.req;
+    if (req?.selectedServer && req.selectedServer.id === serverId && Array.isArray(req.selectedServer.modules)) {
+      if (!req._serverModules) req._serverModules = {};
+      req._serverModules[serverId] = req.selectedServer.modules;
+      return req.selectedServer.modules;
     }
-    if (!liveSupabase) {
-      throw new Error('Database: Supabase client is not initialized.');
+    if (req?._serverRecord && req._serverRecord.id === serverId && Array.isArray(req._serverRecord.modules)) {
+      if (!req._serverModules) req._serverModules = {};
+      req._serverModules[serverId] = req._serverRecord.modules;
+      return req._serverRecord.modules;
+    }
+    if (req?._serverModules && req._serverModules[serverId]) {
+      return req._serverModules[serverId];
     }
 
-    const { data, error } = await liveSupabase
-      .from('server_modules')
-      .select('module_key')
-      .eq('server_id', serverId);
+    return supabaseCache.getOrFetch(
+      `modules:${serverId}`,
+      async () => {
+        let mods;
+        if (shouldUseInMemory()) {
+          mods = inMemorySupabase.getServerModules(serverId);
+        } else {
+          if (!liveSupabase) {
+            throw new Error('Database: Supabase client is not initialized.');
+          }
 
-    if (error) {
-      throw new Error(`Database error fetching server modules: ${error.message}`);
-    }
+          const { data, error } = await liveSupabase
+            .from('server_modules')
+            .select('module_key')
+            .eq('server_id', serverId);
 
-    if (Array.isArray(data) && data.length > 0) {
-      return data
-        .map((m) => m.module_key)
-        .filter((k) => isModuleAvailable(k));
-    }
-    return [];
+          if (error) {
+            throw new Error(`Database error fetching server modules: ${error.message}`);
+          }
+
+          if (Array.isArray(data) && data.length > 0) {
+            mods = data
+              .map((m) => m.module_key)
+              .filter((k) => isModuleAvailable(k));
+          } else {
+            mods = [MODULE_KEYS.BOM];
+          }
+        }
+
+        if (req && Array.isArray(mods)) {
+          if (!req._serverModules) req._serverModules = {};
+          req._serverModules[serverId] = mods;
+        }
+        return mods;
+      },
+      { ttlMs: CACHE_TTL.MODULES, allowStale: true, staleTtlMs: 300000, timeoutMs: options?.timeoutMs || DB_TIMEOUT_MS }
+    );
   },
 
   // Modules: Set enabled modules for a server (admin action)
   async setServerModules(serverId, moduleKeys = [], adminUserId = null) {
+    supabaseCache.invalidateModules(serverId);
     const invalid = (moduleKeys || []).filter((k) => !isModuleAvailable(k));
     if (invalid.length > 0) {
       throw new Error(`Cannot enable coming soon or invalid module(s): ${invalid.join(', ')}`);
@@ -1976,9 +2180,18 @@ export const supabaseService = {
   },
 
   // Modules: Check if a specific module is enabled for a server
-  async isModuleEnabledForServer(serverId, moduleKey) {
+  async isModuleEnabledForServer(serverId, moduleKey, options = {}) {
     if (!isModuleAvailable(moduleKey)) return false;
-    const modules = await this.getServerModules(serverId);
+    const s = options?.server || options?.req?.selectedServer || options?.req?._serverRecord;
+    if (s && s.id === serverId) {
+      if (s.owner_id) return true;
+      const mods = s.modules || [MODULE_KEYS.BOM];
+      return mods.includes(moduleKey);
+    }
+    const server = await this.getServerById(serverId, options);
+    if (!server || server.is_disabled) return false;
+    if (server.owner_id) return true;
+    const modules = await this.getServerModules(serverId, options);
     return modules.includes(moduleKey);
   },
 
@@ -2030,33 +2243,57 @@ export const supabaseService = {
   },
 
   // Admin: Get Server By ID (Full Connection Parameters)
-  async getServerById(serverId) {
-    if (shouldUseInMemory()) {
-      return inMemorySupabase.getServerById(serverId);
-    }
-    if (!liveSupabase) {
-      throw new Error('Database: Supabase client is not initialized.');
+  async getServerById(serverId, options = {}) {
+    if (!serverId) return null;
+    const req = options?.req;
+    if (req) {
+      if (req.selectedServer && req.selectedServer.id === serverId) {
+        return req.selectedServer;
+      }
+      if (req._serverRecord && req._serverRecord.id === serverId) {
+        return req._serverRecord;
+      }
     }
 
-    const { data, error } = await liveSupabase
-      .from('sap_servers')
-      .select('*')
-      .eq('id', serverId)
-      .single();
+    const server = await supabaseCache.getOrFetch(
+      `server:${serverId}`,
+      async () => {
+        let s;
+        if (shouldUseInMemory()) {
+          s = inMemorySupabase.getServerById(serverId);
+        } else {
+          if (!liveSupabase) {
+            throw new Error('Database: Supabase client is not initialized.');
+          }
 
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw new Error(`Database error fetching server: ${error.message}`);
-    }
-    if (!data) return null;
+          // Fetch server and modules in parallel
+          const [serverRes, modules] = await Promise.all([
+            liveSupabase
+              .from('sap_servers')
+              .select('*')
+              .eq('id', serverId)
+              .single(),
+            this.getServerModules(serverId, { ...options, _skipServerLookup: true })
+          ]);
 
-    let modules = [];
-    try {
-      modules = await this.getServerModules(serverId);
-    } catch (_) {
-      modules = [MODULE_KEYS.BOM];
+          if (serverRes.error) {
+            if (serverRes.error.code === 'PGRST116') return null;
+            throw new Error(`Database error fetching server: ${serverRes.error.message}`);
+          }
+          if (!serverRes.data) return null;
+
+          s = { ...serverRes.data, modules: modules || [MODULE_KEYS.BOM] };
+        }
+        return s;
+      },
+      { ttlMs: CACHE_TTL.SERVER, allowStale: false, timeoutMs: options?.timeoutMs || DB_TIMEOUT_MS }
+    );
+
+    if (req && server) {
+      req.selectedServer = server;
+      req._serverRecord = server;
     }
-    return { ...data, modules };
+    return server;
   },
 
   // Synchronous server lookup from in-memory cache and persisted credentials
@@ -2083,6 +2320,7 @@ export const supabaseService = {
 
   // Admin: Create Server (Atomic create: server row, credentials, module rows together)
   async createServer(serverData) {
+    supabaseCache.invalidateAllServers();
     if (serverData.modules !== undefined) {
       const invalid = (serverData.modules || []).filter((k) => !isModuleAvailable(k));
       if (invalid.length > 0) {
@@ -2122,7 +2360,7 @@ export const supabaseService = {
       client: String(serverData.client || '100'),
       lang: (serverData.lang || 'EN').toUpperCase(),
       environment: env,
-      router: serverData.router || '/H/103.206.249.51/H/',
+      router: serverData.router ? String(serverData.router).trim() : null,
       gwserv: serverData.gwserv || '3309',
       sap_username: serverData.sap_username ? String(serverData.sap_username).trim() : null,
       sap_password_encrypted: encryptedPassword,
@@ -2183,6 +2421,8 @@ export const supabaseService = {
 
   // Admin: Update Server
   async updateServer(id, serverData) {
+    supabaseCache.invalidateServer(id);
+    supabaseCache.invalidateAllServers();
     if (serverData.environment !== undefined) {
       const validEnvs = ['SANDBOX', 'DEV', 'QA', 'PROD'];
       const env = String(serverData.environment).toUpperCase();
@@ -2261,6 +2501,8 @@ export const supabaseService = {
 
   // Admin: Delete Server
   async deleteServer(id) {
+    supabaseCache.invalidateServer(id);
+    supabaseCache.invalidateAllServers();
     if (shouldUseInMemory()) {
       return inMemorySupabase.deleteServer(id);
     }
@@ -2475,7 +2717,8 @@ export const supabaseService = {
   },
 
   // User: Get Permitted Servers (Dual-State Resilient)
-  async getAvailableServersForUser(userId, role) {
+  async getAvailableServersForUser(userId, role, options = {}) {
+    return withDbTimeout(async () => {
     if (shouldUseInMemory()) {
       if (this.simulateMissingPermissionsColumn && role !== 'admin') {
         const userPerms = inMemorySupabase.permissions.filter((p) => p.user_id === userId);
@@ -2615,10 +2858,12 @@ export const supabaseService = {
         permissions: normalizePermissions(perms || [...ALL_BOM_APPS])
       };
     });
+    }, options?.timeoutMs || DB_TIMEOUT_MS, `Supabase getAvailableServersForUser(${userId})`);
   },
 
   // Security: Check Per-Server Access on Request (Dual-State Resilient)
-  async checkUserServerAccess(userId, serverId, role) {
+  async checkUserServerAccess(userId, serverId, role, options = {}) {
+    return withDbTimeout(async () => {
     if (shouldUseInMemory()) {
       if (this.simulateMissingPermissionsColumn && role !== 'admin') {
         const server = inMemorySupabase.servers.find((s) => s.id === serverId && s.is_active);
@@ -2637,7 +2882,7 @@ export const supabaseService = {
       throw new Error('Database: Supabase client is not initialized.');
     }
 
-    const server = await this.getServerById(serverId);
+    const server = await this.getServerById(serverId, options);
     if (!server || server.is_disabled) {
       return { permitted: false, reason: 'Access denied: Server not found or disabled', server: null, permissions: [] };
     }
@@ -2687,6 +2932,7 @@ export const supabaseService = {
       return { permitted: false, reason: 'Access denied: No permission granted for this server', server: null, permissions: [] };
     }
     return { permitted: true, server, permissions: normalizePermissions(perm.permissions || []) };
+    }, options?.timeoutMs || DB_TIMEOUT_MS, `Supabase checkUserServerAccess(${userId}, ${serverId})`);
   },
 
   // Audit: Persist audit log entry if table configured, no silent swallow

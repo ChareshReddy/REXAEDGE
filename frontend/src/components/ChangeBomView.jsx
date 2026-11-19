@@ -367,6 +367,13 @@ export default function ChangeBomView({
         items: payloadItems
       });
 
+      if (!res.success) {
+        setIsReviewOpen(false);
+        const errMsg = res.message || res.error || 'Failed to save BOM changes.';
+        toast.error(errMsg, { title: res.title || 'Error', hint: res.hint, errorRef: res.error_ref });
+        return;
+      }
+
       setIsReviewOpen(false);
       setExecutionResult({
         success: res.success,
@@ -383,6 +390,7 @@ export default function ChangeBomView({
       });
       toast.success('BOM changes saved and verified successfully.');
     } catch (err) {
+      setIsReviewOpen(false);
       const info = extractErrorInfo(err, 'Failed to save BOM changes.');
       toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
@@ -576,7 +584,7 @@ export default function ChangeBomView({
           >
             <FormGrid cols={4}>
               <FieldWrapper
-                label="Material Number"
+                label="Material"
                 htmlFor="chgMaterial"
                 required
                 error={touched.material ? fieldErrors.material || null : null}
@@ -608,7 +616,7 @@ export default function ChangeBomView({
               </FieldWrapper>
 
               <FieldWrapper
-                label="Plant Code"
+                label="Plant"
                 htmlFor="chgPlant"
                 required
                 error={touched.plant ? fieldErrors.plant || null : null}
@@ -662,17 +670,20 @@ export default function ChangeBomView({
               </FieldWrapper>
             </FormGrid>
 
-            {/* Optional Change Master Fields */}
+            {/* Engineering Change Management */}
             <div className="mt-4 pt-3 border-t border-[var(--color-border-subtle)]">
-              <span className="text-xs font-semibold text-[var(--sap-text-muted)] uppercase tracking-wider block mb-2">
-                Engineering Change Management (Optional)
-              </span>
+              <h4
+                className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider block"
+                style={{ marginTop: '16px', marginBottom: '16px' }}
+              >
+                Engineering change management
+              </h4>
               <FormGrid cols={2}>
                 <FieldWrapper label="Change Number" htmlFor="chgChangeNo">
                   <Input
                     id="chgChangeNo"
                     type="text"
-                    placeholder="Ex. ECM-2026-001 (Optional)"
+                    placeholder="Ex. ECM-2026-001"
                     value={searchParams.changeNo}
                     onChange={(e) => setSearchParams((prev) => ({ ...prev, changeNo: e.target.value }))}
                     isMono
@@ -682,7 +693,7 @@ export default function ChangeBomView({
                   <Input
                     id="chgValidFrom"
                     type="text"
-                    placeholder="DD.MM.YYYY (Optional)"
+                    placeholder="DD.MM.YYYY"
                     value={searchParams.validFrom}
                     onChange={(e) => setSearchParams((prev) => ({ ...prev, validFrom: e.target.value }))}
                     isMono

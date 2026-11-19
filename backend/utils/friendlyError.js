@@ -81,6 +81,25 @@ export function toFriendlyError(err, options = {}) {
 
   const textLower = rawText.toLowerCase();
 
+  // 0a. SAP Incompatible RFC call (SAP Note 2295840 / CSAP_MAT_BOM_MAINTAIN blocked)
+  const isIncompatibleCall =
+    textLower.includes('incompatible call rejected') ||
+    textLower.includes('2295840') ||
+    textLower.includes('called incompatible function') ||
+    textLower.includes('incompatible function') ||
+    textLower.includes('incompatible call') ||
+    errCode === 'SAP_INCOMPATIBLE_CALL';
+
+  if (isIncompatibleCall) {
+    return {
+      code: 'SAP_NOT_AVAILABLE',
+      title: 'Action not allowed in SAP',
+      message: 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.',
+      hint: 'Your SAP system has blocked this function module (SAP note 2295840). Ask your SAP team to enable it or configure a wrapper function in SAP_BOM_CHANGE_FUNCTION.',
+      retryable: false
+    };
+  }
+
   // 0. Explicit Stage 3 & Stage 5 Standard Codes
   if (errCode === 'BOM_LOCKED' ||
       textLower.includes('being changed by another user') ||
@@ -162,6 +181,17 @@ export function toFriendlyError(err, options = {}) {
     };
   }
 
+  // 0b. DB_TIMEOUT
+  if (errCode === 'DB_TIMEOUT' || textLower.includes('db_timeout') || textLower.includes('database timeout') || textLower.includes('database is slow right now')) {
+    return {
+      code: 'DB_TIMEOUT',
+      title: 'Database timeout',
+      message: 'The database is slow right now. Please try again.',
+      hint: 'A database query took too long to complete. Please try again or notify an administrator.',
+      retryable: true
+    };
+  }
+
   // 1. DB_ERROR (Database / Supabase / PostgreSQL errors)
   const isDbError =
     textLower.includes('supabase') ||
@@ -183,6 +213,17 @@ export function toFriendlyError(err, options = {}) {
       message: 'Something went wrong on our side.',
       hint: 'A database operation could not be completed. Please try again or notify an administrator.',
       retryable: true
+    };
+  }
+
+  // 1b. INVALID_ROUTER_FORMAT
+  if (errCode === 'INVALID_ROUTER_FORMAT' || textLower.includes('router must start with /h/') || textLower.includes('must start with /h/')) {
+    return {
+      code: 'INVALID_ROUTER_FORMAT',
+      title: 'Invalid SAP router format',
+      message: 'The SAP router string format is invalid. Router must start with /H/ (e.g. /H/<host>/...).',
+      hint: 'Update your server configuration in My Servers and verify the router path starts with /H/.',
+      retryable: false
     };
   }
 
@@ -378,7 +419,7 @@ export function sendFriendlyError(res, req, err, { httpStatus, source = 'backend
   if (!status || typeof status !== 'number') {
     if (friendly.code === 'BOM_LOCKED') {
       status = 409;
-    } else if (friendly.code === 'WRITE_OUTCOME_UNKNOWN') {
+    } else if (friendly.code === 'WRITE_OUTCOME_UNKNOWN' || friendly.code === 'DB_TIMEOUT') {
       status = 504;
     } else if (friendly.code === 'SAP_UNREACHABLE' || friendly.code === 'SERVER_UNAVAILABLE' || friendly.code === 'SERVER_DISABLED') {
       status = 503;

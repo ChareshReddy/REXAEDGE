@@ -42,12 +42,18 @@ export function extractErrorInfo(err, fallbackMessage = 'An error occurred') {
     let rawMsg = data.message || (typeof data.error === 'string' ? data.error : null) || data.reply || fallbackMessage;
     rawMsg = stripLeadingEmoji(rawMsg);
     const execMatch = typeof rawMsg === 'string' ? rawMsg.match(/^execution failed:\s*(.*)/i) : null;
-    const resolvedTitle = stripLeadingEmoji(
+    let resolvedTitle = stripLeadingEmoji(
       execMatch
         ? 'Execution failed'
         : (data.title || (data.code === 'VALIDATION_ERROR' ? 'Validation notice' : 'Error'))
     );
-    const resolvedMsg = execMatch ? (execMatch[1].trim() || 'Operation failed') : rawMsg;
+    let resolvedMsg = execMatch ? (execMatch[1].trim() || 'Operation failed') : rawMsg;
+
+    const lowerRaw = String(resolvedMsg || '').toLowerCase();
+    if (lowerRaw.includes('incompatible call rejected') || lowerRaw.includes('2295840') || lowerRaw.includes('incompatible function')) {
+      resolvedTitle = 'Change BOM not enabled';
+      resolvedMsg = 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.';
+    }
 
     return {
       code: data.code || (execMatch ? 'EXECUTION_FAILED' : 'UNKNOWN'),
@@ -62,6 +68,17 @@ export function extractErrorInfo(err, fallbackMessage = 'An error occurred') {
   // 3. String error response
   if (typeof data === 'string' && data.trim()) {
     const cleanStr = stripLeadingEmoji(data.trim());
+    const lowerClean = cleanStr.toLowerCase();
+    if (lowerClean.includes('incompatible call rejected') || lowerClean.includes('2295840') || lowerClean.includes('incompatible function')) {
+      return {
+        code: 'SAP_NOT_AVAILABLE',
+        title: 'Change BOM not enabled',
+        message: 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.',
+        hint: null,
+        errorRef: null,
+        retryable: false
+      };
+    }
     const execMatch = cleanStr.match(/^execution failed:\s*(.*)/i);
     return {
       code: execMatch ? 'EXECUTION_FAILED' : 'UNKNOWN',
