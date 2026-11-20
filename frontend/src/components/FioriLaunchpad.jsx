@@ -11,6 +11,8 @@ import {
   ShoppingCart,
   Search,
   Eye,
+  Pencil,
+  FileEdit,
   Copy,
   FileSpreadsheet,
   ShieldCheck,
@@ -32,6 +34,8 @@ export const ICON_MAP = {
   ShoppingCart,
   Search,
   Eye,
+  Pencil,
+  FileEdit,
   Copy,
   FileSpreadsheet,
   ShieldCheck,
@@ -56,7 +60,7 @@ export function FioriOpCard({
   disabled,
   onClick
 }) {
-  const Icon = (id === 'display' || iconName === 'Eye') ? Eye : (ICON_MAP[iconName] || Search);
+  const Icon = (id === 'change' || iconName === 'Pencil' || iconName === 'FileEdit') ? Pencil : (id === 'display' || iconName === 'Eye') ? Eye : (ICON_MAP[iconName] || Search);
   const isDestructive = Boolean(danger || id === 'delete');
 
   return (
@@ -398,7 +402,7 @@ export default function FioriLaunchpad({
         <>
           <FioriPageHeader
             title={activeModule.label}
-            subtitle={activeModule.key === 'bom' ? "Create, copy, display, validate and delete Bills of Materials." : (activeModule.desc || "Manage your enterprise operations.")}
+            subtitle={activeModule.key === 'bom' ? "Create, copy, change, display, validate and delete Bills of Materials." : (activeModule.desc || "Manage your enterprise operations.")}
             onBack={onNavigateHome || (() => handleSetView('home'))}
             backTitle="Back to Home"
             systemKey={systemKey}

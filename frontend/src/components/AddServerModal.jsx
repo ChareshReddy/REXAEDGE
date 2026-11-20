@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Server, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import Modal from './ui/Modal';
 import { createMyServer, updateMyServer, testServerConnection } from '../services/api';
@@ -21,9 +21,14 @@ export default function AddServerModal({
 
   const [showPassword, setShowPassword] = useState(false);
   const [testStatus, setTestStatus] = useState(null); // null | { success: true, message: string } | { success: false, message: string }
+  const [testedSnapshot, setTestedSnapshot] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const nameInputRef = useRef(null);
 
   useEffect(() => {
     if (serverToEdit) {
@@ -46,18 +51,57 @@ export default function AddServerModal({
       setIsDefault(isOnboarding); // Onboarding defaults to true
     }
     setTestStatus(null);
+    setTestedSnapshot(null);
     setError('');
+    setTouched({});
+    setIsSubmitted(false);
+
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
   }, [serverToEdit, isOpen, isOnboarding]);
+
+  const handleConnectionParamChange = (setter, fieldName) => (e) => {
+    setter(e.target.value);
+    setTestedSnapshot(null);
+    if (testStatus) setTestStatus(null);
+    if (touched[fieldName]) {
+      setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    }
+  };
+
+  const isTestPassedForCurrentValues = Boolean(
+    testedSnapshot &&
+    testedSnapshot.ashost === ashost.trim() &&
+    testedSnapshot.sysnr === (sysnr.trim() || '00') &&
+    testedSnapshot.client === (client.trim() || '100') &&
+    testedSnapshot.sapUsername === sapUsername.trim() &&
+    testedSnapshot.sapPassword === sapPassword
+  );
+
+  const fieldErrors = {
+    name: !name.trim() ? 'Server name is required.' : null,
+    ashost: !ashost.trim() ? 'Host / IP address is required.' : null,
+    sysnr: !sysnr.trim() ? 'System number is required.' : null,
+    client: !client.trim() ? 'Client number is required.' : null,
+    sapUsername: !sapUsername.trim() ? 'SAP username is required.' : null,
+    sapPassword: (!serverToEdit && !sapPassword) ? 'SAP password is required.' : null
+  };
 
   const handleTestConnection = async () => {
     setError('');
     setTestStatus(null);
 
     if (!ashost.trim()) {
+      setTouched((prev) => ({ ...prev, ashost: true }));
       setError('Host / IP address is required for connection testing.');
       return;
     }
     if (!serverToEdit && !sapPassword) {
+      setTouched((prev) => ({ ...prev, sapPassword: true }));
       setError('SAP password is required to test connection.');
       return;
     }
@@ -80,13 +124,22 @@ export default function AddServerModal({
           success: true,
           message: `Connection successful (${result.responseTimeMs || 0} ms) - Type: ${allowlistType}`
         });
+        setTestedSnapshot({
+          ashost: ashost.trim(),
+          sysnr: sysnr.trim() || '00',
+          client: client.trim() || '100',
+          sapUsername: sapUsername.trim(),
+          sapPassword: sapPassword
+        });
       } else {
+        setTestedSnapshot(null);
         setTestStatus({
           success: false,
           message: result?.error || result?.message || 'Connection test failed.'
         });
       }
     } catch (err) {
+      setTestedSnapshot(null);
       setTestStatus({
         success: false,
         message: err?.response?.data?.error || err.message || 'Connection test failed.'
@@ -98,30 +151,17 @@ export default function AddServerModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitted(true);
     setError('');
 
-    if (!name.trim()) {
-      setError('Server name is required.');
+    const hasAnyFieldError = Object.values(fieldErrors).some(Boolean);
+    if (hasAnyFieldError) {
       return;
     }
-    if (!ashost.trim()) {
-      setError('Host / IP address is required.');
-      return;
-    }
-    if (!sysnr.trim()) {
-      setError('System number is required.');
-      return;
-    }
-    if (!client.trim()) {
-      setError('Client number is required.');
-      return;
-    }
-    if (!sapUsername.trim()) {
-      setError('SAP username is required.');
-      return;
-    }
-    if (!serverToEdit && !sapPassword) {
-      setError('SAP password is required.');
+
+    // Require successful test connection before adding a new server
+    if (!serverToEdit && !isTestPassedForCurrentValues) {
+      setError('Please test the connection first before adding this server.');
       return;
     }
 
@@ -170,71 +210,78 @@ export default function AddServerModal({
       title={modalTitle}
       maxWidth="560px"
       footer={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <button
-            type="button"
-            onClick={handleTestConnection}
-            disabled={isTesting || isSaving}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              fontSize: '13px',
-              fontWeight: 500,
-              backgroundColor: 'var(--color-surface, #FFFFFF)',
-              border: '1px solid var(--color-border, #CBD5E1)',
-              borderRadius: 'var(--radius-md, 6px)',
-              color: 'var(--color-text, #0F172A)',
-              cursor: isTesting ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
-            {isTesting ? 'Testing...' : 'Test Connection'}
-          </button>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <button
               type="button"
-              onClick={onClose}
-              disabled={isSaving}
+              onClick={handleTestConnection}
+              disabled={isTesting || isSaving}
               style={{
-                padding: '8px 16px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
                 fontSize: '13px',
                 fontWeight: 500,
-                backgroundColor: 'transparent',
+                backgroundColor: 'var(--color-surface, #FFFFFF)',
                 border: '1px solid var(--color-border, #CBD5E1)',
                 borderRadius: 'var(--radius-md, 6px)',
-                color: 'var(--color-text-muted, #64748B)',
-                cursor: isSaving ? 'not-allowed' : 'pointer'
+                color: 'var(--color-text, #0F172A)',
+                cursor: isTesting ? 'not-allowed' : 'pointer'
               }}
             >
-              {isOnboarding ? 'Later' : 'Cancel'}
+              <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
+              {isTesting ? 'Testing...' : 'Test Connection'}
             </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              style={{
-                padding: '8px 18px',
-                fontSize: '13px',
-                fontWeight: 600,
-                backgroundColor: 'var(--color-navy-900, #00204E)',
-                border: 'none',
-                borderRadius: 'var(--radius-md, 6px)',
-                color: '#FFFFFF',
-                cursor: isSaving ? 'not-allowed' : 'pointer',
-                opacity: isSaving ? 0.7 : 1
-              }}
-            >
-              {isSaving ? 'Saving...' : (serverToEdit ? 'Save Changes' : 'Add Server')}
-            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSaving}
+                style={{
+                  padding: '8px 16px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--color-border, #CBD5E1)',
+                  borderRadius: 'var(--radius-md, 6px)',
+                  color: 'var(--color-text-muted, #64748B)',
+                  cursor: isSaving ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isOnboarding ? 'Later' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isSaving || (!serverToEdit && !isTestPassedForCurrentValues)}
+                style={{
+                  padding: '8px 18px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--color-navy-900, #00204E)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md, 6px)',
+                  color: '#FFFFFF',
+                  cursor: (isSaving || (!serverToEdit && !isTestPassedForCurrentValues)) ? 'not-allowed' : 'pointer',
+                  opacity: (isSaving || (!serverToEdit && !isTestPassedForCurrentValues)) ? 0.5 : 1
+                }}
+              >
+                {isSaving ? 'Saving...' : (serverToEdit ? 'Save Changes' : 'Add Server')}
+              </button>
+            </div>
           </div>
+          {!serverToEdit && !isTestPassedForCurrentValues && (
+            <div style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)', textAlign: 'right', marginTop: '2px' }}>
+              Test the connection first
+            </div>
+          )}
         </div>
       }
     >
       <div style={{ padding: '4px 0' }}>
-        {/* Prominent Encryption Note */}
+        {/* Banner: Encrypted Credentials Note */}
         <div
           style={{
             display: 'flex',
@@ -252,7 +299,7 @@ export default function AddServerModal({
         >
           <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--color-blue-600, #1D4ED8)' }} />
           <span>
-            <strong>Secure Credentials:</strong> Your SAP password is encrypted and only used for your sessions. RexaEdge administrators cannot see it.
+            Your SAP password is encrypted and is never shown in the app.
           </span>
         </div>
 
@@ -307,22 +354,31 @@ export default function AddServerModal({
               Server Name *
             </label>
             <input
+              ref={nameInputRef}
               id="server-name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (touched.name) setTouched((prev) => ({ ...prev, name: true }));
+              }}
+              onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
               placeholder="e.g. Production SAP Core or Sandbox"
-              required
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
                 borderRadius: 'var(--radius-md, 6px)',
-                border: '1px solid var(--color-border, #CBD5E1)',
+                border: (touched.name || isSubmitted) && fieldErrors.name ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                 backgroundColor: 'var(--color-surface, #FFFFFF)',
                 boxSizing: 'border-box'
               }}
             />
+            {(touched.name || isSubmitted) && fieldErrors.name && (
+              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                {fieldErrors.name}
+              </span>
+            )}
           </div>
 
           {/* Host / IP */}
@@ -337,22 +393,28 @@ export default function AddServerModal({
               id="server-ashost"
               type="text"
               value={ashost}
-              onChange={(e) => setAshost(e.target.value)}
+              onChange={handleConnectionParamChange(setAshost, 'ashost')}
+              onBlur={() => setTouched((prev) => ({ ...prev, ashost: true }))}
               placeholder="e.g. 10.0.1.50 or sap.company.com"
-              required
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
                 borderRadius: 'var(--radius-md, 6px)',
-                border: '1px solid var(--color-border, #CBD5E1)',
+                border: (touched.ashost || isSubmitted) && fieldErrors.ashost ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                 backgroundColor: 'var(--color-surface, #FFFFFF)',
                 boxSizing: 'border-box'
               }}
             />
-            <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)' }}>
-              Must match an approved corporate allowlist pattern.
-            </span>
+            {(touched.ashost || isSubmitted) && fieldErrors.ashost ? (
+              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                {fieldErrors.ashost}
+              </span>
+            ) : (
+              <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)' }}>
+                Must match an approved corporate allowlist pattern.
+              </span>
+            )}
           </div>
 
           {/* System Number and Client */}
@@ -369,19 +431,24 @@ export default function AddServerModal({
                 type="text"
                 maxLength={2}
                 value={sysnr}
-                onChange={(e) => setSysnr(e.target.value)}
+                onChange={handleConnectionParamChange(setSysnr, 'sysnr')}
+                onBlur={() => setTouched((prev) => ({ ...prev, sysnr: true }))}
                 placeholder="00"
-                required
                 style={{
                   width: '100%',
                   padding: '8px 12px',
                   fontSize: '13px',
                   borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
+                  border: (touched.sysnr || isSubmitted) && fieldErrors.sysnr ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                   backgroundColor: 'var(--color-surface, #FFFFFF)',
                   boxSizing: 'border-box'
                 }}
               />
+              {(touched.sysnr || isSubmitted) && fieldErrors.sysnr && (
+                <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                  {fieldErrors.sysnr}
+                </span>
+              )}
             </div>
             <div>
               <label
@@ -395,19 +462,24 @@ export default function AddServerModal({
                 type="text"
                 maxLength={3}
                 value={client}
-                onChange={(e) => setClient(e.target.value)}
+                onChange={handleConnectionParamChange(setClient, 'client')}
+                onBlur={() => setTouched((prev) => ({ ...prev, client: true }))}
                 placeholder="100"
-                required
                 style={{
                   width: '100%',
                   padding: '8px 12px',
                   fontSize: '13px',
                   borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
+                  border: (touched.client || isSubmitted) && fieldErrors.client ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                   backgroundColor: 'var(--color-surface, #FFFFFF)',
                   boxSizing: 'border-box'
                 }}
               />
+              {(touched.client || isSubmitted) && fieldErrors.client && (
+                <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                  {fieldErrors.client}
+                </span>
+              )}
             </div>
           </div>
 
@@ -417,13 +489,13 @@ export default function AddServerModal({
               htmlFor="server-saprouter"
               style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
             >
-              SAP Router (Optional)
+              SAP Router
             </label>
             <input
               id="server-saprouter"
               type="text"
               value={saprouter}
-              onChange={(e) => setSaprouter(e.target.value)}
+              onChange={handleConnectionParamChange(setSaprouter, 'saprouter')}
               placeholder="e.g. /H/router.company.com/S/3299/H/"
               style={{
                 width: '100%',
@@ -449,19 +521,24 @@ export default function AddServerModal({
               id="server-username"
               type="text"
               value={sapUsername}
-              onChange={(e) => setSapUsername(e.target.value)}
+              onChange={handleConnectionParamChange(setSapUsername, 'sapUsername')}
+              onBlur={() => setTouched((prev) => ({ ...prev, sapUsername: true }))}
               placeholder="e.g. BATCH_USER"
-              required
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
                 borderRadius: 'var(--radius-md, 6px)',
-                border: '1px solid var(--color-border, #CBD5E1)',
+                border: (touched.sapUsername || isSubmitted) && fieldErrors.sapUsername ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                 backgroundColor: 'var(--color-surface, #FFFFFF)',
                 boxSizing: 'border-box'
               }}
             />
+            {(touched.sapUsername || isSubmitted) && fieldErrors.sapUsername && (
+              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                {fieldErrors.sapUsername}
+              </span>
+            )}
           </div>
 
           {/* SAP Password */}
@@ -477,15 +554,15 @@ export default function AddServerModal({
                 id="server-password"
                 type={showPassword ? 'text' : 'password'}
                 value={sapPassword}
-                onChange={(e) => setSapPassword(e.target.value)}
+                onChange={handleConnectionParamChange(setSapPassword, 'sapPassword')}
+                onBlur={() => setTouched((prev) => ({ ...prev, sapPassword: true }))}
                 placeholder={serverToEdit ? '••••••••' : 'Enter SAP password'}
-                required={!serverToEdit}
                 style={{
                   width: '100%',
                   padding: '8px 36px 8px 12px',
                   fontSize: '13px',
                   borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
+                  border: (!serverToEdit && (touched.sapPassword || isSubmitted) && fieldErrors.sapPassword) ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
                   backgroundColor: 'var(--color-surface, #FFFFFF)',
                   boxSizing: 'border-box'
                 }}
@@ -509,6 +586,11 @@ export default function AddServerModal({
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {!serverToEdit && (touched.sapPassword || isSubmitted) && fieldErrors.sapPassword && (
+              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                {fieldErrors.sapPassword}
+              </span>
+            )}
           </div>
 
           {/* Set as Default */}

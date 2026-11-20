@@ -195,37 +195,39 @@ export default function Modal({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  height: 'var(--popup-header-height, 60px)',
-                  minHeight: 'var(--popup-header-height, 60px)',
-                  maxHeight: 'var(--popup-header-height, 60px)',
+                  height: 62,
+                  minHeight: 62,
+                  maxHeight: 62,
                   boxSizing: 'border-box',
-                  padding: '0 20px',
-                  background: 'var(--color-blue-100, #DCE8F1)',
+                  padding: '0 24px',
+                  background: 'var(--color-blue-50, #EEF4F9)',
                   color: 'var(--color-navy-900, #00204E)',
                   borderTopLeftRadius: 'inherit',
                   borderTopRightRadius: 'inherit',
-                  borderBottom: '1px solid var(--color-blue-200, #B3CDE0)',
+                  borderBottom: '1px solid var(--color-border, #D9E2EC)',
                   flexShrink: 0
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, marginRight: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1, marginRight: 12 }}>
                   {Icon && (
                     <div
                       className="sap-bulk-icon-badge"
                       style={{
-                        backgroundColor: 'var(--color-blue-200, #D9E2EC)',
+                        backgroundColor: 'var(--color-blue-100, #DCE8F1)',
                         color: 'var(--color-blue-600, #02579A)',
                         border: '1px solid var(--color-blue-300, #B3CDE0)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        width: 32,
-                        height: 32,
+                        width: 36,
+                        height: 36,
+                        minWidth: 36,
+                        minHeight: 36,
                         borderRadius: 'var(--radius-md, 6px)',
                         flexShrink: 0
                       }}
                     >
-                      <Icon size={18} />
+                      {React.isValidElement(Icon) ? Icon : <Icon size={18} strokeWidth={1.75} />}
                     </div>
                   )}
                   <div style={{ minWidth: 0, flex: 1 }}>
@@ -233,10 +235,13 @@ export default function Modal({
                       id={titleId}
                       style={{
                         fontSize: 18,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         margin: 0,
                         color: 'var(--color-navy-900, #00204E)',
-                        lineHeight: 1.2
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {title}
@@ -245,12 +250,13 @@ export default function Modal({
                       <p
                         title={typeof subtitle === 'string' ? subtitle : undefined}
                         style={{
-                          margin: '2px 0 0',
-                          fontSize: 12,
-                          color: 'var(--sap-text-secondary, #475569)',
+                          margin: '4px 0 0 0',
+                          fontSize: 13,
+                          color: 'var(--color-text-secondary, #475569)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          textOverflow: 'ellipsis',
+                          lineHeight: 1.2
                         }}
                       >
                         {subtitle}
@@ -263,34 +269,37 @@ export default function Modal({
                     type="button"
                     onClick={onClose}
                     disabled={isLoading}
-                    className="sap-modal-close-btn"
+                    className="sap-modal-close-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blue-600)]"
+                    tabIndex={-1}
                     style={{
                       cursor: isLoading ? 'not-allowed' : 'pointer',
                       opacity: isLoading ? 0.35 : 1,
                       pointerEvents: isLoading ? 'none' : 'auto',
-                      width: 36,
-                      height: 36,
-                      minWidth: 36,
-                      minHeight: 36,
+                      width: 32,
+                      height: 32,
+                      minWidth: 32,
+                      minHeight: 32,
                       padding: 0,
                       outline: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderRadius: 'var(--radius-sm, 4px)',
+                      borderRadius: 'var(--radius-md, 6px)',
                       border: 'none',
-                      background: 'transparent'
+                      background: 'transparent',
+                      color: 'var(--color-text-secondary, #475569)',
+                      flexShrink: 0
                     }}
                     title={isLoading ? 'Operation in progress' : 'Cancel (Esc)'}
                     aria-label="Cancel (Esc)"
                   >
-                    <X size={16} />
+                    <X size={16} strokeWidth={1.75} />
                   </button>
                 )}
               </div>
             ) : null}
 
-            <div className="sap-modal-body" style={{ padding: padding || '20px 24px', flex: 1, overflowY: 'auto' }}>
+            <div className="sap-modal-body" style={{ padding: padding || '24px', flex: 1, overflowY: 'auto' }}>
               <NotificationOutlet placement="popup" />
               {children}
             </div>
@@ -300,11 +309,12 @@ export default function Modal({
                 className="sap-modal-footer"
                 style={{
                   display: 'flex',
-                  gap: 8,
+                  gap: 12,
+                  alignItems: 'center',
                   justifyContent: 'flex-end',
-                  padding: '12px 20px',
-                  background: 'var(--sap-modal-footer-bg, #EEF4F9)',
-                  borderTop: '1px solid #EEF4F9',
+                  padding: '16px 24px',
+                  background: 'var(--color-surface, #FFFFFF)',
+                  borderTop: '1px solid var(--color-border-subtle, #E2E8F0)',
                   borderBottomLeftRadius: 'inherit',
                   borderBottomRightRadius: 'inherit',
                   flexShrink: 0

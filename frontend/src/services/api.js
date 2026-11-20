@@ -583,35 +583,14 @@ export async function verifyCopiedBom(params) {
 }
 
 /**
- * Retrieves list of active SAP servers the logged-in user is permitted to access.
+ * Retrieves list of active SAP servers for the logged-in user.
  */
 export async function getAvailableServers() {
-  let primaryError = null;
-  try {
-    const response = await apiClient.get('/servers/available');
-    if (response?.data && Array.isArray(response.data.servers)) {
-      return response.data.servers;
-    }
-  } catch (err) {
-    primaryError = err;
-    console.warn('[API] /servers/available failed, attempting /servers fallback:', err.message);
+  const response = await apiClient.get('/servers');
+  const userServers = response.data?.servers ?? response.data;
+  if (Array.isArray(userServers)) {
+    return userServers;
   }
-
-  try {
-    const fallbackRes = await apiClient.get('/servers');
-    const userServers = fallbackRes.data?.servers ?? fallbackRes.data;
-    if (Array.isArray(userServers)) {
-      return userServers.map((s) => ({
-        ...s,
-        permissions: s.permissions || ['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'display_bom', 'validate_bom', 'delete_bom']
-      }));
-    }
-  } catch (fallbackErr) {
-    console.error('[API] /servers fallback failed:', fallbackErr.message);
-    if (primaryError) throw primaryError;
-    throw fallbackErr;
-  }
-
   return [];
 }
 

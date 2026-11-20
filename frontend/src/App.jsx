@@ -623,7 +623,10 @@ function AppContent({
       setServerLoadError(null);
 
       if (list.length > 0) {
-        // Stage 3: Per-tab selection with sessionStorage; new tab uses default server, reload preserves selection
+        // Selection precedence:
+        // 1. the id saved in sessionStorage for this tab (only if it is still in the list)
+        // 2. otherwise the user's default server
+        // 3. otherwise the first server
         let targetServer = null;
         try {
           const savedTabServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
@@ -633,13 +636,16 @@ function AppContent({
         } catch (_) {}
 
         if (!targetServer) {
-          targetServer = list.find((s) => s.is_default && !s.is_disabled) || getNewestActiveServer(list) || list[0];
+          targetServer = list.find((s) => s.is_default && !s.is_disabled) || list[0];
         }
 
         if (targetServer) {
           setSelectedServer(targetServer);
           setSelectedServerHeader(targetServer.id);
           setCurrentSystem(targetServer.environment || 'DEV');
+          try {
+            sessionStorage.setItem('selected_server_id', targetServer.id);
+          } catch (_) {}
         } else {
           setSelectedServer(null);
           setSelectedServerHeader(null);
@@ -647,6 +653,9 @@ function AppContent({
       } else {
         setSelectedServer(null);
         setSelectedServerHeader(null);
+        try {
+          sessionStorage.removeItem('selected_server_id');
+        } catch (_) {}
 
         // Stage 4: Show onboarding popup ONLY when server list has finished loading successfully AND user owns 0 servers AND hasn't dismissed it in this session
         const isDismissed = (() => {
@@ -713,6 +722,17 @@ function AppContent({
       setSelectedServerHeader(chosen.id);
       setCurrentSystem(chosen.environment || 'DEV');
       setSelectedHomeGroup('');
+      setSapSession({
+        connected: false,
+        status: 'CHECKING',
+        message: 'Checking connection...',
+        system: chosen.environment || 'DEV',
+        client: chosen.client || '',
+        user: chosen.sap_username || '',
+        selectedUser: chosen.sap_username || '',
+        selectedSessionId: null,
+        sessions: []
+      });
     }
   };
 
@@ -725,11 +745,28 @@ function AppContent({
       setServerLoadError(null);
 
       // Auto-select in this tab if none is selected, or if savedServer was provided
-      if (!selectedServer || (savedServer && savedServer.id)) {
-        const targetId = savedServer?.id || (list.find((s) => s.is_default)?.id) || list[0]?.id;
+      if (list.length > 0) {
+        let targetId = savedServer?.id;
+        if (!targetId && selectedServer?.id && list.some((s) => s.id === selectedServer.id && !s.is_disabled)) {
+          targetId = selectedServer.id;
+        }
+        if (!targetId) {
+          try {
+            const savedTabServerId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('selected_server_id') : null;
+            if (savedTabServerId && list.some((s) => s.id === savedTabServerId && !s.is_disabled)) {
+              targetId = savedTabServerId;
+            }
+          } catch (_) {}
+        }
+        if (!targetId) {
+          targetId = (list.find((s) => s.is_default && !s.is_disabled)?.id) || list[0]?.id;
+        }
         if (targetId) {
           handleServerChange(targetId, list);
         }
+      } else {
+        setSelectedServer(null);
+        setSelectedServerHeader(null);
       }
       return list;
     } catch (err) {
@@ -749,6 +786,17 @@ function AppContent({
     setHasDismissedOnboarding(false);
     setServerListLoaded(false);
     setServerLoadError(null);
+    setSapSession({
+      connected: false,
+      status: 'CHECKING',
+      message: 'Checking connection...',
+      system: '',
+      client: '',
+      user: '',
+      selectedUser: '',
+      selectedSessionId: null,
+      sessions: []
+    });
     setUser(userData);
     setSelectedHomeGroup('');
     const savedId = typeof localStorage !== 'undefined' ? localStorage.getItem('selected_server_id') : null;
@@ -878,12 +926,19 @@ function AppContent({
 
     // If user has no permitted servers, do not poll SAP status or sessions
     if (!availableServers || availableServers.length === 0) {
-      setSapSession({
-        connected: false,
-        status: 'DISCONNECTED',
-        message: 'No SAP servers assigned to your account.',
-        sessions: []
-      });
+      if (serverListLoaded) {
+        setSapSession({
+          connected: false,
+          status: 'NO_SERVERS',
+          code: 'NO_SERVERS',
+          message: 'No SAP server added',
+          sessions: []
+        });
+      }
+      return;
+    }
+
+    if (!selectedServer?.id) {
       return;
     }
 
@@ -901,20 +956,22 @@ function AppContent({
     };
 
     const pollStatus = async () => {
-      if (isPolling || !isMounted) return;
+      if (isPolling || !isMounted || !selectedServer?.id) return;
       if (document.hidden) return; // Don't poll while tab is hidden
       isPolling = true;
       try {
-        const data = await getSapSessionStatus(selectedServer?.id);
+        const data = await getSapSessionStatus(selectedServer.id);
         if (isMounted && data) {
           setSapSession(data);
         }
       } catch (err) {
         if (isMounted) {
+          const resData = err?.response?.data;
           setSapSession({
             connected: false,
             status: 'SERVER_UNAVAILABLE',
-            message: 'The SAP server is currently unavailable. Please start/reconnect SAP and try again.',
+            code: resData?.code || 'SAP_SERVER_UNAVAILABLE',
+            message: resData?.error || resData?.message || 'The SAP server is currently unavailable. Please start/reconnect SAP and try again.',
             sessions: []
           });
         }
@@ -947,7 +1004,7 @@ function AppContent({
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [user, selectedServer?.id, availableServers.length]);
+  }, [user, selectedServer?.id, availableServers.length, serverListLoaded]);
 
   // Listen for global SAP unreachable broadcasts from API interceptors
   useEffect(() => {
@@ -957,7 +1014,17 @@ function AppContent({
           ...prev,
           connected: false,
           status: 'UNREACHABLE',
-          message: 'SAP server not reachable'
+          code: e.detail?.code || 'SAP_UNREACHABLE',
+          message: e.detail?.reason || 'SAP server not reachable'
+        }));
+      } else if (e.detail?.connected === true || e.detail?.status === 'AVAILABLE') {
+        setSapSession((prev) => ({
+          ...prev,
+          connected: true,
+          status: 'AVAILABLE',
+          code: 'AVAILABLE',
+          message: e.detail?.message || 'Connected',
+          latencyMs: e.detail?.latencyMs || prev.latencyMs
         }));
       }
     };
@@ -1062,18 +1129,58 @@ function AppContent({
 
           {/* 2. Connection indicator dot (clean compact dot, no text, accessible tooltips) */}
           {(() => {
+            const hasNoServers = serverListLoaded && availableServers.length === 0;
             const isConnected = Boolean(sapSession.connected);
-            const isChecking = !isConnected && (sapSession.status === 'CHECKING' || !selectedServer);
-            const dotClass = isConnected
+            const isChecking = !hasNoServers && !isConnected && (sapSession.status === 'CHECKING' || !selectedServer);
+            const dotClass = hasNoServers
+              ? 'dot-neutral'
+              : isConnected
               ? 'dot-connected'
               : isChecking
               ? 'dot-checking'
               : 'dot-disconnected';
-            const tooltip = isConnected
-              ? `Connected to ${selectedServer?.name || 'SAP Server'}${sapSession.latencyMs ? ` (${sapSession.latencyMs}ms)` : ' (< 50ms)'}`
-              : isChecking
-              ? 'Checking connection...'
-              : 'SAP server not reachable';
+
+            let tooltip;
+            if (hasNoServers) {
+              tooltip = 'No SAP server added';
+            } else if (isConnected) {
+              tooltip = `Connected to ${selectedServer?.name || 'SAP Server'}${sapSession.latencyMs ? ` (${sapSession.latencyMs}ms)` : ' (< 50ms)'}`;
+            } else if (isChecking) {
+              tooltip = 'Checking connection...';
+            } else {
+              const serverName = selectedServer?.name || 'SAP Server';
+              const code = sapSession?.code || '';
+              const msg = String(sapSession?.message || '');
+
+              if (code === 'SERVER_DISABLED' || /disabled/i.test(msg)) {
+                tooltip = `${serverName}: Disabled by administrator`;
+              } else if (
+                code === 'HOST_NOT_ALLOWED' ||
+                code === 'ALLOWLIST_EMPTY' ||
+                code === 'DNS_REBINDING_REFUSED' ||
+                code === 'DNS_RESOLUTION_FAILED' ||
+                /allowlist|rebinding|forbidden internal address/i.test(msg)
+              ) {
+                tooltip = `${serverName}: Host not allowlisted`;
+              } else if (
+                code === 'SAP_LOGIN_FAILED' ||
+                code === 'RFC_LOGON_FAILURE' ||
+                code === 'NO_CREDENTIALS' ||
+                code === 'DECRYPT_FAILED' ||
+                /credentials|logon|sign in|password/i.test(msg)
+              ) {
+                tooltip = `${serverName}: Login failed`;
+              } else if (
+                code === 'RFC_CALL_TIMEOUT' ||
+                code === 'ETIMEDOUT' ||
+                code === 'TIMEOUT' ||
+                /timed out|timeout/i.test(msg)
+              ) {
+                tooltip = `${serverName}: Connection timed out`;
+              } else {
+                tooltip = `${serverName}: SAP server not reachable`;
+              }
+            }
 
             return (
               <div

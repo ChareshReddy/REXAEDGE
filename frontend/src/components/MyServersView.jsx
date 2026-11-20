@@ -13,6 +13,9 @@ import {
 } from 'lucide-react';
 import AddServerModal from './AddServerModal';
 import Modal from './ui/Modal';
+import FioriPageHeader from './FioriPageHeader';
+import { PageContainer } from './layout';
+import { toast } from '../context/ToastContext';
 import { getMyServers, deleteMyServer, setMyDefaultServer, testServerConnection } from '../services/api';
 
 export default function MyServersView({ onServerChanged, onNavigateHome }) {
@@ -50,6 +53,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
   const handleSetDefault = async (serverId) => {
     try {
       await setMyDefaultServer(serverId);
+      toast.success('Default server updated.');
       setSuccessMessage('Default server updated.');
       await loadServers();
       if (typeof onServerChanged === 'function') {
@@ -57,6 +61,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
       }
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
+      toast.error(err?.response?.data?.error || err.message || 'Failed to set default server.');
       setError(err?.response?.data?.error || err.message || 'Failed to set default server.');
     }
   };
@@ -69,29 +74,98 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
 
     try {
       const res = await testServerConnection({}, server.id);
+      const isSuccess = Boolean(res?.success);
+      const successMsg = res?.message || `Connected (${res.responseTimeMs || 0} ms)`;
+      const failMsg = res?.error || res?.message || 'Connection test failed';
+
       setTestStates((prev) => ({
         ...prev,
         [server.id]: {
           isTesting: false,
           result: {
-            success: Boolean(res?.success),
-            message: res?.success
-              ? `Connected (${res.responseTimeMs || 0} ms)`
-              : (res?.error || res?.message || 'Failed')
+            success: isSuccess,
+            message: isSuccess ? successMsg : failMsg
           }
         }
       }));
+
+      if (isSuccess) {
+        toast.success(successMsg);
+      } else {
+        toast.error(failMsg);
+      }
+
+      // Update local server state to reflect new live health
+      setServers((prevServers) =>
+        prevServers.map((s) =>
+          s.id === server.id
+            ? {
+                ...s,
+                health_status: isSuccess ? 'healthy' : 'down',
+                circuit_breaker: isSuccess ? 'closed' : 'open',
+                last_error: isSuccess ? null : (res?.error || res?.message || 'Connection failed')
+              }
+            : s
+        )
+      );
+
+      // Broadcast update so top bar dot updates in sync
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('sap:server-status', {
+            detail: {
+              connected: isSuccess,
+              status: isSuccess ? 'AVAILABLE' : 'UNREACHABLE',
+              code: isSuccess ? 'AVAILABLE' : (res?.code || 'SAP_UNREACHABLE'),
+              reason: isSuccess ? 'Connected' : (res?.error || res?.message || 'SAP server not reachable'),
+              latencyMs: res.responseTimeMs,
+              serverId: server.id
+            }
+          })
+        );
+      }
     } catch (err) {
+      const errMsg = err?.response?.data?.error || err.message || 'Test failed';
+      const errCode = err?.response?.data?.code || 'TEST_FAILED';
+      toast.error(errMsg);
       setTestStates((prev) => ({
         ...prev,
         [server.id]: {
           isTesting: false,
           result: {
             success: false,
-            message: err?.response?.data?.error || err.message || 'Test failed'
+            message: errMsg
           }
         }
       }));
+
+      setServers((prevServers) =>
+        prevServers.map((s) =>
+          s.id === server.id
+            ? {
+                ...s,
+                health_status: 'down',
+                circuit_breaker: 'open',
+                last_error: errMsg,
+                last_code: errCode
+              }
+            : s
+        )
+      );
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('sap:server-status', {
+            detail: {
+              connected: false,
+              status: 'UNREACHABLE',
+              code: errCode,
+              reason: errMsg,
+              serverId: server.id
+            }
+          })
+        );
+      }
     }
   };
 
@@ -123,75 +197,51 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
   };
 
   return (
-    <div
-      className="rx-my-servers-container"
-      style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: 'var(--spacing-xl, 24px) var(--spacing-lg, 16px)'
-      }}
-    >
-      {/* Header */}
-      <div
+    <div className="fiori-app-view-root" style={{ width: '100%', height: '100%', overflowY: 'auto' }}>
+      <FioriPageHeader
+        title="My SAP Servers"
+        subtitle="Add and manage your own SAP servers. Your SAP passwords are encrypted and never shown in the app."
+        breadcrumbs={[
+          { label: 'Home', onClick: onNavigateHome },
+          { label: 'My Servers' }
+        ]}
+        extraTitleContent={
+          <button
+            type="button"
+            className="sap-btn sap-btn-primary fiori-ph-btn"
+            onClick={() => {
+              setServerToEdit(null);
+              setIsAddModalOpen(true);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: 'var(--color-navy-900, #00204E)',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 'var(--radius-md, 6px)',
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={16} />
+            <span>Add Server</span>
+          </button>
+        }
+      />
+
+      <PageContainer
+        className="rx-my-servers-container"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 'var(--spacing-lg, 24px)',
-          flexWrap: 'wrap',
-          gap: '12px'
+          width: '100%',
+          overflowX: 'hidden',
+          paddingTop: '24px',
+          paddingBottom: '32px'
         }}
       >
-        <div>
-          <h1
-            style={{
-              fontSize: '22px',
-              fontWeight: 700,
-              color: 'var(--color-text, #0F172A)',
-              margin: '0 0 4px 0',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <Server size={22} color="var(--color-navy-900, #00204E)" />
-            My SAP Servers
-          </h1>
-          <p
-            style={{
-              fontSize: '13px',
-              color: 'var(--color-text-muted, #64748B)',
-              margin: 0
-            }}
-          >
-            Configure your personal SAP connection credentials. Password secrets are encrypted with AES-256-GCM.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setServerToEdit(null);
-            setIsAddModalOpen(true);
-          }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '9px 16px',
-            fontSize: '13px',
-            fontWeight: 600,
-            backgroundColor: 'var(--color-navy-900, #00204E)',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: 'var(--radius-md, 6px)',
-            cursor: 'pointer'
-          }}
-        >
-          <Plus size={16} />
-          Add Server
-        </button>
-      </div>
 
       {/* Notifications */}
       {successMessage && (
@@ -324,8 +374,17 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
             boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0, 0, 0, 0.05))'
           }}
         >
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
+            <table
+              style={{
+                width: '100%',
+                minWidth: '760px',
+                tableLayout: 'fixed',
+                borderCollapse: 'collapse',
+                textAlign: 'left',
+                fontSize: '13px'
+              }}
+            >
               <thead>
                 <tr
                   style={{
@@ -335,14 +394,14 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                     fontWeight: 600
                   }}
                 >
-                  <th style={{ padding: '12px 16px' }}>Default</th>
-                  <th style={{ padding: '12px 16px' }}>Server Name</th>
-                  <th style={{ padding: '12px 16px' }}>Host / IP</th>
-                  <th style={{ padding: '12px 16px' }}>Sys #</th>
-                  <th style={{ padding: '12px 16px' }}>Client</th>
-                  <th style={{ padding: '12px 16px' }}>Type (Allowlist)</th>
-                  <th style={{ padding: '12px 16px' }}>Status</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                  <th style={{ width: '60px', padding: '12px 16px' }}>Default</th>
+                  <th style={{ width: '180px', padding: '12px 16px' }}>Server Name</th>
+                  <th style={{ width: '160px', padding: '12px 16px' }}>Host / IP</th>
+                  <th style={{ width: '65px', padding: '12px 16px' }}>Sys #</th>
+                  <th style={{ width: '75px', padding: '12px 16px' }}>Client</th>
+                  <th style={{ width: '130px', padding: '12px 16px' }}>Type</th>
+                  <th style={{ width: '130px', padding: '12px 16px' }}>Status</th>
+                  <th style={{ width: '150px', padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -359,29 +418,49 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                         backgroundColor: server.is_default ? 'var(--color-blue-50, #F0F6FA)' : 'transparent'
                       }}
                     >
-                      {/* Default Radio / Star */}
-                      <td style={{ padding: '12px 16px' }}>
+                      {/* Default Radio */}
+                      <td style={{ width: '60px', padding: '12px 16px' }}>
                         <button
                           type="button"
-                          onClick={() => handleSetDefault(server.id)}
-                          title={server.is_default ? 'Default server' : 'Set as default server'}
+                          role="radio"
+                          aria-checked={Boolean(server.is_default)}
+                          onClick={() => !server.is_default && handleSetDefault(server.id)}
+                          title="Set as default"
+                          aria-label={server.is_default ? `Default server: ${server.name}` : `Set ${server.name} as default`}
+                          className="focus-visible:ring-2 focus-visible:ring-[var(--color-blue-600)] focus-visible:ring-offset-1 focus:outline-none"
                           style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            display: 'flex',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '50%',
+                            border: server.is_default
+                              ? '1.5px solid var(--color-navy-900, #00204E)'
+                              : '1.5px solid var(--color-border, #CBD5E1)',
+                            backgroundColor: '#FFFFFF',
+                            cursor: server.is_default ? 'default' : 'pointer',
+                            padding: 0,
+                            display: 'inline-flex',
                             alignItems: 'center',
-                            color: server.is_default ? 'var(--color-accent, #EAB308)' : 'var(--color-text-muted, #94A3B8)'
+                            justifyContent: 'center',
+                            outline: 'none',
+                            boxSizing: 'border-box'
                           }}
                         >
-                          <Star size={18} fill={server.is_default ? 'currentColor' : 'none'} />
+                          {server.is_default && (
+                            <span
+                              style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: 'var(--color-navy-900, #00204E)'
+                              }}
+                            />
+                          )}
                         </button>
                       </td>
 
                       {/* Server Name */}
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--color-text, #0F172A)' }}>
-                        {server.name}
+                      <td style={{ width: '180px', padding: '12px 16px', fontWeight: 600, color: 'var(--color-text, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={server.name}>{server.name}</span>
                         {server.is_default && (
                           <span
                             style={{
@@ -400,22 +479,22 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                       </td>
 
                       {/* Host */}
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: 'var(--color-text, #0F172A)' }}>
-                        {server.ashost}
+                      <td style={{ width: '160px', padding: '12px 16px', fontFamily: 'monospace', color: 'var(--color-text, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span title={server.ashost}>{server.ashost}</span>
                       </td>
 
                       {/* Sysnr */}
-                      <td style={{ padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
+                      <td style={{ width: '65px', padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
                         {server.sysnr}
                       </td>
 
                       {/* Client */}
-                      <td style={{ padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
+                      <td style={{ width: '75px', padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
                         {server.client}
                       </td>
 
                       {/* Type (Read-only Badge from Allowlist) */}
-                      <td style={{ padding: '12px 16px' }}>
+                      <td style={{ width: '130px', padding: '12px 16px' }}>
                         <span
                           style={{
                             display: 'inline-flex',
@@ -434,51 +513,139 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                       </td>
 
                       {/* Health / Test Result */}
-                      <td style={{ padding: '12px 16px' }}>
-                        {testState.isTesting ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted, #64748B)', fontSize: '12px' }}>
-                            <RefreshCw size={12} className="animate-spin" /> Testing...
-                          </span>
-                        ) : testState.result ? (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '12px',
-                              color: testState.result.success ? 'var(--color-success, #166534)' : 'var(--color-danger, #B42318)'
-                            }}
-                          >
-                            {testState.result.success ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-                            {testState.result.message}
-                          </span>
-                        ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted, #64748B)', fontSize: '12px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-success, #166534)' }} />
-                            Ready
-                          </span>
-                        )}
+                      <td
+                        style={{
+                          padding: '12px 16px',
+                          width: '130px',
+                          maxWidth: '130px',
+                          overflow: 'hidden',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        {(() => {
+                          if (testState.isTesting) {
+                            return (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  color: 'var(--color-text-muted, #64748B)',
+                                  fontSize: '12px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  maxWidth: '100%'
+                                }}
+                                title="Testing connection to SAP server..."
+                              >
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted, #94A3B8)', flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Testing...</span>
+                              </span>
+                            );
+                          }
+
+                          if (testState.result) {
+                            const isSuccess = Boolean(testState.result.success);
+                            const dotColor = isSuccess ? 'var(--color-success, #16A34A)' : 'var(--color-danger, #DC2626)';
+                            const label = isSuccess ? 'Ready' : 'Unreachable';
+                            const tooltip = testState.result.message || (isSuccess ? 'Connected' : 'Connection failed');
+
+                            return (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  color: 'var(--color-text-muted, #64748B)',
+                                  fontSize: '12px',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  maxWidth: '100%'
+                                }}
+                                title={tooltip}
+                                data-testid={`server-status-${server.id}`}
+                              >
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                              </span>
+                            );
+                          }
+
+                          const isDown = server.is_disabled || server.health_status === 'down' || server.circuit_breaker === 'open';
+                          const isDegraded = !isDown && server.health_status === 'degraded';
+                          const dotColor = server.is_disabled
+                            ? 'var(--color-text-muted, #94A3B8)'
+                            : isDown
+                            ? 'var(--color-danger, #DC2626)'
+                            : isDegraded
+                            ? 'var(--color-warning, #D97706)'
+                            : 'var(--color-success, #16A34A)';
+                          const label = server.is_disabled
+                            ? 'Disabled'
+                            : isDown
+                            ? 'Unreachable'
+                            : isDegraded
+                            ? 'Degraded'
+                            : 'Ready';
+                          const title = server.is_disabled
+                            ? 'This SAP server is disabled.'
+                            : (server.last_error || (isDown ? 'SAP server not reachable' : 'Connected and ready'));
+
+                          return (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                color: 'var(--color-text-muted, #64748B)',
+                                fontSize: '12px',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: '100%'
+                              }}
+                              title={title}
+                              data-testid={`server-status-${server.id}`}
+                            >
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', width: '150px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                           <button
                             type="button"
                             onClick={() => handleTestServer(server)}
                             disabled={testState.isTesting}
                             title="Test Connection"
                             style={{
-                              padding: '5px 8px',
+                              width: '56px',
+                              height: '28px',
+                              padding: '4px 6px',
                               fontSize: '12px',
+                              fontWeight: 500,
                               backgroundColor: 'transparent',
                               border: '1px solid var(--color-border, #CBD5E1)',
                               borderRadius: 'var(--radius-md, 4px)',
-                              cursor: 'pointer',
-                              color: 'var(--color-text, #0F172A)'
+                              cursor: testState.isTesting ? 'not-allowed' : 'pointer',
+                              color: 'var(--color-text, #0F172A)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxSizing: 'border-box'
                             }}
                           >
-                            Test
+                            {testState.isTesting ? (
+                              <RefreshCw size={13} className="animate-spin" />
+                            ) : (
+                              'Test'
+                            )}
                           </button>
                           <button
                             type="button"
@@ -488,13 +655,19 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                             }}
                             title="Edit Server"
                             style={{
-                              padding: '5px 8px',
+                              width: '28px',
+                              height: '28px',
+                              padding: 0,
                               fontSize: '12px',
                               backgroundColor: 'transparent',
                               border: '1px solid var(--color-border, #CBD5E1)',
                               borderRadius: 'var(--radius-md, 4px)',
                               cursor: 'pointer',
-                              color: 'var(--color-text, #0F172A)'
+                              color: 'var(--color-text, #0F172A)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxSizing: 'border-box'
                             }}
                           >
                             <Edit2 size={13} />
@@ -504,13 +677,19 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                             onClick={() => setServerToDelete(server)}
                             title="Delete Server"
                             style={{
-                              padding: '5px 8px',
+                              width: '28px',
+                              height: '28px',
+                              padding: 0,
                               fontSize: '12px',
                               backgroundColor: 'transparent',
                               border: '1px solid var(--color-danger-border, #FCA5A5)',
                               borderRadius: 'var(--radius-md, 4px)',
                               cursor: 'pointer',
-                              color: 'var(--color-danger, #B42318)'
+                              color: 'var(--color-danger, #B42318)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxSizing: 'border-box'
                             }}
                           >
                             <Trash2 size={13} />
@@ -594,6 +773,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
           This will remove your configured connection and stored SAP credentials. Active jobs using this server will be cancelled.
         </p>
       </Modal>
-    </div>
+    </PageContainer>
+  </div>
   );
 }

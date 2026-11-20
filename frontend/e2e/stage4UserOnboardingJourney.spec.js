@@ -162,7 +162,7 @@ test.describe('Stage 4: User Onboarding & First-Login Journey', () => {
     await expect(page.getByRole('heading', { name: 'Add your SAP server' })).toBeVisible();
 
     // Verify encryption note
-    await expect(page.locator('text=Your SAP password is encrypted and only used for your sessions')).toBeVisible();
+    await expect(page.locator('text=Your SAP password is encrypted and is never shown in the app.')).toBeVisible();
 
     // Fill server details
     await page.fill('#server-name', 'My Sandbox SAP');

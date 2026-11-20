@@ -517,6 +517,13 @@ select:-webkit-autofill:focus {
   animation: sap-dot-pulse-amber 1.5s ease-in-out infinite;
 }
 
+.sap-connection-dot.dot-neutral,
+.sap-connection-dot.dot-no-servers {
+  background-color: var(--color-text-muted, #7a8ca3);
+  box-shadow: 0 0 0 2px rgba(122, 140, 163, 0.2);
+  animation: none;
+}
+
 .sap-connection-dot.dot-disconnected,
 .sap-connection-dot.dot-server_unavailable,
 .sap-connection-dot.dot-error {
@@ -563,6 +570,7 @@ select:-webkit-autofill:focus {
   .sap-connection-dot,
   .sap-connection-dot.dot-connected,
   .sap-connection-dot.dot-checking,
+  .sap-connection-dot.dot-neutral,
   .sap-connection-dot.dot-disconnected,
   .sap-connection-dot.dot-server_unavailable,
   .sap-status-dot.dot-checking,
@@ -6734,16 +6742,16 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .sap-f4-header {
-  height: var(--popup-header-height, 60px);
-  min-height: var(--popup-header-height, 60px);
-  max-height: var(--popup-header-height, 60px);
-  padding: 0 18px;
+  height: 62px;
+  min-height: 62px;
+  max-height: 62px;
+  padding: 0 24px;
   box-sizing: border-box;
-  background: var(--sap-popup-header-bg, #EEF4F9) !important;
+  background: var(--color-blue-50, #EEF4F9) !important;
   color: var(--sap-popup-header-title, #00204E) !important;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
-  border-bottom: 1px solid var(--sap-popup-header-border, #D9E2EC) !important;
+  border-bottom: 1px solid var(--color-border, #D9E2EC) !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6755,8 +6763,8 @@ input::-webkit-credentials-auto-fill-button {
 
 .sap-f4-header h3 {
   color: var(--sap-popup-header-title, #00204E) !important;
-  font-size: var(--font-size-18, 18px) !important;
-  font-weight: 700 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
   margin: 0 !important;
   line-height: 1.2 !important;
 }
@@ -6773,10 +6781,10 @@ input::-webkit-credentials-auto-fill-button {
   border: 1px solid transparent !important;
   border-radius: 6px;
   padding: 0;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7532,7 +7540,7 @@ td.sap-code {
 }
 
 .fiori-operations-header-block {
-  margin: 18px 0 14px 0;
+  margin: 0 0 16px 0;
 }
 
 .fiori-operations-header-block .fiori-group-title {

@@ -54,6 +54,7 @@ import PasswordModal from './PasswordModal';
 import PasswordInput from './PasswordInput';
 import AdminActivityLogsView from './AdminActivityLogsView';
 import FioriPageHeader from './FioriPageHeader';
+import { SearchInput } from './ui/search-input';
 import { FormSection } from './ui/form-layout';
 import { FieldWrapper } from './ui/FieldWrapper';
 import { formatEnvironment } from '../utils/textFormatters';
@@ -231,7 +232,7 @@ export default function AdminView({
     client: '100',
     lang: 'EN',
     environment: 'SANDBOX',
-    router: '/H/103.206.249.51/H/',
+    router: '',
     gwserv: '3300',
     is_active: true,
     modules: [MODULE_KEYS.BOM],
@@ -872,19 +873,13 @@ export default function AdminView({
               <>
                 {/* Header row with search and Add User button */}
             <div className="sap-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  className="sap-input sap-input-with-icon"
-                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
-                  placeholder="Search users..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                />
-              </div>
+              <SearchInput
+                placeholder="Search users..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                wrapperStyle={{ maxWidth: 300, width: '100%' }}
+                style={{ height: 32, fontSize: 12 }}
+              />
 
               <button
                 type="button"
@@ -1073,37 +1068,31 @@ export default function AdminView({
             ) : (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10, flexWrap: 'wrap' }}>
-              <div className="sap-input-group" style={{ maxWidth: 300, width: '100%', position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#005A9E', pointerEvents: 'none', zIndex: 2, display: 'flex', alignItems: 'center' }}>
-                  <Search size={14} />
-                </span>
-                <input
-                  type="text"
-                  className="sap-input sap-input-with-icon"
-                  style={{ paddingLeft: 32, height: 32, fontSize: 12, width: '100%' }}
-                  placeholder="Search servers or owners..."
-                  value={serverSearch}
-                  onChange={(e) => setServerSearch(e.target.value)}
-                />
-              </div>
+                  <SearchInput
+                    placeholder="Search servers or owners..."
+                    value={serverSearch}
+                    onChange={(e) => setServerSearch(e.target.value)}
+                    wrapperStyle={{ maxWidth: 300, width: '100%' }}
+                    style={{ height: 32, fontSize: 12 }}
+                  />
 
-              <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Shield size={14} color="var(--sap-primary)" />
-                <span>Read-only system overview · Disable/Delete kill switches apply immediately without credentials exposure</span>
-              </div>
-            </div>
+                  <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Shield size={14} color="var(--sap-primary)" />
+                    <span>Read-only system overview · Disable/Delete kill switches apply immediately without credentials exposure</span>
+                  </div>
+                </div>
 
             {/* Servers Table - Compact & Scrollable */}
             <div className="sap-admin-table-scroll sap-table-container" tabIndex={0} role="region" aria-label="SAP Servers Table">
-              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <table className="sap-table sap-admin-compact-table" style={{ width: '100%', minWidth: '760px', tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: 170 }} />
-                  <col style={{ width: 170 }} />
-                  <col style={{ width: 160 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 90 }} />
-                  <col style={{ width: 100 }} />
-                  <col style={{ width: 170 }} />
+                  <col style={{ width: '21%' }} />
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '17%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '14%' }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1197,30 +1186,49 @@ export default function AdminView({
                           <td style={{ fontSize: 11, color: 'var(--sap-text-subtle)', whiteSpace: 'nowrap' }}>
                             {formatRelativeTime(s.last_used_at || s.last_checked)}
                           </td>
-                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <td className="actions-column" style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 8px' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                               {isUnassigned && (
                                 <button
                                   type="button"
-                                  className="sap-button"
+                                  className="sap-btn sap-btn-ghost"
                                   onClick={() => handleOpenAssignOwner(s)}
                                   title="Assign this server to a user"
-                                  style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  aria-label={`Assign ${s.name} to a user`}
+                                  style={{
+                                    width: 28,
+                                    height: 28,
+                                    minWidth: 28,
+                                    padding: 0,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '1px solid var(--color-border, #CBD5E1)',
+                                    borderRadius: 'var(--radius-md, 4px)'
+                                  }}
                                 >
                                   <UserPlus size={13} color="var(--sap-primary)" />
-                                  <span>Assign</span>
                                 </button>
                               )}
                               <button
                                 type="button"
-                                className="sap-button"
+                                className="sap-btn sap-btn-ghost"
                                 onClick={() => handleToggleServerStatus(s)}
                                 title={s.is_disabled ? `Enable ${s.name}` : `Disable ${s.name}`}
                                 aria-label={s.is_disabled ? `Enable ${s.name}` : `Disable ${s.name}`}
-                                style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 28,
+                                  padding: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1px solid var(--color-border, #CBD5E1)',
+                                  borderRadius: 'var(--radius-md, 4px)'
+                                }}
                               >
                                 {s.is_disabled ? <UserCheck size={13} color="var(--sap-positive)" /> : <PowerOff size={13} color="var(--sap-warning)" />}
-                                <span>{s.is_disabled ? 'Enable' : 'Disable'}</span>
                               </button>
                               <button
                                 type="button"
@@ -1228,7 +1236,18 @@ export default function AdminView({
                                 onClick={() => handleClearServerF4Cache(s)}
                                 title="Clear F4 cache"
                                 aria-label={`Clear F4 cache for ${s.name}`}
-                                style={{ color: 'var(--sap-text-subtle)', padding: '4px' }}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 28,
+                                  padding: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1px solid var(--color-border, #CBD5E1)',
+                                  borderRadius: 'var(--radius-md, 4px)',
+                                  color: 'var(--sap-text-subtle)'
+                                }}
                               >
                                 <Database size={13} />
                               </button>
@@ -1238,6 +1257,18 @@ export default function AdminView({
                                 onClick={() => handleDeleteServer(s)}
                                 title="Delete Server (Kill Switch)"
                                 aria-label={`Delete ${s.name}`}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  minWidth: 28,
+                                  padding: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '1px solid var(--color-danger-border, #FCA5A5)',
+                                  borderRadius: 'var(--radius-md, 4px)',
+                                  color: 'var(--color-danger, #B42318)'
+                                }}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -1313,17 +1344,13 @@ export default function AdminView({
 
             <div className="sap-toolbar sap-admin-users-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, maxWidth: 360 }}>
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <Search size={14} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--sap-text-muted)' }} />
-                  <input
-                    type="text"
-                    className="sap-input"
-                    placeholder="Filter allowlist patterns..."
-                    value={allowlistSearch}
-                    onChange={(e) => setAllowlistSearch(e.target.value)}
-                    style={{ width: '100%', height: 32, paddingLeft: 28 }}
-                  />
-                </div>
+                <SearchInput
+                  placeholder="Filter allowlist patterns..."
+                  value={allowlistSearch}
+                  onChange={(e) => setAllowlistSearch(e.target.value)}
+                  wrapperStyle={{ width: '100%' }}
+                  style={{ height: 32, fontSize: 12 }}
+                />
               </div>
 
               <button

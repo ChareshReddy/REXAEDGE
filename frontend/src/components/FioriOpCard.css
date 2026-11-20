@@ -5,20 +5,19 @@
 
 .fiori-op-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
-  grid-template-columns: repeat(auto-fill, minmax(280px, 300px));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   align-items: stretch;
-  justify-content: start;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .fiori-op-card {
-  width: 300px;
-  min-width: 260px;
-  max-width: 320px;
-  height: 210px;
-  min-height: 190px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 200px;
+  height: 100%;
   padding: 20px;
   background-color: var(--color-surface, #FFFFFF);
   border: 1px solid var(--color-border, #D9E2EC);
@@ -34,18 +33,17 @@
   position: relative;
   user-select: none;
   font-family: var(--font-sans, 'Inter', sans-serif);
-  transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease), transform var(--transition-fast, 150ms ease), background-color var(--transition-fast, 150ms ease);
+  transition: border-color var(--transition-fast, 150ms ease), box-shadow var(--transition-fast, 150ms ease), background-color var(--transition-fast, 150ms ease);
 }
 
 .fiori-op-card:hover:not(:disabled):not(.disabled) {
   border-color: var(--color-blue-400, #6699B8);
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 32, 78, 0.08));
-  transform: translateY(-2px);
   background-color: var(--color-surface, #FFFFFF);
 }
 
 .fiori-op-card:active:not(:disabled):not(.disabled) {
-  transform: translateY(0);
+  border-color: var(--color-blue-500, #02579A);
 }
 
 .fiori-op-card:focus-visible {
@@ -172,18 +170,23 @@
   stroke: currentColor;
 }
 
-/* Responsive: <600px full width single column, auto height */
-@media (max-width: 600px) {
+/* Responsive: 2 columns on tablet, 1 column on phone */
+@media (max-width: 1024px) {
+  .fiori-op-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 640px) {
   .fiori-op-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .fiori-op-card {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
+    min-height: 180px;
     height: auto;
-    min-height: auto;
   }
 }
 

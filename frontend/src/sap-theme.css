@@ -189,21 +189,21 @@ html, body {
   padding-bottom: 0 !important;
 }
 
-/* Modal and F4 Dialog Headers: Plain light orange #EEF4F9 (orange-100) with navy bold title */
+/* Modal and F4 Dialog Headers: Plain light blue #EEF4F9 with navy semibold title */
 .sap-f4-header,
 .sap-modal-header,
 .sap-bulk-modal-header {
-  background: var(--sap-popup-header-bg, #EEF4F9) !important;
-  font-size: var(--font-size-18, 18px) !important;
-  font-weight: 700 !important;
+  background: var(--color-blue-50, #EEF4F9) !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
   font-family: var(--sap-font-family) !important;
   color: var(--sap-popup-header-title, #00204E) !important;
-  height: var(--popup-header-height, 60px) !important;
-  min-height: var(--popup-header-height, 60px) !important;
-  max-height: var(--popup-header-height, 60px) !important;
-  padding: 0 18px !important;
+  height: 62px !important;
+  min-height: 62px !important;
+  max-height: 62px !important;
+  padding: 0 24px !important;
   border: none !important;
-  border-bottom: 1px solid var(--sap-popup-header-border, #D9E2EC) !important;
+  border-bottom: 1px solid var(--color-border, #D9E2EC) !important;
   border-radius: 8px 8px 0 0 !important;
   margin: 0 !important;
   display: flex !important;
@@ -217,8 +217,8 @@ html, body {
 .sap-bulk-modal-header h3,
 .sap-bulk-modal-title h3 {
   color: var(--sap-popup-header-title, #00204E) !important;
-  font-size: var(--font-size-18, 18px) !important;
-  font-weight: 700 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
   margin: 0 !important;
   line-height: 1.2 !important;
 }
@@ -890,12 +890,12 @@ button.sap-modal-close,
   background-color: transparent !important;
   border: 1px solid transparent !important;
   color: var(--sap-popup-header-close-color, #05396B) !important;
-  width: 36px !important;
-  min-width: 36px !important;
-  max-width: 36px !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  max-height: 36px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
   padding: 0 !important;
   border-radius: var(--radius-sm, 4px) !important;
   cursor: pointer !important;

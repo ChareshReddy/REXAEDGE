@@ -547,7 +547,7 @@ export default function BomExplorerView({
             <form onSubmit={handleSearch}>
               <FormGrid cols={4}>
                 <FieldWrapper
-                  label="Material Number"
+                  label="Material"
                   htmlFor="expMaterial"
                   required
                   error={(touched.material || isSubmitted) ? fieldErrors.material || null : null}
@@ -579,7 +579,7 @@ export default function BomExplorerView({
                 </FieldWrapper>
 
                 <FieldWrapper
-                  label="Plant Code"
+                  label="Plant"
                   htmlFor="expPlant"
                   required
                   error={(touched.plant || isSubmitted) ? fieldErrors.plant || null : null}
