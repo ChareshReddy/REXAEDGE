@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.sap_servers (
   client TEXT NOT NULL,
   lang TEXT NOT NULL DEFAULT 'EN',
   environment TEXT NOT NULL CHECK (environment IN ('SANDBOX', 'DEV', 'QA', 'PROD')),
-  router TEXT DEFAULT '/H/103.206.249.51/H/',
+  router TEXT DEFAULT NULL,
   gwserv TEXT DEFAULT '3309',
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
