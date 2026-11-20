@@ -112,7 +112,7 @@ class DefaultMockRfcClient {
 export class SapConnectionPool {
   constructor(serverId, serverConfig = {}, options = {}) {
     this.serverId = String(serverId || 'default');
-    this.serverConfig = { ...serverConfig };
+    this.serverConfig = { id: this.serverId, ...serverConfig };
     this.ClientClass = options.ClientClass || null;
 
     // Resolve configuration with fallback to defaults
@@ -192,31 +192,51 @@ export class SapConnectionPool {
     return prio;
   }
 
-  async _createClient() {
-    if (this.ClientClass) {
-      let params = { user: 'MOCK_USER' };
-      try {
-        const { getRfcConnectionParams } = await import('./sapRfcClient.js');
-        params = getRfcConnectionParams({ server: this.serverConfig });
-      } catch (_) {
-        params = { user: this.serverConfig?.sap_username || 'MOCK_USER', ...this.serverConfig };
+  async _createClient(timeoutMs = 10000) {
+    let timer = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        const err = new Error(`RFC connection open timed out after ${timeoutMs}ms`);
+        err.code = 'CONNECT_TIMEOUT';
+        reject(err);
+      }, timeoutMs);
+    });
+
+    const openPromise = (async () => {
+      if (this.ClientClass) {
+        let params = {};
+        try {
+          const { getRfcConnectionParams } = await import('./sapRfcClient.js');
+          params = getRfcConnectionParams({ server: this.serverConfig });
+        } catch (_) {
+          params = { ashost: this.serverConfig.ashost || '127.0.0.1', ...this.serverConfig };
+        }
+        const client = new this.ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
+        await client.open();
+        return client;
       }
-      const client = new this.ClientClass(params, DEFAULT_RFC_CLIENT_OPTIONS);
+
+      if (process.env.USE_MOCK_SAP === 'true') {
+        const client = new DefaultMockRfcClient({ server: this.serverConfig });
+        await client.open();
+        return client;
+      }
+
+      const { getRfcConnectionParams } = await import('./sapRfcClient.js');
+      const params = getRfcConnectionParams({ server: this.serverConfig });
+      const client = new Client(params, DEFAULT_RFC_CLIENT_OPTIONS);
       await client.open();
       return client;
-    }
+    })();
 
-    if (process.env.USE_MOCK_SAP === 'true') {
-      const client = new DefaultMockRfcClient({ server: this.serverConfig });
-      await client.open();
+    try {
+      const client = await Promise.race([openPromise, timeoutPromise]);
+      if (timer) clearTimeout(timer);
       return client;
+    } catch (err) {
+      if (timer) clearTimeout(timer);
+      throw err;
     }
-
-    const { getRfcConnectionParams } = await import('./sapRfcClient.js');
-    const params = getRfcConnectionParams({ server: this.serverConfig });
-    const client = new Client(params, DEFAULT_RFC_CLIENT_OPTIONS);
-    await client.open();
-    return client;
   }
 
   _discardClient(client) {
@@ -426,10 +446,10 @@ export class SapConnectionPool {
     if (!clientEntry) {
       try {
         const client = await this._createClient();
-        this.pendingConnections--;
+        this.pendingConnections = Math.max(0, this.pendingConnections - 1);
         clientEntry = { client, lastUsed: Date.now() };
       } catch (err) {
-        this.pendingConnections--;
+        this.pendingConnections = Math.max(0, this.pendingConnections - 1);
         this._decrementUserCount(item.userId);
         this.stats.totalErrors++;
         item.reject(err);
@@ -461,16 +481,42 @@ export class SapConnectionPool {
       }, this.rfcCallTimeoutMs);
     });
 
+    let abortListener = null;
+    const abortPromise = new Promise((_, reject) => {
+      if (item.signal) {
+        if (item.signal.aborted) {
+          const cancelErr = new Error('Request cancelled');
+          cancelErr.code = 'REQUEST_CANCELLED';
+          cancelErr.status = 499;
+          reject(cancelErr);
+          return;
+        }
+        abortListener = () => {
+          const cancelErr = new Error('Request cancelled');
+          cancelErr.code = 'REQUEST_CANCELLED';
+          cancelErr.status = 499;
+          reject(cancelErr);
+        };
+        item.signal.addEventListener('abort', abortListener, { once: true });
+      }
+    });
+
+    let isHealthy = false;
+    let willRetry = false;
     try {
       const result = await Promise.race([
         item.fn(activeEntry.client),
-        timeoutPromise
+        timeoutPromise,
+        abortPromise
       ]);
       clearTimeout(callTimer);
+      if (item.signal && abortListener) {
+        item.signal.removeEventListener('abort', abortListener);
+      }
 
       this.circuitBreaker.onSuccess();
       updateServerHealth(this.serverId, { success: true });
-      this._releaseConnection(activeEntry, true);
+      isHealthy = true;
       item.resolve(result);
     } catch (err) {
       clearTimeout(callTimer);
@@ -482,9 +528,7 @@ export class SapConnectionPool {
       }
       this.circuitBreaker.onFailure(isConnErr, err.message);
       updateServerHealth(this.serverId, { success: false, error: err });
-
-      // Discard broken or timed-out connection
-      this._releaseConnection(activeEntry, false);
+      isHealthy = false;
 
       // Read retry rule: reads retry once on connection-level error
       if (item.isRead && isConnectionLevelError(err) && item.retryCount === 0) {
@@ -497,7 +541,7 @@ export class SapConnectionPool {
           this._handleQueueTimeout(item);
         }, this.queueTimeoutMs);
         this.queue.unshift(item); // insert at front
-        this._processQueue();
+        willRetry = true;
         return;
       }
 
@@ -512,11 +556,15 @@ export class SapConnectionPool {
         unknownErr.retryable = false;
         unknownErr.originalError = err;
         item.reject(unknownErr);
-        this._processQueue();
         return;
       }
 
       item.reject(err);
+    } finally {
+      this._releaseConnection(activeEntry, isHealthy);
+      if (willRetry) {
+        this._processQueue();
+      }
     }
   }
 

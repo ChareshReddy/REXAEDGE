@@ -6,6 +6,12 @@ import { encryptPassword, decryptPassword } from '../utils/crypto.js';
 import { removePool } from '../services/sapConnectionPool.js';
 import { auditLogger } from '../services/auditLog.js';
 import { pingRfcServer } from '../services/sapRfcClient.js';
+import {
+  getServerHealth,
+  updateServerHealth,
+  getCircuitBreaker,
+  recordServerActivity
+} from '../services/serverHealthService.js';
 
 const router = express.Router();
 
@@ -92,9 +98,23 @@ function sanitizeServer(server) {
 router.get('/', requireAuth, async (req, res) => {
   try {
     const servers = await supabaseService.getServersByOwner(req.user.id);
-    const sanitized = (servers || []).map(sanitizeServer);
+    const sanitized = (servers || []).map((s) => {
+      const base = sanitizeServer(s);
+      const health = getServerHealth(s.id);
+      return {
+        ...base,
+        health_status: s.is_disabled ? 'disabled' : health.status,
+        circuit_breaker: health.circuit_breaker,
+        last_checked: health.last_checked,
+        last_error: s.is_disabled ? 'This SAP server is disabled.' : health.last_error,
+        last_code: s.is_disabled ? 'SERVER_DISABLED' : (health.last_code || null)
+      };
+    });
     return res.status(200).json({ success: true, servers: sanitized });
   } catch (err) {
+    if (err.code === 'DB_TIMEOUT') {
+      return res.status(504).json({ error: 'The database is slow right now. Please try again.', code: 'DB_TIMEOUT' });
+    }
     console.error('[Servers] Error listing servers:', err.message);
     return res.status(500).json({ error: 'Failed to retrieve servers.' });
   }
@@ -142,12 +162,30 @@ router.post('/', requireAuth, async (req, res) => {
       });
     }
 
-    const effectiveRouter = sapRouter ? String(sapRouter).trim() : (saprouter ? String(saprouter).trim() : null);
+    const rawRouter = sapRouter !== undefined && sapRouter !== null ? sapRouter : saprouter;
+    const cleanRouter = rawRouter ? String(rawRouter).trim() : '';
+    const effectiveRouter = cleanRouter || null;
+
+    if (effectiveRouter && !effectiveRouter.startsWith('/H/') && !effectiveRouter.startsWith('/h/')) {
+      return res.status(400).json({
+        error: 'SAP router string must start with /H/ (e.g. /H/router-host/H/)',
+        code: 'INVALID_ROUTER_FORMAT'
+      });
+    }
 
     // 2. Validate host & router against allowlist and SSRF rules
     const allowlist = await supabaseService.getAllowlist();
+    const serverToValidate = {
+      ...req.body,
+      ashost: String(ashost).trim(),
+      router: effectiveRouter
+    };
+    if (serverToValidate.saprouter !== undefined) {
+      if (effectiveRouter) serverToValidate.saprouter = effectiveRouter;
+      else delete serverToValidate.saprouter;
+    }
     const validation = await validateServerHost(
-      { ashost, router: effectiveRouter, ...req.body },
+      serverToValidate,
       allowlist
     );
 
@@ -336,12 +374,33 @@ router.put('/:id', requireAuth, async (req, res) => {
 
     // Validate host & router if modified
     const targetHost = ashost !== undefined ? String(ashost).trim() : existing.ashost;
-    const routerParam = sapRouter !== undefined ? sapRouter : saprouter;
-    const targetRouter = routerParam !== undefined ? String(routerParam).trim() : existing.router;
+    const rawRouterParam = sapRouter !== undefined ? sapRouter : saprouter;
+    let targetRouter = existing.router;
+    if (rawRouterParam !== undefined) {
+      const cleanParam = rawRouterParam ? String(rawRouterParam).trim() : '';
+      targetRouter = cleanParam || null;
+      updatePayload.router = targetRouter;
+    }
+
+    if (targetRouter && !targetRouter.startsWith('/H/') && !targetRouter.startsWith('/h/')) {
+      return res.status(400).json({
+        error: 'SAP router string must start with /H/ (e.g. /H/router-host/H/)',
+        code: 'INVALID_ROUTER_FORMAT'
+      });
+    }
 
     const allowlist = await supabaseService.getAllowlist();
+    const updateToValidate = {
+      ...req.body,
+      ashost: targetHost,
+      router: targetRouter
+    };
+    if (updateToValidate.saprouter !== undefined) {
+      if (targetRouter) updateToValidate.saprouter = targetRouter;
+      else delete updateToValidate.saprouter;
+    }
     const validation = await validateServerHost(
-      { ashost: targetHost, router: targetRouter, ...req.body },
+      updateToValidate,
       allowlist
     );
 
@@ -364,7 +423,6 @@ router.put('/:id', requireAuth, async (req, res) => {
     if (sysnr !== undefined) updatePayload.sysnr = String(sysnr).trim();
     if (client !== undefined) updatePayload.client = String(client).trim();
     if (lang !== undefined) updatePayload.lang = String(lang).trim().toUpperCase();
-    if (routerParam !== undefined) updatePayload.router = routerParam ? String(routerParam).trim() : null;
     if (gwserv !== undefined) updatePayload.gwserv = gwserv ? String(gwserv).trim() : null;
     if (sap_username !== undefined) updatePayload.sap_username = sap_username ? String(sap_username).trim() : null;
 
@@ -512,7 +570,29 @@ async function handleTestConnection(req, res) {
     testConfig = { ...existing, ...testConfig };
   }
 
-  const { ashost, router: sapRouter } = testConfig;
+  const rawTestRouter = testConfig.router !== undefined && testConfig.router !== null
+    ? testConfig.router
+    : (testConfig.saprouter !== undefined && testConfig.saprouter !== null ? testConfig.saprouter : null);
+  const cleanTestRouter = rawTestRouter ? String(rawTestRouter).trim() : '';
+  const effectiveTestRouter = cleanTestRouter || null;
+
+  testConfig.router = effectiveTestRouter;
+  if (testConfig.saprouter !== undefined) {
+    if (effectiveTestRouter) {
+      testConfig.saprouter = effectiveTestRouter;
+    } else {
+      delete testConfig.saprouter;
+    }
+  }
+
+  if (effectiveTestRouter && !effectiveTestRouter.startsWith('/H/') && !effectiveTestRouter.startsWith('/h/')) {
+    return res.status(400).json({
+      error: 'SAP router string must start with /H/ (e.g. /H/router-host/H/)',
+      code: 'INVALID_ROUTER_FORMAT'
+    });
+  }
+
+  const { ashost } = testConfig;
   if (!ashost || !String(ashost).trim()) {
     return res.status(400).json({ error: 'Server host (ashost) is required.' });
   }
@@ -522,6 +602,11 @@ async function handleTestConnection(req, res) {
     const validation = await validateServerHost(testConfig, allowlist);
 
     if (!validation.permitted) {
+      if (id) {
+        const valErr = new Error(validation.message);
+        valErr.code = validation.code;
+        updateServerHealth(id, { success: false, error: valErr });
+      }
       return res.status(403).json({
         error: validation.message,
         code: validation.code
@@ -536,11 +621,26 @@ async function handleTestConnection(req, res) {
         ...testConfig,
         ashost: validation.validatedIp
       });
-    } catch (_) {
-      rfcResult = { success: true, responseTimeMs: Date.now() - startTime };
+      if (rfcResult && rfcResult.success === false) {
+        const pingErr = new Error(rfcResult.message || 'RFC ping failed');
+        pingErr.code = rfcResult.code || 'RFC_PING_FAILED';
+        throw pingErr;
+      }
+    } catch (pingErr) {
+      if (process.env.USE_MOCK_SAP === 'true') {
+        rfcResult = { success: true, responseTimeMs: Date.now() - startTime };
+      } else {
+        throw pingErr;
+      }
     }
 
     const durationMs = Date.now() - startTime;
+
+    if (id) {
+      updateServerHealth(id, { success: true, latencyMs: durationMs });
+      getCircuitBreaker(id).reset();
+      recordServerActivity(id);
+    }
 
     auditLogger.logAction({
       user: req.user.email,
@@ -568,7 +668,10 @@ async function handleTestConnection(req, res) {
     });
   } catch (err) {
     console.error('[Servers] Connection test error:', err.message);
-    return res.status(500).json({ error: err.message || 'Connection test failed.' });
+    if (id) {
+      updateServerHealth(id, { success: false, error: err });
+    }
+    return res.status(500).json({ error: err.message || 'Connection test failed.', code: err.code || 'TEST_FAILED' });
   }
 }
 

@@ -1,4 +1,5 @@
-import { openRfcClient } from './sapRfcClient.js';
+import { openRfcClient, assertResolvedServer } from './sapRfcClient.js';
+import { traceRfc, startRfcTrace } from '../utils/rfcTrace.js';
 
 /**
  * ============================================================================
@@ -45,34 +46,44 @@ function getServerHolder(serverId) {
 /**
  * Verifies if an existing RFC client is healthy and responsive
  */
-async function isClientHealthy(client) {
+async function isClientHealthy(client, serverId = 'default') {
   if (!client) return false;
+  let timer = null;
+  const healthTrace = startRfcTrace('search_rfc_client_health', serverId);
   try {
     if (typeof client.isAlive === 'function') {
-      if (!client.isAlive()) return false;
+      if (!client.isAlive()) {
+        healthTrace.end();
+        return false;
+      }
     }
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Ping timeout')), 2000);
+    });
+
     if (typeof client.ping === 'function') {
-      const pingPromise = client.ping();
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Ping timeout')), 2000)
-      );
-      await Promise.race([pingPromise, timeoutPromise]);
+      await Promise.race([client.ping(), timeoutPromise]);
+      healthTrace.end();
       return true;
     }
     // Fallback quick ping via RFC_PING
-    const pingPromise = client.call('RFC_PING', {});
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Ping timeout')), 2000)
-    );
-    await Promise.race([pingPromise, timeoutPromise]);
-    return true;
-  } catch (_) {
+    if (typeof client.call === 'function') {
+      await Promise.race([client.call('RFC_PING', {}), timeoutPromise]);
+      healthTrace.end();
+      return true;
+    }
+    healthTrace.end();
     return false;
+  } catch (_) {
+    healthTrace.end();
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
 /**
- * Safely closes and discards a client instance
+ * Safely closes and discards a client instance with bounded timeout
  */
 async function discardClient(holder) {
   if (holder.idleTimer) {
@@ -84,7 +95,9 @@ async function discardClient(holder) {
   if (oldClient) {
     try {
       if (typeof oldClient.close === 'function') {
-        await oldClient.close();
+        const closePromise = Promise.resolve(oldClient.close()).catch(() => {});
+        const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1000));
+        await Promise.race([closePromise, timeoutPromise]);
       }
     } catch (_) {}
   }
@@ -105,6 +118,41 @@ function scheduleIdleClosure(holder) {
 }
 
 /**
+ * Wraps raw RFC client with timeout watchdog and tracing for call/invoke
+ */
+function wrapClientForSearch(rawClient, timeoutMs = 20000, serverId = 'default') {
+  if (!rawClient) return rawClient;
+  return new Proxy(rawClient, {
+    get(target, prop, receiver) {
+      const orig = Reflect.get(target, prop, receiver);
+      if (typeof orig === 'function' && (prop === 'call' || prop === 'invoke')) {
+        return function (...args) {
+          const fnName = args[0] || prop;
+          const trace = startRfcTrace(`search_rfc_call_${fnName}`, serverId);
+          let callTimer = null;
+          const timeoutPromise = new Promise((_, reject) => {
+            callTimer = setTimeout(() => {
+              const err = new Error(`RFC invoke timed out after ${timeoutMs}ms for ${fnName}`);
+              err.code = 'RFC_INVOKE_TIMEOUT';
+              err.status = 504;
+              err.statusCode = 504;
+              reject(err);
+            }, timeoutMs);
+          });
+          const invokePromise = Promise.resolve(orig.apply(target, args));
+          return Promise.race([invokePromise, timeoutPromise])
+            .finally(() => {
+              if (callTimer) clearTimeout(callTimer);
+              trace.end();
+            });
+        };
+      }
+      return orig;
+    }
+  });
+}
+
+/**
  * Executes a search function using a managed, protected RFC client
  *
  * @param {Object} options
@@ -117,9 +165,11 @@ export async function runSearchRfc(
   { server, signal, timeoutMs = DEFAULT_SEARCH_TIMEOUT_MS, ClientClass },
   searchFn
 ) {
+  assertResolvedServer(server, 'runSearchRfc');
   if (signal?.aborted) {
     const abortErr = new Error('Search request was cancelled.');
     abortErr.status = 499;
+    abortErr.code = 'CLIENT_ABORTED';
     throw abortErr;
   }
 
@@ -139,6 +189,7 @@ export async function runSearchRfc(
           if (idx !== -1) holder.waitQueue.splice(idx, 1);
           const busyErr = new Error('SAP server is busy with searches. Please try again in a moment.');
           busyErr.status = 503;
+          busyErr.code = 'SERVER_BUSY';
           reject(busyErr);
         }, WAIT_QUEUE_TIMEOUT_MS);
 
@@ -152,6 +203,7 @@ export async function runSearchRfc(
             if (idx !== -1) holder.waitQueue.splice(idx, 1);
             const cancelErr = new Error('Search request was cancelled.');
             cancelErr.status = 499;
+            cancelErr.code = 'CLIENT_ABORTED';
             reject(cancelErr);
           };
           signal.addEventListener('abort', queueAbortListener, { once: true });
@@ -171,11 +223,13 @@ export async function runSearchRfc(
   if (signal?.aborted) {
     const cancelErr = new Error('Search request was cancelled.');
     cancelErr.status = 499;
+    cancelErr.code = 'CLIENT_ABORTED';
     throw cancelErr;
   }
 
   // Slot acquired
   holder.activeCount++;
+  traceRfc('search_rfc_acquire_slot', serverId, 'START');
   if (holder.idleTimer) {
     clearTimeout(holder.idleTimer);
     holder.idleTimer = null;
@@ -189,6 +243,7 @@ export async function runSearchRfc(
     if (slotReleased) return;
     slotReleased = true;
     holder.activeCount = Math.max(0, holder.activeCount - 1);
+    traceRfc('search_rfc_release_slot', serverId, 'END');
 
     // If waitQueue has waiting callers, wake the next one immediately
     if (holder.waitQueue.length > 0) {
@@ -201,65 +256,76 @@ export async function runSearchRfc(
     }
   };
 
-  try {
+  // 3. Protection: Hard timeout (20s) + AbortSignal listening covering connection & search
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const timeoutErr = new Error('SAP took too long. Narrow the search or use more characters.');
+      timeoutErr.status = 504;
+      timeoutErr.code = 'RFC_SEARCH_TIMEOUT';
+      reject(timeoutErr);
+    }, timeoutMs);
+  });
+
+  let abortListener = null;
+  const abortPromise = new Promise((_, reject) => {
+    if (signal) {
+      abortListener = () => {
+        releaseSlot();
+        discardClient(holder).catch(() => {});
+        const cancelErr = new Error('Search request was cancelled.');
+        cancelErr.status = 499;
+        cancelErr.code = 'CLIENT_ABORTED';
+        reject(cancelErr);
+      };
+      signal.addEventListener('abort', abortListener, { once: true });
+    }
+  });
+
+  const executeSearch = async () => {
     // 2. Health check before use / auto-reconnect
-    const healthy = await isClientHealthy(client);
+    const healthy = await isClientHealthy(client, serverId);
     if (!healthy) {
       if (client) {
         await discardClient(holder);
       }
-      client = await openRfcClient({ server }, ClientClass);
-      holder.client = client;
-    }
-
-    // 3. Protection: Hard timeout (20s) + AbortSignal listening
-    let timeoutId = null;
-    const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => {
-        const timeoutErr = new Error('SAP took too long. Narrow the search or use more characters.');
-        timeoutErr.status = 504;
-        reject(timeoutErr);
-      }, timeoutMs);
-    });
-
-    let abortListener = null;
-    const abortPromise = new Promise((_, reject) => {
-      if (signal) {
-        abortListener = () => {
-          // Immediately release concurrency slot accounting & wake queue
-          releaseSlot();
-          // Discard connection in background without blocking slot accounting
-          discardClient(holder).catch(() => {});
-          const cancelErr = new Error('Search request was cancelled.');
-          cancelErr.status = 499;
-          reject(cancelErr);
-        };
-        signal.addEventListener('abort', abortListener, { once: true });
-      }
-    });
-
-    try {
-      const result = await Promise.race([
-        searchFn(client),
-        timeoutPromise,
-        abortPromise
-      ]);
-      holder.lastUsed = Date.now();
-      return result;
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (signal && abortListener) {
-        signal.removeEventListener('abort', abortListener);
+      const openTrace = startRfcTrace('search_rfc_client_open', serverId);
+      try {
+        client = await openRfcClient({ server }, ClientClass);
+        holder.client = client;
+        openTrace.end();
+      } catch (openErr) {
+        openTrace.end();
+        throw openErr;
       }
     }
+
+    const wrappedClient = wrapClientForSearch(client, timeoutMs, serverId);
+    const result = await searchFn(wrappedClient);
+    holder.lastUsed = Date.now();
+    return result;
+  };
+
+  try {
+    return await Promise.race([
+      executeSearch(),
+      timeoutPromise,
+      abortPromise
+    ]);
   } catch (err) {
     hasFailed = true;
     // 4. Protection: Never leave a connection open after an error or timeout
-    if (holder.client) {
-      await discardClient(holder);
-    }
+    try {
+      if (holder.client) {
+        await discardClient(holder);
+      }
+    } catch (_) {}
     throw err;
   } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+    if (signal && abortListener) {
+      signal.removeEventListener('abort', abortListener);
+    }
     releaseSlot();
   }
 }

@@ -1,4 +1,4 @@
-import { formatRfcTableOptions } from './sapRfcClient.js';
+import { formatRfcTableOptions, assertResolvedServer } from './sapRfcClient.js';
 import { runSearchRfc } from './searchRfcClient.js';
 import { parseRfcRows } from './materialSearchService.js';
 
@@ -62,6 +62,7 @@ export async function getBomUsages({
   signal,
   timeoutMs
 } = {}) {
+  assertResolvedServer(server, 'getBomUsages');
   const serverId = server?.id || server?.ashost || 'mock_server';
   const sapLang = sanitizeSapLanguage(lang || server?.lang);
   const shouldRefresh = refresh === true || refresh === 'true';

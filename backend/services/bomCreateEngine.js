@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { openRfcClient, rfcCreateBom, formatRfcTableOptions, getActiveMockBoms } from './sapRfcClient.js';
+import { openRfcClient, rfcCreateBom, formatRfcTableOptions, getActiveMockBoms, assertResolvedServer } from './sapRfcClient.js';
 import { getSapConnectionPool, RFC_PRIORITY } from './sapConnectionPool.js';
 import { auditLogger } from './auditLog.js';
 import { BOM_FIELD_MAPPING } from '../config/bomFieldMapping.js';
@@ -293,6 +293,7 @@ export function applyGroupValidationRules(boms = []) {
  * 7. Read-only SAP simulation (BAPI TESTRUN) for exact SAP validation
  */
 export async function rfcPreflightCreateBoms(params = {}) {
+  assertResolvedServer(params, 'rfcPreflightCreateBoms', params.client);
   const {
     boms = [],
     server,
@@ -821,6 +822,7 @@ function mockPreflightCreateBoms(boms) {
  * Components: component, quantity, unit, itemCategory, storageLocation, costingRelevancy, engineering, referenceNumber
  */
 export async function rfcVerifyCreatedBom(params = {}) {
+  assertResolvedServer(params, 'rfcVerifyCreatedBom', params.client);
   const {
     material,
     plant,
@@ -1068,6 +1070,7 @@ export async function createBomFromData({
   source = 'single',
   fileName = ''
 }) {
+  assertResolvedServer(server, 'createBomFromData', client);
   if (!bom) {
     throw new Error('No BOM data provided for creation.');
   }
@@ -1249,6 +1252,7 @@ export async function createBomFromData({
  * Bulk BOM Creation sequential execution
  */
 export async function rfcBatchCreateBoms(params = {}) {
+  assertResolvedServer(params, 'rfcBatchCreateBoms', params.client);
   const {
     boms = [],
     server,

@@ -136,7 +136,7 @@ export function findBestAllowlistMatch(targetIpOrHost, allowlist = []) {
  * @param {string} host
  * @returns {Promise<string[]>}
  */
-export async function resolveHostIps(host) {
+export async function resolveHostIps(host, timeoutMs = 3000) {
   const cleanHost = String(host || '').trim();
   if (!cleanHost) return [];
 
@@ -144,11 +144,32 @@ export async function resolveHostIps(host) {
     return [cleanHost];
   }
 
+  const start = Date.now();
+  let timer = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(`DNS lookup timed out after ${timeoutMs}ms for ${cleanHost}`);
+      err.code = 'DNS_TIMEOUT';
+      reject(err);
+    }, timeoutMs);
+  });
+
   try {
-    const records = await dns.promises.lookup(cleanHost, { all: true, family: 4 });
-    const ips = records.map((r) => r.address).filter(Boolean);
+    const lookupPromise = dns.promises.lookup(cleanHost, { all: true, family: 4 });
+    const records = await Promise.race([lookupPromise, timeoutPromise]);
+    clearTimeout(timer);
+    const duration = Date.now() - start;
+    if (duration > 2000) {
+      console.warn(`[SlowStep] DNS lookup took ${duration}ms`);
+    }
+    const ips = (records || []).map((r) => r.address).filter(Boolean);
     return ips.length > 0 ? ips : [];
   } catch (err) {
+    if (timer) clearTimeout(timer);
+    const duration = Date.now() - start;
+    if (duration > 2000) {
+      console.warn(`[SlowStep] DNS lookup took ${duration}ms (failed: ${err.message})`);
+    }
     return [];
   }
 }
@@ -196,6 +217,15 @@ export async function validateRouterString(routerString, allowlist = []) {
       valid: false,
       code: 'ROUTER_PASSWORD_NOT_ALLOWED',
       message: 'Router passwords (/P/) are not permitted for security reasons.'
+    };
+  }
+
+  // Validate router string starts with /H/
+  if (!clean.startsWith('/H/') && !clean.startsWith('/h/')) {
+    return {
+      valid: false,
+      code: 'INVALID_ROUTER_FORMAT',
+      message: 'Invalid SAP router string format. Router must start with /H/ (e.g. /H/<host>/...).'
     };
   }
 
@@ -316,8 +346,13 @@ export async function validateServerHost(server, allowlist = [], options = {}) {
   }
 
   // 3. Router String Validation
-  if (server.router) {
-    const routerCheck = await validateRouterString(server.router, allowlist);
+  const rawRouter = server.router !== undefined && server.router !== null
+    ? server.router
+    : (server.saprouter !== undefined && server.saprouter !== null ? server.saprouter : null);
+  const cleanRouter = rawRouter ? String(rawRouter).trim() : '';
+
+  if (cleanRouter) {
+    const routerCheck = await validateRouterString(cleanRouter, allowlist);
     if (!routerCheck.valid) {
       return {
         permitted: false,

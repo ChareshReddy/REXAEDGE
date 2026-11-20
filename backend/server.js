@@ -26,7 +26,7 @@ import { recordRouteError } from './utils/auditHelper.js';
 import { sendFriendlyError } from './utils/friendlyError.js';
 import { requireAuth } from './middleware/auth.js';
 import { requireServerOwner } from './middleware/serverOwnership.js';
-import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection } from './services/supabaseClient.js';
+import { supabaseService, verifyDatabaseConfiguration, warmupDatabaseConnection, measureSupabaseLatency } from './services/supabaseClient.js';
 import { bomJobManager } from './services/bomJobManager.js';
 import dns from 'dns';
 
@@ -121,20 +121,6 @@ app.use('/api/storage-locations', storageLocationRoutes);
 app.use('/api/bom-usages', bomUsagesRoutes);
 app.use('/api/servers', serverRoutes);
 
-// Server Permission & Discovery endpoint (returns permitted servers for logged-in user)
-app.get('/api/servers/available', requireAuth, async (req, res) => {
-  try {
-    const servers = await supabaseService.getAvailableServersForUser(req.user.id, req.user.role);
-    return res.status(200).json({
-      success: true,
-      servers
-    });
-  } catch (err) {
-    console.error('Error fetching available servers:', err.message);
-    return res.status(500).json({ error: 'Failed to retrieve permitted servers' });
-  }
-});
-
 // Module listing endpoint: Returns all registered modules for admin; only permitted modules for non-admins
 app.get('/api/modules', requireAuth, async (req, res) => {
   try {
@@ -197,6 +183,26 @@ app.get('/api/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     mockMode: process.env.USE_MOCK_SAP !== 'false'
+  });
+});
+
+// Readiness probe measuring Supabase round-trip latency
+app.get('/api/health/ready', async (req, res) => {
+  const result = await measureSupabaseLatency();
+  console.log(`[/api/health/ready] Supabase round-trip time: ${result.latencyMs}ms (${result.ok ? 'connected' : result.error})`);
+  if (!result.ok) {
+    return res.status(503).json({
+      status: 'not_ready',
+      database: 'error',
+      latencyMs: result.latencyMs,
+      error: result.error
+    });
+  }
+  return res.status(200).json({
+    status: 'ready',
+    database: 'connected',
+    latencyMs: result.latencyMs,
+    timestamp: new Date().toISOString()
   });
 });
 

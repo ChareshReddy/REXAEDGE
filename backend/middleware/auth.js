@@ -1,5 +1,7 @@
 import { supabaseService } from '../services/supabaseClient.js';
+import { supabaseCache } from '../services/supabaseCache.js';
 import { isModuleAvailable, MODULE_KEYS, ALL_BOM_APPS, normalizePermissions } from '../config/modules.js';
+import { traceMiddlewareStep } from '../utils/rfcTrace.js';
 
 const COOKIE_NAME = 'sb_access_token';
 
@@ -25,6 +27,11 @@ export function invalidateUserStatusCache(userId) {
   }
 }
 
+// Hook into supabaseCache invalidations to ensure immediate cache eviction across both caches
+supabaseCache.onInvalidateUser((userId) => {
+  invalidateUserStatusCache(userId);
+});
+
 /**
  * Authentication Middleware
  * Requires a valid Supabase Auth session token on every protected route.
@@ -32,75 +39,92 @@ export function invalidateUserStatusCache(userId) {
  * Attaches verified user { id, email, role, must_change_password, is_disabled } to req.user.
  */
 export async function requireAuth(req, res, next) {
-  const token = extractToken(req);
+  const trace = traceMiddlewareStep(req, 'requireAuth');
+  try {
+    const token = extractToken(req);
 
-  if (!token) {
-    return res.status(401).json({
-      error: 'Authentication required. No active session token found.'
-    });
-  }
-
-  const { data, error } = await supabaseService.getUser(token);
-
-  if (error || !data?.user) {
-    return res.status(401).json({
-      error: error?.message || 'Session expired or invalid. Please log in again.'
-    });
-  }
-
-  const userId = data.user.id;
-  let userStatus = userStatusCache.get(userId);
-  if (!userStatus) {
-    const profile = await supabaseService.getUserProfile(userId);
-    userStatus = {
-      must_change_password: Boolean(profile ? profile.must_change_password : data.user.must_change_password),
-      is_disabled: Boolean(profile ? profile.is_disabled : data.user.is_disabled),
-      role: profile?.role || data.user.role || 'user'
-    };
-    userStatusCache.set(userId, userStatus);
-  }
-
-  // 1. Refuse disabled users immediately
-  if (userStatus.is_disabled) {
-    return res.status(403).json({
-      error: 'Your account has been disabled. Please contact your administrator.',
-      code: 'USER_DISABLED'
-    });
-  }
-
-  // 2. Enforce must_change_password: reject every route except change-password, me, logout, config
-  if (userStatus.must_change_password) {
-    const reqPath = (req.path || req.originalUrl || '').split('?')[0];
-    const isExempt =
-      reqPath.endsWith('/change-password') ||
-      reqPath.endsWith('/me') ||
-      reqPath.endsWith('/logout') ||
-      reqPath.endsWith('/config');
-
-    if (!isExempt) {
-      return res.status(403).json({
-        error: 'Password change required before accessing other resources.',
-        code: 'PASSWORD_CHANGE_REQUIRED'
+    if (!token) {
+      trace.end();
+      return res.status(401).json({
+        error: 'Authentication required. No active session token found.'
       });
     }
+
+    const { data, error } = await supabaseService.getUser(token);
+
+    if (error || !data?.user) {
+      trace.end();
+      return res.status(401).json({
+        error: error?.message || 'Session expired or invalid. Please log in again.'
+      });
+    }
+
+    const userId = data.user.id;
+    let userStatus = userStatusCache.get(userId);
+    if (!userStatus) {
+      const profile = await supabaseService.getUserProfile(userId);
+      userStatus = {
+        must_change_password: Boolean(profile ? profile.must_change_password : data.user.must_change_password),
+        is_disabled: Boolean(profile ? profile.is_disabled : data.user.is_disabled),
+        role: profile?.role || data.user.role || 'user'
+      };
+      userStatusCache.set(userId, userStatus);
+    }
+
+    // 1. Refuse disabled users immediately
+    if (userStatus.is_disabled) {
+      trace.end();
+      return res.status(403).json({
+        error: 'Your account has been disabled. Please contact your administrator.',
+        code: 'USER_DISABLED'
+      });
+    }
+
+    // 2. Enforce must_change_password: reject every route except change-password, me, logout, config
+    if (userStatus.must_change_password) {
+      const reqPath = (req.path || req.originalUrl || '').split('?')[0];
+      const isExempt =
+        reqPath.endsWith('/change-password') ||
+        reqPath.endsWith('/me') ||
+        reqPath.endsWith('/logout') ||
+        reqPath.endsWith('/config');
+
+      if (!isExempt) {
+        trace.end();
+        return res.status(403).json({
+          error: 'Password change required before accessing other resources.',
+          code: 'PASSWORD_CHANGE_REQUIRED'
+        });
+      }
+    }
+
+    req.user = {
+      ...data.user,
+      role: userStatus.role,
+      must_change_password: userStatus.must_change_password,
+      is_disabled: userStatus.is_disabled
+    };
+
+    // Backward compatibility attachment
+    req.sapSession = {
+      sessionId: token,
+      username: data.user.email,
+      email: data.user.email,
+      user: req.user
+    };
+
+    trace.end();
+    next();
+  } catch (err) {
+    trace.end();
+    if (err.code === 'DB_TIMEOUT') {
+      return res.status(504).json({
+        error: err.message,
+        code: 'DB_TIMEOUT'
+      });
+    }
+    return res.status(500).json({ error: 'Authentication service failure.' });
   }
-
-  req.user = {
-    ...data.user,
-    role: userStatus.role,
-    must_change_password: userStatus.must_change_password,
-    is_disabled: userStatus.is_disabled
-  };
-
-  // Backward compatibility attachment
-  req.sapSession = {
-    sessionId: token,
-    username: data.user.email,
-    email: data.user.email,
-    user: req.user
-  };
-
-  next();
 }
 
 /**
@@ -129,54 +153,73 @@ export function requireAdmin(req, res, next) {
  */
 export function requireServerAccess(requiredLevel = 'read_only') {
   return async (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
+    const trace = traceMiddlewareStep(req, 'requireServerAccess');
+    try {
+      if (!req.user) {
+        trace.end();
+        return res.status(401).json({ error: 'Authentication required.' });
+      }
 
-    // Resolve target serverId from headers, body, or query
-    let serverId =
-      req.headers?.['x-sap-server-id'] ||
-      req.body?.serverId ||
-      req.body?.server_id ||
-      req.query?.serverId ||
-      req.query?.server_id;
+      // Resolve target serverId from headers, body, or query
+      let serverId =
+        req.headers?.['x-sap-server-id'] ||
+        req.body?.serverId ||
+        req.body?.server_id ||
+        req.query?.serverId ||
+        req.query?.server_id;
 
-    // Fallback: If user didn't specify serverId, check user's available servers
-    if (!serverId) {
-      const available = await supabaseService.getAvailableServersForUser(
+      // Fallback: If user didn't specify serverId, check user's available servers
+      if (!serverId) {
+        const available = await supabaseService.getAvailableServersForUser(
+          req.user.id,
+          req.user.role,
+          { req }
+        );
+        if (available.length === 1) {
+          serverId = available[0].id;
+        } else if (available.length > 1) {
+          // Default to the first available server for backwards-compatibility with single-server tests
+          serverId = available[0].id;
+        } else {
+          trace.end();
+          return res.status(403).json({
+            error: 'Access denied: You have no permitted SAP servers assigned.'
+          });
+        }
+      }
+
+      const accessCheck = await supabaseService.checkUserServerAccess(
         req.user.id,
-        req.user.role
+        serverId,
+        req.user.role,
+        { req }
       );
-      if (available.length === 1) {
-        serverId = available[0].id;
-      } else if (available.length > 1) {
-        // Default to the first available server for backwards-compatibility with single-server tests
-        serverId = available[0].id;
-      } else {
+
+      if (!accessCheck.permitted) {
+        trace.end();
         return res.status(403).json({
-          error: 'Access denied: You have no permitted SAP servers assigned.'
+          error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
         });
       }
+
+      req.selectedServer = accessCheck.server;
+      req._serverRecord = accessCheck.server;
+      req.serverAccessLevel = 'read_write';
+      req.userPermissions = req.user?.role === 'admin'
+        ? [...ALL_BOM_APPS]
+        : normalizePermissions(accessCheck.permissions || []);
+      trace.end();
+      next();
+    } catch (err) {
+      trace.end();
+      if (err.code === 'DB_TIMEOUT') {
+        return res.status(504).json({
+          error: 'Database timeout while verifying server access',
+          code: 'DB_TIMEOUT'
+        });
+      }
+      return res.status(500).json({ error: 'Failed to verify server access: ' + err.message });
     }
-
-    const accessCheck = await supabaseService.checkUserServerAccess(
-      req.user.id,
-      serverId,
-      req.user.role
-    );
-
-    if (!accessCheck.permitted) {
-      return res.status(403).json({
-        error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
-      });
-    }
-
-    req.selectedServer = accessCheck.server;
-    req.serverAccessLevel = 'read_write';
-    req.userPermissions = req.user?.role === 'admin'
-      ? [...ALL_BOM_APPS]
-      : normalizePermissions(accessCheck.permissions || []);
-    next();
   };
 }
 
@@ -189,75 +232,104 @@ export function requireServerAccess(requiredLevel = 'read_only') {
  */
 export function requireModuleAccess(moduleKey) {
   return async (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-
-    // Strictly reject modules that are coming_soon or unknown even if a DB row exists
-    if (!isModuleAvailable(moduleKey)) {
-      return res.status(403).json({
-        error: 'Module not enabled for this server'
-      });
-    }
-
-    // Job status/cancel and ticketed downloads are authorized by job/ticket ownership
-    if (
-      req.params?.jobId ||
-      (req.path && req.path.match(/^\/jobs\/[^/]+(\/cancel)?$/)) ||
-      (req.path && req.path.match(/^\/download\/[^/]+$/))
-    ) {
-      return next();
-    }
-
-    // Resolve target serverId
-    let serverId = req.selectedServer?.id;
-    if (!serverId) {
-      serverId =
-        req.headers?.['x-sap-server-id'] ||
-        req.body?.serverId ||
-        req.body?.server_id ||
-        req.query?.serverId ||
-        req.query?.server_id;
-
-      if (!serverId) {
-        const available = await supabaseService.getAvailableServersForUser(
-          req.user.id,
-          req.user.role
-        );
-        if (available && available.length > 0) {
-          serverId = available[0].id;
-        } else {
-          return res.status(403).json({
-            error: 'Access denied: You have no permitted SAP servers assigned.'
-          });
-        }
+    const trace = traceMiddlewareStep(req, 'requireModuleAccess');
+    try {
+      if (!req.user) {
+        trace.end();
+        return res.status(401).json({ error: 'Authentication required.' });
       }
-    }
 
-    // Verify user server access if not already verified
-    if (!req.selectedServer) {
-      const accessCheck = await supabaseService.checkUserServerAccess(
-        req.user.id,
-        serverId,
-        req.user.role
-      );
-      if (!accessCheck.permitted) {
+      // Strictly reject modules that are coming_soon or unknown even if a DB row exists
+      if (!isModuleAvailable(moduleKey)) {
+        trace.end();
         return res.status(403).json({
-          error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
+          error: 'Module not enabled for this server'
         });
       }
-      req.selectedServer = accessCheck.server;
-    }
 
-    // Check module enablement on the selected server
-    const isEnabled = await supabaseService.isModuleEnabledForServer(serverId, moduleKey);
-    if (!isEnabled) {
-      return res.status(403).json({
-        error: 'Module not enabled for this server'
-      });
-    }
+      // Job status/cancel and ticketed downloads are authorized by job/ticket ownership
+      if (
+        req.params?.jobId ||
+        (req.path && req.path.match(/^\/jobs\/[^/]+(\/cancel)?$/)) ||
+        (req.path && req.path.match(/^\/download\/[^/]+$/))
+      ) {
+        trace.end();
+        return next();
+      }
 
-    next();
+      // Resolve target serverId reusing per-request cached record
+      let server = req.selectedServer || req._serverRecord;
+      let serverId = server?.id;
+      if (!serverId) {
+        serverId =
+          req.headers?.['x-sap-server-id'] ||
+          req.body?.serverId ||
+          req.body?.server_id ||
+          req.query?.serverId ||
+          req.query?.server_id;
+
+        if (!serverId) {
+          const available = await supabaseService.getAvailableServersForUser(
+            req.user.id,
+            req.user.role
+          );
+          if (available && available.length > 0) {
+            serverId = available[0].id;
+          } else {
+            trace.end();
+            return res.status(403).json({
+              error: 'Access denied: You have no permitted SAP servers assigned.'
+            });
+          }
+        }
+
+        const accessCheck = await supabaseService.checkUserServerAccess(
+          req.user.id,
+          serverId,
+          req.user.role,
+          { req }
+        );
+        if (!accessCheck.permitted) {
+          trace.end();
+          return res.status(403).json({
+            error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
+          });
+        }
+        server = accessCheck.server;
+        req.selectedServer = server;
+        req.server = server;
+        req._serverRecord = server;
+      }
+
+      if (server?.is_disabled) {
+        trace.end();
+        return res.status(403).json({
+          error: 'This SAP server is disabled.',
+          code: 'SERVER_DISABLED'
+        });
+      }
+
+      // Check module enablement reusing per-request cached modules
+      const isEnabled = await supabaseService.isModuleEnabledForServer(serverId, moduleKey, { req });
+      if (!isEnabled) {
+        trace.end();
+        return res.status(403).json({
+          error: 'Module not enabled for this server'
+        });
+      }
+
+      trace.end();
+      next();
+    } catch (err) {
+      trace.end();
+      if (err.code === 'DB_TIMEOUT') {
+        return res.status(504).json({
+          error: err.message,
+          code: 'DB_TIMEOUT'
+        });
+      }
+      return res.status(500).json({ error: err.message || 'Failed to verify module access.' });
+    }
   };
 }
 
@@ -278,86 +350,109 @@ export const APP_ACTION_NAMES = Object.freeze({
  */
 export function requireAppPermission(targetApp) {
   return async (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
+    const trace = traceMiddlewareStep(req, 'requireAppPermission');
+    try {
+      if (!req.user) {
+        trace.end();
+        return res.status(401).json({ error: 'Authentication required.' });
+      }
 
-    // Resolve target serverId from headers, body, query, or req.selectedServer
-    let serverId =
-      req.selectedServer?.id ||
-      req.headers?.['x-sap-server-id'] ||
-      req.body?.serverId ||
-      req.body?.server_id ||
-      req.query?.serverId ||
-      req.query?.server_id;
+      // Owner or Admin bypass: an owner can run all BOM actions on their own server
+      const server = req.selectedServer || req._serverRecord;
+      if ((server && server.owner_id && server.owner_id === req.user.id) || req.user.role === 'admin') {
+        req.userPermissions = [...ALL_BOM_APPS];
+        trace.end();
+        return next();
+      }
 
-    if (!serverId) {
-      const available = await supabaseService.getAvailableServersForUser(
+      // Resolve target serverId from headers, body, query, or req.selectedServer
+      let serverId =
+        server?.id ||
+        req.headers?.['x-sap-server-id'] ||
+        req.body?.serverId ||
+        req.body?.server_id ||
+        req.query?.serverId ||
+        req.query?.server_id;
+
+      if (!serverId) {
+        const available = await supabaseService.getAvailableServersForUser(
+          req.user.id,
+          req.user.role
+        );
+        if (available && available.length > 0) {
+          serverId = available[0].id;
+        } else {
+          trace.end();
+          return res.status(403).json({
+            error: 'Access denied: You have no permitted SAP servers assigned.'
+          });
+        }
+      }
+
+      const accessCheck = await supabaseService.checkUserServerAccess(
         req.user.id,
-        req.user.role
+        serverId,
+        req.user.role,
+        { req }
       );
-      if (available && available.length > 0) {
-        serverId = available[0].id;
-      } else {
+
+      if (!accessCheck.permitted) {
+        trace.end();
         return res.status(403).json({
-          error: 'Access denied: You have no permitted SAP servers assigned.'
+          error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
         });
       }
-    }
 
-    const accessCheck = await supabaseService.checkUserServerAccess(
-      req.user.id,
-      serverId,
-      req.user.role
-    );
+      req.selectedServer = accessCheck.server;
+      req.serverAccessLevel = 'read_write';
 
-    if (!accessCheck.permitted) {
-      return res.status(403).json({
-        error: accessCheck.reason || 'Access denied: You do not have permission for this SAP server.'
-      });
-    }
+      const userPerms = normalizePermissions(accessCheck.permissions || []);
+      req.userPermissions = userPerms;
 
-    req.selectedServer = accessCheck.server;
-    req.serverAccessLevel = 'read_write';
+      // Resolve target app(s)
+      let targets = typeof targetApp === 'function' ? targetApp(req) : targetApp;
+      if (!targets) {
+        trace.end();
+        return next();
+      }
 
-    // Admin bypass: full access to everything on all servers
-    if (req.user.role === 'admin') {
-      req.userPermissions = [...ALL_BOM_APPS];
-      return next();
-    }
+      // Wildcard / helper check: 'bom.*' or '*' means user has ANY bom.* permission on this server
+      if (targets === 'bom.*' || targets === '*') {
+        const hasAnyBom = userPerms.some((p) => p.startsWith('bom.'));
+        if (!hasAnyBom) {
+          trace.end();
+          return res.status(403).json({
+            error: "You don't have permission to access BOM features on this server."
+          });
+        }
+        trace.end();
+        return next();
+      }
 
-    const userPerms = normalizePermissions(accessCheck.permissions || []);
-    req.userPermissions = userPerms;
+      // List of allowed apps for this endpoint
+      const targetList = Array.isArray(targets) ? targets : [targets];
+      const isAllowed = targetList.some((app) => userPerms.includes(app));
 
-    // Resolve target app(s)
-    let targets = typeof targetApp === 'function' ? targetApp(req) : targetApp;
-    if (!targets) {
-      return next();
-    }
-
-    // Wildcard / helper check: 'bom.*' or '*' means user has ANY bom.* permission on this server
-    if (targets === 'bom.*' || targets === '*') {
-      const hasAnyBom = userPerms.some((p) => p.startsWith('bom.'));
-      if (!hasAnyBom) {
+      if (!isAllowed) {
+        const primaryTarget = targetList[0];
+        const actionName = APP_ACTION_NAMES[primaryTarget] || primaryTarget;
+        trace.end();
         return res.status(403).json({
-          error: "You don't have permission to access BOM features on this server."
+          error: `You don't have permission to ${actionName} on this server.`
         });
       }
-      return next();
+
+      trace.end();
+      next();
+    } catch (err) {
+      trace.end();
+      if (err.code === 'DB_TIMEOUT') {
+        return res.status(504).json({
+          error: err.message,
+          code: 'DB_TIMEOUT'
+        });
+      }
+      return res.status(500).json({ error: err.message || 'Failed to verify app permission.' });
     }
-
-    // List of allowed apps for this endpoint
-    const targetList = Array.isArray(targets) ? targets : [targets];
-    const isAllowed = targetList.some((app) => userPerms.includes(app));
-
-    if (!isAllowed) {
-      const primaryTarget = targetList[0];
-      const actionName = APP_ACTION_NAMES[primaryTarget] || primaryTarget;
-      return res.status(403).json({
-        error: `You don't have permission to ${actionName} on this server.`
-      });
-    }
-
-    next();
   };
 }

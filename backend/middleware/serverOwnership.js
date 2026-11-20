@@ -1,4 +1,5 @@
 import { supabaseService } from '../services/supabaseClient.js';
+import { traceMiddlewareStep } from '../utils/rfcTrace.js';
 
 /**
  * Checks server ownership and status for a given user.
@@ -7,9 +8,10 @@ import { supabaseService } from '../services/supabaseClient.js';
  *
  * @param {object} user - Authenticated user object ({ id, email, role, is_disabled })
  * @param {string} serverId - Target SAP server UUID
+ * @param {object} [options={}] - Optional request context for per-request caching
  * @returns {Promise<{ isAllowed: boolean, server: object|null, statusCode: number, error: string|null, code: string|null }>}
  */
-export async function checkServerOwnership(user, serverId) {
+export async function checkServerOwnership(user, serverId, options = {}) {
   if (!user) {
     return {
       isAllowed: false,
@@ -40,7 +42,8 @@ export async function checkServerOwnership(user, serverId) {
     };
   }
 
-  const server = await supabaseService.getServerById(String(serverId));
+  const req = options.req || (typeof options === 'object' && options.headers ? options : null);
+  const server = await supabaseService.getServerById(String(serverId), { req });
   if (!server) {
     return {
       isAllowed: false,
@@ -87,26 +90,38 @@ export async function checkServerOwnership(user, serverId) {
  * Express middleware to enforce server ownership on server-scoped routes.
  */
 export async function requireServerOwner(req, res, next) {
-  // Bulk job status, cancel, results, and ticketed downloads are authorized by job/ticket ownership and use that stored server_id
-  if (
-    req.params?.jobId ||
-    (req.path && req.path.match(/^\/jobs\/[^/]+(\/cancel)?$/)) ||
-    (req.path && req.path.match(/^\/download\/[^/]+$/))
-  ) {
+  const trace = traceMiddlewareStep(req, 'requireServerOwner');
+
+  // Bulk job status, cancel, results, and ticketed downloads are authorized by job/ticket ownership and use that stored server_id.
+  // Note: /jobs/start, /jobs/active, and collection routes must NOT skip requireServerOwner.
+  const isJobStatusOrDownload =
+    Boolean(req.params?.jobId && req.params.jobId !== 'start' && req.params.jobId !== 'active') ||
+    (Boolean(req.path) && Boolean(req.path.match(/^\/jobs\/(?!start\b|active\b)[^/]+(\/cancel)?$/))) ||
+    (Boolean(req.path) && Boolean(req.path.match(/^\/download\/[^/]+$/)));
+
+  if (isJobStatusOrDownload) {
+    trace.end();
     return next();
   }
 
-  // Accept ONLY x-sap-server-id (x-server-id removed)
-  const serverId =
-    req.headers?.['x-sap-server-id'] ||
-    req.body?.serverId ||
-    req.body?.server_id ||
-    req.query?.serverId ||
-    req.query?.server_id ||
-    req.params?.serverId ||
-    req.params?.id;
+  // Server must come from the x-sap-server-id header.
+  const headerServerId = req.headers?.['x-sap-server-id'];
+  const bodyServerId = req.body?.serverId || req.body?.server_id;
+
+  // If req.body.serverId is also present and differs from the header, reject with 400 SERVER_CONTEXT_MISMATCH
+  if (bodyServerId && headerServerId && String(bodyServerId).trim() !== String(headerServerId).trim()) {
+    trace.end();
+    return res.status(400).json({
+      error: 'Server ID in request body does not match x-sap-server-id header.',
+      code: 'SERVER_CONTEXT_MISMATCH'
+    });
+  }
+
+  // Never use body serverId when the header is missing
+  const serverId = headerServerId;
 
   if (!serverId) {
+    trace.end();
     return res.status(404).json({
       error: 'SAP Server not found. Explicit server header (x-sap-server-id) is required.',
       code: 'SERVER_NOT_FOUND'
@@ -114,8 +129,9 @@ export async function requireServerOwner(req, res, next) {
   }
 
   try {
-    const result = await checkServerOwnership(req.user, serverId);
+    const result = await checkServerOwnership(req.user, serverId, { req });
     if (!result.isAllowed) {
+      trace.end();
       return res.status(result.statusCode || 404).json({
         error: result.error,
         code: result.code
@@ -124,8 +140,17 @@ export async function requireServerOwner(req, res, next) {
 
     req.selectedServer = result.server;
     req.server = result.server;
+    req._serverRecord = result.server;
+    trace.end();
     next();
   } catch (err) {
+    trace.end();
+    if (err.code === 'DB_TIMEOUT') {
+      return res.status(504).json({
+        error: err.message,
+        code: 'DB_TIMEOUT'
+      });
+    }
     console.error('[requireServerOwner] Error checking server ownership:', err.message);
     return res.status(500).json({ error: 'Failed to verify server ownership.' });
   }

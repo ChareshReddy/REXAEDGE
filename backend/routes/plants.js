@@ -6,6 +6,7 @@ import { MODULE_KEYS } from '../config/modules.js';
 import { getPlants } from '../services/plantService.js';
 import { f4CacheService } from '../services/f4CacheService.js';
 import { sendFriendlyError } from '../utils/friendlyError.js';
+import { traceMiddlewareStep } from '../utils/rfcTrace.js';
 
 const router = express.Router();
 
@@ -21,6 +22,15 @@ export const plantRateLimiter = rateLimit({
   }
 });
 
+export const tracedPlantRateLimiter = (req, res, next) => {
+  const trace = traceMiddlewareStep(req, 'plantRateLimiter');
+  plantRateLimiter(req, res, (err) => {
+    trace.end();
+    if (err) return next(err);
+    next();
+  });
+};
+
 // Enforce authentication, server ownership, BOM module enablement, and server access
 router.use(requireAuth);
 router.use(requireServerOwner);
@@ -31,7 +41,7 @@ router.use(requireAppPermission('bom.*'));
  * GET /api/plants?q=&material=&refresh=true|false
  * Fetches SAP plant definitions from T001W with long-TTL caching and material extension status.
  */
-router.get('/', plantRateLimiter, async (req, res) => {
+router.get('/', tracedPlantRateLimiter, async (req, res) => {
   const abortController = new AbortController();
   req.on('close', () => {
     if (!res.writableEnded) {
@@ -51,6 +61,7 @@ router.get('/', plantRateLimiter, async (req, res) => {
       serverId,
       lookupType: 'plants',
       query: `${q || ''}:${material || ''}`,
+      signal: abortController.signal,
       fetchFn: () => getPlants({
         server: req.selectedServer,
         q,

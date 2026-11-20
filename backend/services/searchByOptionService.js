@@ -1,6 +1,7 @@
 import {
   formatRfcTableOptions,
-  toSapMatnr
+  toSapMatnr,
+  assertResolvedServer
 } from './sapRfcClient.js';
 import { runSearchRfc } from './searchRfcClient.js';
 import {
@@ -97,6 +98,7 @@ export async function searchMaterialsByOption({
   signal,
   timeoutMs
 }) {
+  assertResolvedServer(server, 'searchMaterialsByOption');
   const option = getSearchOption(tab);
   if (!option) {
     const notFoundErr = new Error(`Unknown search help tab: ${tab}`);

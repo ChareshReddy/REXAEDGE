@@ -38,7 +38,7 @@ router.use('/', materialCheckRouter);
  * GET /api/materials/search?q=&plant=&limit=20&mtart=&checkBom=&bomUsage=
  * Searches materials by description (MAKTG uppercase) or material number.
  */
-router.get('/search', materialSearchRateLimiter, requireAppPermission('bom.*'), async (req, res) => {
+router.get('/search', materialSearchRateLimiter, async (req, res) => {
   const abortController = new AbortController();
   req.on('close', () => {
     if (!res.writableEnded) {

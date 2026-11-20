@@ -1,7 +1,8 @@
 import {
   openRfcClient,
   formatRfcTableOptions,
-  toSapMatnr
+  toSapMatnr,
+  assertResolvedServer
 } from './sapRfcClient.js';
 import { runSearchRfc } from './searchRfcClient.js';
 import { parseRfcRows } from './materialSearchService.js';
@@ -89,6 +90,7 @@ export async function getPlants({
   signal,
   timeoutMs
 } = {}) {
+  assertResolvedServer(server, 'getPlants');
   const serverId = server?.id || server?.ashost || 'mock_server';
   const shouldRefresh = refresh === true || refresh === 'true';
 

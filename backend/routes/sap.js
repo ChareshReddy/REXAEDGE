@@ -7,11 +7,14 @@ import {
   setSelectedSapSessionId
 } from '../services/sapGuiClient.js';
 import { pingRfcServer } from '../services/sapRfcClient.js';
-import { getServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
+import { getServerHealth, getCircuitBreaker, updateServerHealth, probeServerHealth, HEALTH_STATE, BREAKER_STATE } from '../services/serverHealthService.js';
+import { validateServerHost } from '../services/serverAllowlistService.js';
+import { decryptPassword } from '../utils/crypto.js';
 import { supabaseService } from '../services/supabaseClient.js';
 import { extractToken, requireAuth, requireServerAccess, requireAppPermission } from '../middleware/auth.js';
 import { requireServerOwner } from '../middleware/serverOwnership.js';
 import { sendFriendlyError, toFriendlyError } from '../utils/friendlyError.js';
+import { traceMiddlewareStep } from '../utils/rfcTrace.js';
 
 const router = express.Router();
 
@@ -20,53 +23,65 @@ const router = express.Router();
  * or authenticated user permissions.
  */
 async function resolveTargetServer(req) {
-  if (req.selectedServer) return req.selectedServer;
-
-  let serverId =
-    req.headers?.['x-sap-server-id'] ||
-    req.query?.serverId ||
-    req.query?.server_id;
-
-  if (serverId) {
-    try {
-      const server = await supabaseService.getServerById(serverId);
-      if (server) return server;
-    } catch (_) {}
-  }
-
-  // If user is authenticated, resolve their permitted server
-  const token = extractToken(req);
-  if (token) {
-    try {
-      const { data } = await supabaseService.getUser(token);
-      if (data?.user) {
-        const available = await supabaseService.getAvailableServersForUser(data.user.id, data.user.role);
-        if (available && available.length > 0) {
-          const matched = await supabaseService.getServerById(available[0].id);
-          if (matched) return matched;
-        } else {
-          // Authenticated user has NO permitted servers assigned: fail closed
-          return null;
-        }
-      }
-    } catch (_) {}
-  }
-
-  // Fallback for tests or single active server in database
+  const trace = traceMiddlewareStep(req, 'resolveTargetServer');
   try {
-    const allServers = await supabaseService.listServers({ includeSensitive: true, role: 'admin' });
-    if (allServers && allServers.length > 0) {
-      const withCreds = allServers.find((s) => s.sap_username && s.is_active !== false);
-      const candidate = withCreds || allServers[0];
-      if (candidate?.id) {
-        const full = await supabaseService.getServerById(candidate.id);
-        if (full) return full;
-      }
-      return candidate;
-    }
-  } catch (_) {}
+    if (req.selectedServer) return req.selectedServer;
+    if (req._serverRecord) return req._serverRecord;
 
-  return null;
+    let serverId =
+      req.headers?.['x-sap-server-id'] ||
+      req.query?.serverId ||
+      req.query?.server_id;
+
+    if (serverId) {
+      try {
+        const server = await supabaseService.getServerById(serverId, { req });
+        if (server) return server;
+      } catch (err) {
+        if (err.code === 'DB_TIMEOUT') throw err;
+      }
+    }
+
+    // If user is authenticated, resolve their permitted server
+    const token = extractToken(req);
+    if (token) {
+      try {
+        const { data } = await supabaseService.getUser(token);
+        if (data?.user) {
+          const available = await supabaseService.getAvailableServersForUser(data.user.id, data.user.role);
+          if (available && available.length > 0) {
+            const matched = await supabaseService.getServerById(available[0].id, { req });
+            if (matched) return matched;
+          } else {
+            // Authenticated user has NO permitted servers assigned: fail closed
+            return null;
+          }
+        }
+      } catch (err) {
+        if (err.code === 'DB_TIMEOUT') throw err;
+      }
+    }
+
+    // Fallback for tests or single active server in database
+    try {
+      const allServers = await supabaseService.listServers({ includeSensitive: true, role: 'admin' });
+      if (allServers && allServers.length > 0) {
+        const withCreds = allServers.find((s) => s.sap_username && s.is_active !== false);
+        const candidate = withCreds || allServers[0];
+        if (candidate?.id) {
+          const full = await supabaseService.getServerById(candidate.id, { req });
+          if (full) return full;
+        }
+        return candidate;
+      }
+    } catch (err) {
+      if (err.code === 'DB_TIMEOUT') throw err;
+    }
+
+    return null;
+  } finally {
+    trace.end();
+  }
 }
 
 /**
@@ -198,13 +213,58 @@ router.post('/sessions/select', requireAuth, requireServerOwner, requireAppPermi
  * Health check endpoint for dynamic SAP RFC or GUI session monitoring.
  */
 router.get('/session-status', requireAuth, requireServerOwner, requireAppPermission('bom.*'), async (req, res) => {
-  try {
-    const useRfc = process.env.SAP_BOM_MODE !== 'GUI' && process.env.USE_MOCK_SAP !== 'true';
-    if (useRfc) {
-      const targetServer = await resolveTargetServer(req);
+  const overallStart = Date.now();
+  let overallTimer = null;
+  let isDone = false;
 
+  // Hard timeout on session-status as a whole (10 s)
+  overallTimer = setTimeout(() => {
+    if (!isDone && !res.headersSent) {
+      isDone = true;
+      const duration = Date.now() - overallStart;
+      console.warn(`[SlowStep] session-status timed out after ${duration}ms`);
+      return res.status(200).json({
+        connected: false,
+        mode: 'RFC',
+        status: 'SERVER_UNAVAILABLE',
+        code: 'HEALTH_CHECK_TIMEOUT',
+        message: 'SAP health check timed out. Please try again shortly.',
+        system: req.selectedServer?.environment || 'DEV',
+        client: req.selectedServer?.client || '',
+        user: req.selectedServer?.sap_username || '',
+        selectedUser: req.selectedServer?.sap_username || '',
+        latencyMs: null,
+        selectedSessionId: req.selectedServer ? `RFC_${req.selectedServer.id}` : null,
+        sessions: []
+      });
+    }
+  }, 10000);
+
+  const respondJson = (data) => {
+    if (isDone || res.headersSent) return;
+    isDone = true;
+    if (overallTimer) clearTimeout(overallTimer);
+    const duration = Date.now() - overallStart;
+    if (duration > 2000) {
+      console.warn(`[SlowStep] session-status total duration took ${duration}ms`);
+    }
+    return res.status(200).json(data);
+  };
+
+  try {
+    const resolveStart = Date.now();
+    const [targetServer, allowlist] = await Promise.all([
+      resolveTargetServer(req),
+      supabaseService.getAllowlist()
+    ]);
+    const resolveDur = Date.now() - resolveStart;
+    if (resolveDur > 2000) {
+      console.warn(`[SlowStep] resolveTargetServer and allowlist fetch took ${resolveDur}ms`);
+    }
+
+    if (process.env.SAP_BOM_MODE !== 'GUI') {
       if (!targetServer) {
-        return res.status(200).json({
+        return respondJson({
           connected: false,
           mode: 'RFC',
           status: 'SERVER_UNAVAILABLE',
@@ -220,16 +280,37 @@ router.get('/session-status', requireAuth, requireServerOwner, requireAppPermiss
         });
       }
 
-      // Check if credentials exist on this server
+      const serverSystem = targetServer.environment || targetServer.name || 'DEV';
+      const serverClient = targetServer.client || '100';
+      const serverUser = targetServer.sap_username || '';
+      const sessionId = `RFC_${targetServer.id}`;
+
+      // 1. Check disabled
+      if (targetServer.is_disabled) {
+        return respondJson({
+          connected: false,
+          mode: 'RFC',
+          status: 'SERVER_UNAVAILABLE',
+          code: 'SERVER_DISABLED',
+          message: 'This SAP server is disabled.',
+          system: serverSystem,
+          client: serverClient,
+          user: serverUser,
+          selectedUser: serverUser,
+          latencyMs: null,
+          selectedSessionId: sessionId,
+          sessions: []
+        });
+      }
+
+      // 2. Check credentials presence
       const hasCreds = Boolean(
         targetServer.sap_username &&
         (targetServer.sap_password || targetServer.sap_password_encrypted)
       );
 
       if (!hasCreds) {
-        const serverSystem = targetServer.environment || targetServer.name || 'DEV';
-        const serverClient = targetServer.client || '100';
-        return res.status(200).json({
+        return respondJson({
           connected: false,
           mode: 'RFC',
           status: 'SERVER_UNAVAILABLE',
@@ -237,26 +318,70 @@ router.get('/session-status', requireAuth, requireServerOwner, requireAppPermiss
           message: `No SAP credentials configured for server "${targetServer.name}".`,
           system: serverSystem,
           client: serverClient,
-          user: targetServer.sap_username || '',
-          selectedUser: targetServer.sap_username || '',
+          user: serverUser,
+          selectedUser: serverUser,
           latencyMs: null,
-          selectedSessionId: `RFC_${targetServer.id}`,
+          selectedSessionId: sessionId,
           sessions: []
         });
       }
 
-      const health = getServerHealth(targetServer.id);
-      const isUp = health.status !== HEALTH_STATE.DOWN && health.circuit_breaker !== BREAKER_STATE.OPEN;
-      const serverSystem = targetServer.environment || targetServer.name || 'DEV';
-      const serverClient = targetServer.client || '100';
-      const serverUser = targetServer.sap_username || '';
-      const sessionId = `RFC_${targetServer.id}`;
+      // 3. Check password decryption
+      if (targetServer.sap_password_encrypted && !targetServer.sap_password) {
+        try {
+          decryptPassword(targetServer.sap_password_encrypted);
+        } catch (decErr) {
+          return respondJson({
+            connected: false,
+            mode: 'RFC',
+            status: 'SERVER_UNAVAILABLE',
+            code: 'DECRYPT_FAILED',
+            message: 'Failed to decrypt saved SAP password. Please re-enter credentials in My Servers.',
+            system: serverSystem,
+            client: serverClient,
+            user: serverUser,
+            selectedUser: serverUser,
+            latencyMs: null,
+            selectedSessionId: sessionId,
+            sessions: []
+          });
+        }
+      }
 
-      return res.status(200).json({
+      // 4. Check host allowlist with validation & slow logging
+      const hostValStart = Date.now();
+      const validation = await validateServerHost(targetServer, allowlist || []);
+      const hostValDur = Date.now() - hostValStart;
+      if (hostValDur > 2000) {
+        console.warn(`[SlowStep] validateServerHost took ${hostValDur}ms`);
+      }
+
+      if (!validation.permitted) {
+        return respondJson({
+          connected: false,
+          mode: 'RFC',
+          status: 'SERVER_UNAVAILABLE',
+          code: validation.code,
+          message: validation.message,
+          system: serverSystem,
+          client: serverClient,
+          user: serverUser,
+          selectedUser: serverUser,
+          latencyMs: null,
+          selectedSessionId: sessionId,
+          sessions: []
+        });
+      }
+
+      // 5. Automatic health probing with circuit breaker respect, in-flight deduplication & 60s cache
+      const health = await probeServerHealth(targetServer);
+      const isUp = health.status === HEALTH_STATE.HEALTHY && health.circuit_breaker === BREAKER_STATE.CLOSED;
+
+      return respondJson({
         connected: isUp,
         mode: 'RFC',
         status: isUp ? 'AVAILABLE' : 'SERVER_UNAVAILABLE',
-        code: isUp ? 'AVAILABLE' : (health.last_error ? 'SAP_SERVER_UNAVAILABLE' : 'SERVER_UNAVAILABLE'),
+        code: isUp ? 'AVAILABLE' : (health.last_code || 'SAP_SERVER_UNAVAILABLE'),
         system: serverSystem,
         client: serverClient,
         user: serverUser,
@@ -283,10 +408,10 @@ router.get('/session-status', requireAuth, requireServerOwner, requireAppPermiss
     }
 
     const health = await checkSapSessionHealth();
-    return res.status(200).json(health);
+    return respondJson(health);
   } catch (err) {
     const friendly = toFriendlyError(err);
-    return res.status(200).json({
+    return respondJson({
       connected: false,
       status: 'SERVER_UNAVAILABLE',
       code: friendly.code,

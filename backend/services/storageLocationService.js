@@ -1,4 +1,4 @@
-import { formatRfcTableOptions } from './sapRfcClient.js';
+import { formatRfcTableOptions, assertResolvedServer } from './sapRfcClient.js';
 import { runSearchRfc } from './searchRfcClient.js';
 import { parseRfcRows } from './materialSearchService.js';
 
@@ -91,6 +91,7 @@ export async function getStorageLocations({
   signal,
   timeoutMs
 } = {}) {
+  assertResolvedServer(server, 'getStorageLocations');
   const serverId = server?.id || server?.ashost || 'mock_server';
   const cleanPlant = sanitizePlantCode(plant);
   const cleanQ = sanitizeStorageLocationQuery(q);

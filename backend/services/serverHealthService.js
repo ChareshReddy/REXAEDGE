@@ -127,6 +127,7 @@ export class CircuitBreaker {
 const serverBreakers = new Map();
 const serverHealthCache = new Map();
 const serverActivityMap = new Map();
+const inFlightProbes = new Map();
 
 const ACTIVITY_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 let backgroundTimer = null;
@@ -151,6 +152,12 @@ export function hasRecentActivity(serverId, windowMs = ACTIVITY_WINDOW_MS) {
   return (Date.now() - last) < windowMs;
 }
 
+export function hasHealthData(serverId) {
+  const sId = String(serverId || 'default');
+  const entry = serverHealthCache.get(sId);
+  return Boolean(entry && entry.has_probed);
+}
+
 export function getServerHealth(serverId) {
   const sId = String(serverId || 'default');
   const breaker = getCircuitBreaker(sId);
@@ -160,11 +167,13 @@ export function getServerHealth(serverId) {
   if (!entry) {
     entry = {
       serverId: sId,
-      status: HEALTH_STATE.HEALTHY,
+      status: HEALTH_STATE.DEGRADED,
       circuit_breaker: breakerState,
-      last_checked: Date.now(),
+      last_checked: 0,
+      has_probed: false,
       last_error: null,
-      latency_ms: 2,
+      last_code: null,
+      latency_ms: null,
       consecutive_failures: 0
     };
     serverHealthCache.set(sId, entry);
@@ -173,9 +182,11 @@ export function getServerHealth(serverId) {
   entry.circuit_breaker = breakerState;
   if (breakerState === BREAKER_STATE.OPEN) {
     entry.status = HEALTH_STATE.DOWN;
+  } else if (breakerState === BREAKER_STATE.HALF_OPEN) {
+    entry.status = HEALTH_STATE.DEGRADED;
   } else if (breaker.consecutiveFailures > 0) {
     entry.status = HEALTH_STATE.DEGRADED;
-  } else {
+  } else if (entry.has_probed) {
     entry.status = HEALTH_STATE.HEALTHY;
   }
   entry.consecutive_failures = breaker.consecutiveFailures;
@@ -193,21 +204,27 @@ export function updateServerHealth(serverId, { success, error = null, latencyMs 
     status: HEALTH_STATE.HEALTHY,
     circuit_breaker: BREAKER_STATE.CLOSED,
     last_checked: now,
+    has_probed: true,
     last_error: null,
+    last_code: null,
     latency_ms: 2,
     consecutive_failures: 0
   };
 
   entry.last_checked = now;
+  entry.has_probed = true;
   if (latencyMs) entry.latency_ms = latencyMs;
 
   if (success) {
+    breaker.reset();
     entry.status = HEALTH_STATE.HEALTHY;
     entry.last_error = null;
+    entry.last_code = null;
     entry.circuit_breaker = BREAKER_STATE.CLOSED;
     entry.consecutive_failures = 0;
   } else if (error) {
     entry.last_error = error.message || String(error);
+    entry.last_code = error.code || null;
     entry.consecutive_failures = breaker.consecutiveFailures;
     if (breaker.getState() === BREAKER_STATE.OPEN) {
       entry.status = HEALTH_STATE.DOWN;
@@ -220,6 +237,103 @@ export function updateServerHealth(serverId, { success, error = null, latencyMs 
 
   serverHealthCache.set(sId, entry);
   return entry;
+}
+
+/**
+ * Probes the target SAP server with a lightweight RFC_PING if:
+ * 1. Server has no health data, OR
+ * 2. Last check is older than 60s, OR
+ * 3. Circuit breaker is in HALF_OPEN state (allows single probe).
+ *
+ * Respects circuit breaker: when OPEN, does not probe until half-open time.
+ * In-flight coalescing: concurrent polls from many tabs share one probe.
+ * Hard timeout: 5s.
+ */
+export async function probeServerHealth(server, { force = false, timeoutMs = 5000 } = {}) {
+  const sId = String(server?.id || server?.ashost || 'default');
+  const breaker = getCircuitBreaker(sId);
+  const breakerState = breaker.getState();
+
+  const cached = serverHealthCache.get(sId);
+  const hasData = Boolean(cached && cached.has_probed);
+  const isFresh = hasData && (Date.now() - cached.last_checked <= 60000);
+
+  // 1. Respect the circuit breaker: when OPEN, do not probe until half-open time
+  if (breakerState === BREAKER_STATE.OPEN) {
+    return getServerHealth(sId);
+  }
+
+  // 2. Fresh cache check: if data is fresh (<= 60s) and breaker is CLOSED, answer from cache without pinging
+  if (isFresh && !force && breakerState === BREAKER_STATE.CLOSED) {
+    return getServerHealth(sId);
+  }
+
+  // 3. Share in-flight probe across concurrent polls
+  if (inFlightProbes.has(sId)) {
+    try {
+      await inFlightProbes.get(sId);
+    } catch (_) {}
+    return getServerHealth(sId);
+  }
+
+  // 4. Run probe
+  const probePromise = (async () => {
+    let probeTimer = null;
+    const probeStart = Date.now();
+    try {
+      const { pingRfcServer } = await import('./sapRfcClient.js');
+
+      const timeoutPromise = new Promise((_, reject) => {
+        probeTimer = setTimeout(() => {
+          const err = new Error(
+            breakerState === BREAKER_STATE.HALF_OPEN
+              ? 'HALF_OPEN ping probe timed out after 5000ms'
+              : `RFC ping probe timed out after ${timeoutMs}ms`
+          );
+          err.code = breakerState === BREAKER_STATE.HALF_OPEN ? 'PROBE_TIMEOUT' : 'HEALTH_CHECK_TIMEOUT';
+          reject(err);
+        }, timeoutMs);
+      });
+
+      const pingPromise = pingRfcServer(server);
+      const res = await Promise.race([pingPromise, timeoutPromise]);
+      if (probeTimer) clearTimeout(probeTimer);
+
+      const probeDur = Date.now() - probeStart;
+      if (probeDur > 2000) {
+        const stepName = breakerState === BREAKER_STATE.HALF_OPEN ? 'HALF_OPEN ping probe' : 'health check probe';
+        console.warn(`[SlowStep] ${stepName} took ${probeDur}ms`);
+      }
+
+      if (res && res.success) {
+        breaker.onSuccess();
+        updateServerHealth(sId, { success: true, latencyMs: res.latencyMs || Math.max(1, probeDur) });
+      } else {
+        const err = new Error(res?.message || 'RFC ping probe failed');
+        err.code = res?.code || 'RFC_CONN_ERROR';
+        breaker.onFailure(true, err.message);
+        updateServerHealth(sId, { success: false, error: err, latencyMs: res?.latencyMs || Math.max(1, probeDur) });
+      }
+    } catch (err) {
+      if (probeTimer) clearTimeout(probeTimer);
+      const probeDur = Date.now() - probeStart;
+      if (probeDur > 2000) {
+        const stepName = breakerState === BREAKER_STATE.HALF_OPEN ? 'HALF_OPEN ping probe' : 'health check probe';
+        console.warn(`[SlowStep] ${stepName} took ${probeDur}ms (failed: ${err.message})`);
+      }
+      breaker.onFailure(true, err.message);
+      updateServerHealth(sId, { success: false, error: err, latencyMs: Math.max(1, probeDur) });
+    }
+  })();
+
+  inFlightProbes.set(sId, probePromise);
+  try {
+    await probePromise;
+  } finally {
+    inFlightProbes.delete(sId);
+  }
+
+  return getServerHealth(sId);
 }
 
 /**
@@ -279,5 +393,6 @@ export function resetAllHealthAndBreakers() {
   serverBreakers.clear();
   serverHealthCache.clear();
   serverActivityMap.clear();
+  inFlightProbes.clear();
   stopBackgroundHealthChecks();
 }

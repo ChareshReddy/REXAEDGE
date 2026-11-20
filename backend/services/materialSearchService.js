@@ -1,7 +1,8 @@
 import {
   openRfcClient,
   formatRfcTableOptions,
-  toSapMatnr
+  toSapMatnr,
+  assertResolvedServer
 } from './sapRfcClient.js';
 import { runSearchRfc } from './searchRfcClient.js';
 
@@ -409,6 +410,7 @@ export async function searchMaterials({
   signal,
   timeoutMs
 }) {
+  assertResolvedServer(server, 'searchMaterials');
   const sanitizedQuery = sanitizeSearchQuery(query || '');
   if (query && sanitizedQuery.length > 0 && sanitizedQuery.length < 2 && sanitizedQuery !== '*') {
     const badInputErr = new Error('Search query must be at least 2 characters.');
@@ -740,6 +742,7 @@ export async function getMaterialDetail({
   signal,
   timeoutMs
 }) {
+  assertResolvedServer(server, 'getMaterialDetail');
   const sanitized = sanitizeSearchQuery(matnr);
   if (!sanitized) {
     const badErr = new Error('Material number is required.');

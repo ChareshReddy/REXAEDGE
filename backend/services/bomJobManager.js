@@ -19,6 +19,7 @@ import { getCircuitBreaker } from './serverHealthService.js';
 import { bomJobRepository } from './bomJobRepository.js';
 import { bomLockService } from './bomLockService.js';
 import { jobPerformanceTracker } from './jobPerformanceTracker.js';
+import { supabaseService } from './supabaseClient.js';
 
 export const DEFAULT_MAX_BOMS = 500;
 export const MAX_BOMS = 500; // Strict Stage 4 limit: max 500 rows per job
@@ -597,12 +598,93 @@ class BomJobManager {
     const job = this.jobs.get(jobId);
     if (!job) return;
 
+    // Resolve server context by stored server_id or server reference
+    const targetServerId = job.server_id || job.serverId || server?.id;
+    let effectiveServer = server || job.serverRef || null;
+    let effectiveUser = user || job.userRef || null;
+
+    if ((!effectiveServer || !effectiveServer.ashost) && targetServerId) {
+      try {
+        const loadedServer = await supabaseService.getServerById(String(targetServerId));
+        if (loadedServer) {
+          effectiveServer = { ...loadedServer, ...(effectiveServer || {}) };
+        }
+      } catch (err) {
+        console.warn(`[bomJobManager] Failed to load server ${targetServerId} from DB:`, err.message);
+      }
+    }
+
+    if (!effectiveUser && (job.user_id || job.userId)) {
+      const uId = job.user_id || job.userId;
+      try {
+        if (supabaseService.getUserById) {
+          const loadedUser = await supabaseService.getUserById(String(uId));
+          if (loadedUser) effectiveUser = loadedUser;
+        }
+      } catch (_) {}
+      if (!effectiveUser) {
+        effectiveUser = { id: uId, email: job.userEmail };
+      }
+    }
+
+    const jobUserId = effectiveUser?.id || job.user_id || job.userId;
+
+    // Fail closed if server cannot be resolved
+    if (!effectiveServer || typeof effectiveServer !== 'object' || (!effectiveServer.id && !effectiveServer.ashost && !effectiveServer.name)) {
+      job.status = 'FAILED';
+      job.error = 'SAP Server not found.';
+      job.message = job.error;
+      job.completedAt = new Date().toISOString();
+      job.updatedAt = new Date().toISOString();
+      await this.repository.saveJob(job);
+      return;
+    }
+
+    // Ownership check: job user must own the server
+    if (jobUserId && effectiveServer.owner_id && effectiveServer.owner_id !== jobUserId) {
+      job.status = 'FAILED';
+      job.error = 'SAP Server not found.';
+      job.message = 'SAP Server not found.';
+      job.completedAt = new Date().toISOString();
+      job.updatedAt = new Date().toISOString();
+      await this.repository.saveJob(job);
+      return;
+    }
+
+    // Disabled check: refuse disabled server
+    if (effectiveServer.is_disabled) {
+      job.status = 'FAILED';
+      job.error = 'This SAP server is disabled.';
+      job.message = job.error;
+      job.completedAt = new Date().toISOString();
+      job.updatedAt = new Date().toISOString();
+      await this.repository.saveJob(job);
+      return;
+    }
+
+    // User disabled check: refuse disabled user
+    if (effectiveUser?.is_disabled) {
+      job.status = 'FAILED';
+      job.error = 'Your account has been disabled. Please contact your administrator.';
+      job.message = job.error;
+      job.completedAt = new Date().toISOString();
+      job.updatedAt = new Date().toISOString();
+      await this.repository.saveJob(job);
+      return;
+    }
+
+    job.serverRef = effectiveServer;
+    job.userRef = effectiveUser;
+
     job.status = 'RUNNING';
     job.startedAt = job.startedAt || new Date().toISOString();
     job.updatedAt = new Date().toISOString();
     job.current_step = 'Initializing operation...';
     job.completed_steps = 0;
     job.progress_percent = 3; // Active running segment (min 3%)
+    job.results = Array.isArray(job.results) ? job.results : [];
+    job.failedCount = Number(job.failedCount) || 0;
+    job.successCount = Number(job.successCount) || 0;
 
     const items = job.items || [];
     const rowsCount = Math.max(items.length, 1);
@@ -653,13 +735,13 @@ class BomJobManager {
 
     try {
       if (job.type === 'create_preflight') {
-        await this.runCreatePreflight(job, items, server);
+        await this.runCreatePreflight(job, items, effectiveServer);
       } else if (job.type === 'create_bulk') {
-        await this.runCreateBulk(job, items, server, user);
+        await this.runCreateBulk(job, items, effectiveServer, effectiveUser);
       } else if (job.type === 'copy_validate') {
-        await this.runCopyValidate(job, items, server);
+        await this.runCopyValidate(job, items, effectiveServer);
       } else if (job.type === 'copy_bulk') {
-        await this.runCopyBulk(job, items, server, user);
+        await this.runCopyBulk(job, items, effectiveServer, effectiveUser);
       } else {
         throw new Error(`Unknown job type: ${job.type}`);
       }
@@ -724,7 +806,8 @@ class BomJobManager {
   // --- JOB HANDLERS WITH 10-ROW CHUNKS & BACKOFF/CIRCUIT BREAKER HANDLING ---
 
   async runCreatePreflight(job, boms, server) {
-    const serverId = server?.id || server?.name || 'default';
+    const effectiveServer = server || job?.serverRef;
+    const serverId = effectiveServer?.id || effectiveServer?.name || job?.server_id || job?.serverId || 'default';
     const breaker = getCircuitBreaker(serverId);
 
     job.total_steps = Math.max(1, boms.length * 2);
@@ -767,7 +850,7 @@ class BomJobManager {
           const callStart = Date.now();
           preflightRes = await rfcPreflightCreateBoms({
             boms: chunk,
-            server,
+            server: effectiveServer,
             source: 'bulk',
             priority: RFC_PRIORITY.BULK
           });
@@ -863,7 +946,9 @@ class BomJobManager {
   }
 
   async runCreateBulk(job, boms, server, user) {
-    const serverId = server?.id || server?.name || 'default';
+    const effectiveServer = server || job?.serverRef;
+    const effectiveUser = user || job?.userRef;
+    const serverId = effectiveServer?.id || effectiveServer?.name || job?.server_id || job?.serverId || 'default';
     const breaker = getCircuitBreaker(serverId);
 
     // Group-aware bottom-up ordering
@@ -974,12 +1059,13 @@ class BomJobManager {
         let rowLock = null;
         try {
           rowLock = bomLockService.acquireLock({
+            server: effectiveServer,
             serverId,
             material: bom.material,
             plant: bom.plant,
             bomUsage: bom.bomUsage,
             alternative: bom.alternativeBom,
-            userId: user?.id || user?.email || job.userId
+            userId: effectiveUser?.id || effectiveUser?.email || job.userId
           });
         } catch (lockErr) {
           if (lockErr.code === 'BOM_LOCKED') {
@@ -1009,8 +1095,8 @@ class BomJobManager {
         try {
           const createResult = await createBomFromData({
             bom,
-            server,
-            user,
+            server: effectiveServer,
+            user: effectiveUser,
             source: 'bulk',
             priority: RFC_PRIORITY.BULK,
             fileName: job.fileName
@@ -1088,7 +1174,7 @@ class BomJobManager {
                 plant: bom.plant,
                 bomUsage: bom.bomUsage || '1',
                 alternativeBom: bom.alternativeBom || '1',
-                server,
+                server: effectiveServer,
                 useCache: false,
                 priority: RFC_PRIORITY.READ
               });
@@ -1126,8 +1212,8 @@ class BomJobManager {
               try {
                 const retryRes = await createBomFromData({
                   bom,
-                  server,
-                  user,
+                  server: effectiveServer,
+                  user: effectiveUser,
                   source: 'bulk',
                   priority: RFC_PRIORITY.BULK,
                   fileName: job.fileName
@@ -1183,7 +1269,7 @@ class BomJobManager {
                     plant: bom.plant,
                     bomUsage: bom.bomUsage || '1',
                     alternativeBom: bom.alternativeBom || '1',
-                    server,
+                    server: effectiveServer,
                     useCache: false,
                     priority: RFC_PRIORITY.READ
                   });
@@ -1302,8 +1388,9 @@ class BomJobManager {
   }
 
   async runCopyValidate(job, items, server) {
+    const effectiveServer = server || job?.serverRef;
     const allocatedByTargetKey = new Map();
-    const serverId = server?.id || server?.name || 'default';
+    const serverId = effectiveServer?.id || effectiveServer?.name || job?.server_id || job?.serverId || 'default';
     const breaker = getCircuitBreaker(serverId);
     const validationCache = {
       readBom: new Map(),
@@ -1343,7 +1430,7 @@ class BomJobManager {
         try {
           const callStart = Date.now();
           valRes = await rfcBatchValidateBoms(chunk, {
-            server,
+            server: effectiveServer,
             allocatedByTargetKey,
             priority: RFC_PRIORITY.BULK,
             jobId: job.jobId || job.id,
@@ -1433,9 +1520,11 @@ class BomJobManager {
   }
 
   async runCopyBulk(job, items, server, user) {
+    const effectiveServer = server || job?.serverRef;
+    const effectiveUser = user || job?.userRef;
     const { copyHierarchy = true, skipErrors = true } = job.options || {};
     const allocatedByTargetKey = new Map();
-    const serverId = server?.id || server?.name || 'default';
+    const serverId = effectiveServer?.id || effectiveServer?.name || job?.server_id || job?.serverId || 'default';
     const breaker = getCircuitBreaker(serverId);
 
     job.total_steps = Math.max(1, items.length);
@@ -1531,7 +1620,7 @@ class BomJobManager {
             sourcePlant: srcPlant,
             sourceUsage: srcUsage,
             sourceAlternative: srcAlt,
-            server,
+            server: effectiveServer,
             priority: RFC_PRIORITY.BULK
           });
 
@@ -1565,7 +1654,7 @@ class BomJobManager {
             targetUsage: tgtUsage,
             targetAlternative: tgtAlt,
             allocatedAlternatives: allocatedList,
-            server,
+            server: effectiveServer,
             priority: RFC_PRIORITY.BULK
           });
 
@@ -1599,12 +1688,13 @@ class BomJobManager {
           let copyRowLock = null;
           try {
             copyRowLock = bomLockService.acquireLock({
+              server: effectiveServer,
               serverId,
               material: tgtMat,
               plant: tgtPlant,
               bomUsage: tgtUsage,
               alternative: resolvedTgtAlt,
-              userId: user?.id || user?.email || job.userId
+              userId: effectiveUser?.id || effectiveUser?.email || job.userId
             });
           } catch (lockErr) {
             if (lockErr.code === 'BOM_LOCKED') {
@@ -1642,7 +1732,7 @@ class BomJobManager {
               sourceAlternative: effectiveSrcAlt || '1',
               targetAlternative: resolvedTgtAlt,
               copyHierarchy,
-              server,
+              server: effectiveServer,
               priority: RFC_PRIORITY.BULK
             });
 
@@ -1696,7 +1786,7 @@ class BomJobManager {
                 plant: tgtPlant,
                 bomUsage: tgtUsage,
                 alternativeBom: resolvedTgtAlt || '01',
-                server,
+                server: effectiveServer,
                 useCache: false,
                 priority: RFC_PRIORITY.READ
               });
@@ -1735,7 +1825,7 @@ class BomJobManager {
                   sourceAlternative: effectiveSrcAlt || '1',
                   targetAlternative: resolvedTgtAlt,
                   copyHierarchy,
-                  server,
+                  server: effectiveServer,
                   priority: RFC_PRIORITY.BULK
                 });
                 if (retryCopyRes.success) {
@@ -1766,7 +1856,7 @@ class BomJobManager {
                     plant: tgtPlant,
                     bomUsage: tgtUsage,
                     alternativeBom: resolvedTgtAlt || '01',
-                    server,
+                    server: effectiveServer,
                     useCache: false,
                     priority: RFC_PRIORITY.READ
                   });

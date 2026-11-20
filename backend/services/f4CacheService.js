@@ -12,6 +12,8 @@
  * ============================================================================
  */
 
+import { traceRfc } from '../utils/rfcTrace.js';
+
 export const F4_TTL = Object.freeze({
   PLANTS: 10 * 60 * 1000,          // 10 minutes
   STORAGE_LOCATIONS: 10 * 60 * 1000, // 10 minutes
@@ -54,9 +56,21 @@ class F4CacheService {
   /**
    * Fetches data with LRU cache and in-flight request coalescing.
    */
-  async fetchWithCache({ serverId, lookupType, query = '', paging = '', fetchFn, ttlMs = null }) {
+  async fetchWithCache({ serverId, lookupType, query = '', paging = '', fetchFn, ttlMs = null, timeoutMs = 20000, signal = null }) {
     const key = this._buildKey({ serverId, lookupType, query, paging });
     const now = Date.now();
+    const tStart = Date.now();
+    traceRfc(`f4_cache_fetch_${lookupType}`, serverId, 'START');
+
+    // 0. If request already aborted
+    if (signal?.aborted) {
+      this.pending.delete(key);
+      const abortErr = new Error(`F4 lookup for ${lookupType} cancelled`);
+      abortErr.code = 'REQUEST_CANCELLED';
+      abortErr.status = 499;
+      traceRfc(`f4_cache_fetch_${lookupType}`, serverId, 'END', Date.now() - tStart);
+      throw abortErr;
+    }
 
     // 1. Check cache hit
     const cached = this.cache.get(key);
@@ -66,6 +80,7 @@ class F4CacheService {
         // Refresh LRU order (delete and re-insert)
         this.cache.delete(key);
         this.cache.set(key, cached);
+        traceRfc(`f4_cache_fetch_${lookupType}`, serverId, 'END', Date.now() - tStart);
         return cached.data;
       }
       // Expired entry
@@ -80,10 +95,36 @@ class F4CacheService {
       return this.pending.get(key);
     }
 
-    // 3. Execute fetch with single in-flight promise
+    // 3. Execute fetch with single in-flight promise and timeout watchdog (20s/45s)
+    let fetchTimer = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      fetchTimer = setTimeout(() => {
+        const err = new Error(`F4 lookup for ${lookupType} timed out after ${timeoutMs}ms`);
+        err.code = 'RFC_CALL_TIMEOUT';
+        err.status = 504;
+        err.statusCode = 504;
+        reject(err);
+      }, timeoutMs);
+    });
+
+    let abortListener = null;
+    const abortPromise = new Promise((_, reject) => {
+      if (signal) {
+        abortListener = () => {
+          this.pending.delete(key);
+          const err = new Error(`F4 lookup for ${lookupType} cancelled`);
+          err.code = 'REQUEST_CANCELLED';
+          err.status = 499;
+          reject(err);
+        };
+        signal.addEventListener('abort', abortListener, { once: true });
+      }
+    });
+
     const promise = (async () => {
       try {
-        const data = await fetchFn();
+        const data = await Promise.race([fetchFn(), timeoutPromise, abortPromise]);
+        clearTimeout(fetchTimer);
 
         // Validate result: do NOT cache errors, null/undefined, or explicit failure objects
         const isValid =
@@ -111,14 +152,27 @@ class F4CacheService {
           }
         }
 
+        traceRfc(`f4_cache_fetch_${lookupType}`, serverId, 'END', Date.now() - tStart);
         return data;
+      } catch (err) {
+        clearTimeout(fetchTimer);
+        traceRfc(`f4_cache_fetch_${lookupType}`, serverId, 'END', Date.now() - tStart);
+        throw err;
       } finally {
+        if (signal && abortListener) {
+          signal.removeEventListener('abort', abortListener);
+        }
         this.pending.delete(key);
       }
     })();
 
     this.pending.set(key, promise);
     return promise;
+  }
+
+  clearPending(serverId, lookupType, query = '', paging = '') {
+    const key = this._buildKey({ serverId, lookupType, query, paging });
+    this.pending.delete(key);
   }
 
   clear(serverId = null) {

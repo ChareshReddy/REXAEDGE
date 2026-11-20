@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { traceRequestArrival } from '../utils/rfcTrace.js';
 
 /**
  * Middleware that attaches a unique request_id to req and sets the X-Request-Id response header.
@@ -13,5 +14,6 @@ export function requestIdMiddleware(req, res, next) {
   req.id = requestId;
   req.requestId = requestId;
   res.setHeader('X-Request-Id', requestId);
+  traceRequestArrival(req);
   next();
 }

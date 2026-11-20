@@ -35,6 +35,28 @@ import { requireServerOwner } from '../middleware/serverOwnership.js';
 
 const router = express.Router();
 
+// Route-level JSON parser for bulk jobs: 5MB payload limit with user-friendly 413 error
+const jobsStartJsonParser = express.json({ limit: '5mb' });
+
+const parseJobsStartBody = (req, res, next) => {
+  jobsStartJsonParser(req, res, (err) => {
+    if (err) {
+      if (err.status === 413 || err.statusCode === 413 || err.type === 'entity.too.large') {
+        return res.status(413).json({
+          success: false,
+          code: 'PAYLOAD_TOO_LARGE',
+          message: 'The uploaded file/payload exceeds the 5 MB limit. Please split your data into smaller batches.'
+        });
+      }
+      return next(err);
+    }
+    next();
+  });
+};
+
+// Pre-parse JSON for /jobs/start so req.body is populated when requireServerOwner runs
+router.use('/jobs/start', parseJobsStartBody);
+
 // Enforce authentication, server ownership, and BOM module enablement on all BOM routes
 router.use(requireAuth);
 router.use(requireServerOwner);
@@ -1308,25 +1330,6 @@ router.get('/create-template', requireAppPermission('bom.create'), (req, res) =>
 // =========================================================================
 // BACKGROUND JOB ENDPOINTS (Safe Bulk Processing for Hundreds of BOMs)
 // =========================================================================
-
-// Route-level JSON parser for bulk jobs: 5MB payload limit with user-friendly 413 error
-const jobsStartJsonParser = express.json({ limit: '5mb' });
-
-const parseJobsStartBody = (req, res, next) => {
-  jobsStartJsonParser(req, res, (err) => {
-    if (err) {
-      if (err.status === 413 || err.statusCode === 413 || err.type === 'entity.too.large') {
-        return res.status(413).json({
-          success: false,
-          code: 'PAYLOAD_TOO_LARGE',
-          message: 'The uploaded file/payload exceeds the 5 MB limit. Please split your data into smaller batches.'
-        });
-      }
-      return next(err);
-    }
-    next();
-  });
-};
 
 /**
  * POST /api/bom/jobs/start
