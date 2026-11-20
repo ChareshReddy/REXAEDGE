@@ -94,7 +94,8 @@ const testFiles = [
   'test/stage7FinalBacktest.test.js',
   'test/stage1Foundation.test.js',
   'test/stage2AdminAndAllowlist.test.js',
-  'test/stage3PerTabAndLockIsolation.test.js'
+  'test/stage3PerTabAndLockIsolation.test.js',
+  'test/sapServerUnreachableReasons.test.js'
 ];
 
 const env = {

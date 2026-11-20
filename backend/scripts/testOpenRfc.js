@@ -17,7 +17,7 @@ async function runDiagnostic() {
     sap_password: process.env.SAP_RFC_PASSWORD || 'MOCK_PASS',
     client: process.env.SAP_RFC_CLIENT || '500',
     sysnr: process.env.SAP_RFC_SYSNR || '09',
-    router: process.env.SAP_RFC_ROUTER || '/H/103.206.249.51/H/'
+    router: null
   };
 
   const params = getRfcConnectionParams({ server });
