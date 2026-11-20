@@ -12,6 +12,7 @@ import http from 'http';
 import { inMemorySupabase, supabaseService } from '../services/supabaseClient.js';
 import { bomLockService } from '../services/bomLockService.js';
 import { rfcCreateBom, rfcReadBom, rfcChangeBom, getBomChangeFunctionName } from '../services/sapRfcClient.js';
+import { CS02_BATCH_CONFIG, buildCs02BdcData, validateChangeItems } from '../config/cs02BatchConfig.js';
 import { toFriendlyError } from '../utils/friendlyError.js';
 
 const { default: app } = await import('../server.js');
@@ -131,7 +132,8 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
     components: [
       { itemNo: '0010', component: 'RAW-01', quantity: 10, unit: 'EA', itemCategory: 'L' },
       { itemNo: '0020', component: 'RAW-02', quantity: 20, unit: 'KG', itemCategory: 'L' }
-    ]
+    ],
+    server: serverA
   });
 
   // Verify initial read
@@ -139,7 +141,8 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
     material: testMaterial,
     plant: testPlant,
     bomUsage: testUsage,
-    alternativeBom: testAlt
+    alternativeBom: testAlt,
+    server: serverA
   });
   assert.equal(initialRead.success, true);
   assert.equal(initialRead.components.length, 2);
@@ -409,29 +412,26 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
     assert.ok(res.body.error.includes('Server not found') || res.body.code === 'SERVER_NOT_FOUND');
   });
 
-  await t.test('10. SAP_BOM_CHANGE_FUNCTION: uses default CSAP_MAT_BOM_MAINTAIN when env var is unset', async () => {
+  await t.test('10. SAP_BOM_CHANGE_FUNCTION: defaults to CS02 batch input when env var is unset', async () => {
     const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
     delete process.env.SAP_BOM_CHANGE_FUNCTION;
 
-    assert.equal(getBomChangeFunctionName(), 'CSAP_MAT_BOM_MAINTAIN');
+    assert.equal(getBomChangeFunctionName(), 'CS02');
 
     let invokedFm = null;
-    let commitCalled = false;
-    let maintainPayload = null;
+    let bdcPayload = null;
 
     const mockClient = {
       call: async (fm, payload) => {
-        if (fm === 'CSAP_MAT_BOM_MAINTAIN' || fm.startsWith('Z_')) {
+        if (fm === 'RFC_CALL_TRANSACTION_USING') {
           invokedFm = fm;
-          maintainPayload = payload;
-          return {};
-        }
-        if (fm === 'BAPI_TRANSACTION_COMMIT') {
-          commitCalled = true;
-          return {};
-        }
-        if (fm === 'RFC_READ_TABLE') {
-          return { FIELDS: [{ FIELDNAME: 'STLAL' }], DATA: [] };
+          bdcPayload = payload;
+          return {
+            SUBRC: 0,
+            L_ERRORS: [
+              { MSGID: '29', MSGNR: '024', MSGTYP: 'S', MSGTXT: 'BOM changed' }
+            ]
+          };
         }
         return {};
       }
@@ -442,16 +442,18 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
       plant: testPlant,
       bomUsage: testUsage,
       alternativeBom: testAlt,
-      header: { headerText: 'Default FM Header' },
+      header: { baseQty: '150' },
       client: mockClient,
       server: serverA
     });
 
-    assert.equal(invokedFm, 'CSAP_MAT_BOM_MAINTAIN');
-    assert.equal(commitCalled, true);
-    assert.ok(maintainPayload, 'maintainPayload must be passed to RFC call');
-    assert.equal(maintainPayload.I_STKO.BKTXT, 'Default FM Header');
-    assert.ok(maintainPayload.T_STPO, 'T_STPO table must be passed');
+    assert.equal(invokedFm, 'RFC_CALL_TRANSACTION_USING');
+    assert.ok(bdcPayload, 'RFC_CALL_TRANSACTION_USING payload must be present');
+    assert.equal(bdcPayload.TCODE, 'CS02');
+    assert.equal(bdcPayload.MODE, 'N');
+    assert.equal(bdcPayload.UPDATE, 'S');
+    assert.ok(Array.isArray(bdcPayload.BT_DATA), 'BT_DATA must be an array');
+    assert.equal(res.success, true);
 
     if (origEnv !== undefined) {
       process.env.SAP_BOM_CHANGE_FUNCTION = origEnv;
@@ -511,6 +513,9 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
   });
 
   await t.test('12. Incompatible Call (Note 2295840): maps to friendly message without technical text', async () => {
+    const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
+    process.env.SAP_BOM_CHANGE_FUNCTION = 'CSAP_MAT_BOM_MAINTAIN';
+
     const technicalSapErr = 'Incompatible Call Rejected, see note 2295840; Called Incompatible Function: CSAP_MAT_BOM_MAINTAIN';
 
     const mockClient = {
@@ -574,5 +579,173 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
       apiRes.body.message,
       'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.'
     );
+
+    if (origEnv !== undefined) {
+      process.env.SAP_BOM_CHANGE_FUNCTION = origEnv;
+    } else {
+      delete process.env.SAP_BOM_CHANGE_FUNCTION;
+    }
+  });
+
+  await t.test('13. CS02 BDC Builder: verifies exact screen sequence and positioning', async () => {
+    const bdc = buildCs02BdcData({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { baseQty: '101' },
+      items: [
+        {
+          changeType: 'CHANGE',
+          item: '0010',
+          component: 'RAW-01',
+          quantity: 25,
+          componentScrap: '5',
+          fixedQuantity: true,
+          itemText: 'Updated Text'
+        },
+        {
+          changeType: 'ADD',
+          item: '0030',
+          component: 'RAW-03',
+          quantity: 5,
+          unit: 'KG',
+          itemCategory: 'L'
+        },
+        {
+          changeType: 'DELETE',
+          item: '0020',
+          component: 'RAW-02'
+        }
+      ]
+    });
+
+    assert.ok(Array.isArray(bdc), 'BDC data must be an array');
+
+    // 1. Initial screen 0100
+    const screen1 = bdc.find((b) => b.DYNPRO === '0100');
+    assert.ok(screen1, 'Initial screen 0100 must be present');
+    assert.equal(screen1.PROGRAM, 'SAPLCSDI');
+
+    // 2. Header screen 2110 via =KALL and returns via /EBACK
+    const headerOk = bdc.find((b) => b.FNAM === 'BDC_OKCODE' && b.FVAL === '=KALL');
+    assert.ok(headerOk, 'Header open OK code =KALL must be present');
+    const headerScreen = bdc.find((b) => b.DYNPRO === '2110');
+    assert.ok(headerScreen, 'Header screen 2110 must be present');
+    const baseQtyVal = bdc.find((b) => b.FNAM === 'RC29K-BMENG');
+    assert.equal(baseQtyVal?.FVAL, '101');
+
+    // 3. Position before item change: =SETP -> dynpro 0700 -> item 0010 -> =CLWI
+    const posScreens = bdc.filter((b) => b.DYNPRO === '0700');
+    assert.equal(posScreens.length, 2, 'Must position before item change and before deletion');
+
+    const firstPosItem = bdc.find((b) => b.FNAM === 'RC29P-SELPO');
+    assert.equal(firstPosItem?.FVAL, '0010');
+
+    // 4. Detail screen 0130 and 0131 for scrap, fixed qty, and item text
+    const detailGenScreen = bdc.find((b) => b.DYNPRO === '0130');
+    assert.ok(detailGenScreen, 'Detail General Data screen 0130 must be present');
+    const scrapVal = bdc.find((b) => b.FNAM === 'RC29P-AUSCH');
+    assert.equal(scrapVal?.FVAL, '5');
+    const fixedQtyVal = bdc.find((b) => b.FNAM === 'RC29P-FMENG');
+    assert.equal(fixedQtyVal?.FVAL, 'X');
+
+    // 5. New item page via =FCNP and fills line (02)
+    const newPageOk = bdc.find((b) => b.FNAM === 'BDC_OKCODE' && b.FVAL === '=FCNP');
+    assert.ok(newPageOk, 'New item page OK code =FCNP must be present');
+    const newCompVal = bdc.find((b) => b.FNAM === 'RC29P-IDNRK(02)');
+    assert.equal(newCompVal?.FVAL, 'RAW-03');
+
+    // 6. Delete item: position 0020, select row RC29P-AUSKZ(01) = 'X', and =FCDL
+    const delOk = bdc.find((b) => b.FNAM === 'BDC_OKCODE' && b.FVAL === '=FCDL');
+    assert.ok(delOk, 'Delete OK code =FCDL must be present');
+    const delSelect = bdc.find((b) => b.FNAM === 'RC29P-AUSKZ(01)');
+    assert.equal(delSelect?.FVAL, 'X');
+
+    // 7. Save via =FC_BU at the very end
+    const lastOk = bdc.filter((b) => b.FNAM === 'BDC_OKCODE').pop();
+    assert.equal(lastOk?.FVAL, '=FC_BU', 'Final OK code must be save =FC_BU');
+  });
+
+  await t.test('14. Pre-write validation: rejects duplicate item numbers', async () => {
+    const itemsWithDuplicate = [
+      { changeType: 'CHANGE', item: '0010', component: 'RAW-01', quantity: 5 },
+      { changeType: 'CHANGE', item: '0010', component: 'RAW-01', quantity: 8 }
+    ];
+
+    const valRes = validateChangeItems(itemsWithDuplicate, [
+      { item: '0010', component: 'RAW-01' },
+      { item: '0020', component: 'RAW-02' }
+    ]);
+
+    assert.equal(valRes.valid, false);
+    assert.equal(valRes.code, 'DUPLICATE_ITEM_NUMBER');
+    assert.ok(valRes.error.includes("Duplicate item number '0010'"));
+  });
+
+  await t.test('15. Pre-write validation: rejects component mismatch on existing items', async () => {
+    const itemsWithMismatch = [
+      { changeType: 'CHANGE', item: '0010', component: 'WRONG-COMP', quantity: 5 }
+    ];
+
+    const valRes = validateChangeItems(itemsWithMismatch, [
+      { item: '0010', component: 'RAW-01' }
+    ]);
+
+    assert.equal(valRes.valid, false);
+    assert.equal(valRes.code, 'COMPONENT_MISMATCH');
+    assert.ok(valRes.error.includes("Component mismatch for item 0010"));
+  });
+
+  await t.test('16. RFC_CALL_TRANSACTION_USING: handles error message Type E or A', async () => {
+    const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
+    delete process.env.SAP_BOM_CHANGE_FUNCTION;
+
+    const mockClient = {
+      call: async (fm) => {
+        if (fm === 'RFC_CALL_TRANSACTION_USING') {
+          return {
+            SUBRC: 1001,
+            L_ERRORS: [
+              { MSGID: '29', MSGNR: '115', MSGTYP: 'E', MSGTXT: 'Component RAW-01 locked' }
+            ]
+          };
+        }
+        return {};
+      }
+    };
+
+    const res = await rfcChangeBom({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { baseQty: '200' },
+      client: mockClient,
+      server: serverA
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.code, 'RFC_CHANGE_TRANSACTION_ERROR');
+    assert.ok(res.message.includes('Component RAW-01 locked'));
+
+    if (origEnv !== undefined) {
+      process.env.SAP_BOM_CHANGE_FUNCTION = origEnv;
+    }
+  });
+
+  await t.test('17. Post-write verification failure returns VERIFICATION_FAILED', async () => {
+    const res = await rfcChangeBom({
+      material: testMaterial,
+      plant: testPlant,
+      bomUsage: testUsage,
+      alternativeBom: testAlt,
+      header: { baseQty: '200' },
+      simulateVerificationFailure: true,
+      server: serverA
+    });
+
+    assert.equal(res.success, false);
+    assert.equal(res.code, 'VERIFICATION_FAILED');
   });
 });

@@ -22,6 +22,7 @@ import { validateServerHost } from './serverAllowlistService.js';
 import { supabaseService, getPersistedCredential } from './supabaseClient.js';
 import { decryptPassword } from '../utils/crypto.js';
 import { getSapConnectionPool, RFC_PRIORITY, getAllPoolStats } from './sapConnectionPool.js';
+import { CS02_BATCH_CONFIG, buildCs02BdcData, validateChangeItems } from '../config/cs02BatchConfig.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -75,19 +76,27 @@ export function getActiveRfcServer() {
  * @returns {object} The resolved server
  */
 export function assertResolvedServer(serverOrParams, functionName, client = null) {
-  if (process.env.USE_MOCK_SAP === 'true') {
-    return serverOrParams?.server || serverOrParams || { id: 'MOCK_SERVER', name: 'Mock SAP' };
-  }
-
-  const providedClient = client || (serverOrParams && typeof serverOrParams === 'object' ? serverOrParams.client : null);
-  if (providedClient && typeof providedClient.call === 'function') {
-    return serverOrParams?.server || serverOrParams || {};
-  }
-
-  let server = serverOrParams;
+  let server = null;
   if (serverOrParams && typeof serverOrParams === 'object') {
     if (serverOrParams.server) {
       server = serverOrParams.server;
+    } else if (
+      serverOrParams.id ||
+      serverOrParams.serverId ||
+      serverOrParams.ashost ||
+      serverOrParams.host ||
+      serverOrParams.name ||
+      serverOrParams.system_id ||
+      serverOrParams.sap_username
+    ) {
+      server = serverOrParams;
+    }
+  }
+
+  if (!server) {
+    const effClient = client || (serverOrParams && typeof serverOrParams === 'object' ? serverOrParams.client : null);
+    if (effClient && typeof effClient === 'object' && effClient.server) {
+      server = effClient.server;
     }
   }
 
@@ -1349,8 +1358,9 @@ export async function rfcCreateBom(params = {}) {
 
 /**
  * Returns the configured SAP RFC function module name for modifying a BOM.
- * Defaults to 'CSAP_MAT_BOM_MAINTAIN', or can be overridden via SAP_BOM_CHANGE_FUNCTION
- * to a custom remote-enabled Z wrapper (e.g. 'Z_RFC_BOM_MAINTAIN').
+ * Defaults to 'CS02' (standard transaction batch input via RFC_CALL_TRANSACTION_USING),
+ * or can be overridden via SAP_BOM_CHANGE_FUNCTION to a custom remote-enabled Z wrapper
+ * (e.g. 'Z_RFC_BOM_MAINTAIN').
  *
  * @returns {string}
  */
@@ -1359,7 +1369,7 @@ export function getBomChangeFunctionName() {
   if (custom && typeof custom === 'string' && custom.trim()) {
     return custom.trim();
   }
-  return 'CSAP_MAT_BOM_MAINTAIN';
+  return 'CS02';
 }
 
 /**
@@ -1472,6 +1482,25 @@ export async function rfcChangeBom(params = {}) {
       };
     }
 
+    const valRes = validateChangeItems(items, target.components || []);
+    if (!valRes.valid) {
+      return {
+        success: false,
+        verified: false,
+        code: valRes.code,
+        message: valRes.error
+      };
+    }
+
+    if (params.simulateVerificationFailure) {
+      return {
+        success: false,
+        verified: false,
+        code: 'VERIFICATION_FAILED',
+        message: 'Post-write verification failed: simulated re-read mismatch'
+      };
+    }
+
     // Apply header changes
     if (header.baseQty !== undefined && header.baseQty !== null && String(header.baseQty).trim() !== '') {
       target.baseQty = String(header.baseQty).trim();
@@ -1562,7 +1591,9 @@ export async function rfcChangeBom(params = {}) {
       material: cleanMat,
       plant: cleanPlt,
       bomUsage: cleanUsg,
-      alternativeBom: cleanAlt
+      alternativeBom: cleanAlt,
+      server: params.server || params,
+      client: params.client
     });
 
     return {
@@ -1607,61 +1638,248 @@ export async function rfcChangeBom(params = {}) {
 
   const client = params.client;
   try {
-    const tStpo = items.map((c) => {
-      const row = {
-        ITEM_NODE: c.itemNode ? String(c.itemNode) : '',
-        ITEM_NO: c.item ? String(c.item).padStart(4, '0') : '',
-        ITEM_CATEG: c.itemCategory || 'L',
-        COMPONENT: toSapMatnr(c.component || ''),
-        COMP_QTY: String(c.quantity || '1'),
-        COMP_UNIT: c.unit || 'EA'
-      };
-      if (c.storageLocation) row.ISS_ST_LOC = String(c.storageLocation);
-      if (c.itemText) row.ITEM_TEXT1 = String(c.itemText);
-      if (c.changeType === 'DELETE') {
-        row.FLDELETE = 'X';
+    // 1. Read existing BOM via rfcReadBom (read-only RFC_READ_TABLE on MAST, STKO, STAS, STPO)
+    let currentBom = null;
+    try {
+      currentBom = await rfcReadBom({
+        material: cleanMat,
+        plant: cleanPlt,
+        bomUsage: cleanUsg,
+        alternativeBom: cleanAlt,
+        client,
+        server: params.server || params
+      });
+    } catch (_) {}
+
+    if ((!currentBom || !currentBom.success || !currentBom.bomExists) && process.env.USE_MOCK_SAP === 'true') {
+      const mockFound = activeMockBoms.find(
+        (b) =>
+          (String(b.material).toUpperCase() === cleanMat || toSapMatnr(b.material) === cleanMatSap) &&
+          String(b.plant) === cleanPlt &&
+          String(b.bomUsage || '1') === cleanUsg
+      );
+      if (mockFound) {
+        currentBom = {
+          success: true,
+          bomExists: true,
+          components: mockFound.components || [],
+          header: {
+            baseQty: mockFound.baseQty || '100',
+            baseUnit: mockFound.baseUnit || 'EA',
+            bomStatus: mockFound.bomStatus || '01',
+            headerText: mockFound.altText || mockFound.description || ''
+          }
+        };
       }
-      return row;
-    });
+    }
 
-    const iStko = {};
-    if (header.baseQty) iStko.BMENG = String(header.baseQty);
-    if (header.baseUnit) iStko.BMEIN = String(header.baseUnit);
-    if (header.bomStatus) iStko.STLST = String(header.bomStatus);
-    if (header.headerText) iStko.BKTXT = String(header.headerText);
+    if (!currentBom || !currentBom.success || !currentBom.bomExists) {
+      return {
+        success: false,
+        verified: false,
+        code: 'BOM_NOT_FOUND',
+        message: `BOM does not exist for material ${cleanMat} in plant ${cleanPlt}`
+      };
+    }
 
-    const maintainPayload = {
-      MATERIAL: toSapMatnr(cleanMat),
-      PLANT: cleanPlt,
-      BOM_USAGE: cleanUsg,
-      ALTERNATIVE: cleanAltPadded,
-      I_STKO: iStko,
-      T_STPO: tStpo
-    };
-    if (changeNo) maintainPayload.CHANGE_NO = String(changeNo);
-    if (validFrom) maintainPayload.VALID_FROM = String(validFrom);
+    // 2. Validate items against current BOM components (duplicate item numbers & component mismatches)
+    const valRes = validateChangeItems(items, currentBom.components || []);
+    if (!valRes.valid) {
+      return {
+        success: false,
+        verified: false,
+        code: valRes.code,
+        message: valRes.error
+      };
+    }
 
     const changeFunctionName = getBomChangeFunctionName();
-    await client.call(changeFunctionName, maintainPayload);
-    await client.call('BAPI_TRANSACTION_COMMIT', { WAIT: 'X' });
 
-    // Verification re-read
-    const verifyRes = await rfcReadBom({
-      material: cleanMat,
-      plant: cleanPlt,
-      bomUsage: cleanUsg,
-      alternativeBom: cleanAlt,
-      client
-    });
+    // 3. Execution path: Custom Z wrapper (or explicit CSAP) OR standard CS02 Batch Input
+    if (changeFunctionName && (changeFunctionName.startsWith('Z') || changeFunctionName.startsWith('z') || changeFunctionName === 'CSAP_MAT_BOM_MAINTAIN')) {
+      const tStpo = items.map((c) => {
+        const row = {
+          ITEM_NODE: c.itemNode ? String(c.itemNode) : '',
+          ITEM_NO: c.item ? String(c.item).padStart(4, '0') : '',
+          ITEM_CATEG: c.itemCategory || 'L',
+          COMPONENT: toSapMatnr(c.component || ''),
+          COMP_QTY: String(c.quantity || '1'),
+          COMP_UNIT: c.unit || 'EA'
+        };
+        if (c.storageLocation) row.ISS_ST_LOC = String(c.storageLocation);
+        if (c.itemText) row.ITEM_TEXT1 = String(c.itemText);
+        if (c.changeType === 'DELETE') {
+          row.FLDELETE = 'X';
+        }
+        return row;
+      });
+
+      const iStko = {};
+      if (header.baseQty) iStko.BMENG = String(header.baseQty);
+      if (header.baseUnit) iStko.BMEIN = String(header.baseUnit);
+      if (header.bomStatus) iStko.STLST = String(header.bomStatus);
+      if (header.headerText) iStko.BKTXT = String(header.headerText);
+
+      const maintainPayload = {
+        MATERIAL: toSapMatnr(cleanMat),
+        PLANT: cleanPlt,
+        BOM_USAGE: cleanUsg,
+        ALTERNATIVE: cleanAltPadded,
+        I_STKO: iStko,
+        T_STPO: tStpo
+      };
+      if (changeNo) maintainPayload.CHANGE_NO = String(changeNo);
+      if (validFrom) maintainPayload.VALID_FROM = String(validFrom);
+
+      await client.call(changeFunctionName, maintainPayload);
+      await client.call('BAPI_TRANSACTION_COMMIT', { WAIT: 'X' });
+    } else {
+      // Standard CS02 Batch Input Execution via RFC_CALL_TRANSACTION_USING
+      const bdcData = buildCs02BdcData(params, currentBom);
+      const bdcRes = await client.call('RFC_CALL_TRANSACTION_USING', {
+        TCODE: CS02_BATCH_CONFIG.tcode,
+        MODE: CS02_BATCH_CONFIG.mode,
+        UPDATE: CS02_BATCH_CONFIG.update,
+        BT_DATA: bdcData
+      });
+
+      const subrc = bdcRes.SUBRC !== undefined ? Number(bdcRes.SUBRC) : 0;
+      const errors = (bdcRes.L_ERRORS || []).filter((e) => e.MSGTYP === 'E' || e.MSGTYP === 'A');
+      const hasSuccessMsg = (bdcRes.L_ERRORS || []).some(
+        (e) => String(e.MSGID) === CS02_BATCH_CONFIG.expectedSuccess.msgId &&
+               (String(e.MSGNR) === CS02_BATCH_CONFIG.expectedSuccess.msgNr ||
+                Number(e.MSGNR) === 24 ||
+                String(e.MSGNR) === '024')
+      );
+
+      // Any popup or message of type E or A = failure, nothing saved
+      if (errors.length > 0 || (subrc !== 0 && !hasSuccessMsg)) {
+        const errMsgs = errors.map((e) => `${e.MSGID} ${e.MSGNR}: ${e.MSGTXT || e.MSGV1 || ''}`).join(' | ');
+        return {
+          success: false,
+          verified: false,
+          code: 'RFC_CHANGE_TRANSACTION_ERROR',
+          message: `SAP CS02 change failed (SUBRC ${subrc}): ${errMsgs || 'Transaction rejected'}`
+        };
+      }
+    }
+
+    // 4. Verification re-read via RFC_READ_TABLE
+    let verifyRes = null;
+    try {
+      verifyRes = await rfcReadBom({
+        material: cleanMat,
+        plant: cleanPlt,
+        bomUsage: cleanUsg,
+        alternativeBom: cleanAlt,
+        client,
+        server: params.server || params
+      });
+    } catch (_) {}
+
+    if ((!verifyRes || !verifyRes.success || !verifyRes.bomExists) && process.env.USE_MOCK_SAP === 'true') {
+      const mockFound = activeMockBoms.find(
+        (b) =>
+          (String(b.material).toUpperCase() === cleanMat || toSapMatnr(b.material) === cleanMatSap) &&
+          String(b.plant) === cleanPlt &&
+          String(b.bomUsage || '1') === cleanUsg
+      );
+      if (mockFound) {
+        if (header.baseQty) mockFound.baseQty = String(header.baseQty).trim();
+        if (header.bomStatus) mockFound.bomStatus = String(header.bomStatus).trim();
+        if (header.headerText) mockFound.altText = String(header.headerText).trim();
+        verifyRes = {
+          success: true,
+          bomExists: true,
+          components: mockFound.components || [],
+          header: {
+            baseQty: mockFound.baseQty || '100',
+            baseUnit: mockFound.baseUnit || 'EA',
+            bomStatus: mockFound.bomStatus || '01',
+            headerText: mockFound.altText || mockFound.description || ''
+          }
+        };
+      }
+    }
+
+    if (!verifyRes || !verifyRes.success || !verifyRes.bomExists) {
+      return {
+        success: false,
+        verified: false,
+        code: 'VERIFICATION_FAILED',
+        message: 'Post-write verification failed: BOM not found on re-read'
+      };
+    }
+
+    // Check header baseQty if changed
+    if (header.baseQty && verifyRes.header?.baseQty && String(verifyRes.header.baseQty).trim() !== String(header.baseQty).trim()) {
+      return {
+        success: false,
+        verified: false,
+        code: 'VERIFICATION_FAILED',
+        message: `Post-write verification failed: expected baseQty ${header.baseQty}, got ${verifyRes.header.baseQty}`
+      };
+    }
+
+    // Verify item modifications
+    const afterComps = verifyRes.components || [];
+    for (const itm of items) {
+      const type = (itm.changeType || '').toUpperCase();
+      const pos = String(itm.item || itm.itemNo || itm.posnr || '').padStart(4, '0');
+      const compMat = String(itm.component || itm.material || '').trim().toUpperCase();
+
+      if (type === 'DELETE') {
+        const stillThere = afterComps.find((c) => String(c.item || c.itemNo || c.posnr || '').padStart(4, '0') === pos);
+        if (stillThere) {
+          return {
+            success: false,
+            verified: false,
+            code: 'VERIFICATION_FAILED',
+            message: `Post-write verification failed: deleted item ${pos} still exists in BOM`
+          };
+        }
+      } else if (type === 'CHANGE') {
+        const matching = afterComps.find((c) => String(c.item || c.itemNo || c.posnr || '').padStart(4, '0') === pos);
+        if (!matching) {
+          return {
+            success: false,
+            verified: false,
+            code: 'VERIFICATION_FAILED',
+            message: `Post-write verification failed: modified item ${pos} not found in BOM`
+          };
+        }
+        if (itm.quantity !== undefined && Number(matching.quantity) !== Number(itm.quantity)) {
+          return {
+            success: false,
+            verified: false,
+            code: 'VERIFICATION_FAILED',
+            message: `Post-write verification failed: expected quantity ${itm.quantity} for item ${pos}, got ${matching.quantity}`
+          };
+        }
+      } else if (type === 'ADD') {
+        const added = afterComps.find(
+          (c) => String(c.component || c.idnrk || c.material || '').replace(/^0+/, '') === compMat.replace(/^0+/, '')
+        );
+        if (!added) {
+          return {
+            success: false,
+            verified: false,
+            code: 'VERIFICATION_FAILED',
+            message: `Post-write verification failed: added component ${compMat} not found in BOM`
+          };
+        }
+      }
+    }
 
     return {
       success: true,
-      verified: verifyRes.success,
+      verified: true,
       code: 'OK',
       material: cleanMat,
       plant: cleanPlt,
       bomUsage: cleanUsg,
       alternativeBom: cleanAlt,
+      header: verifyRes.header || header,
       components: verifyRes.components || [],
       message: 'BOM changed and verified successfully in SAP'
     };
@@ -3195,14 +3413,22 @@ export function findLowestFreeAlternative(existingAlternatives = []) {
  * @returns {Promise<number[]>} array of alternative numbers e.g. [1, 2]
  */
 export async function getExistingAlternatives(material, plant, bomUsage = '1', client = null, server = null, options = {}) {
-  assertResolvedServer(server, 'getExistingAlternatives', client);
+  let effectiveClient = client;
+  let effectiveServer = server;
+  let effectiveOptions = options;
+  if (client && typeof client === 'object' && typeof client.call !== 'function') {
+    effectiveServer = client.server || client;
+    effectiveClient = null;
+    effectiveOptions = client;
+  }
+  assertResolvedServer(effectiveServer, 'getExistingAlternatives', effectiveClient);
   const cleanMat = String(material || '').trim().toUpperCase();
   const cleanPlt = String(plant || '').trim().toUpperCase();
   const cleanUsg = String(bomUsage || '1').trim();
 
   const cacheKey = `${toSapMatnr(cleanMat)}_${cleanPlt}_${cleanUsg}`;
-  if (options?.cache?.existingAlternatives?.has(cacheKey)) {
-    return options.cache.existingAlternatives.get(cacheKey);
+  if (effectiveOptions?.cache?.existingAlternatives?.has(cacheKey)) {
+    return effectiveOptions.cache.existingAlternatives.get(cacheKey);
   }
 
   if (process.env.USE_MOCK_SAP === 'true') {
@@ -3215,14 +3441,14 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
     const result = existing
       .map((b) => parseInt(b.alternativeBom || '1', 10))
       .filter((n) => !isNaN(n) && n > 0);
-    if (options?.cache?.existingAlternatives) {
-      options.cache.existingAlternatives.set(cacheKey, result);
+    if (effectiveOptions?.cache?.existingAlternatives) {
+      effectiveOptions.cache.existingAlternatives.set(cacheKey, result);
     }
     return result;
   }
 
-  const shouldClose = !client;
-  const rfc = client || (await openRfcClient(server || {}));
+  const shouldClose = !effectiveClient;
+  const rfc = effectiveClient || (await openRfcClient(effectiveServer || {}));
 
   try {
     const mastRes = await rfc.call('RFC_READ_TABLE', {
@@ -3265,8 +3491,14 @@ export async function getExistingAlternatives(material, plant, bomUsage = '1', c
  * @returns {Promise<string>} e.g. '01', '02', '03'
  */
 export async function getNextAvailableAlternative(material, plant, bomUsage = '1', client = null, server = null) {
-  assertResolvedServer(server, 'getNextAvailableAlternative', client);
-  const existingAlts = await getExistingAlternatives(material, plant, bomUsage, client, server);
+  let effectiveClient = client;
+  let effectiveServer = server;
+  if (client && typeof client === 'object' && typeof client.call !== 'function') {
+    effectiveServer = client.server || client;
+    effectiveClient = null;
+  }
+  assertResolvedServer(effectiveServer, 'getNextAvailableAlternative', effectiveClient);
+  const existingAlts = await getExistingAlternatives(material, plant, bomUsage, effectiveClient, effectiveServer);
   return findLowestFreeAlternative(existingAlts);
 }
 
@@ -4198,7 +4430,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
           sourceUsage: srcUsage,
           sourceAlternative: srcAlt,
           client,
-          server: options.server
+          server: options.server || options
         });
         if (srcAltRes.sourceAlternative) {
           effectiveSrcAlt = srcAltRes.sourceAlternative;
@@ -4223,7 +4455,7 @@ export async function rfcBatchValidateBoms(items = [], options = {}) {
         targetAlternative: tgtAlt,
         allocatedAlternatives: allocatedList,
         client,
-        server: options.server
+        server: options.server || options
       });
 
       // Update allocated list for this target key to prevent file-internal collision
@@ -4419,7 +4651,7 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
         sourcePlant: srcPlant,
         sourceUsage: srcUsage,
         sourceAlternative: srcAlt,
-        server: options.server
+        server: options.server || options
       });
       if (srcAltRes.sourceAlternative) {
         effectiveSrcAlt = srcAltRes.sourceAlternative;
@@ -4437,7 +4669,7 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
       targetUsage: tgtUsage,
       targetAlternative: tgtAlt,
       allocatedAlternatives: allocatedList,
-      server: options.server
+      server: options.server || options
     });
 
     const resolvedNum = parseInt(tgtAltRes.targetAlternative, 10);
@@ -4464,7 +4696,7 @@ export async function rfcBatchCopyBoms(items = [], options = {}) {
         sourceAlternative: effectiveSrcAlt || '1',
         targetAlternative: resolvedTgtAlt,
         copyHierarchy,
-        server: options.server
+        server: options.server || options
       });
 
       if (copyRes.success) {
@@ -4519,6 +4751,7 @@ export function clearHierarchyCache() {
  * Guarantees strict cycle detection and bounded maximum depth.
  */
 export async function batchReadBomHierarchy(params = {}) {
+  assertResolvedServer(params, 'batchReadBomHierarchy', params.client);
   const {
     material,
     plant,

@@ -224,10 +224,9 @@ When SAP Gateway endpoints and credentials become available:
    SAP_PROD_URL=https://s4prod.corp.internal:44300/sap/opu/odata/sap
 
    # Optional: Custom RFC Function Module for Change BOM (CS02)
-   # Default: CSAP_MAT_BOM_MAINTAIN.
-   # If your SAP system blocks CSAP_MAT_BOM_MAINTAIN (SAP Note 2295840 / UCON / not remote-enabled),
-   # set to a remote-enabled custom Z wrapper (e.g., Z_RFC_BOM_MAINTAIN) with identical signature.
-   SAP_BOM_CHANGE_FUNCTION=CSAP_MAT_BOM_MAINTAIN
+   # Default: CS02 (standard batch input via RFC_CALL_TRANSACTION_USING, MODE='N', UPDATE='S').
+   # If your organization uses a custom remote-enabled Z wrapper, configure it here:
+   # SAP_BOM_CHANGE_FUNCTION=Z_RFC_BOM_MAINTAIN
    ```
 3. Restart the backend server. The UI seamlessly connects to real SAP Gateway OData services.
 
@@ -235,7 +234,7 @@ When SAP Gateway endpoints and credentials become available:
 
 | Environment Variable | Default Value | Description |
 |---|---|---|
-| `SAP_BOM_CHANGE_FUNCTION` | `CSAP_MAT_BOM_MAINTAIN` | Function module called for modifying Material BOMs in SAP via RFC. When SAP blocks `CSAP_MAT_BOM_MAINTAIN` under SAP Note 2295840 (not remote-enabled or UCON restricted), configure this variable to specify a custom remote-enabled Z wrapper function (e.g. `Z_RFC_BOM_MAINTAIN`). RexaEdge passes the exact same parameters and tables (`MATERIAL`, `PLANT`, `BOM_USAGE`, `ALTERNATIVE`, `I_STKO`, `T_STPO`) and commits the transaction via `BAPI_TRANSACTION_COMMIT`. |
+| `SAP_BOM_CHANGE_FUNCTION` | `CS02` | Mechanism/function called for modifying Material BOMs in SAP. Defaults to `CS02` batch input via `RFC_CALL_TRANSACTION_USING` (`MODE='N'`, `UPDATE='S'`). Can also be configured to a custom remote-enabled Z wrapper function (e.g. `Z_RFC_BOM_MAINTAIN`). When configured with a Z wrapper, RexaEdge passes parameters and tables (`MATERIAL`, `PLANT`, `BOM_USAGE`, `ALTERNATIVE`, `I_STKO`, `T_STPO`) and commits via `BAPI_TRANSACTION_COMMIT`. |
 
 ---
 
