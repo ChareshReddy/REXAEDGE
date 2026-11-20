@@ -34,6 +34,7 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('Test 1: Health cache makes 0 RFC calls on repeated health checks...');
   const testServerId = 'server-poll-cache-test';
+  updateServerHealth(testServerId, { success: true });
   const testPool = getSapConnectionPool(testServerId);
 
   for (let i = 0; i < 20; i++) {

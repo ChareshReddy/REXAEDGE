@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCK_SAP = 'true';
+delete process.env.SAP_BOM_MODE;
 import 'dotenv/config';
 if (!process.env.ENCRYPTION_KEY) {
   process.env.ENCRYPTION_KEY = 'c4a8990172bf46e9df53e9a4e4d6d678d120a1122bfbe2580b03e05151598f82';
@@ -7,7 +8,7 @@ if (!process.env.ENCRYPTION_KEY) {
 import assert from 'assert';
 import http from 'http';
 import app from '../server.js';
-import { supabaseService, inMemorySupabase } from '../services/supabaseClient.js';
+import { supabaseService, inMemorySupabase, supabaseCache } from '../services/supabaseClient.js';
 import {
   getServerHealth,
   updateServerHealth,
@@ -246,6 +247,7 @@ async function run() {
       const prevAllowlist = inMemorySupabase.allowlist ? [...inMemorySupabase.allowlist] : [];
       inMemorySupabase.server_allowlist = [];
       inMemorySupabase.allowlist = [];
+      if (supabaseCache?.invalidateAllowlist) supabaseCache.invalidateAllowlist();
 
       const normalServer = {
         id: `normal-${Date.now()}`,
@@ -274,6 +276,7 @@ async function run() {
       // Restore allowlist
       inMemorySupabase.server_allowlist = prevServerAllowlist;
       inMemorySupabase.allowlist = prevAllowlist;
+      if (supabaseCache?.invalidateAllowlist) supabaseCache.invalidateAllowlist();
     }
 
     // -------------------------------------------------------------------------

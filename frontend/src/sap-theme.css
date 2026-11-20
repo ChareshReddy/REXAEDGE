@@ -193,7 +193,7 @@ html, body {
 .sap-f4-header,
 .sap-modal-header,
 .sap-bulk-modal-header {
-  background: var(--color-blue-50, #EEF4F9) !important;
+  background: var(--sap-popup-header-bg, var(--color-blue-50, #EEF4F9)) !important;
   font-size: 18px !important;
   font-weight: 600 !important;
   font-family: var(--sap-font-family) !important;

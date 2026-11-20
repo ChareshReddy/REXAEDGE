@@ -9,7 +9,8 @@ if (!process.env.ENCRYPTION_KEY) {
   process.env.ENCRYPTION_KEY = 'c4a8990172bf46e9df53e9a4e4d6d678d120a1122bfbe2580b03e05151598f82';
 }
 
-import { inMemorySupabase } from '../../services/supabaseClient.js';
+import { inMemorySupabase, supabaseCache } from '../../services/supabaseClient.js';
+import { encryptPassword } from '../../utils/crypto.js';
 
 export const TEST_SERVER_ID = '10000000-0000-0000-0000-000000000001';
 export const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -30,7 +31,11 @@ export function ensureMockOwnedServer(userId = TEST_USER_ID, serverId = TEST_SER
       });
     }
   }
+  if (supabaseCache?.invalidateAllowlist) {
+    supabaseCache.invalidateAllowlist();
+  }
 
+  const defaultEncryptedPassword = encryptPassword('MockPassword123!');
   let server = inMemorySupabase.servers.find(s => s.id === serverId);
   if (!server) {
     server = {
@@ -44,7 +49,8 @@ export function ensureMockOwnedServer(userId = TEST_USER_ID, serverId = TEST_SER
       router: null,
       gwserv: null,
       sap_username: 'TEST_USER',
-      sap_password_encrypted: null,
+      sap_password: 'MockPassword123!',
+      sap_password_encrypted: defaultEncryptedPassword,
       owner_id: userId,
       is_disabled: false,
       is_default: true,
@@ -56,6 +62,9 @@ export function ensureMockOwnedServer(userId = TEST_USER_ID, serverId = TEST_SER
     server.owner_id = userId;
     server.is_disabled = false;
     server.is_active = true;
+    server.sap_username = server.sap_username || 'TEST_USER';
+    server.sap_password = 'MockPassword123!';
+    server.sap_password_encrypted = defaultEncryptedPassword;
   }
   return server;
 }

@@ -25,6 +25,8 @@ console.log('  RUNNING BULK BOM BACKGROUND JOBS TEST SUITE              ');
 console.log('============================================================\n');
 
 async function runTests() {
+  bomJobManager.jobs.clear();
+  bomJobManager.activeRunners.clear();
   const mockUser = { id: 'test_user_01', email: 'test_job_runner@nextitpoint.com' };
   const mockServer = { id: 'SANDBOX', name: 'SAP-SANDBOX', environment: 'DEV' };
 
@@ -328,8 +330,9 @@ async function runTests() {
   });
 
   // Second immediate attempt with same user and server: queues under Stage 4 concurrency limit
+  let secondStart = null;
   try {
-    const secondStart = bomJobManager.startJob({
+    secondStart = bomJobManager.startJob({
       type: 'create_bulk',
       user: lockUser,
       server: mockServer,
@@ -344,6 +347,10 @@ async function runTests() {
   }
 
   await waitForJobCompletion(activeStart.jobId);
+  if (secondStart && secondStart.jobId) {
+    await waitForJobCompletion(secondStart.jobId);
+  }
+  await new Promise(r => setTimeout(r, 100));
 
   // 7. Test Server Restart Interruption
   console.log('7. Testing server restart recovery of in-flight jobs:');

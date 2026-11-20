@@ -25,6 +25,7 @@ async function runTests() {
   // 1a. Verify resolveSourceAlternativeForCopy strictly verifies existence
   console.log('Test 1.1: resolveSourceAlternativeForCopy with non-existent alt 99...');
   const altRes = await resolveSourceAlternativeForCopy({
+    server: { id: 'MOCK_DEV', is_mock: true },
     sourceMaterial: 'A1BH0214C',
     sourcePlant: '1001',
     sourceUsage: '1',
@@ -41,6 +42,7 @@ async function runTests() {
   // 1b. Verify rfcCopyBom rejects non-existent alternative without substituting
   console.log('Test 1.2: rfcCopyBom with sourceAlternative 99...');
   const copyRes = await rfcCopyBom({
+    server: { id: 'MOCK_DEV', is_mock: true },
     sourceMaterial: 'A1BH0214C',
     sourcePlant: '1001',
     targetMaterial: 'A1BH0214C_TGT',

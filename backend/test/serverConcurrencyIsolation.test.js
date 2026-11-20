@@ -6,8 +6,10 @@ import {
   openRfcClient
 } from '../services/sapRfcClient.js';
 import { bomJobManager } from '../services/bomJobManager.js';
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 
 async function runConcurrencyIsolationTests() {
+  ensureMockOwnedServer();
   console.log('\n======================================================');
   console.log('  TEST: SERVER CONCURRENCY ISOLATION & MULTI-USER SAFETY');
   console.log('======================================================\n');
@@ -62,7 +64,7 @@ async function runConcurrencyIsolationTests() {
   );
   assert.throws(
     () => getRfcConnectionParams({}),
-    /No SAP credentials configured for this server/,
+    /(No SAP credentials configured for this server|Called without a resolved SAP server context)/,
     'Calling getRfcConnectionParams without explicit server context must throw rather than falling back to global state'
   );
   console.log('   ✓ Global active server state successfully removed; empty context throws cleanly');

@@ -34,6 +34,7 @@ function getServerHolder(serverId) {
     serverPool.set(serverId, {
       serverId,
       client: null,
+      wrappedClient: null,
       activeCount: 0,
       waitQueue: [],
       idleTimer: null,
@@ -90,6 +91,7 @@ async function discardClient(holder) {
     clearTimeout(holder.idleTimer);
     holder.idleTimer = null;
   }
+  holder.wrappedClient = null;
   const oldClient = holder.client;
   holder.client = null;
   if (oldClient) {
@@ -293,6 +295,7 @@ export async function runSearchRfc(
       try {
         client = await openRfcClient({ server }, ClientClass);
         holder.client = client;
+        holder.wrappedClient = wrapClientForSearch(client, timeoutMs, serverId);
         openTrace.end();
       } catch (openErr) {
         openTrace.end();
@@ -300,8 +303,10 @@ export async function runSearchRfc(
       }
     }
 
-    const wrappedClient = wrapClientForSearch(client, timeoutMs, serverId);
-    const result = await searchFn(wrappedClient);
+    if (!holder.wrappedClient) {
+      holder.wrappedClient = wrapClientForSearch(client, timeoutMs, serverId);
+    }
+    const result = await searchFn(holder.wrappedClient);
     holder.lastUsed = Date.now();
     return result;
   };

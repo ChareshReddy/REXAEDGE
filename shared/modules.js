@@ -82,7 +82,7 @@ export const MODULE_REGISTRY = [
     group: 'Production Planning',
     desc: 'Create, copy, change, display and delete BOMs',
     iconName: 'Layers',
-    kpiNum: '5',
+    kpiNum: '6',
     kpiLabel: 'features',
     subView: 'bom_operations',
     // The specific UI actions / route tabs that belong to this module:

@@ -1,3 +1,4 @@
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCK_SAP = 'true';
 
@@ -57,6 +58,7 @@ function makeRequest(method, path, body = null, token = null) {
 }
 
 async function runTests() {
+    const testServer = ensureMockOwnedServer();
   console.log('\n============================================================');
   console.log('  RUNNING STORAGE LOCATIONS (F4 POPUP & ENDPOINT) TEST SUITE');
   console.log('============================================================');
@@ -84,7 +86,7 @@ async function runTests() {
     console.log('\n2. Testing getStorageLocations with specific plant filter (1010)...');
     {
       clearStorageLocationCache();
-      const res = await getStorageLocations({ plant: '1010' });
+      const res = await getStorageLocations({ server: testServer, plant: '1010' });
       if (!res.success) throw new Error('Expected success: true');
       if (res.data.length === 0) throw new Error('Expected storage locations for plant 1010');
       if (res.data.some((s) => s.werks !== '1010')) {
@@ -97,7 +99,7 @@ async function runTests() {
     console.log('\n3. Testing getStorageLocations with empty plant filter (all plants)...');
     {
       clearStorageLocationCache();
-      const res = await getStorageLocations({ plant: '' });
+      const res = await getStorageLocations({ server: testServer, plant: '' });
       if (!res.success) throw new Error('Expected success: true');
       const plantsInRes = new Set(res.data.map((s) => s.werks));
       if (plantsInRes.size <= 1) {
@@ -109,7 +111,7 @@ async function runTests() {
     // 4. Service level tests: Query filter (substring search)
     console.log('\n4. Testing getStorageLocations with query filter (q="Main")...');
     {
-      const res = await getStorageLocations({ q: 'Main' });
+      const res = await getStorageLocations({ server: testServer, q: 'Main' });
       if (!res.success) throw new Error('Expected success: true');
       if (res.data.length === 0) throw new Error('Expected results for "Main"');
       if (!res.data.every((s) => s.lgobe.toLowerCase().includes('main') || s.lgort.toLowerCase().includes('main'))) {
@@ -122,10 +124,10 @@ async function runTests() {
     console.log('\n5. Testing in-memory caching and TTL...');
     {
       clearStorageLocationCache();
-      const first = await getStorageLocations({ plant: '1001' });
+      const first = await getStorageLocations({ server: testServer, plant: '1001' });
       if (first.cached !== false) throw new Error('First call should not be cached');
 
-      const second = await getStorageLocations({ plant: '1001' });
+      const second = await getStorageLocations({ server: testServer, plant: '1001' });
       if (second.cached !== true) throw new Error('Second call should be served from in-memory cache');
       console.log('   ✓ In-memory cache hit verified on subsequent request');
     }

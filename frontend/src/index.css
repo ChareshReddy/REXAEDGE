@@ -6747,7 +6747,7 @@ input::-webkit-credentials-auto-fill-button {
   max-height: 62px;
   padding: 0 24px;
   box-sizing: border-box;
-  background: var(--color-blue-50, #EEF4F9) !important;
+  background: var(--sap-popup-header-bg, var(--color-blue-50, #EEF4F9)) !important;
   color: var(--sap-popup-header-title, #00204E) !important;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;

@@ -65,6 +65,7 @@ async function runSapMultiSessionTests() {
   console.log('--- Starting Multi-Session SAP GUI & Selection Tests ---');
   console.log('======================================================');
 
+  process.env.SAP_BOM_MODE = 'GUI';
   process.env.USE_MOCK_SAP = 'true';
   process.env.OPENROUTER_API_KEY = 'test_key';
   process.env.OPENROUTER_MODEL = 'test_model';

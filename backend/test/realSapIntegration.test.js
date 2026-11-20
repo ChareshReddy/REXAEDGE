@@ -335,9 +335,10 @@ async function runRealSapIntegrationTests() {
     // Test 8: RFC Client Stubs (Phase 4 Basis Readiness)
     // -------------------------------------------------------------
     console.log('8. Testing RFC/BAPI client stubs:');
+    const testServer = { id: 'srv-real-sap-test', ashost: '127.0.0.1', name: 'Test SAP', sysnr: '00', client: '100' };
     await assert.rejects(
       async () => {
-        await rfcRetryJob('JOB_1001');
+        await rfcRetryJob('JOB_1001', testServer);
       },
       (err) => {
         return (
@@ -351,7 +352,7 @@ async function runRealSapIntegrationTests() {
 
     await assert.rejects(
       async () => {
-        await rfcReprocessIdoc('0000000000109201');
+        await rfcReprocessIdoc('0000000000109201', testServer);
       },
       (err) => {
         return (
@@ -365,7 +366,7 @@ async function runRealSapIntegrationTests() {
 
     await assert.rejects(
       async () => {
-        await executeRfcFunction('BAPI_XBP_JOB_SELECT', {});
+        await executeRfcFunction('BAPI_XBP_JOB_SELECT', {}, testServer);
       },
       (err) => err.code === 'RFC_NOT_CONFIGURED',
       'executeRfcFunction should throw RFC_NOT_CONFIGURED error'

@@ -87,7 +87,8 @@ export function assertResolvedServer(serverOrParams, functionName, client = null
       serverOrParams.host ||
       serverOrParams.name ||
       serverOrParams.system_id ||
-      serverOrParams.sap_username
+      serverOrParams.sap_username ||
+      serverOrParams.is_mock
     ) {
       server = serverOrParams;
     }
@@ -103,7 +104,7 @@ export function assertResolvedServer(serverOrParams, functionName, client = null
   const isResolved =
     Boolean(server) &&
     typeof server === 'object' &&
-    Boolean(server.id || server.serverId || server.ashost || server.host || server.name || server.system_id || server.sap_username);
+    Boolean(server.id || server.serverId || server.ashost || server.host || server.name || server.system_id || server.sap_username || server.is_mock);
 
   if (!isResolved) {
     const errorMsg = `[sapRfcClient.${functionName}] Called without a resolved SAP server context. Explicit per-request server is required.`;
@@ -347,7 +348,36 @@ export function createBasisPrerequisiteError(operation) {
  * Stub: throws Basis prerequisite error until NetWeaver SDK is installed.
  */
 export async function rfcRetryJob(jobId, credentials = null) {
-  assertResolvedServer(credentials, 'rfcRetryJob');
+  let server = credentials;
+  if (!server && jobId) {
+    try {
+      const { bomJobManager } = await import('./bomJobManager.js');
+      const job = bomJobManager?.jobs?.get ? bomJobManager.jobs.get(jobId) : null;
+      const targetServerId = job?.server_id || job?.serverId;
+      if (targetServerId) {
+        const loadedServer = await supabaseService.getServerById(String(targetServerId));
+        if (loadedServer) {
+          const jobUserId = job.user_id || job.userId;
+          if (jobUserId && loadedServer.owner_id && loadedServer.owner_id !== jobUserId) {
+            const err = new Error('Access denied: You do not own this SAP server.');
+            err.code = 'SERVER_ACCESS_DENIED';
+            throw err;
+          }
+          if (loadedServer.is_disabled) {
+            const err = new Error('This SAP server is disabled.');
+            err.code = 'SERVER_DISABLED';
+            throw err;
+          }
+          server = loadedServer;
+        }
+      }
+    } catch (e) {
+      if (e.code === 'SERVER_ACCESS_DENIED' || e.code === 'SERVER_DISABLED') {
+        throw e;
+      }
+    }
+  }
+  assertResolvedServer(server, 'rfcRetryJob');
   throw createBasisPrerequisiteError(`Job retry for ${jobId}`);
 }
 

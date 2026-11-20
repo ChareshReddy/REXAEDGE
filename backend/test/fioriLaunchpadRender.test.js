@@ -80,8 +80,8 @@ try {
   console.log('✓ PASS: Admin Home renders cleanly with zero reference errors\n');
 
 
-  // Test 2: Rendering as Admin on Level 2 (BOM Hub - 5 Cards)
-  console.log('Test 2: Render FioriLaunchpad as Admin on BOM Hub (5 cards)...');
+  // Test 2: Rendering as Admin on Level 2 (BOM Hub - 6 Cards)
+  console.log('Test 2: Render FioriLaunchpad as Admin on BOM Hub (6 cards)...');
   const adminHubHtml = renderToStaticMarkup(
     React.createElement(FioriLaunchpad, {
       userRole: 'admin',
@@ -95,14 +95,15 @@ try {
   assert(adminHubHtml.includes('Create a single BOM or many from a file'), 'Create BOM card subtitle present');
   assert(adminHubHtml.includes('Copy BOM'), 'BOM Hub must render Copy BOM group card');
   assert(adminHubHtml.includes('Copy a single BOM or many at once'), 'Copy BOM card subtitle present');
+  assert(adminHubHtml.includes('Change BOM'), 'BOM Hub must render Change BOM card');
   assert(adminHubHtml.includes('Display BOM'), 'BOM Hub must render Display BOM card');
   assert(adminHubHtml.includes('Validate BOM'), 'BOM Hub must render Validate BOM card');
   assert(adminHubHtml.includes('Delete BOM'), 'BOM Hub must render Delete BOM card');
 
-  // Verify exactly 5 .fiori-op-card elements are rendered
+  // Verify exactly 6 .fiori-op-card elements are rendered
   const cardCount = (adminHubHtml.match(/class="[^"]*fiori-op-card[^"]*"/g) || []).length;
-  assert.strictEqual(cardCount, 5, `Admin must see exactly 5 cards on BOM Hub; got ${cardCount}`);
-  console.log('✓ PASS: Admin BOM Hub renders exactly 5 cards with all metadata\n');
+  assert.strictEqual(cardCount, 6, `Admin must see exactly 6 cards on BOM Hub; got ${cardCount}`);
+  console.log('✓ PASS: Admin BOM Hub renders exactly 6 cards with all metadata\n');
 
 
   // Test 3: Rendering as Admin on Level 3 (Create BOM Sub-page - 2 Cards)
@@ -155,6 +156,7 @@ try {
   // On Hub:
   assert(restrictedBulkHubHtml.includes('Copy BOM'), 'Bulk-only user must see Copy BOM group card on hub');
   assert(!restrictedBulkHubHtml.includes('Create BOM'), 'Bulk-only user must NOT see Create BOM card');
+  assert(!restrictedBulkHubHtml.includes('Change BOM'), 'Bulk-only user must NOT see Change BOM card');
   assert(!restrictedBulkHubHtml.includes('Display BOM'), 'Bulk-only user must NOT see Display BOM card');
   assert(!restrictedBulkHubHtml.includes('Validate BOM'), 'Bulk-only user must NOT see Validate BOM card');
   assert(!restrictedBulkHubHtml.includes('Delete BOM'), 'Bulk-only user must NOT see Delete BOM card');

@@ -13,10 +13,10 @@ console.log('============================================================\n');
 console.log('Test 1: BOM Hub structure and card count verification...');
 const bomModule = MODULE_REGISTRY.find((m) => m.key === 'bom');
 assert(bomModule, 'Bill of Materials module must exist in MODULE_REGISTRY');
-assert.strictEqual(bomModule.kpiNum, '5', 'BOM module KPI number should be 5 cards');
-assert.strictEqual(bomModule.subApps.length, 5, 'BOM module subApps must contain exactly 5 top-level cards');
+assert.strictEqual(bomModule.kpiNum, '6', 'BOM module KPI number should be 6 cards');
+assert.strictEqual(bomModule.subApps.length, 6, 'BOM module subApps must contain exactly 6 top-level cards');
 
-const expectedTopLevelIds = ['create_group', 'copy_group', 'display', 'validate', 'delete'];
+const expectedTopLevelIds = ['create_group', 'copy_group', 'change', 'display', 'validate', 'delete'];
 const actualTopLevelIds = bomModule.subApps.map((sa) => sa.id);
 assert.deepStrictEqual(
   actualTopLevelIds,
@@ -42,6 +42,11 @@ assert.strictEqual(copyGroupCard.isGroup, true);
 assert.strictEqual(copyGroupCard.subView, 'bom_copy_operations');
 assert.strictEqual(copyGroupCard.children.length, 2, 'Copy BOM group must have 2 child cards');
 
+// Verify Card 3: Change BOM card
+const changeCard = bomModule.subApps.find((sa) => sa.id === 'change');
+assert.strictEqual(changeCard.title, 'Change BOM');
+assert.strictEqual(changeCard.action, 'change_bom');
+
 // Verify Unchanged Cards (Display, Validate, Delete)
 const displayCard = bomModule.subApps.find((sa) => sa.id === 'display');
 assert.strictEqual(displayCard.title, 'Display BOM');
@@ -55,7 +60,7 @@ const deleteCard = bomModule.subApps.find((sa) => sa.id === 'delete');
 assert.strictEqual(deleteCard.title, 'Delete BOM');
 assert.strictEqual(deleteCard.action, 'delete_bom');
 assert.strictEqual(deleteCard.danger, true);
-console.log('✓ PASS: BOM Hub has 5 cards with correct metadata and group definitions\n');
+console.log('✓ PASS: BOM Hub has 6 cards with correct metadata and group definitions\n');
 
 
 // 2. Sub-Page Card Definitions
@@ -266,7 +271,7 @@ console.log('Test 5: Permission filtering on hub and group sub-pages...');
 const adminVisibleHubCards = bomModule.subApps.filter((card) =>
   hasCardPermission(card, [], 'admin')
 );
-assert.strictEqual(adminVisibleHubCards.length, 5, 'Admin must see all 5 cards on hub');
+assert.strictEqual(adminVisibleHubCards.length, 6, 'Admin must see all 6 cards on hub');
 
 // Case B: User with ONLY 'bulk' (or 'bulk_bom') permission
 // On Hub:
@@ -317,7 +322,7 @@ assert.strictEqual(displayHubCards[0].id, 'display');
 const wildcardHubCards = bomModule.subApps.filter((card) =>
   hasCardPermission(card, ['*'], 'user')
 );
-assert.strictEqual(wildcardHubCards.length, 5, 'Wildcard permission must show all 5 cards on hub');
+assert.strictEqual(wildcardHubCards.length, 6, 'Wildcard permission must show all 6 cards on hub');
 
 console.log('✓ PASS: Permission filtering works accurately across groups and sub-pages\n');
 

@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import { searchMaterials, getMaterialDetail } from '../services/materialSearchService.js';
 import { getPlants } from '../services/plantService.js';
 
@@ -7,6 +8,7 @@ console.log('  RUNNING SAP F4 VALUE HELP POPUP TEST SUITE                ');
 console.log('============================================================');
 
 async function runTests() {
+  const testServer = ensureMockOwnedServer();
   // 1. ValueHelpInput Event & Hotkey Handling Simulation
   console.log('\n1. Testing ValueHelpInput event & F4 hotkey handling...');
   {
@@ -71,12 +73,12 @@ async function runTests() {
   console.log('\n2. Testing Material F4 search modes & columns parity...');
   {
     // Numeric prefix search
-    const numResults = await searchMaterials({ query: '1102', mode: 'prefix', limit: 20 });
+    const numResults = await searchMaterials({ query: '1102', mode: 'prefix', limit: 20, server: testServer });
     assert(numResults.length > 0, 'Numeric prefix search returns matching materials');
     assert(numResults.some((m) => m.matnr.includes('1102')), 'Matches contain numeric prefix');
 
     // Description search
-    const descResults = await searchMaterials({ query: 'FILTER', mode: 'description', limit: 20 });
+    const descResults = await searchMaterials({ query: 'FILTER', mode: 'description', limit: 20, server: testServer });
     assert(descResults.length > 0, 'Description search returns matching materials');
     assert(descResults.some((m) => m.maktx.toUpperCase().includes('FILTER')), 'Matches contain description term');
 
@@ -113,7 +115,7 @@ async function runTests() {
     assert(!('checkBom' in payload), 'checkBom filter parameter must NOT be sent from Material F4');
 
     // Execute search with pure query payload
-    const queryResults = await searchMaterials(payload);
+    const queryResults = await searchMaterials({ ...payload, server: testServer });
     assert(queryResults.length > 0, 'Search executes successfully with query-only payload');
     assert(queryResults.every((m) => m.matnr && m.maktx), 'Returned items contain standard material fields');
 
@@ -124,7 +126,7 @@ async function runTests() {
   console.log('\n4. Testing Empty Search and Result Capping...');
   {
     // Empty search: default limit 100
-    const emptyResults = await searchMaterials({ query: '', limit: 100 });
+    const emptyResults = await searchMaterials({ query: '', limit: 100, server: testServer });
     assert(emptyResults.length > 0, 'Empty search returns initial rows');
     assert(emptyResults.length <= 100, 'Empty search capped to first 100 rows');
 
@@ -150,7 +152,7 @@ async function runTests() {
   // 5. Plant F4 Popup (T001W) Data & Client-Side Filtering
   console.log('\n5. Testing Plant F4 popup data & filtering...');
   {
-    const plantRes = await getPlants();
+    const plantRes = await getPlants({ server: testServer });
     const plants = plantRes.data;
     assert(Array.isArray(plants) && plants.length > 0, 'Plant catalog loaded from T001W');
 
@@ -175,7 +177,7 @@ async function runTests() {
   console.log('\n6. Testing in-flight cancellation via AbortController on popup close...');
   {
     const controller = new AbortController();
-    const cancelPromise = searchMaterials({ query: 'CANCEL_TEST', signal: controller.signal });
+    const cancelPromise = searchMaterials({ query: 'CANCEL_TEST', signal: controller.signal, server: testServer });
     controller.abort();
 
     try {

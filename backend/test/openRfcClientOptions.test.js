@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { Client } from 'open-rfc';
+import { ensureMockOwnedServer } from './helpers/testServerHelper.js';
 import {
   openRfcClient,
   DEFAULT_RFC_CLIENT_OPTIONS,
@@ -7,6 +8,7 @@ import {
 } from '../services/sapRfcClient.js';
 
 async function runTests() {
+  ensureMockOwnedServer();
   console.log('\n================================================================');
   console.log('--- open-rfc Client Options & recursiveSerializerPolicy Test Suite ---');
   console.log('================================================================\n');

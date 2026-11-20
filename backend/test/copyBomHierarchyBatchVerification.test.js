@@ -115,12 +115,15 @@ async function runBatchVerificationTests() {
     }
   };
 
+  const mockServer = { id: 'MOCK_VERIFY_SERVER', is_mock: true };
+
   const verifyResult = await verifyCopiedBomHierarchy({
     sourceMaterial: 'MAT_ROOT_34',
     sourcePlant: '1012',
     targetMaterial: 'MAT_ROOT_34',
     targetPlant: '1012',
     targetAlternative: '01',
+    server: mockServer,
     client: mockClient
   });
 
@@ -146,6 +149,7 @@ async function runBatchVerificationTests() {
     targetMaterial: 'MAT_ROOT_34',
     targetPlant: '1012',
     targetAlternative: '01',
+    server: mockServer,
     client: mockClient
   });
   const countAfter = callCount;
@@ -207,6 +211,7 @@ async function runBatchVerificationTests() {
     targetMaterial: 'CYCLIC_A',
     targetPlant: '1012',
     targetAlternative: '01',
+    server: mockServer,
     client: cyclicClient
   });
 
@@ -247,6 +252,7 @@ async function runBatchVerificationTests() {
     targetPlant: '1012',
     targetAlternative: '01',
     maxDepth: 3,
+    server: mockServer,
     client: deepClient
   });
 

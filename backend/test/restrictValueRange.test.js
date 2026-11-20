@@ -57,6 +57,7 @@ function makeRequest(method, path, body = null, token = null) {
 }
 
 async function runTests() {
+    const testServer = ensureMockOwnedServer();
   console.log('\n============================================================');
   console.log('  RUNNING RESTRICT VALUE RANGE (F4 POPUP) TEST SUITE');
   console.log('============================================================\n');
@@ -120,7 +121,7 @@ async function runTests() {
 
     // 3. Unavailable tab handling
     console.log('\n3. Testing unavailable tab handling (Ex. Tab K, O, X, D)...');
-    const unavailRes = await searchMaterialsByOption({ tab: 'K', fields: {} });
+    const unavailRes = await searchMaterialsByOption({ server: testServer, tab: 'K', fields: {} });
     if (unavailRes.available !== false || !unavailRes.error) {
       throw new Error(`Expected unavailable response, got: ${JSON.stringify(unavailRes)}`);
     }
@@ -129,7 +130,7 @@ async function runTests() {
     // 4. Broad search guard test
     console.log('\n4. Testing broad search overload guard...');
     try {
-      await searchMaterialsByOption({
+      await searchMaterialsByOption({ server: testServer,
         tab: 'M',
         fields: { MATNR: '*', MAKTG: '*' },
         noRestriction: true
@@ -485,8 +486,7 @@ async function runTests() {
         if (!opt.available) throw new Error(`Option ${key} should be available: true`);
 
         // Test searchMaterialsByOption
-        const res = await searchMaterialsByOption({
-          server: { is_mock: true },
+        const res = await searchMaterialsByOption({ server: { is_mock: true },
           tab: key,
           fields: {},
           maxRows: 10
@@ -520,8 +520,7 @@ async function runTests() {
           throw new Error(`Option ${item.key} missing exact reason with ${item.code}: ${opt.unavailableReason}`);
         }
 
-        const res = await searchMaterialsByOption({
-          server: { is_mock: true },
+        const res = await searchMaterialsByOption({ server: { is_mock: true },
           tab: item.key,
           fields: {}
         });
@@ -608,7 +607,7 @@ async function runTests() {
     console.log('\n26. Testing automatic uppercase conversion for code fields across several tabs...');
     {
       // Tab B: Lowercase material 'a1bh0214c' and lowercase plant '1001'
-      const tabBLower = await searchMaterialsByOption({
+      const tabBLower = await searchMaterialsByOption({ server: testServer,
         tab: 'B',
         fields: { matnr: 'a1bh0214c', werks: '1001', stlan: '1' }
       });
@@ -618,7 +617,7 @@ async function runTests() {
       console.log('   ✓ Tab B: lowercase material "a1bh0214c" converted to uppercase and returned 3 alternatives');
 
       // Tab M: Lowercase material '1102*' and lowercase description 'solar' (case-insensitive description search)
-      const tabMLower = await searchMaterialsByOption({
+      const tabMLower = await searchMaterialsByOption({ server: testServer,
         tab: 'M',
         fields: { matnr: '1102*', maktg: 'solar' }
       });
@@ -628,7 +627,7 @@ async function runTests() {
       console.log('   ✓ Tab M: lowercase code "1102*" and lowercase description "solar" matched successfully');
 
       // Tab A: Lowercase old material number 'old-inv-01'
-      const tabALower = await searchMaterialsByOption({
+      const tabALower = await searchMaterialsByOption({ server: testServer,
         tab: 'A',
         fields: { bismt: 'old-inv-01' }
       });
@@ -641,7 +640,7 @@ async function runTests() {
       console.log('   ✓ Tab A: lowercase code "old-inv-01" converted to uppercase and matched 13000340');
 
       // Tab L: Lowercase material group 'elec-inv'
-      const tabLLower = await searchMaterialsByOption({
+      const tabLLower = await searchMaterialsByOption({ server: testServer,
         tab: 'L',
         fields: { matkl: 'elec-inv' }
       });
@@ -651,7 +650,7 @@ async function runTests() {
       console.log('   ✓ Tab L: lowercase material group "elec-inv" converted to uppercase and returned matches');
 
       // Tab T: Lowercase material type 'fert'
-      const tabTLower = await searchMaterialsByOption({
+      const tabTLower = await searchMaterialsByOption({ server: testServer,
         tab: 'T',
         fields: { mtart: 'fert' }
       });
@@ -664,7 +663,7 @@ async function runTests() {
     // 27. Testing Tab B Alternative Rows & Selection Payload (SAP Look & Feel)
     console.log('\n27. Testing Tab B multi-alternative row structure and selection payload...');
     {
-      const tabBRes = await searchMaterialsByOption({
+      const tabBRes = await searchMaterialsByOption({ server: testServer,
         tab: 'B',
         fields: { matnr: 'A1BH0214C', werks: '1001', stlan: '1' }
       });

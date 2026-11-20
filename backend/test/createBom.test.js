@@ -249,7 +249,7 @@ const preflightTestBoms = [
   }
 ];
 
-const preflightRes = await rfcPreflightCreateBoms({ boms: preflightTestBoms });
+const preflightRes = await rfcPreflightCreateBoms({ boms: preflightTestBoms, server: { id: 'MOCK_DEV' } });
 assert.strictEqual(preflightRes.readyCount, 1, 'Only BOM 1 is Ready');
 assert.strictEqual(preflightRes.skippedCount, 1, 'BOM 6 must be Skipped (already exists)');
 assert.strictEqual(preflightRes.invalidCount, 4, 'BOMs 2, 3, 4, 5 must be Invalid');
@@ -268,13 +268,13 @@ console.log('   ✓ Pre-flight correctly validates materials, missing units, sto
 console.log('\n6. Testing nothing written when pre-flight fails:');
 
 const failedBom = preflightRes.boms[1]; // Invalid
-const createBlockedRes = await createBomFromData({ bom: failedBom });
+const createBlockedRes = await createBomFromData({ bom: failedBom, server: { id: 'MOCK_DEV' } });
 assert.strictEqual(createBlockedRes.success, false);
 assert.strictEqual(createBlockedRes.status, 'FAILED');
 assert(createBlockedRes.message.includes('MARA'));
 
 const skippedBom = preflightRes.boms[5]; // Skipped
-const createSkippedRes = await createBomFromData({ bom: skippedBom });
+const createSkippedRes = await createBomFromData({ bom: skippedBom, server: { id: 'MOCK_DEV' } });
 assert.strictEqual(createSkippedRes.success, false);
 assert.strictEqual(createSkippedRes.status, 'SKIPPED');
 assert(createSkippedRes.message.includes('already exists'));
