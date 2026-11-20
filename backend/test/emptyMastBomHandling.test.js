@@ -14,8 +14,11 @@ async function runEmptyMastTests() {
 
   process.env.USE_MOCK_SAP = 'true';
 
+  const mockServer = { id: 'MOCK_DEV', ashost: '127.0.0.1' };
+
   // 1. Mock RFC Client that returns empty MAST table (0 rows)
   const emptyMastClient = {
+    server: mockServer,
     call: async (funcName, params) => {
       if (funcName === 'RFC_READ_TABLE') {
         const table = params.QUERY_TABLE;
@@ -41,6 +44,7 @@ async function runEmptyMastTests() {
   // Helper to construct mock client for specific BOM setups
   function createMockRfcClient({ mastRows = [], stpoRows = [], stkoData = {} }) {
     return {
+      server: mockServer,
       call: async (funcName, params) => {
         if (funcName === 'RFC_READ_TABLE') {
           const table = params.QUERY_TABLE;
@@ -255,6 +259,7 @@ async function runEmptyMastTests() {
   // ---------------------------------------------------------------------------
   console.log('\n6. Testing multi-level hierarchy child sub-assembly without alternative:');
   const multiLevelClient = {
+    server: mockServer,
     call: async (funcName, params) => {
       if (funcName === 'RFC_READ_TABLE') {
         const table = params.QUERY_TABLE;

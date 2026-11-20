@@ -13,6 +13,7 @@ import {
 } from '../../frontend/src/utils/bulkBomStatusUtils.js';
 
 process.env.USE_MOCK_SAP = 'true';
+const mockServer = { id: 'MOCK_DEV', name: 'Mock Dev Server', ashost: '127.0.0.1' };
 
 console.log('============================================================');
 console.log('  TESTING BULK CREATE BOM GROUP INTEGRITY PROTECTION        ');
@@ -56,7 +57,7 @@ console.log('1. Testing group whose parent exists:');
     }
   ];
 
-  const preflight = await rfcPreflightCreateBoms({ boms });
+  const preflight = await rfcPreflightCreateBoms({ boms, server: mockServer });
   assert.strictEqual(preflight.readyCount, 0, 'Ready count must be 0');
   assert.strictEqual(preflight.skippedCount, 3, 'All 3 members must be skipped');
   assert.strictEqual(preflight.invalidCount, 0, 'Invalid count must be 0');
@@ -106,7 +107,7 @@ console.log('\n2. Testing group with child unit-of-measure error:');
     }
   ];
 
-  const preflight = await rfcPreflightCreateBoms({ boms });
+  const preflight = await rfcPreflightCreateBoms({ boms, server: mockServer });
   assert.strictEqual(preflight.readyCount, 0, 'Ready count must be 0');
   assert.strictEqual(preflight.invalidCount, 1, 'Child with error must be Invalid');
   assert.strictEqual(preflight.skippedCount, 1, 'Parent must be Skipped');
@@ -171,7 +172,7 @@ console.log('\n3. Testing two groups (one bad, one good):');
     }
   ];
 
-  const preflight = await rfcPreflightCreateBoms({ boms });
+  const preflight = await rfcPreflightCreateBoms({ boms, server: mockServer });
   assert.strictEqual(preflight.readyCount, 2, 'Only the 2 members of good group must be Ready');
   assert.strictEqual(preflight.skippedCount, 1, 'Bad parent skipped');
   assert.strictEqual(preflight.invalidCount, 1, 'Bad child invalid');
@@ -225,7 +226,7 @@ console.log('\n4. Testing child exists, parent new:');
     }
   ];
 
-  const preflight = await rfcPreflightCreateBoms({ boms });
+  const preflight = await rfcPreflightCreateBoms({ boms, server: mockServer });
   const existingChild = preflight.boms.find((b) => b.material.includes('EXISTING'));
   const newParent = preflight.boms.find((b) => b.material === 'NEW_PARENT_30');
   const newChild = preflight.boms.find((b) => b.material === 'NEW_CHILD_30');
@@ -360,7 +361,7 @@ console.log('\n7. Testing counter additivity and Retry Failed Rows group behavio
     }
   ];
 
-  const preflight = await rfcPreflightCreateBoms({ boms });
+  const preflight = await rfcPreflightCreateBoms({ boms, server: mockServer });
   const counts = getBomStatusCounts(preflight.boms, true);
   assert.strictEqual(counts.ready + counts.skipped + counts.errors, preflight.boms.length, 'Counters must add up to total');
   assert.strictEqual(counts.ready, preflight.readyCount, 'Create BOMs (n) button matches readyCount');

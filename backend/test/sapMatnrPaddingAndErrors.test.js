@@ -11,6 +11,7 @@ import {
 } from '../services/sapRfcClient.js';
 
 async function runTests() {
+  const mockServerContext = ensureMockOwnedServer();
   console.log('\n======================================================');
   console.log('--- Testing toSapMatnr Padding & Error Propagation ---');
   console.log('======================================================');
@@ -116,7 +117,8 @@ async function runTests() {
     plant: '16P1',
     bomUsage: '1',
     alternativeBom: '01',
-    client: mockS4Client
+    client: mockS4Client,
+    server: mockServerContext
   });
 
   assert.strictEqual(resUnpadded.success, true);
@@ -133,7 +135,8 @@ async function runTests() {
     plant: '16P1',
     bomUsage: '1',
     alternativeBom: '01',
-    client: mockS4Client
+    client: mockS4Client,
+    server: mockServerContext
   });
 
   assert.strictEqual(resPadded.success, true);
@@ -159,7 +162,8 @@ async function runTests() {
     material: '143',
     plant: '16P1',
     bomUsage: '1',
-    client: failingClient
+    client: failingClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(valFailed.success, false);
@@ -181,7 +185,8 @@ async function runTests() {
     material: '999999',
     plant: '16P1',
     bomUsage: '1',
-    client: emptyMastClient
+    client: emptyMastClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(valNotFound.success, false);
@@ -192,8 +197,6 @@ async function runTests() {
   // 6. Test missing or blank plant parameter safety (no unhandled throw)
   console.log('\n7. Testing blank plant parameter safety in rfcReadBom & rfcGetBomDisplayData:');
   const { rfcGetBomDisplayData } = await import('../services/sapRfcClient.js');
-
-  const mockServerContext = ensureMockOwnedServer();
 
   const readBlankPlant = await rfcReadBom({
     material: '143',
@@ -262,7 +265,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '02',
-    client: zeroActiveClient
+    client: zeroActiveClient,
+    server: mockServerContext
   });
   assert.strictEqual(zeroAltRes.success, true);
   assert.strictEqual(zeroAltRes.bomExists, true);
@@ -278,7 +282,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '02',
-    client: zeroActiveClient
+    client: zeroActiveClient,
+    server: mockServerContext
   });
   assert.strictEqual(valZeroRes.success, false);
   assert.strictEqual(valZeroRes.errorCode, 'BOM_NO_ACTIVE_COMPONENTS');
@@ -293,7 +298,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '',
-    client: zeroActiveClient
+    client: zeroActiveClient,
+    server: mockServerContext
   });
   assert.strictEqual(blankWith01.success, true);
   assert.strictEqual(blankWith01.alternativeBom, '01');
@@ -320,7 +326,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '',
-    client: singleAltClient
+    client: singleAltClient,
+    server: mockServerContext
   });
   assert.strictEqual(blankSingleRes.success, true);
   assert.strictEqual(blankSingleRes.alternativeBom, '03');
@@ -346,7 +353,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '',
-    client: multiAltNo01Client
+    client: multiAltNo01Client,
+    server: mockServerContext
   });
   assert.strictEqual(blankMultiRes.success, true);
   assert.strictEqual(blankMultiRes.alternativeBom, '02');
@@ -358,7 +366,8 @@ async function runTests() {
     plant: '1010',
     bomUsage: '1',
     alternativeBom: '01',
-    client: multiAltNo01Client
+    client: multiAltNo01Client,
+    server: mockServerContext
   });
   assert.strictEqual(typedMissingRes.success, false);
   assert.strictEqual(typedMissingRes.errorCode, 'ALTERNATIVE_NOT_FOUND');
@@ -389,7 +398,8 @@ async function runTests() {
     bomUsage: '1',
     alternativeBom: '01',
     components: [{ component: '144', quantity: 5 }],
-    client: mockCaptureClient1
+    client: mockCaptureClient1,
+    server: mockServerContext
   });
 
   let capturedPayloadPadded = null;
@@ -410,7 +420,8 @@ async function runTests() {
     bomUsage: '1',
     alternativeBom: '01',
     components: [{ component: '000000000000000144', quantity: 5 }],
-    client: mockCaptureClient2
+    client: mockCaptureClient2,
+    server: mockServerContext
   });
 
   assert.strictEqual(capturedPayloadUnpadded.MATERIALRELATIONS[0].MATERIAL, '000000000000000143');
@@ -443,7 +454,8 @@ async function runTests() {
     bomUsage: '1',
     alternativeBom: '01',
     components: [{ component: 'D4PSB001B', quantity: 2 }],
-    client: mockAlphaClient
+    client: mockAlphaClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(capturedAlphaPayload.MATERIALRELATIONS[0].MATERIAL, 'A1BH0214C');
@@ -485,7 +497,8 @@ async function runTests() {
     targetMaterial: '143',
     targetPlant: '16P2',
     copyHierarchy: false,
-    client: mockBapiErrorClient
+    client: mockBapiErrorClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(simFailRes.valid, false, 'Simulation failure must mark valid=false');
@@ -522,7 +535,8 @@ async function runTests() {
     targetMaterial: 'TESTMAT',
     targetPlant: '1012',
     copyHierarchy: false,
-    client: mockBapiPassClient
+    client: mockBapiPassClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(simPassRes.valid, true, 'Clean simulation must mark valid=true');
@@ -647,7 +661,8 @@ async function runTests() {
     targetMaterial: 'ROOT_3LVL',
     targetPlant: '16P2',
     copyHierarchy: true,
-    client: mock3LevelClient
+    client: mock3LevelClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(multiSimRes.valid, false, 'Multi-level simulation with errors must mark valid=false');
@@ -744,7 +759,8 @@ async function runTests() {
   const subCheck = await isSubAssemblyBomExistingInTarget(
     { material: 'SUB_EXISTING', bomUsage: '1', alternativeBom: '01', level: 1 },
     '16P2',
-    mockExistingSubClient
+    mockExistingSubClient,
+    mockServerContext
   );
   assert.strictEqual(subCheck.exists, true, 'isSubAssemblyBomExistingInTarget must identify existing BOM in target plant');
   assert.strictEqual(subCheck.bomNumber, '00788888');
@@ -756,7 +772,8 @@ async function runTests() {
     targetMaterial: 'ROOT_REUSE',
     targetPlant: '16P2',
     copyHierarchy: true,
-    client: mockExistingSubClient
+    client: mockExistingSubClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(reuseSimRes.valid, true, 'Simulation must pass when existing sub-assembly is reused');
@@ -797,7 +814,8 @@ async function runTests() {
     targetMaterial: 'TIMEOUT_MAT',
     targetPlant: '16P2',
     copyHierarchy: false,
-    client: mockTimeoutClient
+    client: mockTimeoutClient,
+    server: mockServerContext
   });
 
   assert.strictEqual(timeoutRes.valid, false, 'Timeout must mark valid=false');

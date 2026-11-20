@@ -22,6 +22,7 @@ async function runTests() {
   console.log('--- Bulk Copy BOM Alternative Resolution Test Suite ---');
   console.log('================================================================\n');
 
+  const mockServer = { id: 'MOCK_DEV', name: 'Mock Dev Server', ashost: '127.0.0.1' };
   const targetMaterial = 'A1BH0214C';
   const targetPlant = '1012';
   const targetUsage = '1';
@@ -32,14 +33,15 @@ async function runTests() {
   console.log('1. Test: Blank target alt with existing alt 1 in target');
   {
     // A1BH0214C in plant 1012 usage 1 has alt 01 in mock dataset
-    const existingAlts = await getExistingAlternatives(targetMaterial, targetPlant, targetUsage);
+    const existingAlts = await getExistingAlternatives(targetMaterial, targetPlant, targetUsage, null, mockServer);
     assert.ok(existingAlts.includes(1), 'Target BOM A1BH0214C/1012/1 should have alternative 1 existing in mock dataset');
 
     const res = await resolveTargetAlternativeForCopy({
       targetMaterial,
       targetPlant,
       targetUsage,
-      targetAlternative: ''
+      targetAlternative: '',
+      server: mockServer
     });
 
     assert.strictEqual(res.targetAlternative, '02', 'Blank target alt must resolve to 02 when alt 1 exists');
@@ -59,7 +61,7 @@ async function runTests() {
         targetUsage: '1',
         targetAltBom: '' // blank target alt
       }
-    ]);
+    ], { server: mockServer });
 
     assert.strictEqual(batchRes.success, true);
     assert.strictEqual(batchRes.results.length, 1);
@@ -97,7 +99,7 @@ async function runTests() {
         targetUsage: '1',
         targetAltBom: ''
       }
-    ]);
+    ], { server: mockServer });
 
     assert.strictEqual(batchRes.results.length, 2);
     const [row1, row2] = batchRes.results;
@@ -114,7 +116,7 @@ async function runTests() {
     await bomJobManager.runCopyValidate(subJob, [
       { id: 201, sourceMaterial: 'A1BH0214C', sourcePlant: '1012', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'A1BH0214C', targetPlant: '1012', targetUsage: '1', targetAltBom: '' },
       { id: 202, sourceMaterial: 'A1BH0214C', sourcePlant: '1012', sourceUsage: '1', sourceAltBom: '01', targetMaterial: 'A1BH0214C', targetPlant: '1012', targetUsage: '1', targetAltBom: '' }
-    ]);
+    ], mockServer);
 
     assert.strictEqual(subJob.results[0].targetAltBom, '02');
     assert.strictEqual(subJob.results[1].targetAltBom, '03');
@@ -130,7 +132,8 @@ async function runTests() {
       targetMaterial: 'A1BH0214C',
       targetPlant: '1012',
       targetUsage: '1',
-      targetAlternative: '1' // explicitly requested existing alt 1
+      targetAlternative: '1', // explicitly requested existing alt 1
+      server: mockServer
     });
 
     assert.strictEqual(res.targetAlternative, '01');
@@ -150,7 +153,7 @@ async function runTests() {
         targetUsage: '1',
         targetAltBom: '01' // explicitly existing
       }
-    ]);
+    ], { server: mockServer });
 
     const row = batchRes.results[0];
     assert.strictEqual(row.status, 'ERROR', 'Explicitly existing alt must be blocked with ERROR');
@@ -170,7 +173,8 @@ async function runTests() {
       targetMaterial: 'A1BH0214C',
       targetPlant: '1012',
       targetUsage: '1',
-      targetAlternative: '12' // explicitly requested non-existing alt 12
+      targetAlternative: '12', // explicitly requested non-existing alt 12
+      server: mockServer
     });
 
     assert.strictEqual(res.targetAlternative, '12');
@@ -189,7 +193,7 @@ async function runTests() {
         targetUsage: '1',
         targetAltBom: '12'
       }
-    ]);
+    ], { server: mockServer });
 
     const row = batchRes.results[0];
     assert.strictEqual(row.status, 'VALID');
@@ -206,7 +210,8 @@ async function runTests() {
       targetMaterial: 'A1BH0214C',
       targetPlant: '1012',
       targetUsage: '1',
-      targetAlternative: ''
+      targetAlternative: '',
+      server: mockServer
     };
 
     // 1. Single Copy resolution call (as used in chat.js)
@@ -224,7 +229,7 @@ async function runTests() {
         targetUsage: '1',
         targetAltBom: ''
       }
-    ]);
+    ], { server: mockServer });
     const bulkCopyResolvedAlt = bulkCopyBatch.results[0].targetAltBom;
 
     assert.strictEqual(
@@ -275,7 +280,7 @@ async function runTests() {
           targetAltBom: ''
         }
       ],
-      null,
+      mockServer,
       { id: 'test_user', email: 'test@example.com' }
     );
 

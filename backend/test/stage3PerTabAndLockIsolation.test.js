@@ -159,18 +159,33 @@ test('Stage 3 Core: Explicit Header Resolution & No Active-Server Fallback', asy
     assert.strictEqual(res.status, 200);
   });
 
-  await t.test('Server-scoped request WITHOUT server header returns 404 SERVER_NOT_FOUND (no fallback)', async () => {
+  await t.test('Server-scoped request WITHOUT server header returns 404 SERVER_NOT_FOUND (never uses body serverId)', async () => {
     const res = await makeRequest(
-      'GET',
-      '/api/plants',
-      null,
+      'POST',
+      '/api/sap/sessions/select',
+      { sessionId: 'RFC_TEST', serverId: serverA1.id },
       {
         Authorization: `Bearer ${userAToken}`
-        // Missing x-sap-server-id and x-server-id
+        // Missing x-sap-server-id header
       }
     );
     assert.strictEqual(res.status, 404);
     assert.strictEqual(res.body.code, 'SERVER_NOT_FOUND');
+  });
+
+  await t.test('Request with differing body serverId and x-sap-server-id rejects with 400 SERVER_CONTEXT_MISMATCH', async () => {
+    const res = await makeRequest(
+      'POST',
+      '/api/sap/sessions/select',
+      { sessionId: 'RFC_TEST', serverId: serverA2.id },
+      {
+        Authorization: `Bearer ${userAToken}`,
+        'x-sap-server-id': serverA1.id
+      }
+    );
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.code, 'SERVER_CONTEXT_MISMATCH');
+    assert.ok(res.body.error.includes('Server ID in request body does not match'));
   });
 
   await t.test('Request with server owned by another user returns 404 (strictly owner-isolated)', async () => {

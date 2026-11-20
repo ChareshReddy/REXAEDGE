@@ -18,6 +18,7 @@ async function runCopyBomResultEnrichmentTests() {
   console.log('============================================================\n');
 
   process.env.USE_MOCK_SAP = 'true';
+  const mockServer = { id: 'MOCK_DEV', name: 'Mock Dev Server', ashost: '127.0.0.1' };
 
   // ---------------------------------------------------------------------------
   // TEST 1: The result lists all components, including leaf components,
@@ -30,10 +31,10 @@ async function runCopyBomResultEnrichmentTests() {
   }
 
   // Verify batch lookups handle >100 materials in chunks of 25
-  const maktResults = await batchQueryMakt(null, largeTreeMaterials, 'E');
+  const maktResults = await batchQueryMakt(null, largeTreeMaterials, 'E', mockServer);
   assert.strictEqual(Object.keys(maktResults).length, 120, 'All 120 materials processed by batchQueryMakt');
 
-  const subBomResults = await batchQuerySubBom(null, largeTreeMaterials, '1012');
+  const subBomResults = await batchQuerySubBom(null, largeTreeMaterials, '1012', mockServer);
   assert.ok(subBomResults instanceof Set, 'Sub-BOM check returns Set');
 
   // Verify standard multi-level BOM explosion returns all components including leaf components
@@ -41,7 +42,8 @@ async function runCopyBomResultEnrichmentTests() {
     material: 'A1BH0214C',
     plant: '1012',
     bomUsage: '1',
-    multiLevel: true
+    multiLevel: true,
+    server: mockServer
   });
 
   assert.strictEqual(displayResult.success, true, 'Display reader succeeds');
@@ -64,7 +66,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourcePlant: '1012',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1012',
-    targetAlternative: '01'
+    targetAlternative: '01',
+    server: mockServer
   });
 
   assert.strictEqual(verifyRes.success, true);
@@ -112,7 +115,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourcePlant: '1012',
     targetMaterial: 'MAT-BOM-100', // Different hierarchy to simulate missing/different components
     targetPlant: '1000',
-    targetAlternative: '01'
+    targetAlternative: '01',
+    server: mockServer
   });
 
   assert.strictEqual(alteredVerify.success, false, 'Altered target must NOT report success');
@@ -132,7 +136,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourcePlant: '1012',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1012',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
 
   assert.strictEqual(copyRes.success, true, 'Copy BOM succeeds');
@@ -144,7 +149,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourcePlant: '1012',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1012',
-    targetAlternative: expectedAlt
+    targetAlternative: expectedAlt,
+    server: mockServer
   });
 
   assert.strictEqual(verifyCreated.rootAlternative, expectedAlt, `rootAlternative (${verifyCreated.rootAlternative}) must match created alternative (${expectedAlt})`);
@@ -161,7 +167,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourcePlant: '1012',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1012',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
   assert.strictEqual(repairRes.success, true);
   assert.ok(Array.isArray(repairRes.hierarchy), 'repairHierarchyBottomUp returns hierarchy array');
@@ -171,7 +178,8 @@ async function runCopyBomResultEnrichmentTests() {
   const readRes = await rfcReadBom({
     material: 'A1BH0214C',
     plant: '1012',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
   assert.strictEqual(readRes.success, true);
   assert.strictEqual(readRes.material, 'A1BH0214C');
@@ -182,7 +190,8 @@ async function runCopyBomResultEnrichmentTests() {
   const explodeRes = await rfcExplodeBomHierarchy({
     material: 'A1BH0214C',
     plant: '1012',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
   assert.strictEqual(explodeRes.success, true);
   assert.strictEqual(explodeRes.rootMaterial, 'A1BH0214C');
@@ -200,7 +209,8 @@ async function runCopyBomResultEnrichmentTests() {
     targetMaterial: 'MAT-BOM-200',
     targetPlant: '1000',
     bomUsage: '1',
-    copyHierarchy: true
+    copyHierarchy: true,
+    server: mockServer
   });
   assert.strictEqual(singleLevelCopy.success, true);
   assert.strictEqual(singleLevelCopy.totalBoms, 1);
@@ -212,7 +222,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourceAlternative: '1',
     targetMaterial: 'MAT-BOM-200',
     targetPlant: '1000',
-    targetAlternative: singleLevelCopy.alternativeBom
+    targetAlternative: singleLevelCopy.alternativeBom,
+    server: mockServer
   });
   assert.strictEqual(singleLevelVerify.success, true);
   assert.strictEqual(singleLevelVerify.status, 'SUCCESS');
@@ -232,7 +243,8 @@ async function runCopyBomResultEnrichmentTests() {
     targetMaterial: 'A1BH0214C',
     targetPlant: '1001',
     bomUsage: '1',
-    copyHierarchy: true
+    copyHierarchy: true,
+    server: mockServer
   });
   assert.strictEqual(subBomCopy.success, true);
   assert.strictEqual(subBomCopy.totalBoms, 2);
@@ -244,7 +256,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourceAlternative: '01',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1001',
-    targetAlternative: subBomCopy.alternativeBom
+    targetAlternative: subBomCopy.alternativeBom,
+    server: mockServer
   });
   assert.strictEqual(subBomVerify.success, true);
   assert.strictEqual(subBomVerify.status, 'SUCCESS');
@@ -273,7 +286,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourceAlternative: '01',
     targetMaterial: 'A1BH0214C',
     targetPlant: '1001',
-    targetAlternative: subBomCopy.alternativeBom
+    targetAlternative: subBomCopy.alternativeBom,
+    server: mockServer
   });
   assert.strictEqual(diffVerify.success, false);
   assert.strictEqual(diffVerify.status, 'PARTIAL');
@@ -294,7 +308,8 @@ async function runCopyBomResultEnrichmentTests() {
     sourceAlternative: '01',
     targetMaterial: 'NON_EXISTENT_MAT_999',
     targetPlant: '1001',
-    targetAlternative: '99'
+    targetAlternative: '99',
+    server: mockServer
   });
   assert.strictEqual(failVerify.success, false);
   assert.strictEqual(failVerify.status, 'FAILED');

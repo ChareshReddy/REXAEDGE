@@ -3,6 +3,8 @@ import assert from 'assert';
 process.env.NODE_ENV = 'test';
 process.env.USE_MOCK_SAP = 'true';
 
+const mockServer = { id: 'MOCK_SERVER_MAT', name: 'Mock SAP', ashost: '127.0.0.1' };
+
 import {
   sanitizeSearchQuery,
   fromSapMatnr,
@@ -120,7 +122,8 @@ console.log('5. Testing search execution with plant filter, MTART filter & BOM s
     query: 'AIR',
     plant: '1001',
     limit: 20,
-    checkBom: true
+    checkBom: true,
+    server: mockServer
   });
 
   assert(Array.isArray(res1001), 'Search must return array of results');
@@ -135,7 +138,8 @@ console.log('5. Testing search execution with plant filter, MTART filter & BOM s
   const res9999 = await searchMaterials({
     query: 'AIR',
     plant: '9999',
-    limit: 20
+    limit: 20,
+    server: mockServer
   });
   assert.strictEqual(res9999.length, 0, 'No materials returned for unextended plant 9999');
 
@@ -143,14 +147,16 @@ console.log('5. Testing search execution with plant filter, MTART filter & BOM s
   const resRoh = await searchMaterials({
     query: 'BAHAMAS',
     mtart: 'ROH',
-    limit: 20
+    limit: 20,
+    server: mockServer
   });
   assert.strictEqual(resRoh.length, 0, 'HALB material A1BH0214C must be excluded when mtart=ROH');
 
   const resHalb = await searchMaterials({
     query: 'BAHAMAS',
     mtart: 'HALB',
-    limit: 20
+    limit: 20,
+    server: mockServer
   });
   assert(resHalb.length > 0, 'HALB material A1BH0214C must match when mtart=HALB');
   assert.strictEqual(resHalb[0].mtart, 'HALB');
@@ -158,7 +164,8 @@ console.log('5. Testing search execution with plant filter, MTART filter & BOM s
   // Test BOM existence flag
   const resWithBom = await searchMaterials({
     query: 'A1BH0214C',
-    checkBom: true
+    checkBom: true,
+    server: mockServer
   });
   assert.strictEqual(resWithBom[0].hasBom, true, 'A1BH0214C must have hasBom: true');
 
@@ -171,7 +178,8 @@ console.log('6. Testing material status mapping and deletion flag...');
   // Material with status code '01'
   const serviceDetail = await getMaterialDetail({
     matnr: 'SM0001',
-    plant: '1710'
+    plant: '1710',
+    server: mockServer
   });
   assert.strictEqual(serviceDetail.matnr, 'SM0001');
   assert.strictEqual(serviceDetail.mmsta, '01');
@@ -180,7 +188,8 @@ console.log('6. Testing material status mapping and deletion flag...');
   // Material with LVORM = 'X' (deletion flag)
   const obsoleteDetail = await getMaterialDetail({
     matnr: 'MAT_OBSOLETE_01',
-    plant: '1001'
+    plant: '1001',
+    server: mockServer
   });
   assert.strictEqual(obsoleteDetail.lvorm, 'X', 'Deletion flag LVORM must be returned');
 
@@ -193,7 +202,7 @@ console.log('7. Testing explicit error handling and non-existent material detail
   // Request non-existent material detail must throw 404
   await assert.rejects(
     async () => {
-      await getMaterialDetail({ matnr: 'NON_EXISTENT_999' });
+      await getMaterialDetail({ matnr: 'NON_EXISTENT_999', server: mockServer });
     },
     (err) => {
       assert.strictEqual(err.status, 404, 'Non-existent material returns 404 status');
@@ -210,8 +219,8 @@ console.log('8. Testing detail isolation and strict plant filter enforcement...'
 {
   // (a) Detail isolation: Concurrent fetches for different materials must never cross-contaminate
   const [detailA, detailB] = await Promise.all([
-    getMaterialDetail({ matnr: 'A1BH0214C', plant: '1001' }),
-    getMaterialDetail({ matnr: 'SM0001', plant: '1710' })
+    getMaterialDetail({ matnr: 'A1BH0214C', plant: '1001', server: mockServer }),
+    getMaterialDetail({ matnr: 'SM0001', plant: '1710', server: mockServer })
   ]);
 
   assert.strictEqual(detailA.matnr, 'A1BH0214C', 'Detail A must belong strictly to A1BH0214C');
@@ -222,14 +231,14 @@ console.log('8. Testing detail isolation and strict plant filter enforcement...'
 
   // (b) Strict plant filter enforcement:
   // Material 13000340 is only extended in plant 1001 (not in 1012 or 1710)
-  const resIn1001 = await searchMaterials({ query: '13000340', plant: '1001' });
+  const resIn1001 = await searchMaterials({ query: '13000340', plant: '1001', server: mockServer });
   assert.strictEqual(resIn1001.length, 1, 'Material 13000340 returned when plant=1001');
   assert.strictEqual(resIn1001[0].extendedInPlant, true, 'extendedInPlant is true for maintained plant');
 
-  const resIn1012 = await searchMaterials({ query: '13000340', plant: '1012' });
+  const resIn1012 = await searchMaterials({ query: '13000340', plant: '1012', server: mockServer });
   assert.strictEqual(resIn1012.length, 0, 'Material 13000340 strictly excluded when plant=1012');
 
-  const resIn1710 = await searchMaterials({ query: '13000340', plant: '1710' });
+  const resIn1710 = await searchMaterials({ query: '13000340', plant: '1710', server: mockServer });
   assert.strictEqual(resIn1710.length, 0, 'Material 13000340 strictly excluded when plant=1710');
 
   console.log('   ✓ Detail isolation and strict plant filtering verified without cross-contamination');

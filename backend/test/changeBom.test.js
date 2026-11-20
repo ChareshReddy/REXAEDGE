@@ -412,6 +412,51 @@ test('Stage 1: Change BOM (CS02) Backend Test Suite', async (t) => {
     assert.ok(res.body.error.includes('Server not found') || res.body.code === 'SERVER_NOT_FOUND');
   });
 
+  await t.test('9b. Missing x-sap-server-id header: never uses body serverId and returns 404 SERVER_NOT_FOUND', async () => {
+    const res = await makeRequest(
+      'POST',
+      '/api/bom/change',
+      {
+        material: testMaterial,
+        plant: testPlant,
+        bomUsage: testUsage,
+        alternativeBom: testAlt,
+        header: { baseQty: '500' },
+        serverId: serverA.id // Present in body, but header is absent
+      },
+      {
+        Authorization: `Bearer ${userAToken}`
+        // x-sap-server-id omitted
+      }
+    );
+
+    assert.equal(res.status, 404);
+    assert.equal(res.body.code, 'SERVER_NOT_FOUND');
+  });
+
+  await t.test('9c. Server context mismatch: differing body serverId and header returns 400 SERVER_CONTEXT_MISMATCH', async () => {
+    const res = await makeRequest(
+      'POST',
+      '/api/bom/change',
+      {
+        material: testMaterial,
+        plant: testPlant,
+        bomUsage: testUsage,
+        alternativeBom: testAlt,
+        header: { baseQty: '500' },
+        serverId: '00000000-0000-0000-0000-000000000999' // Differs from header!
+      },
+      {
+        Authorization: `Bearer ${userAToken}`,
+        'x-sap-server-id': serverA.id
+      }
+    );
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.code, 'SERVER_CONTEXT_MISMATCH');
+    assert.ok(res.body.error.includes('Server ID in request body does not match'));
+  });
+
   await t.test('10. SAP_BOM_CHANGE_FUNCTION: defaults to CS02 batch input when env var is unset', async () => {
     const origEnv = process.env.SAP_BOM_CHANGE_FUNCTION;
     delete process.env.SAP_BOM_CHANGE_FUNCTION;

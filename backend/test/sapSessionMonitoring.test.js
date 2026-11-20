@@ -66,6 +66,7 @@ async function runSapSessionMonitoringTests() {
   console.log('======================================================');
 
   process.env.USE_MOCK_SAP = 'true';
+  process.env.SAP_BOM_MODE = 'GUI';
   process.env.OPENROUTER_API_KEY = 'test_key';
   process.env.OPENROUTER_MODEL = 'test_model';
   delete process.env.TEST_SAP_SESSION_HEALTH;

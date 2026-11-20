@@ -14,6 +14,8 @@ async function runBomDisplayEnrichmentTests() {
   console.log('  RUNNING BOM DISPLAY ENRICHMENT & HIERARCHY TESTS          ');
   console.log('============================================================\n');
 
+  const mockServer = { id: 'MOCK_DEV', name: 'Mock Dev Server', ashost: '127.0.0.1' };
+
   process.env.USE_MOCK_SAP = 'true';
 
   // ---------------------------------------------------------------------------
@@ -41,7 +43,8 @@ async function runBomDisplayEnrichmentTests() {
     material: 'A1BH0214C',
     plant: '1012',
     bomUsage: '1',
-    multiLevel: false
+    multiLevel: false,
+    server: mockServer
   });
 
   assert.strictEqual(singleRes.success, true, 'Single level read must succeed');
@@ -82,7 +85,8 @@ async function runBomDisplayEnrichmentTests() {
     material: 'A1BH0214C',
     plant: '1012',
     bomUsage: '1',
-    multiLevel: true
+    multiLevel: true,
+    server: mockServer
   });
 
   assert.strictEqual(multiRes.success, true, 'Multi-level read must succeed');
@@ -119,10 +123,10 @@ async function runBomDisplayEnrichmentTests() {
   for (let i = 1; i <= 125; i++) {
     testMaterials.push(`MAT_BULK_TEST_${String(i).padStart(4, '0')}`);
   }
-  const maktResults = await batchQueryMakt(null, testMaterials, 'E');
+  const maktResults = await batchQueryMakt(null, testMaterials, 'E', mockServer);
   assert.strictEqual(Object.keys(maktResults).length, 125, 'All 125 materials processed by batchQueryMakt');
 
-  const subBomResults = await batchQuerySubBom(null, testMaterials, '1012');
+  const subBomResults = await batchQuerySubBom(null, testMaterials, '1012', mockServer);
   assert.ok(subBomResults instanceof Set, 'Sub-BOM results returned as Set');
   console.log('   ✓ Batch chunking in 25s handles 125 materials without error');
 
@@ -133,7 +137,8 @@ async function runBomDisplayEnrichmentTests() {
   const rawRead = await rfcReadBom({
     material: 'MAT-BOM-100',
     plant: '1000',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
 
   assert.strictEqual(rawRead.success, true);
@@ -147,7 +152,8 @@ async function runBomDisplayEnrichmentTests() {
   const rawExplode = await rfcExplodeBomHierarchy({
     material: 'MAT-BOM-100',
     plant: '1000',
-    bomUsage: '1'
+    bomUsage: '1',
+    server: mockServer
   });
 
   assert.strictEqual(rawExplode.success, true);
