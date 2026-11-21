@@ -68,6 +68,8 @@ backend/schema/grant_permissions_and_seed_admin.sql
 .temp/
 supabase/.temp/
 .temp_preview_test_build/
+.temp_test_build/
+frontend/src/.temp_test_build/
 
 # Playwright Test Artifacts
 playwright-report/
