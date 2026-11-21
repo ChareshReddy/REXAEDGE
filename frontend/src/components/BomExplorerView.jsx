@@ -723,12 +723,12 @@ export default function BomExplorerView({
                           minWidth: 100,
                           maxWidth: 120,
                           maxHeight: 200,
-                          borderRadius: 'var(--sap-radius-sm, 6px)',
+                          borderRadius: 'var(--sap-radius-sm)',
                           cursor: isLoading ? 'not-allowed' : 'pointer',
                           fontWeight: 600,
-                          color: 'var(--sap-primary, #02579A)',
-                          border: '1px solid var(--sap-border-color, #e2d8d8)',
-                          background: isLoading ? 'var(--sap-field-disabled-bg, #f8fafc)' : '#ffffff',
+                          color: 'var(--sap-primary)',
+                          border: '1px solid var(--sap-border-color)',
+                          background: isLoading ? 'var(--sap-disabled-bg)' : 'var(--color-surface)',
                           opacity: isLoading ? 0.7 : 1,
                           boxSizing: 'border-box'
                         }}
@@ -863,7 +863,7 @@ export default function BomExplorerView({
                               </span>
                             </td>
                           )}
-                          <td className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontWeight: 'var(--font-weight-code, 500)' }}>{item.itemNo || item.item || item.POSNR || (idx + 1) * 10}</td>
+                          <td className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono)', fontWeight: 'var(--font-weight-code)' }}>{item.itemNo || item.item || item.POSNR || (idx + 1) * 10}</td>
                           <td>
                             <div style={{ display: 'inline-flex', alignItems: 'center', paddingLeft: indentLevel * 20 }}>
                               {indentLevel > 0 && (
@@ -871,7 +871,7 @@ export default function BomExplorerView({
                                   └──
                                 </span>
                               )}
-                              <span className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontWeight: 'var(--font-weight-code, 500)' }}>{displayMat}</span>
+                              <span className="sap-col-code" style={{ fontFamily: 'var(--sap-font-mono)', fontWeight: 'var(--font-weight-code)' }}>{displayMat}</span>
                             </div>
                           </td>
                           <td

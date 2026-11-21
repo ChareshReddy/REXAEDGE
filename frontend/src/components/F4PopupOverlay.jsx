@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { createLayerId, popLayer, pushLayer } from '../utils/modalStack';
 import { NotificationPlacementProvider } from '../context/ToastContext';
 
 /**
@@ -9,6 +10,8 @@ import { NotificationPlacementProvider } from '../context/ToastContext';
  * 2. Clicking the backdrop does not steal focus or lose typed filters.
  * 3. Popups close only via: X button, Cancel (Esc) button, Escape key, or selection confirmation.
  * 4. When nested popups are open, clicking outside the top one does not close the lower one either.
+ * 5. Registers as the top popup layer while mounted, so an underlying Modal's Esc / Tab
+ *    handling stays inactive until this popup closes.
  */
 export default function F4PopupOverlay({
   children,
@@ -21,6 +24,15 @@ export default function F4PopupOverlay({
   ariaLabel,
   ...restProps
 }) {
+  const layerIdRef = useRef(null);
+  if (layerIdRef.current === null) layerIdRef.current = createLayerId('f4');
+
+  useEffect(() => {
+    const id = layerIdRef.current;
+    pushLayer(id);
+    return () => popLayer(id);
+  }, []);
+
   return (
     <div
       className={className}

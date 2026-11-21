@@ -81,28 +81,28 @@ export function BulkExecutionResultsView({
     displayRows.reduce((acc, r) => acc + (r?.componentsCount || r?.componentCount || 0), 0);
 
   // Banner configuration
-  let bannerBg = 'var(--color-success-bg, #ECFDF3)';
-  let bannerBorder = 'var(--color-success-border, #A6F4C5)';
-  let bannerColor = 'var(--color-success, #15803D)';
+  let bannerBg = 'var(--color-success-bg)';
+  let bannerBorder = 'var(--color-success-border)';
+  let bannerColor = 'var(--color-success)';
   let bannerTitle = mode === 'copy' ? 'Batch Copy Completed Successfully' : 'Batch Creation Completed Successfully';
   let bannerSummary = mode === 'copy'
     ? `Successfully copied ${successCount} BOM(s) across ${totalEntries} total entries.`
     : `Created ${successCount} BOM(s) and ${totalComponents} component(s) across ${totalEntries} total entries.`;
-  let bannerIcon = <CheckCircle2 size={24} style={{ color: 'var(--color-success, #15803D)', flexShrink: 0 }} />;
+  let bannerIcon = <CheckCircle2 size={24} style={{ color: 'var(--color-success)', flexShrink: 0 }} />;
 
   if (failedCount > 0) {
     if (successCount === 0) {
       // Red failure banner
-      bannerBg = 'var(--color-danger-bg, #FEF3F2)';
-      bannerBorder = 'var(--color-danger-border, #FECDCA)';
-      bannerColor = 'var(--color-danger, #B42318)';
-      bannerIcon = <AlertCircle size={24} style={{ color: 'var(--color-danger, #B42318)', flexShrink: 0 }} />;
+      bannerBg = 'var(--color-danger-bg)';
+      bannerBorder = 'var(--color-danger-border)';
+      bannerColor = 'var(--color-danger)';
+      bannerIcon = <AlertCircle size={24} style={{ color: 'var(--color-danger)', flexShrink: 0 }} />;
     } else {
       // Amber partial banner
-      bannerBg = 'var(--color-warning-bg, #FFFBEB)';
-      bannerBorder = 'var(--color-warning-border, #FDE68A)';
-      bannerColor = 'var(--color-warning, #D97706)';
-      bannerIcon = <AlertTriangle size={24} style={{ color: 'var(--color-warning, #D97706)', flexShrink: 0 }} />;
+      bannerBg = 'var(--color-warning-bg)';
+      bannerBorder = 'var(--color-warning-border)';
+      bannerColor = 'var(--color-warning)';
+      bannerIcon = <AlertTriangle size={24} style={{ color: 'var(--color-warning)', flexShrink: 0 }} />;
     }
     bannerTitle = mode === 'copy' ? 'Batch Copy Completed with Issues' : 'Batch Creation Completed with Issues';
     bannerSummary = mode === 'copy'
@@ -110,14 +110,14 @@ export function BulkExecutionResultsView({
       : `Created ${successCount} BOM(s); ${failedCount} failed${skippedCount > 0 ? `, ${skippedCount} skipped` : ''} out of ${totalEntries} total entries.`;
   } else if (skippedCount > 0) {
     // Blue info / skipped banner
-    bannerBg = 'var(--color-info-bg, #EEF4F9)';
-    bannerBorder = 'var(--color-info-border, #B3CDE0)';
-    bannerColor = 'var(--color-blue-600, #02579A)';
+    bannerBg = 'var(--color-info-bg)';
+    bannerBorder = 'var(--color-info-border)';
+    bannerColor = 'var(--color-blue-600)';
     bannerTitle = mode === 'copy' ? 'Batch Copy Completed with Skipped Rows' : 'Batch Creation Completed with Skipped Rows';
     bannerSummary = mode === 'copy'
       ? `Copied ${successCount} BOM(s); ${skippedCount} were skipped out of ${totalEntries} total entries.`
       : `Created ${successCount} BOM(s); ${skippedCount} were skipped out of ${totalEntries} total entries.`;
-    bannerIcon = <Info size={24} style={{ color: 'var(--color-blue-600, #02579A)', flexShrink: 0 }} />;
+    bannerIcon = <Info size={24} style={{ color: 'var(--color-blue-600)', flexShrink: 0 }} />;
   }
 
   const renderMessageCell = (row, rowKey, normStatus) => {
@@ -139,15 +139,15 @@ export function BulkExecutionResultsView({
                 alignItems: 'flex-start',
                 gap: 6,
                 padding: '3px 8px',
-                borderRadius: 'var(--radius-sm, 6px)',
-                borderLeft: severity === 'error' ? '3px solid var(--color-danger, #B42318)' : 'none',
+                borderRadius: 'var(--radius-sm)',
+                borderLeft: severity === 'error' ? '3px solid var(--color-danger)' : 'none',
                 backgroundColor:
                   severity === 'error'
-                    ? 'var(--color-danger-bg, #FEF3F2)'
+                    ? 'var(--color-danger-bg)'
                     : severity === 'warning'
-                    ? 'var(--color-warning-bg, #FFFBEB)'
+                    ? 'var(--color-warning-bg)'
                     : severity === 'skipped'
-                    ? 'var(--color-blue-50, #EEF4F9)'
+                    ? 'var(--color-blue-50)'
                     : 'transparent',
                 fontFamily: 'var(--font-sans)',
                 fontSize: 12,
@@ -156,15 +156,15 @@ export function BulkExecutionResultsView({
             >
               <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
                 {severity === 'error' ? (
-                  <AlertCircle size={13} style={{ color: 'var(--color-danger, #B42318)' }} />
+                  <AlertCircle size={13} style={{ color: 'var(--color-danger)' }} />
                 ) : severity === 'warning' ? (
-                  <AlertTriangle size={13} style={{ color: 'var(--color-warning, #D97706)' }} />
+                  <AlertTriangle size={13} style={{ color: 'var(--color-warning)' }} />
                 ) : severity === 'skipped' ? (
-                  <MinusCircle size={13} style={{ color: 'var(--color-blue-700, #034375)' }} />
+                  <MinusCircle size={13} style={{ color: 'var(--color-blue-700)' }} />
                 ) : normStatus === 'CREATED' || normStatus === 'COPIED' || normStatus === 'SUCCESS' ? (
-                  <CheckCircle2 size={13} style={{ color: 'var(--color-success, #15803D)' }} />
+                  <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} />
                 ) : (
-                  <Info size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
+                  <Info size={13} style={{ color: 'var(--color-text-muted)' }} />
                 )}
               </span>
               <span
@@ -176,12 +176,12 @@ export function BulkExecutionResultsView({
                   fontFamily: 'var(--font-sans)',
                   color:
                     severity === 'error'
-                      ? 'var(--color-danger, #B42318)'
+                      ? 'var(--color-danger)'
                       : severity === 'warning'
-                      ? 'var(--color-text, #0F2742)'
+                      ? 'var(--color-text)'
                       : severity === 'skipped'
-                      ? 'var(--color-blue-700, #034375)'
-                      : 'var(--color-text-secondary, #4A5F77)'
+                      ? 'var(--color-blue-700)'
+                      : 'var(--color-text-secondary)'
                 }}
               >
                 {renderMsgContent(m.text)}
@@ -200,7 +200,7 @@ export function BulkExecutionResultsView({
               marginTop: 2,
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--color-primary, var(--sap-brand, #02579A))',
+              color: 'var(--color-primary, var(--color-blue-600, var(--color-blue-600)))',
               background: 'none',
               border: 'none',
               padding: 0,
@@ -219,8 +219,8 @@ export function BulkExecutionResultsView({
               display: 'inline-block',
               marginTop: 4,
               fontSize: 11,
-              fontFamily: 'var(--font-mono, monospace)',
-              color: 'var(--color-blue-700, #034375)'
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--color-blue-700)'
             }}
           >
             SAP BOM: {row.bomNumber}
@@ -238,8 +238,8 @@ export function BulkExecutionResultsView({
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        gap: 'var(--space-24, 24px)',
-        paddingBottom: 'var(--space-24, 24px)'
+        gap: 'var(--space-24)',
+        paddingBottom: 'var(--space-24)'
       }}
     >
       {/* 1. Result Banner */}
@@ -251,7 +251,7 @@ export function BulkExecutionResultsView({
           alignItems: 'center',
           gap: 12,
           padding: '16px 20px',
-          borderRadius: 'var(--radius-lg, 12px)',
+          borderRadius: 'var(--radius-lg)',
           background: bannerBg,
           border: `1px solid ${bannerBorder}`,
           color: bannerColor,
@@ -261,7 +261,7 @@ export function BulkExecutionResultsView({
         {bannerIcon}
         <div>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'inherit' }}>{bannerTitle}</h3>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text, #0F2742)' }}>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text)' }}>
             {bannerSummary}
           </p>
         </div>
@@ -274,41 +274,41 @@ export function BulkExecutionResultsView({
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-          gap: 'var(--space-16, 16px)'
+          gap: 'var(--space-16)'
         }}
       >
         <div className="sap-card rx-stat-card" data-testid="stat-card-success" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #7A8CA3)', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>
             {mode === 'copy' ? 'Copied' : 'BOMs Created'}
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-success, #15803D)' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--sap-success)' }}>
             {successCount}
           </div>
         </div>
 
         <div className="sap-card rx-stat-card" data-testid="stat-card-components" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #7A8CA3)', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>
             Total Components
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-blue-600, #02579A)' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-blue-600)' }}>
             {totalComponents}
           </div>
         </div>
 
         <div className="sap-card rx-stat-card" data-testid="stat-card-skipped" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #7A8CA3)', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>
             Skipped
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-secondary, #4A5F77)' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
             {skippedCount}
           </div>
         </div>
 
         <div className="sap-card rx-stat-card" data-testid="stat-card-failed" style={{ padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #7A8CA3)', marginBottom: 4 }}>
+          <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>
             Failed
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-danger, #B42318)' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-danger)' }}>
             {failedCount}
           </div>
         </div>
@@ -333,10 +333,10 @@ export function BulkExecutionResultsView({
                   fontWeight: 500,
                   height: 32,
                   padding: '0 12px',
-                  backgroundColor: '#FFFFFF',
-                  color: 'var(--color-navy-900, #00204E)',
-                  border: '1px solid var(--color-blue-400, #6699B8)',
-                  borderRadius: 'var(--radius-sm, 4px)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-navy-900)',
+                  border: '1px solid var(--color-blue-400)',
+                  borderRadius: 'var(--radius-sm)',
                   boxShadow: 'none'
                 }}
               >
@@ -357,10 +357,10 @@ export function BulkExecutionResultsView({
                   fontWeight: 500,
                   height: 32,
                   padding: '0 12px',
-                  backgroundColor: '#FFFFFF',
-                  color: 'var(--color-navy-900, #00204E)',
-                  border: '1px solid var(--color-blue-400, #6699B8)',
-                  borderRadius: 'var(--radius-sm, 4px)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-navy-900)',
+                  border: '1px solid var(--color-blue-400)',
+                  borderRadius: 'var(--radius-sm)',
                   boxShadow: 'none'
                 }}
               >
@@ -389,7 +389,7 @@ export function BulkExecutionResultsView({
                   <col style={{ width: 220 }} />
                   <col style={{ width: 220 }} />
                   <col style={{ width: 65 }} />
-                  <col style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140 }} />
+                  <col style={{ width: 'var(--table-col-status-min-width)', minWidth: 140 }} />
                   <col style={{ width: 'auto' }} />
                 </colgroup>
                 <thead>
@@ -398,7 +398,7 @@ export function BulkExecutionResultsView({
                     <th style={{ width: 220 }}>Source BOM</th>
                     <th style={{ width: 220 }}>Target BOM</th>
                     <th style={{ width: 65, textAlign: 'center' }}>Items</th>
-                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140, textAlign: 'center' }}>Status</th>
+                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width)', minWidth: 140, textAlign: 'center' }}>Status</th>
                     <th style={{ width: 'auto' }}>Message / Details</th>
                   </tr>
                 </thead>
@@ -409,13 +409,13 @@ export function BulkExecutionResultsView({
 
                     return (
                       <tr key={rowKey} data-testid={`execution-row-${idx}`}>
-                        <td style={{ textAlign: 'center', color: 'var(--sap-text-muted, #7A8CA3)', verticalAlign: 'top', paddingTop: 10, fontWeight: 600, fontSize: 11 }}>
+                        <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)', verticalAlign: 'top', paddingTop: 10, fontWeight: 600, fontSize: 11 }}>
                           {idx + 1}
                         </td>
                         <td style={{ verticalAlign: 'top', paddingTop: 10 }}>
                           <div className="bom-identity-cell" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span className="mat-pill font-semibold" style={{ wordBreak: 'break-all' }}>{row.sourceMaterial}</span>
-                            <span className="sub-detail" style={{ fontSize: 11, color: 'var(--color-text-secondary, #4A5F77)' }}>
+                            <span className="sub-detail" style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
                               Plant: <strong>{row.sourcePlant}</strong> | Use: {row.sourceUsage} | Alt: <strong>{row.sourceAltBom}</strong>
                             </span>
                           </div>
@@ -423,8 +423,8 @@ export function BulkExecutionResultsView({
                         <td style={{ verticalAlign: 'top', paddingTop: 10 }}>
                           <div className="bom-identity-cell" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span className="mat-pill font-semibold" style={{ wordBreak: 'break-all' }}>{row.targetMaterial}</span>
-                            <span className="sub-detail" style={{ fontSize: 11, color: 'var(--color-text-secondary, #4A5F77)' }}>
-                              Plant: <strong>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--color-blue-600, #02579A)' }}>{row.targetAltBom}</strong>
+                            <span className="sub-detail" style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                              Plant: <strong>{row.targetPlant}</strong> | Use: {row.targetUsage} | Alt: <strong style={{ color: 'var(--color-blue-600)' }}>{row.targetAltBom}</strong>
                             </span>
                           </div>
                         </td>
@@ -435,9 +435,9 @@ export function BulkExecutionResultsView({
                               style={{
                                 display: 'inline-block',
                                 padding: '1px 6px',
-                                borderRadius: 'var(--radius-sm, 6px)',
-                                background: 'var(--color-blue-50, #EEF4F9)',
-                                color: 'var(--color-blue-700, #034375)',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--color-blue-50)',
+                                color: 'var(--color-blue-700)',
                                 fontSize: 11,
                                 fontWeight: 600
                               }}
@@ -445,7 +445,7 @@ export function BulkExecutionResultsView({
                               {row.componentCount}
                             </span>
                           ) : (
-                            <span style={{ color: 'var(--color-text-muted, #7A8CA3)' }}>-</span>
+                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                           )}
                         </td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }} className="col-status">
@@ -478,7 +478,7 @@ export function BulkExecutionResultsView({
                   <col style={{ width: 55 }} />
                   <col style={{ width: 50 }} />
                   <col style={{ width: 120 }} />
-                  <col style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140 }} />
+                  <col style={{ width: 'var(--table-col-status-min-width)', minWidth: 140 }} />
                   <col style={{ width: 'auto' }} />
                 </colgroup>
                 <thead>
@@ -489,7 +489,7 @@ export function BulkExecutionResultsView({
                     <th style={{ width: 55, textAlign: 'center' }}>Usage</th>
                     <th style={{ width: 50, textAlign: 'center' }}>Alt</th>
                     <th style={{ width: 120 }}>BOM Number</th>
-                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width, 140px)', minWidth: 140, textAlign: 'center' }}>Status</th>
+                    <th className="col-status" style={{ width: 'var(--table-col-status-min-width)', minWidth: 140, textAlign: 'center' }}>Status</th>
                     <th style={{ width: 'auto' }}>Message / Details</th>
                   </tr>
                 </thead>
@@ -500,7 +500,7 @@ export function BulkExecutionResultsView({
 
                     return (
                       <tr key={rowKey} data-testid={`execution-row-${idx}`}>
-                        <td style={{ textAlign: 'center', color: 'var(--sap-text-muted, #7A8CA3)', verticalAlign: 'top', paddingTop: 10 }}>
+                        <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)', verticalAlign: 'top', paddingTop: 10 }}>
                           {row.sequenceNum || idx + 1}
                         </td>
                         <td style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: 10, wordBreak: 'break-all' }}>
@@ -509,7 +509,7 @@ export function BulkExecutionResultsView({
                         <td style={{ verticalAlign: 'top', paddingTop: 10 }}>{row.plant}</td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.bomUsage}</td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 10 }}>{row.alternativeBom}</td>
-                        <td style={{ verticalAlign: 'top', paddingTop: 10, fontFamily: 'var(--font-mono, monospace)', fontSize: 12 }}>
+                        <td style={{ verticalAlign: 'top', paddingTop: 10, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                           {row.bomNumber || '-'}
                         </td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: 8 }} className="col-status">
@@ -545,7 +545,7 @@ export function BulkExecutionResultsView({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 'var(--space-12, 12px)'
+          gap: 'var(--space-12)'
         }}
       >
         <button
@@ -553,10 +553,10 @@ export function BulkExecutionResultsView({
           className="sap-button primary"
           onClick={onBack}
           style={{
-            height: 'var(--size-button-height, 40px)',
+            height: 'var(--size-button-height)',
             padding: '0 20px',
-            fontSize: 'var(--font-size-13, 13px)',
-            borderRadius: 'var(--radius-md, 8px)'
+            fontSize: 'var(--font-size-13)',
+            borderRadius: 'var(--radius-md)'
           }}
         >
           Return to Launchpad
@@ -566,10 +566,10 @@ export function BulkExecutionResultsView({
           className="sap-button"
           onClick={onReset}
           style={{
-            height: 'var(--size-button-height, 40px)',
+            height: 'var(--size-button-height)',
             padding: '0 20px',
-            fontSize: 'var(--font-size-13, 13px)',
-            borderRadius: 'var(--radius-md, 8px)'
+            fontSize: 'var(--font-size-13)',
+            borderRadius: 'var(--radius-md)'
           }}
         >
           Upload Another File

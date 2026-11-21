@@ -37,9 +37,9 @@ export function BulkWorkflowSteps({
       aria-label="Workflow progress"
       style={{
         width: '100%',
-        backgroundColor: 'var(--color-surface, #FFFFFF)',
-        border: '1px solid var(--color-border, #D9E2EC)',
-        borderRadius: 'var(--radius-lg, 12px)',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)',
         padding: '14px 24px',
         boxSizing: 'border-box',
         display: 'flex',
@@ -74,32 +74,32 @@ export function BulkWorkflowSteps({
                   height: 32,
                   minWidth: 32,
                   minHeight: 32,
-                  borderRadius: 'var(--radius-full, 9999px)',
+                  borderRadius: 'var(--radius-full)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 'var(--font-size-13, 13px)',
+                  fontSize: 'var(--font-size-13)',
                   fontWeight: 600,
                   fontFamily: 'var(--font-sans)',
                   boxSizing: 'border-box',
-                  transition: 'all var(--transition-normal, 200ms ease)',
+                  transition: 'all var(--transition-normal)',
                   ...(isActive
                     ? {
-                        backgroundColor: 'var(--color-blue-600, #02579A)',
-                        color: 'var(--color-text-inverse, #FFFFFF)',
-                        boxShadow: '0 0 0 4px var(--color-blue-50, #EEF4F9)',
+                        backgroundColor: 'var(--color-blue-600)',
+                        color: 'var(--color-text-inverse)',
+                        boxShadow: '0 0 0 4px var(--color-blue-50)',
                         border: 'none'
                       }
                     : isComplete
                     ? {
-                        backgroundColor: 'var(--color-blue-600, #02579A)',
-                        color: 'var(--color-text-inverse, #FFFFFF)',
+                        backgroundColor: 'var(--color-blue-600)',
+                        color: 'var(--color-text-inverse)',
                         border: 'none'
                       }
                     : {
-                        backgroundColor: 'var(--color-surface, #FFFFFF)',
-                        border: '2px solid var(--color-border, #D9E2EC)',
-                        color: 'var(--color-text-muted, #7A8CA3)'
+                        backgroundColor: 'var(--color-surface)',
+                        border: '2px solid var(--color-border)',
+                        color: 'var(--color-text-muted)'
                       })
                 }}
               >
@@ -110,13 +110,13 @@ export function BulkWorkflowSteps({
               <span
                 className="rx-step-label"
                 style={{
-                  fontSize: 'var(--font-size-14, 14px)',
+                  fontSize: 'var(--font-size-14)',
                   fontWeight: isActive ? 600 : isComplete ? 500 : 400,
                   color: isActive
-                    ? 'var(--color-navy-900, #00204E)'
+                    ? 'var(--color-navy-900)'
                     : isComplete
-                    ? 'var(--color-text, #0F2742)'
-                    : 'var(--color-text-muted, #7A8CA3)',
+                    ? 'var(--color-text)'
+                    : 'var(--color-text-muted)',
                   whiteSpace: 'nowrap',
                   fontFamily: 'var(--font-sans)'
                 }}
@@ -135,9 +135,9 @@ export function BulkWorkflowSteps({
                   minWidth: 24,
                   backgroundColor:
                     activeStep > s.number
-                      ? 'var(--color-blue-600, #02579A)'
-                      : 'var(--color-border, #D9E2EC)',
-                  transition: 'background-color var(--transition-normal, 200ms ease)'
+                      ? 'var(--color-blue-600)'
+                      : 'var(--color-border)',
+                  transition: 'background-color var(--transition-normal)'
                 }}
               />
             )}
@@ -176,7 +176,7 @@ export default function BulkLayout({
       style={{
         width: '100%',
         minHeight: '100%',
-        backgroundColor: 'var(--color-page-bg, #F5F8FB)',
+        backgroundColor: 'var(--color-page-bg)',
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -203,8 +203,8 @@ export default function BulkLayout({
           maxWidth: 1440,
           margin: '0 auto',
           boxSizing: 'border-box',
-          paddingLeft: 'var(--page-gutter, 32px)',
-          paddingRight: 'var(--page-gutter, 32px)',
+          paddingLeft: 'var(--page-gutter)',
+          paddingRight: 'var(--page-gutter)',
           paddingTop: 20,
           paddingBottom: 64,
           display: 'flex',

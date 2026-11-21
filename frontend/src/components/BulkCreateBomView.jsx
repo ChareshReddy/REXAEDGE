@@ -885,10 +885,10 @@ export default function BulkCreateBomView({
                     style={{
                       padding: '12px 16px',
                       marginBottom: 16,
-                      borderRadius: 'var(--radius-md, 8px)',
-                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                      border: '1px solid var(--color-danger-border, #FECDCA)',
-                      color: 'var(--color-danger, #B42318)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      color: 'var(--color-danger)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -896,7 +896,7 @@ export default function BulkCreateBomView({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger, #B42318)' }} />
+                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger)' }} />
                       <span style={{ fontSize: '13px', fontWeight: 500 }}>
                         The job was interrupted. Please upload again.
                       </span>
@@ -906,9 +906,9 @@ export default function BulkCreateBomView({
                       className="rx-btn rx-btn-secondary rx-btn-sm"
                       onClick={handleReset}
                       style={{
-                        height: 'var(--size-button-sm-height, 32px)',
+                        height: 'var(--size-button-sm-height)',
                         padding: '0 12px',
-                        borderRadius: 'var(--radius-md, 8px)'
+                        borderRadius: 'var(--radius-md)'
                       }}
                     >
                       Upload Again
@@ -922,10 +922,10 @@ export default function BulkCreateBomView({
                     style={{
                       padding: '12px 16px',
                       marginBottom: 16,
-                      borderRadius: 'var(--radius-md, 8px)',
-                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                      border: '1px solid var(--color-danger-border, #FECDCA)',
-                      color: 'var(--color-danger, #B42318)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      color: 'var(--color-danger)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -941,9 +941,9 @@ export default function BulkCreateBomView({
                       className="rx-btn rx-btn-secondary rx-btn-sm"
                       onClick={() => setJobError('')}
                       style={{
-                        height: 'var(--size-button-sm-height, 32px)',
+                        height: 'var(--size-button-sm-height)',
                         padding: '0 12px',
-                        borderRadius: 'var(--radius-md, 8px)'
+                        borderRadius: 'var(--radius-md)'
                       }}
                     >
                       Dismiss
@@ -999,7 +999,7 @@ export default function BulkCreateBomView({
                         padding: '8px 4px',
                         fontSize: 12.5,
                         color: 'var(--sap-text-muted)',
-                        borderBottom: '1px solid var(--sap-border-subtle, #e2e8f0)',
+                        borderBottom: '1px solid var(--sap-border-subtle)',
                         marginBottom: 14
                       }}
                     >
@@ -1040,8 +1040,8 @@ export default function BulkCreateBomView({
                       height: 'auto',
                       overflowX: 'auto',
                       overflowY: 'auto',
-                      border: '1px solid var(--color-border, #D9E2EC)',
-                      borderRadius: 'var(--radius-md, 8px)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
                       boxSizing: 'border-box'
                     }}
                   >
@@ -1066,7 +1066,7 @@ export default function BulkCreateBomView({
                         <col style={{ width: '4%' }} />
                         <col style={{ width: '16%' }} />
                         <col style={{ width: '6%' }} />
-                        <col style={{ width: '22%', minWidth: 'var(--table-col-status-min-width, 140px)' }} />
+                        <col style={{ width: '22%', minWidth: 'var(--table-col-status-min-width)' }} />
                       </colgroup>
                       <thead>
                         <tr style={{ whiteSpace: 'nowrap', backgroundColor: 'var(--table-header-bg)' }}>
@@ -1083,13 +1083,13 @@ export default function BulkCreateBomView({
                           <th className="col-item-cat col-cat" title="Item Category" style={{ width: '4%', textAlign: 'center', padding: '6px 4px', whiteSpace: 'nowrap' }}>Cat</th>
                           <th className="col-component" title="Component Material" style={{ width: '16%', textAlign: 'left', padding: '6px 8px', whiteSpace: 'nowrap' }}>Component</th>
                           <th className="col-qty" title="Component Quantity" style={{ width: '6%', textAlign: 'right', padding: '6px 6px', whiteSpace: 'nowrap' }}>Qty</th>
-                          <th className="col-result" title="Validation Result" style={{ width: '22%', minWidth: 'var(--table-col-status-min-width, 140px)', textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
+                          <th className="col-result" title="Validation Result" style={{ width: '22%', minWidth: 'var(--table-col-status-min-width)', textAlign: 'center', padding: '6px 6px', whiteSpace: 'nowrap' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredBoms.length === 0 ? (
                           <tr>
-                            <td colSpan={11} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                            <td colSpan={11} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary)' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: '13px', fontWeight: 500 }}>No rows match this filter.</span>
                                 <button
@@ -1103,7 +1103,7 @@ export default function BulkCreateBomView({
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
-                                    color: 'var(--color-blue-600, #02579A)',
+                                    color: 'var(--color-blue-600)',
                                     textDecoration: 'underline',
                                     cursor: 'pointer',
                                     fontSize: '12px',
@@ -1137,7 +1137,7 @@ export default function BulkCreateBomView({
                                     <tr
                                       key={`bom-${bomKey}-comp-0`}
                                       className="bom-group-first-row component-row"
-                                      style={{ borderTop: '2px solid var(--sap-border, #cbd5e1)' }}
+                                      style={{ borderTop: '2px solid var(--sap-border)' }}
                                     >
                                       {/* 1. Seq */}
                                       <td
@@ -1148,8 +1148,8 @@ export default function BulkCreateBomView({
                                           color: 'var(--sap-text-muted)',
                                           fontWeight: 600,
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1170,8 +1170,8 @@ export default function BulkCreateBomView({
                                           whiteSpace: 'nowrap',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           textAlign: 'left'
                                         }}
                                       >
@@ -1189,8 +1189,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1205,8 +1205,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1221,8 +1221,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1236,8 +1236,8 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1252,8 +1252,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'right',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 6px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1268,8 +1268,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'center',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1282,8 +1282,8 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           padding: '6px 4px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1302,8 +1302,8 @@ export default function BulkCreateBomView({
                                           whiteSpace: 'nowrap',
                                           overflow: 'hidden',
                                           textOverflow: 'ellipsis',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           textAlign: 'left'
                                         }}
                                       >
@@ -1319,8 +1319,8 @@ export default function BulkCreateBomView({
                                           textAlign: 'right',
                                           fontVariantNumeric: 'tabular-nums',
                                           padding: '6px 6px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           whiteSpace: 'nowrap'
                                         }}
                                       >
@@ -1335,11 +1335,11 @@ export default function BulkCreateBomView({
                                         style={{
                                           textAlign: 'center',
                                           padding: '6px 6px',
-                                          border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                          background: '#ffffff',
+                                          border: '1px solid var(--sap-border-subtle)',
+                                          background: 'var(--color-surface)',
                                           verticalAlign: 'middle',
                                           boxSizing: 'border-box',
-                                          minWidth: 'var(--table-col-status-min-width, 140px)',
+                                          minWidth: 'var(--table-col-status-min-width)',
                                           overflow: 'visible',
                                           textOverflow: 'clip',
                                           whiteSpace: 'nowrap'
@@ -1362,8 +1362,8 @@ export default function BulkCreateBomView({
                                       style={{
                                         textAlign: 'center',
                                         padding: '6px 4px',
-                                        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                        background: '#ffffff',
+                                        border: '1px solid var(--sap-border-subtle)',
+                                        background: 'var(--color-surface)',
                                         whiteSpace: 'nowrap'
                                       }}
                                     >
@@ -1383,8 +1383,8 @@ export default function BulkCreateBomView({
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
-                                        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                        background: '#ffffff',
+                                        border: '1px solid var(--sap-border-subtle)',
+                                        background: 'var(--color-surface)',
                                         textAlign: 'left'
                                       }}
                                     >
@@ -1400,8 +1400,8 @@ export default function BulkCreateBomView({
                                         textAlign: 'right',
                                         fontVariantNumeric: 'tabular-nums',
                                         padding: '6px 6px',
-                                        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-                                        background: '#ffffff',
+                                        border: '1px solid var(--sap-border-subtle)',
+                                        background: 'var(--color-surface)',
                                         whiteSpace: 'nowrap'
                                       }}
                                     >
@@ -1431,7 +1431,7 @@ export default function BulkCreateBomView({
                 <div
                   className="bulk-preview-sticky-footer sap-card-action-row"
                   style={{
-                    borderTop: '1px solid var(--sap-border, #D9E2EC)',
+                    borderTop: '1px solid var(--sap-border)',
                     paddingTop: 16,
                     marginTop: 16,
                     display: 'flex',
@@ -1472,7 +1472,7 @@ export default function BulkCreateBomView({
                       className="sap-button"
                       disabled={isLocked}
                       onClick={isLocked ? undefined : handleReset}
-                      style={{ height: 'var(--size-button-height, 40px)', padding: '0 18px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
+                      style={{ height: 'var(--size-button-height)', padding: '0 18px', fontSize: 'var(--font-size-13)', borderRadius: 'var(--radius-md)' }}
                     >
                       Clear & Upload Another
                     </button>
@@ -1483,13 +1483,13 @@ export default function BulkCreateBomView({
                       onClick={handleValidateWithSap}
                       disabled={isLocked || allBoms.length === 0}
                       style={{
-                        height: 'var(--size-button-height, 40px)',
+                        height: 'var(--size-button-height)',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
                         padding: '0 20px',
-                        fontSize: 'var(--font-size-13, 13px)',
-                        borderRadius: 'var(--radius-md, 8px)'
+                        fontSize: 'var(--font-size-13)',
+                        borderRadius: 'var(--radius-md)'
                       }}
                     >
                       {isValidating ? (
@@ -1510,7 +1510,7 @@ export default function BulkCreateBomView({
                       className="sap-button primary create-ready-boms-btn"
                       disabled={!hasValidated || readyCount === 0 || isLocked}
                       onClick={handleOpenConfirm}
-                      style={{ height: 'var(--size-button-height, 40px)', padding: '0 24px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)', fontWeight: 600 }}
+                      style={{ height: 'var(--size-button-height)', padding: '0 24px', fontSize: 'var(--font-size-13)', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
                     >
                       {isExecuting ? (
                         <>
@@ -1563,7 +1563,7 @@ export default function BulkCreateBomView({
             title={`Validation Issues · ${errorPopoverBom.material}`}
             subtitle={`Plant ${errorPopoverBom.plant || ''}${errorPopoverBom.bomUsage ? ` · Usage ${errorPopoverBom.bomUsage}` : ''}`}
             icon={AlertCircle}
-            iconColor="var(--color-danger, #B42318)"
+            iconColor="var(--color-danger)"
             maxWidth={520}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
@@ -1577,11 +1577,11 @@ export default function BulkCreateBomView({
                       alignItems: 'flex-start',
                       gap: 8,
                       padding: '10px 12px',
-                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                      border: '1px solid var(--color-danger-border, #FECDCA)',
-                      borderRadius: 'var(--radius-md, 8px)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      borderRadius: 'var(--radius-md)',
                       fontSize: '12.5px',
-                      color: 'var(--color-danger, #B42318)',
+                      color: 'var(--color-danger)',
                       lineHeight: 1.4
                     }}
                   >

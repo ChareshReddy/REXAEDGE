@@ -406,7 +406,7 @@ export default function AdminActivityLogsView({
           flexWrap: 'wrap',
           gap: 12,
           paddingBottom: 8,
-          borderBottom: '1px solid var(--color-border, #e2e8f0)'
+          borderBottom: '1px solid var(--color-border)'
         }}
       >
         <div className="sap-admin-subtabs-row" style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
@@ -419,12 +419,12 @@ export default function AdminActivityLogsView({
               gap: 6,
               padding: '6px 2px 8px',
               border: 'none',
-              borderBottom: activeSubTab === 'audit' ? '2px solid #02579A' : '2px solid transparent',
+              borderBottom: activeSubTab === 'audit' ? '2px solid var(--color-blue-600)' : '2px solid transparent',
               borderRadius: 0,
               fontSize: '13px',
               fontWeight: 600,
               backgroundColor: 'transparent',
-              color: activeSubTab === 'audit' ? '#02579A' : '#64748b',
+              color: activeSubTab === 'audit' ? 'var(--color-blue-600)' : 'var(--color-text-secondary)',
               cursor: 'pointer'
             }}
           >
@@ -441,12 +441,12 @@ export default function AdminActivityLogsView({
               gap: 6,
               padding: '6px 2px 8px',
               border: 'none',
-              borderBottom: activeSubTab === 'errors' ? '2px solid #02579A' : '2px solid transparent',
+              borderBottom: activeSubTab === 'errors' ? '2px solid var(--color-blue-600)' : '2px solid transparent',
               borderRadius: 0,
               fontSize: '13px',
               fontWeight: 600,
               backgroundColor: 'transparent',
-              color: activeSubTab === 'errors' ? '#02579A' : '#64748b',
+              color: activeSubTab === 'errors' ? 'var(--color-blue-600)' : 'var(--color-text-secondary)',
               cursor: 'pointer'
             }}
           >
@@ -472,8 +472,8 @@ export default function AdminActivityLogsView({
               fontWeight: 600,
               borderRadius: 6,
               border: 'none',
-              backgroundColor: 'var(--sap-btn-primary-bg, #02579A)',
-              color: '#ffffff',
+              backgroundColor: 'var(--sap-btn-primary-bg)',
+              color: 'var(--color-text-inverse)',
               cursor: (isExporting || isNotConfigured || totalCount === 0) ? 'not-allowed' : 'pointer',
               opacity: (isExporting || isNotConfigured || totalCount === 0) ? 0.6 : 1
             }}
@@ -502,21 +502,21 @@ export default function AdminActivityLogsView({
             display: 'flex',
             alignItems: 'flex-start',
             gap: 12,
-            backgroundColor: 'var(--color-amber-50, #fffbeb)',
-            border: '1px solid var(--color-amber-300, #fcd34d)',
+            backgroundColor: 'var(--color-warning-bg)',
+            border: '1px solid var(--color-warning-border)',
             borderRadius: 8,
             padding: '16px 20px',
-            color: 'var(--color-amber-900, #78350f)'
+            color: 'var(--color-warning-strong)'
           }}
         >
-          <AlertTriangle size={22} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-amber-700, #b45309)' }} />
+          <AlertTriangle size={22} style={{ flexShrink: 0, marginTop: 2, color: 'var(--color-warning-text)' }} />
           <div style={{ flex: 1, fontSize: 13, lineHeight: 1.6 }}>
             <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14 }}>
               Logs are not set up yet
             </div>
             <div>
               Run the database migration in{' '}
-              <code style={{ background: '#fef3c7', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
+              <code style={{ background: 'var(--color-warning-bg)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace' }}>
                 supabase/migrations/20261030_audit_and_error_logs.sql
               </code>{' '}
               against your database to enable persistent logging. In the meantime, logs are silently captured in local fallback files.
@@ -533,9 +533,9 @@ export default function AdminActivityLogsView({
                 borderRadius: 6,
                 fontSize: 12,
                 fontWeight: 600,
-                backgroundColor: '#ffffff',
-                border: '1px solid var(--color-amber-300, #fcd34d)',
-                color: 'var(--color-amber-900, #78350f)',
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-warning-border)',
+                color: 'var(--color-warning-strong)',
                 cursor: 'pointer'
               }}
             >
@@ -547,10 +547,10 @@ export default function AdminActivityLogsView({
       )}
 
       {/* Filter Bar */}
-      <div className="sap-logs-filter-bar rx-card" style={{ padding: "var(--space-20) var(--space-24)", marginBottom: "var(--space-16)", backgroundColor: "var(--color-surface, #FFFFFF)", border: "1px solid var(--color-border, #D9E2EC)", borderRadius: "var(--radius-lg, 12px)" }}>
+      <div className="sap-logs-filter-bar rx-card" style={{ padding: "var(--space-20) var(--space-24)", marginBottom: "var(--space-16)", backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)" }}>
         {/* Date Range Preset */}
         <div className="sap-logs-filter-item sap-logs-filter-item-date">
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
             Date Range
           </label>
           <select
@@ -559,7 +559,7 @@ export default function AdminActivityLogsView({
               setDatePreset(e.target.value);
               setPage(1);
             }}
-            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
           >
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
@@ -574,25 +574,25 @@ export default function AdminActivityLogsView({
         {datePreset === 'custom' && (
           <>
             <div className="sap-logs-filter-item sap-logs-filter-item-date">
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
                 Start Date
               </label>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
-                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
               />
             </div>
             <div className="sap-logs-filter-item sap-logs-filter-item-date">
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
                 End Date
               </label>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
-                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+                className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
               />
             </div>
           </>
@@ -600,7 +600,7 @@ export default function AdminActivityLogsView({
 
         {/* User Email Filter */}
         <div className="sap-logs-filter-item">
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
             User Email
           </label>
           <input
@@ -608,20 +608,20 @@ export default function AdminActivityLogsView({
             placeholder="Filter by user..."
             value={userEmailFilter}
             onChange={(e) => { setUserEmailFilter(e.target.value); setPage(1); }}
-            className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+            className="rx-input" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
           />
         </div>
 
         {/* Action (Audit) or Source (Errors) */}
         {activeSubTab === 'audit' ? (
           <div className="sap-logs-filter-item">
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
               Action Type
             </label>
             <select
               value={actionFilter}
               onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
             >
               <option value="">All Actions</option>
               <option value="auth.login">auth.login</option>
@@ -645,13 +645,13 @@ export default function AdminActivityLogsView({
           </div>
         ) : (
           <div className="sap-logs-filter-item">
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
               Source
             </label>
             <select
               value={sourceFilter}
               onChange={(e) => { setSourceFilter(e.target.value); setPage(1); }}
-              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
             >
               <option value="">All Sources</option>
               <option value="backend">backend</option>
@@ -663,13 +663,13 @@ export default function AdminActivityLogsView({
 
         {/* Server Filter */}
         <div className="sap-logs-filter-item">
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
             SAP Server
           </label>
           <select
             value={serverFilter}
             onChange={(e) => { setServerFilter(e.target.value); setPage(1); }}
-            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+            className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
           >
             <option value="">All Servers</option>
             {activeServerList.map((s) => (
@@ -683,13 +683,13 @@ export default function AdminActivityLogsView({
         {/* Status (Audit) or HTTP Status (Errors) */}
         {activeSubTab === 'audit' ? (
           <div className="sap-logs-filter-item">
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
               Status
             </label>
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
             >
               <option value="">All Status</option>
               <option value="success">Success</option>
@@ -698,13 +698,13 @@ export default function AdminActivityLogsView({
           </div>
         ) : (
           <div className="sap-logs-filter-item">
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #64748b)', marginBottom: 4, lineHeight: '14px' }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 4, lineHeight: '14px' }}>
               HTTP Status
             </label>
             <select
               value={httpStatusFilter}
               onChange={(e) => { setHttpStatusFilter(e.target.value); setPage(1); }}
-              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height, 40px)', boxSizing: 'border-box' }}
+              className="rx-select" style={{ width: '100%', height: 'var(--size-form-input-height)', boxSizing: 'border-box' }}
             >
               <option value="">All Status Codes</option>
               <option value="400">400 (Bad Request)</option>
@@ -727,9 +727,9 @@ export default function AdminActivityLogsView({
               height: 32,
               padding: '0 12px',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              backgroundColor: '#ffffff',
-              color: 'var(--color-text-muted, #64748b)',
+              border: '1px solid var(--color-border-input)',
+              backgroundColor: 'var(--color-surface)',
+              color: 'var(--color-text-muted)',
               fontSize: 12,
               fontWeight: 500,
               cursor: 'pointer',
@@ -784,9 +784,9 @@ export default function AdminActivityLogsView({
           overflowY: 'auto',
           height: 'calc(100vh - 350px)',
           minHeight: 400,
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--color-surface)',
           borderRadius: 8,
-          border: '1px solid var(--color-border, #e2e8f0)',
+          border: '1px solid var(--color-border)',
           position: 'relative',
           boxSizing: 'border-box'
         }}
@@ -856,14 +856,14 @@ export default function AdminActivityLogsView({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--color-text-secondary)' }}>
                     <RefreshCw size={20} className="sap-spin" style={{ margin: '0 auto 8px' }} />
                     <div style={{ fontSize: 13 }}>Loading audit logs...</div>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--color-text-secondary)' }}>
                     <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                       No audit logs found matching your filters.
                     </div>
@@ -873,7 +873,7 @@ export default function AdminActivityLogsView({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#05396B',
+                        color: 'var(--color-navy-800)',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -898,8 +898,8 @@ export default function AdminActivityLogsView({
                       key={item.id}
                       className={isSelected ? 'selected' : ''}
                       style={{
-                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-                        borderBottom: '1px solid #f1f5f9',
+                        backgroundColor: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-subtle)',
+                        borderBottom: '1px solid var(--color-surface-subtle)',
                         fontSize: 12,
                         height: 38
                       }}
@@ -911,9 +911,9 @@ export default function AdminActivityLogsView({
                           whiteSpace: 'nowrap',
                           overflow: 'visible',
                           textOverflow: 'clip',
-                          color: 'var(--color-text-main, #0f172a)',
+                          color: 'var(--color-text)',
                           verticalAlign: 'middle',
-                          fontFamily: 'var(--font-sans, sans-serif)',
+                          fontFamily: 'var(--font-sans)',
                           fontVariantNumeric: 'tabular-nums'
                         }}
                         title={formattedTime}
@@ -926,9 +926,9 @@ export default function AdminActivityLogsView({
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          color: 'var(--color-text-main, #0f172a)',
+                          color: 'var(--color-text)',
                           verticalAlign: 'middle',
-                          fontFamily: 'var(--font-sans, sans-serif)',
+                          fontFamily: 'var(--font-sans)',
                           fontVariantNumeric: 'tabular-nums'
                         }}
                         title={userDisplay}
@@ -958,10 +958,10 @@ export default function AdminActivityLogsView({
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 600,
-                            backgroundColor: '#ffffff',
-                            color: 'var(--color-blue-700, #034375)',
-                            border: '1px solid var(--color-border-input, #C7D4E1)',
-                            fontFamily: 'var(--sap-font-mono, monospace)'
+                            backgroundColor: 'var(--color-surface)',
+                            color: 'var(--color-blue-700)',
+                            border: '1px solid var(--color-border-input)',
+                            fontFamily: 'var(--sap-font-mono)'
                           }}
                         >
                           {actionDisplay}
@@ -979,11 +979,11 @@ export default function AdminActivityLogsView({
                       >
                         {serverInfo.type ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={serverInfo.text}>
-                            <span style={{ fontWeight: 400, color: 'var(--color-text-main, #0f172a)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverInfo.name}</span>{' '}
+                            <span style={{ fontWeight: 400, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{serverInfo.name}</span>{' '}
                             <span className="rx-audit-server-badge" style={{ flexShrink: 0 }}>({serverInfo.type})</span>
                           </div>
                         ) : (
-                          <div style={{ fontWeight: 400, color: serverInfo.hasServer ? 'var(--color-text-main, #0f172a)' : 'var(--color-text-muted, #64748b)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={serverInfo.text}>
+                          <div style={{ fontWeight: 400, color: serverInfo.hasServer ? 'var(--color-text)' : 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={serverInfo.text}>
                             {serverInfo.text}
                           </div>
                         )}
@@ -1003,12 +1003,12 @@ export default function AdminActivityLogsView({
                               borderRadius: 4,
                               fontSize: 11,
                               fontWeight: 600,
-                              backgroundColor: '#f0fdf4',
-                              color: '#15803d',
-                              border: '1px solid #bbf7d0'
+                              backgroundColor: 'var(--color-success-bg)',
+                              color: 'var(--color-success)',
+                              border: '1px solid var(--color-success-border)'
                             }}
                           >
-                            <CheckCircle2 size={12} color="#15803d" />
+                            <CheckCircle2 size={12} color="var(--color-success)" />
                             <span>Success</span>
                           </span>
                         ) : (
@@ -1030,7 +1030,7 @@ export default function AdminActivityLogsView({
                         )}
                       </td>
                       <td
-                        style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: '#64748b', verticalAlign: 'middle', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+                        style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)', verticalAlign: 'middle', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
                         title={durationDisplay}
                       >
                         {durationDisplay}
@@ -1046,11 +1046,11 @@ export default function AdminActivityLogsView({
                               gap: 4,
                               padding: '4px 10px',
                               borderRadius: 4,
-                              border: '1px solid var(--color-border-input, #C7D4E1)',
-                              backgroundColor: '#ffffff',
+                              border: '1px solid var(--color-border-input)',
+                              backgroundColor: 'var(--color-surface)',
                               cursor: 'pointer',
                               fontSize: 11,
-                              color: 'var(--color-navy-800, #05396B)',
+                              color: 'var(--color-navy-800)',
                               fontWeight: 500,
                               whiteSpace: 'nowrap'
                             }}
@@ -1139,14 +1139,14 @@ export default function AdminActivityLogsView({
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--color-text-secondary)' }}>
                     <RefreshCw size={20} className="sap-spin" style={{ margin: '0 auto 8px' }} />
                     <div style={{ fontSize: 13 }}>Loading error logs...</div>
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--color-text-secondary)' }}>
                     <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
                       No error logs found matching your filters.
                     </div>
@@ -1156,7 +1156,7 @@ export default function AdminActivityLogsView({
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: '#05396B',
+                        color: 'var(--color-navy-800)',
                         textDecoration: 'underline',
                         cursor: 'pointer',
                         fontSize: 12
@@ -1180,14 +1180,14 @@ export default function AdminActivityLogsView({
                     <tr
                       key={item.id}
                       style={{
-                        backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb',
-                        borderBottom: '1px solid #f1f5f9',
+                        backgroundColor: idx % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-subtle)',
+                        borderBottom: '1px solid var(--color-surface-subtle)',
                         fontSize: 12
                       }}
                     >
                       <td
                         className="rx-audit-col-timestamp"
-                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', color: '#334155' }}
+                        style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip', color: 'var(--color-text)' }}
                         title={formattedTime}
                       >
                         {formattedTime}
@@ -1197,18 +1197,18 @@ export default function AdminActivityLogsView({
                         title={errorRefDisplay}
                       >
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
-                          <code style={{ fontWeight: 'var(--font-weight-code, 500)', color: '#0f172a', fontFamily: 'var(--sap-font-mono, monospace)' }}>
+                          <code style={{ fontWeight: 'var(--font-weight-code)', color: 'var(--color-text)', fontFamily: 'var(--sap-font-mono)' }}>
                             {errorRefDisplay}
                           </code>
                           {item.error_ref && (
                             <button
                               type="button"
                               onClick={() => handleCopyText(`ref_${item.id}`, item.error_ref)}
-                              style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+                              style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: 'var(--color-text-secondary)', flexShrink: 0 }}
                               title="Copy error ref"
                               aria-label="Copy error ref"
                             >
-                              {copiedKey === `ref_${item.id}` ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                              {copiedKey === `ref_${item.id}` ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
                             </button>
                           )}
                         </div>
@@ -1224,9 +1224,9 @@ export default function AdminActivityLogsView({
                             borderRadius: 4,
                             fontSize: 11,
                             fontWeight: 600,
-                            backgroundColor: item.source === 'sap' ? '#f5f3ff' : item.source === 'frontend' ? '#e0f2fe' : '#f8fafc',
-                            color: item.source === 'sap' ? '#6b21a8' : item.source === 'frontend' ? '#0369a1' : '#334155',
-                            border: '1px solid #e2e8f0'
+                            backgroundColor: item.source === 'sap' ? 'var(--color-blue-50)' : item.source === 'frontend' ? 'var(--color-blue-50)' : 'var(--color-surface-subtle)',
+                            color: item.source === 'sap' ? 'var(--color-blue-700)' : item.source === 'frontend' ? 'var(--color-blue-700)' : 'var(--color-text)',
+                            border: '1px solid var(--color-border-subtle)'
                           }}
                         >
                           {sourceDisplay}
@@ -1236,7 +1236,7 @@ export default function AdminActivityLogsView({
                         style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                         title={routeDisplay}
                       >
-                        <span style={{ fontFamily: 'var(--sap-font-mono, monospace)', fontSize: 11 }}>{routeDisplay}</span>
+                        <span style={{ fontFamily: 'var(--sap-font-mono)', fontSize: 11 }}>{routeDisplay}</span>
                       </td>
                       <td
                         style={{ padding: '0 8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -1259,7 +1259,7 @@ export default function AdminActivityLogsView({
                         style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                         title={messageDisplay}
                       >
-                        <span style={{ color: '#1e293b' }}>{messageDisplay}</span>
+                        <span style={{ color: 'var(--color-text)' }}>{messageDisplay}</span>
                       </td>
                       <td
                         style={{ padding: '0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -1279,11 +1279,11 @@ export default function AdminActivityLogsView({
                               gap: 4,
                               padding: '4px 10px',
                               borderRadius: 4,
-                              border: '1px solid #d1d5db',
-                              backgroundColor: '#ffffff',
+                              border: '1px solid var(--color-border-input)',
+                              backgroundColor: 'var(--color-surface)',
                               cursor: 'pointer',
                               fontSize: 11,
-                              color: 'var(--color-amber-800, #b45309)',
+                              color: 'var(--color-warning-strong)',
                               whiteSpace: 'nowrap'
                             }}
                             title="View full error details"
@@ -1313,7 +1313,7 @@ export default function AdminActivityLogsView({
           gap: 12,
           padding: '8px 4px',
           fontSize: 13,
-          color: '#64748b'
+          color: 'var(--color-text-secondary)'
         }}
       >
         <div>
@@ -1336,7 +1336,7 @@ export default function AdminActivityLogsView({
                 setPageSize(Number(e.target.value));
                 setPage(1);
               }}
-              style={{ height: 28, fontSize: 12, borderRadius: 4, border: '1px solid #d1d5db', padding: '0 4px', backgroundColor: '#ffffff' }}
+              style={{ height: 28, fontSize: 12, borderRadius: 4, border: '1px solid var(--color-border-input)', padding: '0 4px', backgroundColor: 'var(--color-surface)' }}
             >
               <option value="25">25</option>
               <option value="50">50</option>
@@ -1356,8 +1356,8 @@ export default function AdminActivityLogsView({
                 width: 28,
                 height: 28,
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                backgroundColor: '#ffffff',
+                border: '1px solid var(--color-border-input)',
+                backgroundColor: 'var(--color-surface)',
                 cursor: page <= 1 ? 'not-allowed' : 'pointer',
                 opacity: page <= 1 ? 0.5 : 1
               }}
@@ -1382,8 +1382,8 @@ export default function AdminActivityLogsView({
                 width: 28,
                 height: 28,
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                backgroundColor: '#ffffff',
+                border: '1px solid var(--color-border-input)',
+                backgroundColor: 'var(--color-surface)',
                 cursor: page >= totalPages ? 'not-allowed' : 'pointer',
                 opacity: page >= totalPages ? 0.5 : 1
               }}
@@ -1420,7 +1420,7 @@ export default function AdminActivityLogsView({
               width: '100%',
               maxWidth: 580,
               height: '100%',
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--color-surface)',
               boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
               display: 'flex',
               flexDirection: 'column',
@@ -1433,18 +1433,18 @@ export default function AdminActivityLogsView({
             <div
               style={{
                 padding: '16px 20px',
-                borderBottom: '1px solid var(--color-border, #e2e8f0)',
+                borderBottom: '1px solid var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: '#f8fafc'
+                backgroundColor: 'var(--color-surface-subtle)'
               }}
             >
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700,  color: '#64748b' }}>
+                <div style={{ fontSize: 11, fontWeight: 700,  color: 'var(--color-text-secondary)' }}>
                   {activeSubTab === 'audit' ? 'Audit Log Entry' : 'Error Log Entry'}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginTop: 2 }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)', marginTop: 2 }}>
                   {activeSubTab === 'audit' ? (
                     selectedLog.action
                   ) : (
@@ -1462,7 +1462,7 @@ export default function AdminActivityLogsView({
                   padding: 6,
                   cursor: 'pointer',
                   borderRadius: 6,
-                  color: '#64748b',
+                  color: 'var(--color-text-secondary)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -1481,9 +1481,9 @@ export default function AdminActivityLogsView({
                   padding: '12px 16px',
                   borderRadius: 8,
                   backgroundColor: selectedLog.status === 'failed' || activeSubTab === 'errors'
-                    ? 'var(--color-amber-50, #fffbeb)'
-                    : '#f0fdf4',
-                  border: `1px solid ${selectedLog.status === 'failed' || activeSubTab === 'errors' ? 'var(--color-amber-200, #fde68a)' : '#bbf7d0'}`,
+                    ? 'var(--color-warning-bg)'
+                    : 'var(--color-success-bg)',
+                  border: `1px solid ${selectedLog.status === 'failed' || activeSubTab === 'errors' ? 'var(--color-warning-border)' : 'var(--color-success-border)'}`,
                   marginBottom: 20,
                   display: 'flex',
                   alignItems: 'center',
@@ -1492,14 +1492,14 @@ export default function AdminActivityLogsView({
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Status</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: selectedLog.status === 'failed' || activeSubTab === 'errors' ? '#92400e' : '#15803d' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Status</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: selectedLog.status === 'failed' || activeSubTab === 'errors' ? 'var(--color-warning-strong)' : 'var(--color-success)' }}>
                     {selectedLog.status ? selectedLog.status.toUpperCase() : (selectedLog.http_status ? `HTTP ${selectedLog.http_status}` : 'LOGGED')}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Logged At</div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Logged At</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)' }}>
                     {formatAuditTimestamp(selectedLog.created_at)}
                   </div>
                 </div>
@@ -1507,65 +1507,65 @@ export default function AdminActivityLogsView({
 
               {/* Key/Value Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>User Email</div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', wordBreak: 'break-all' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>User Email</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)', wordBreak: 'break-all' }}>
                     {selectedLog.user_email || '—'}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Server</div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Server</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)' }}>
                     {formatServerDisplay(selectedLog).text}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Action</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-blue-700, #034375)', fontFamily: 'var(--sap-font-mono, monospace)', wordBreak: 'break-all' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Action</div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-blue-700)', fontFamily: 'var(--sap-font-mono)', wordBreak: 'break-all' }}>
                     {selectedLog.action || '—'}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Target</div>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#1e293b', wordBreak: 'break-all' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Target</div>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)', wordBreak: 'break-all' }}>
                     {selectedLog.target || '—'}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>Request ID</div>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>Request ID</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <code style={{ fontSize: 11, fontFamily: 'monospace', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <code style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {selectedLog.request_id || '—'}
                     </code>
                     {selectedLog.request_id && (
                       <button
                         type="button"
                         onClick={() => handleCopyText('reqId', selectedLog.request_id)}
-                        style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#64748b' }}
+                        style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text-secondary)' }}
                         title="Copy Request ID"
                       >
-                        {copiedKey === 'reqId' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                        {copiedKey === 'reqId' ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
                       </button>
                     )}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: 6, border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>IP Address</div>
+                <div style={{ padding: '8px 12px', backgroundColor: 'var(--color-surface-subtle)', borderRadius: 6, border: '1px solid var(--color-surface-subtle)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-secondary)' }}>IP Address</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: 12, color: '#1e293b' }}>{selectedLog.ip || '—'}</span>
+                    <span style={{ fontSize: 12, color: 'var(--color-text)' }}>{selectedLog.ip || '—'}</span>
                     {selectedLog.ip && (
                       <button
                         type="button"
                         onClick={() => handleCopyText('ip', selectedLog.ip)}
-                        style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: '#64748b' }}
+                        style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--color-text-secondary)' }}
                         title="Copy IP"
                       >
-                        {copiedKey === 'ip' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                        {copiedKey === 'ip' ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
                       </button>
                     )}
                   </div>
@@ -1575,17 +1575,17 @@ export default function AdminActivityLogsView({
               {/* Summary / Friendly Message */}
               {selectedLog.message && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
                     Message
                   </div>
                   <div
                     style={{
                       padding: '10px 14px',
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--color-surface-subtle)',
                       borderRadius: 6,
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--color-border-subtle)',
                       fontSize: 12,
-                      color: '#1e293b',
+                      color: 'var(--color-text)',
                       lineHeight: 1.5,
                       wordBreak: 'break-word'
                     }}
@@ -1600,8 +1600,8 @@ export default function AdminActivityLogsView({
                 <details
                   style={{
                     marginBottom: 20,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-subtle)',
                     borderRadius: 8,
                     overflow: 'hidden'
                   }}
@@ -1611,35 +1611,35 @@ export default function AdminActivityLogsView({
                       padding: '10px 14px',
                       fontSize: 12,
                       fontWeight: 600,
-                      color: '#475569',
+                      color: 'var(--color-text-secondary)',
                       cursor: 'pointer',
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--color-surface-subtle)',
                       userSelect: 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderBottom: '1px solid #e2e8f0'
+                      borderBottom: '1px solid var(--color-border-subtle)'
                     }}
                   >
                     <span>Technical details (Admin only)</span>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>Click to view raw details</span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Click to view raw details</span>
                   </summary>
 
                   <div style={{ padding: '14px' }}>
                     {/* SAP Message if present */}
                     {selectedLog.sap_message && (
                       <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
                           Raw SAP System Message
                         </div>
                         <div
                           style={{
                             padding: '10px 14px',
-                            backgroundColor: 'var(--color-amber-50, #fffbeb)',
+                            backgroundColor: 'var(--color-warning-bg)',
                             borderRadius: 6,
-                            border: '1px solid var(--color-amber-200, #fde68a)',
+                            border: '1px solid var(--color-warning-border)',
                             fontSize: 12,
-                            color: 'var(--color-amber-900, #78350f)',
+                            color: 'var(--color-warning-strong)',
                             lineHeight: 1.5,
                             wordBreak: 'break-word',
                             fontFamily: 'monospace'
@@ -1654,7 +1654,7 @@ export default function AdminActivityLogsView({
                     {selectedLog.stack && (
                       <div style={{ marginBottom: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Technical Stack Trace</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>Technical Stack Trace</span>
                           <button
                             type="button"
                             onClick={() => handleCopyText('stack', selectedLog.stack)}
@@ -1665,18 +1665,18 @@ export default function AdminActivityLogsView({
                               background: 'none',
                               border: 'none',
                               fontSize: 11,
-                              color: '#05396B',
+                              color: 'var(--color-navy-800)',
                               cursor: 'pointer'
                             }}
                           >
-                            {copiedKey === 'stack' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                            {copiedKey === 'stack' ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
                             <span>Copy Stack</span>
                           </button>
                         </div>
                         <pre
                           style={{
-                            backgroundColor: '#0f172a',
-                            color: '#e2e8f0',
+                            backgroundColor: 'var(--color-text)',
+                            color: 'var(--color-border-subtle)',
                             borderRadius: 6,
                             padding: '12px',
                             fontSize: 11,
@@ -1696,7 +1696,7 @@ export default function AdminActivityLogsView({
                     {selectedLog.details && Object.keys(selectedLog.details).length > 0 && (
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Sanitized Details (JSON)</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>Sanitized Details (JSON)</span>
                           <button
                             type="button"
                             onClick={() => handleCopyText('detailsJson', JSON.stringify(selectedLog.details, null, 2))}
@@ -1707,20 +1707,20 @@ export default function AdminActivityLogsView({
                               background: 'none',
                               border: 'none',
                               fontSize: 11,
-                              color: '#05396B',
+                              color: 'var(--color-navy-800)',
                               cursor: 'pointer'
                             }}
                           >
-                            {copiedKey === 'detailsJson' ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+                            {copiedKey === 'detailsJson' ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
                             <span>Copy JSON</span>
                           </button>
                         </div>
                         <pre
                           style={{
-                            backgroundColor: '#f8fafc',
-                            color: '#0f172a',
+                            backgroundColor: 'var(--color-surface-subtle)',
+                            color: 'var(--color-text)',
                             borderRadius: 6,
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--color-border-subtle)',
                             padding: '12px',
                             fontSize: 11,
                             fontFamily: 'monospace',
@@ -1743,8 +1743,8 @@ export default function AdminActivityLogsView({
             <div
               style={{
                 padding: '12px 20px',
-                borderTop: '1px solid var(--color-border, #e2e8f0)',
-                backgroundColor: '#f8fafc',
+                borderTop: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface-subtle)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 alignItems: 'center'
@@ -1760,9 +1760,9 @@ export default function AdminActivityLogsView({
                   fontSize: 12,
                   fontWeight: 500,
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  backgroundColor: '#ffffff',
-                  color: '#334155',
+                  border: '1px solid var(--color-border-input)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
                   cursor: 'pointer'
                 }}
               >

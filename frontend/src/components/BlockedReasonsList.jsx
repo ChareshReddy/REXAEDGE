@@ -82,11 +82,11 @@ export default function BlockedReasonsList({
 
     return (
       <div className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: '12px', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-        <AlertCircle size={13} style={{ color: 'var(--color-danger, #B42318)', flexShrink: 0, marginTop: 2 }} />
+        <AlertCircle size={13} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: 2 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <span
             style={{
-              color: 'var(--sap-text-dark, #0f172a)',
+              color: 'var(--sap-text-dark)',
               wordBreak: 'break-word',
               overflowWrap: 'anywhere',
               display: isExpanded ? 'block' : '-webkit-box',
@@ -109,7 +109,7 @@ export default function BlockedReasonsList({
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--sap-link, #0070f2)',
+                  color: 'var(--sap-link)',
                   cursor: 'pointer',
                   padding: '1px 0',
                   fontSize: '11px',
@@ -134,10 +134,10 @@ export default function BlockedReasonsList({
     <div className="sap-diagnostic-errors" style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '12px', lineHeight: 1.4, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
       {visibleItems.map((item, idx) => (
         <div key={idx} className="sap-diagnostic-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-          <AlertCircle size={13} style={{ color: 'var(--color-danger, #B42318)', flexShrink: 0, marginTop: 2 }} />
+          <AlertCircle size={13} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: 2 }} />
           <span
             style={{
-              color: 'var(--sap-text-dark, #0f172a)',
+              color: 'var(--sap-text-dark)',
               wordBreak: 'break-word',
               overflowWrap: 'anywhere',
               display: isExpanded ? 'block' : '-webkit-box',
@@ -163,7 +163,7 @@ export default function BlockedReasonsList({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--sap-link, #0070f2)',
+              color: 'var(--sap-link)',
               cursor: 'pointer',
               padding: '1px 0',
               fontSize: '11px',

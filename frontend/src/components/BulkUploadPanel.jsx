@@ -184,14 +184,14 @@ export default function BulkUploadPanel({
             flex: '2 1 440px',
             minHeight: 160,
             border: isDragging
-              ? '2px dashed var(--color-blue-600, #02579A)'
+              ? '2px dashed var(--color-blue-600)'
               : activeError
-              ? '2px dashed var(--color-danger, #B42318)'
-              : '2px dashed var(--color-blue-200, #B3CDE0)',
+              ? '2px dashed var(--color-danger)'
+              : '2px dashed var(--color-blue-200)',
             backgroundColor: isDragging
-              ? 'var(--color-blue-100, #DCE8F1)'
-              : 'var(--color-blue-50, #EEF4F9)',
-            borderRadius: 'var(--radius-lg, 12px)',
+              ? 'var(--color-blue-100)'
+              : 'var(--color-blue-50)',
+            borderRadius: 'var(--radius-lg)',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
@@ -200,7 +200,7 @@ export default function BulkUploadPanel({
             padding: '18px 20px',
             textAlign: 'center',
             cursor: disabled || loading ? 'not-allowed' : 'pointer',
-            transition: 'all var(--transition-fast, 150ms ease)',
+            transition: 'all var(--transition-fast)',
             opacity: disabled ? 0.6 : 1
           }}
         >
@@ -211,11 +211,11 @@ export default function BulkUploadPanel({
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 12,
-                color: 'var(--color-blue-600, #02579A)'
+                color: 'var(--color-blue-600)'
               }}
             >
               <Loader2 size={32} className="sap-spin" />
-              <span style={{ fontSize: 'var(--font-size-14, 14px)', fontWeight: 600 }}>{loadingText}</span>
+              <span style={{ fontSize: 'var(--font-size-14)', fontWeight: 600 }}>{loadingText}</span>
             </div>
           ) : hasFile ? (
             /* State: File Selected */
@@ -233,13 +233,13 @@ export default function BulkUploadPanel({
                 style={{
                   width: 52,
                   height: 52,
-                  borderRadius: 'var(--radius-full, 9999px)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  border: '1px solid var(--color-blue-200, #B3CDE0)',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-blue-200)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--color-blue-600, #02579A)',
+                  color: 'var(--color-blue-600)',
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
@@ -249,9 +249,9 @@ export default function BulkUploadPanel({
               <div>
                 <div
                   style={{
-                    fontSize: 'var(--font-size-15, 15px)',
+                    fontSize: 'var(--font-size-14)',
                     fontWeight: 600,
-                    color: 'var(--color-navy-900, #00204E)',
+                    color: 'var(--color-navy-900)',
                     wordBreak: 'break-all'
                   }}
                 >
@@ -260,8 +260,8 @@ export default function BulkUploadPanel({
                 {activeFileSize && (
                   <div
                     style={{
-                      fontSize: 'var(--font-size-12, 12px)',
-                      color: 'var(--color-text-secondary, #4A5F77)',
+                      fontSize: 'var(--font-size-12)',
+                      color: 'var(--color-text-secondary)',
                       marginTop: 2
                     }}
                   >
@@ -277,10 +277,10 @@ export default function BulkUploadPanel({
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled || loading}
                   style={{
-                    height: 'var(--size-button-sm-height, 32px)',
+                    height: 'var(--size-button-sm-height)',
                     padding: '0 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    fontSize: 'var(--font-size-13, 13px)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: 'var(--font-size-13)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6
@@ -296,10 +296,10 @@ export default function BulkUploadPanel({
                     onClick={handleClearClick}
                     disabled={disabled || loading}
                     style={{
-                      height: 'var(--size-button-sm-height, 32px)',
+                      height: 'var(--size-button-sm-height)',
                       padding: '0 14px',
-                      borderRadius: 'var(--radius-md, 8px)',
-                      fontSize: 'var(--font-size-13, 13px)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--font-size-13)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6
@@ -325,13 +325,13 @@ export default function BulkUploadPanel({
                 style={{
                   width: 44,
                   height: 44,
-                  borderRadius: 'var(--radius-full, 9999px)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  border: '1px solid var(--color-blue-200, #B3CDE0)',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-blue-200)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--color-blue-600, #02579A)',
+                  color: 'var(--color-blue-600)',
                   boxShadow: 'var(--shadow-sm)',
                   marginBottom: 8
                 }}
@@ -341,9 +341,9 @@ export default function BulkUploadPanel({
 
               <div
                 style={{
-                  fontSize: 'var(--font-size-14, 14px)',
+                  fontSize: 'var(--font-size-14)',
                   fontWeight: 600,
-                  color: 'var(--color-navy-900, #00204E)',
+                  color: 'var(--color-navy-900)',
                   marginBottom: 4
                 }}
               >
@@ -352,8 +352,8 @@ export default function BulkUploadPanel({
 
               <div
                 style={{
-                  fontSize: 'var(--font-size-12, 12px)',
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  fontSize: 'var(--font-size-12)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 10
                 }}
               >
@@ -369,10 +369,10 @@ export default function BulkUploadPanel({
                 }}
                 disabled={disabled || loading}
                 style={{
-                  height: 'var(--size-button-sm-height, 32px)',
+                  height: 'var(--size-button-sm-height)',
                   padding: '0 16px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  fontSize: 'var(--font-size-13, 13px)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 'var(--font-size-13)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8
@@ -391,11 +391,11 @@ export default function BulkUploadPanel({
               style={{
                 marginTop: 16,
                 padding: '8px 14px',
-                borderRadius: 'var(--radius-md, 8px)',
-                backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                border: '1px solid var(--color-danger-border, #FECDCA)',
-                color: 'var(--color-danger, #B42318)',
-                fontSize: 'var(--font-size-12, 12px)',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-danger-bg)',
+                border: '1px solid var(--color-danger-border)',
+                color: 'var(--color-danger)',
+                fontSize: 'var(--font-size-12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
@@ -413,9 +413,9 @@ export default function BulkUploadPanel({
           className="rx-bulk-info-panel"
           style={{
             flex: '1 1 280px',
-            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
-            border: '1px solid var(--color-border, #D9E2EC)',
-            borderRadius: 'var(--radius-lg, 12px)',
+            backgroundColor: 'var(--color-surface-subtle)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
             padding: '12px 14px',
             boxSizing: 'border-box',
             display: 'flex',
@@ -425,9 +425,9 @@ export default function BulkUploadPanel({
         >
           <div
             style={{
-              fontSize: 'var(--font-size-14, 14px)',
+              fontSize: 'var(--font-size-14)',
               fontWeight: 600,
-              color: 'var(--color-navy-900, #00204E)'
+              color: 'var(--color-navy-900)'
             }}
           >
             Before you upload
@@ -441,10 +441,10 @@ export default function BulkUploadPanel({
               onClick={handleTemplateClick}
               disabled={isTemplateDisabled}
               style={{
-                height: 'var(--size-button-sm-height, 30px)',
+                height: 'var(--size-button-sm-height)',
                 padding: '0 12px',
-                borderRadius: 'var(--radius-md, 8px)',
-                fontSize: 'var(--font-size-12, 12px)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--font-size-12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -462,9 +462,9 @@ export default function BulkUploadPanel({
             <div>
               <div
                 style={{
-                  fontSize: 'var(--font-size-11, 11px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 4
                 }}
               >
@@ -480,25 +480,25 @@ export default function BulkUploadPanel({
                       gap: 3,
                       fontSize: '10.5px',
                       padding: '2px 6px',
-                      borderRadius: 'var(--radius-full, 9999px)',
+                      borderRadius: 'var(--radius-full)',
                       backgroundColor: col.required
-                        ? 'var(--color-blue-50, #EEF4F9)'
-                        : 'var(--color-surface, #FFFFFF)',
+                        ? 'var(--color-blue-50)'
+                        : 'var(--color-surface)',
                       color: col.required
-                        ? 'var(--color-blue-600, #02579A)'
-                        : 'var(--color-text-secondary, #4A5F77)',
+                        ? 'var(--color-blue-600)'
+                        : 'var(--color-text-secondary)',
                       border: col.required
-                        ? '1px solid var(--color-blue-200, #B3CDE0)'
-                        : '1px solid var(--color-border, #D9E2EC)',
+                        ? '1px solid var(--color-blue-200)'
+                        : '1px solid var(--color-border)',
                       fontWeight: col.required ? 600 : 400
                     }}
                   >
                     {col.required && (
-                      <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 700 }}>*</span>
+                      <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>*</span>
                     )}
                     <span>{col.label}</span>
                     {col.default && (
-                      <span style={{ color: 'var(--color-text-muted, #7A8CA3)', fontSize: '9.5px' }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '9.5px' }}>
                         ({col.default})
                       </span>
                     )}
@@ -510,18 +510,18 @@ export default function BulkUploadPanel({
 
           {/* Real Row Limits from Code */}
           {rowLimitText && (
-            <div style={{ borderTop: '1px solid var(--color-border-subtle, #E2E8F0)', paddingTop: 8 }}>
+            <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8 }}>
               <div
                 style={{
-                  fontSize: 'var(--font-size-11, 11px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 2
                 }}
               >
                 Batch limit:
               </div>
-              <div style={{ fontSize: 'var(--font-size-11, 11px)', color: 'var(--color-text, #0F2742)', lineHeight: 1.3 }}>
+              <div style={{ fontSize: 'var(--font-size-12)', color: 'var(--color-text)', lineHeight: 1.3 }}>
                 {rowLimitText}
               </div>
             </div>
@@ -529,18 +529,18 @@ export default function BulkUploadPanel({
 
           {/* Short Tip */}
           {tipText && (
-            <div style={{ borderTop: '1px solid var(--color-border-subtle, #E2E8F0)', paddingTop: 8 }}>
+            <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8 }}>
               <div
                 style={{
-                  fontSize: 'var(--font-size-11, 11px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 2
                 }}
               >
                 Helpful tip:
               </div>
-              <div style={{ fontSize: 'var(--font-size-11, 11px)', color: 'var(--color-text-secondary, #4A5F77)', lineHeight: 1.3 }}>
+              <div style={{ fontSize: 'var(--font-size-12)', color: 'var(--color-text-secondary)', lineHeight: 1.3 }}>
                 {tipText}
               </div>
             </div>
@@ -553,7 +553,7 @@ export default function BulkUploadPanel({
         <div
           className="rx-bulk-upload-actions"
           style={{
-            borderTop: '1px solid var(--color-border, #D9E2EC)',
+            borderTop: '1px solid var(--color-border)',
             paddingTop: 12,
             marginTop: 4,
             display: 'flex',
@@ -568,11 +568,11 @@ export default function BulkUploadPanel({
             onClick={onContinue}
             disabled={!hasFile || disabled || loading}
             style={{
-              height: 'var(--size-button-height, 40px)',
+              height: 'var(--size-button-height)',
               padding: '0 24px',
-              borderRadius: 'var(--radius-md, 8px)',
+              borderRadius: 'var(--radius-md)',
               fontWeight: 600,
-              fontSize: 'var(--font-size-14, 14px)',
+              fontSize: 'var(--font-size-14)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8

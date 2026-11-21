@@ -81,9 +81,9 @@ export default function BulkUploadCard({
       className={`rx-bulk-upload-card ${className}`.trim()}
       style={{
         width: '100%',
-        backgroundColor: 'var(--color-surface, #FFFFFF)',
-        border: '1px solid var(--color-border, #D9E2EC)',
-        borderRadius: 'var(--radius-lg, 12px)',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)',
         padding: 24,
         boxSizing: 'border-box',
         display: 'flex',
@@ -124,14 +124,14 @@ export default function BulkUploadCard({
             flex: '2 1 480px',
             minHeight: 260,
             border: isDragging
-              ? '2px dashed var(--color-blue-600, #02579A)'
+              ? '2px dashed var(--color-blue-600)'
               : error
-              ? '2px dashed var(--color-danger, #B42318)'
-              : '2px dashed var(--color-blue-200, #B3CDE0)',
+              ? '2px dashed var(--color-danger)'
+              : '2px dashed var(--color-blue-200)',
             backgroundColor: isDragging
-              ? 'var(--color-blue-100, #DCE8F1)'
-              : 'var(--color-blue-50, #EEF4F9)',
-            borderRadius: 'var(--radius-lg, 12px)',
+              ? 'var(--color-blue-100)'
+              : 'var(--color-blue-50)',
+            borderRadius: 'var(--radius-lg)',
             boxSizing: 'border-box',
             display: 'flex',
             flexDirection: 'column',
@@ -140,7 +140,7 @@ export default function BulkUploadCard({
             padding: '32px 24px',
             textAlign: 'center',
             cursor: isLocked ? 'not-allowed' : 'pointer',
-            transition: 'all var(--transition-fast, 150ms ease)',
+            transition: 'all var(--transition-fast)',
             opacity: isLocked ? 0.6 : 1
           }}
         >
@@ -160,13 +160,13 @@ export default function BulkUploadCard({
                 style={{
                   width: 52,
                   height: 52,
-                  borderRadius: 'var(--radius-full, 9999px)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  border: '1px solid var(--color-blue-200, #B3CDE0)',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-blue-200)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--color-blue-600, #02579A)',
+                  color: 'var(--color-blue-600)',
                   boxShadow: 'var(--shadow-sm)'
                 }}
               >
@@ -176,9 +176,9 @@ export default function BulkUploadCard({
               <div>
                 <div
                   style={{
-                    fontSize: 'var(--font-size-15, 15px)',
+                    fontSize: 'var(--font-size-14)',
                     fontWeight: 600,
-                    color: 'var(--color-navy-900, #00204E)',
+                    color: 'var(--color-navy-900)',
                     wordBreak: 'break-all'
                   }}
                 >
@@ -187,8 +187,8 @@ export default function BulkUploadCard({
                 {activeFileSize && (
                   <div
                     style={{
-                      fontSize: 'var(--font-size-12, 12px)',
-                      color: 'var(--color-text-secondary, #4A5F77)',
+                      fontSize: 'var(--font-size-12)',
+                      color: 'var(--color-text-secondary)',
                       marginTop: 2
                     }}
                   >
@@ -204,10 +204,10 @@ export default function BulkUploadCard({
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isLocked}
                   style={{
-                    height: 'var(--size-button-sm-height, 32px)',
+                    height: 'var(--size-button-sm-height)',
                     padding: '0 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    fontSize: 'var(--font-size-13, 13px)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: 'var(--font-size-13)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6
@@ -222,10 +222,10 @@ export default function BulkUploadCard({
                   onClick={handleClear}
                   disabled={isLocked}
                   style={{
-                    height: 'var(--size-button-sm-height, 32px)',
+                    height: 'var(--size-button-sm-height)',
                     padding: '0 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
-                    fontSize: 'var(--font-size-13, 13px)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: 'var(--font-size-13)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6
@@ -250,13 +250,13 @@ export default function BulkUploadCard({
                 style={{
                   width: 52,
                   height: 52,
-                  borderRadius: 'var(--radius-full, 9999px)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  border: '1px solid var(--color-blue-200, #B3CDE0)',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-blue-200)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--color-blue-600, #02579A)',
+                  color: 'var(--color-blue-600)',
                   boxShadow: 'var(--shadow-sm)',
                   marginBottom: 14
                 }}
@@ -266,9 +266,9 @@ export default function BulkUploadCard({
 
               <div
                 style={{
-                  fontSize: 'var(--font-size-15, 15px)',
+                  fontSize: 'var(--font-size-14)',
                   fontWeight: 600,
-                  color: 'var(--color-navy-900, #00204E)',
+                  color: 'var(--color-navy-900)',
                   marginBottom: 6
                 }}
               >
@@ -277,8 +277,8 @@ export default function BulkUploadCard({
 
               <div
                 style={{
-                  fontSize: 'var(--font-size-12, 12px)',
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  fontSize: 'var(--font-size-12)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 16
                 }}
               >
@@ -294,10 +294,10 @@ export default function BulkUploadCard({
                 }}
                 disabled={isLocked}
                 style={{
-                  height: 'var(--size-button-sm-height, 32px)',
+                  height: 'var(--size-button-sm-height)',
                   padding: '0 16px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  fontSize: 'var(--font-size-13, 13px)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 'var(--font-size-13)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8
@@ -316,11 +316,11 @@ export default function BulkUploadCard({
               style={{
                 marginTop: 16,
                 padding: '8px 14px',
-                borderRadius: 'var(--radius-md, 8px)',
-                backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                border: '1px solid var(--color-danger-border, #FECDCA)',
-                color: 'var(--color-danger, #B42318)',
-                fontSize: 'var(--font-size-12, 12px)',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-danger-bg)',
+                border: '1px solid var(--color-danger-border)',
+                color: 'var(--color-danger)',
+                fontSize: 'var(--font-size-12)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
@@ -338,9 +338,9 @@ export default function BulkUploadCard({
           className="rx-bulk-info-panel"
           style={{
             flex: '1 1 280px',
-            backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
-            border: '1px solid var(--color-border, #D9E2EC)',
-            borderRadius: 'var(--radius-lg, 12px)',
+            backgroundColor: 'var(--color-surface-subtle)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg)',
             padding: 20,
             boxSizing: 'border-box',
             display: 'flex',
@@ -350,9 +350,9 @@ export default function BulkUploadCard({
         >
           <div
             style={{
-              fontSize: 'var(--font-size-14, 14px)',
+              fontSize: 'var(--font-size-14)',
               fontWeight: 600,
-              color: 'var(--color-navy-900, #00204E)'
+              color: 'var(--color-navy-900)'
             }}
           >
             Before you upload
@@ -366,10 +366,10 @@ export default function BulkUploadCard({
               onClick={onDownloadTemplate}
               disabled={isLocked}
               style={{
-                height: 'var(--size-button-sm-height, 32px)',
+                height: 'var(--size-button-sm-height)',
                 padding: '0 14px',
-                borderRadius: 'var(--radius-md, 8px)',
-                fontSize: 'var(--font-size-13, 13px)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--font-size-13)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -387,9 +387,9 @@ export default function BulkUploadCard({
             <div>
               <div
                 style={{
-                  fontSize: 'var(--font-size-12, 12px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 8
                 }}
               >
@@ -405,25 +405,25 @@ export default function BulkUploadCard({
                       gap: 4,
                       fontSize: '11px',
                       padding: '3px 8px',
-                      borderRadius: 'var(--radius-full, 9999px)',
+                      borderRadius: 'var(--radius-full)',
                       backgroundColor: col.required
-                        ? 'var(--color-blue-50, #EEF4F9)'
-                        : 'var(--color-surface, #FFFFFF)',
+                        ? 'var(--color-blue-50)'
+                        : 'var(--color-surface)',
                       color: col.required
-                        ? 'var(--color-blue-600, #02579A)'
-                        : 'var(--color-text-secondary, #4A5F77)',
+                        ? 'var(--color-blue-600)'
+                        : 'var(--color-text-secondary)',
                       border: col.required
-                        ? '1px solid var(--color-blue-200, #B3CDE0)'
-                        : '1px solid var(--color-border, #D9E2EC)',
+                        ? '1px solid var(--color-blue-200)'
+                        : '1px solid var(--color-border)',
                       fontWeight: col.required ? 600 : 400
                     }}
                   >
                     {col.required && (
-                      <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 700 }}>*</span>
+                      <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>*</span>
                     )}
                     <span>{col.label}</span>
                     {col.default && (
-                      <span style={{ color: 'var(--color-text-muted, #7A8CA3)', fontSize: '10px' }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '10px' }}>
                         ({col.default})
                       </span>
                     )}
@@ -435,18 +435,18 @@ export default function BulkUploadCard({
 
           {/* Real Row Limits from Code */}
           {rowLimitText && (
-            <div style={{ borderTop: '1px solid var(--color-border-subtle, #E2E8F0)', paddingTop: 12 }}>
+            <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 12 }}>
               <div
                 style={{
-                  fontSize: 'var(--font-size-12, 12px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 4
                 }}
               >
                 Batch limit:
               </div>
-              <div style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text, #0F2742)', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 'var(--font-size-12)', color: 'var(--color-text)', lineHeight: 1.4 }}>
                 {rowLimitText}
               </div>
             </div>
@@ -454,18 +454,18 @@ export default function BulkUploadCard({
 
           {/* Short Tip */}
           {tipText && (
-            <div style={{ borderTop: '1px solid var(--color-border-subtle, #E2E8F0)', paddingTop: 12 }}>
+            <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 12 }}>
               <div
                 style={{
-                  fontSize: 'var(--font-size-12, 12px)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--color-text-secondary, #4A5F77)',
+                  color: 'var(--color-text-secondary)',
                   marginBottom: 4
                 }}
               >
                 Helpful tip:
               </div>
-              <div style={{ fontSize: 'var(--font-size-12, 12px)', color: 'var(--color-text-secondary, #4A5F77)', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 'var(--font-size-12)', color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
                 {tipText}
               </div>
             </div>
@@ -477,7 +477,7 @@ export default function BulkUploadCard({
       <div
         className="rx-bulk-upload-actions"
         style={{
-          borderTop: '1px solid var(--color-border, #D9E2EC)',
+          borderTop: '1px solid var(--color-border)',
           paddingTop: 16,
           display: 'flex',
           justifyContent: 'flex-end',
@@ -491,11 +491,11 @@ export default function BulkUploadCard({
           onClick={onContinue}
           disabled={!hasFile || isLocked}
           style={{
-            height: 'var(--size-button-height, 40px)',
+            height: 'var(--size-button-height)',
             padding: '0 24px',
-            borderRadius: 'var(--radius-md, 8px)',
+            borderRadius: 'var(--radius-md)',
             fontWeight: 600,
-            fontSize: 'var(--font-size-14, 14px)',
+            fontSize: 'var(--font-size-14)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Server, ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import Modal from './ui/Modal';
+import { Button } from './ui/button';
 import { createMyServer, updateMyServer, testServerConnection } from '../services/api';
 
 export default function AddServerModal({
@@ -209,73 +210,39 @@ export default function AddServerModal({
       onClose={onClose}
       title={modalTitle}
       maxWidth="560px"
+      isLoading={isSaving}
+      icon={Server}
       footer={
-        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '4px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={isTesting || isSaving}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                fontSize: '13px',
-                fontWeight: 500,
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
-                border: '1px solid var(--color-border, #CBD5E1)',
-                borderRadius: 'var(--radius-md, 6px)',
-                color: 'var(--color-text, #0F172A)',
-                cursor: isTesting ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <RefreshCw size={14} className={isTesting ? 'animate-spin' : ''} />
-              {isTesting ? 'Testing...' : 'Test Connection'}
-            </button>
+        <div className="rx-server-modal-footer">
+          <Button
+            variant="secondary"
+            onClick={handleTestConnection}
+            disabled={isSaving}
+            isLoading={isTesting}
+            icon={RefreshCw}
+          >
+            {isTesting ? 'Testing…' : 'Test Connection'}
+          </Button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSaving}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  backgroundColor: 'transparent',
-                  border: '1px solid var(--color-border, #CBD5E1)',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  color: 'var(--color-text-muted, #64748B)',
-                  cursor: isSaving ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {isOnboarding ? 'Later' : 'Cancel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSaving || (!serverToEdit && !isTestPassedForCurrentValues)}
-                style={{
-                  padding: '8px 18px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  backgroundColor: 'var(--color-navy-900, #00204E)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  color: '#FFFFFF',
-                  cursor: (isSaving || (!serverToEdit && !isTestPassedForCurrentValues)) ? 'not-allowed' : 'pointer',
-                  opacity: (isSaving || (!serverToEdit && !isTestPassedForCurrentValues)) ? 0.5 : 1
-                }}
-              >
-                {isSaving ? 'Saving...' : (serverToEdit ? 'Save Changes' : 'Add Server')}
-              </button>
-            </div>
+          <div className="rx-server-modal-footer-actions">
+            <Button variant="secondary" onClick={onClose} disabled={isSaving}>
+              {isOnboarding ? 'Later' : 'Cancel'}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              isLoading={isSaving}
+              disabled={!serverToEdit && !isTestPassedForCurrentValues}
+              aria-describedby={!serverToEdit && !isTestPassedForCurrentValues ? 'add-server-test-hint' : undefined}
+            >
+              {isSaving ? 'Saving…' : (serverToEdit ? 'Save Changes' : 'Add Server')}
+            </Button>
           </div>
+
           {!serverToEdit && !isTestPassedForCurrentValues && (
-            <div style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)', textAlign: 'right', marginTop: '2px' }}>
+            <p id="add-server-test-hint" className="rx-server-modal-hint">
               Test the connection first
-            </div>
+            </p>
           )}
         </div>
       }
@@ -287,17 +254,17 @@ export default function AddServerModal({
             display: 'flex',
             alignItems: 'flex-start',
             gap: '10px',
-            backgroundColor: 'var(--color-blue-100, #DCE8F1)',
-            border: '1px solid var(--color-blue-300, #98B5CE)',
-            borderRadius: 'var(--radius-md, 6px)',
+            backgroundColor: 'var(--color-blue-100)',
+            border: '1px solid var(--color-blue-200)',
+            borderRadius: 'var(--radius-md)',
             padding: '10px 12px',
             marginBottom: '16px',
-            color: 'var(--color-navy-900, #00204E)',
+            color: 'var(--color-navy-900)',
             fontSize: '12px',
             lineHeight: 1.4
           }}
         >
-          <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--color-blue-600, #1D4ED8)' }} />
+          <ShieldCheck size={18} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--color-blue-600)' }} />
           <span>
             Your SAP password is encrypted and is never shown in the app.
           </span>
@@ -310,12 +277,12 @@ export default function AddServerModal({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: 'var(--color-danger-bg, #FEF2F2)',
-              border: '1px solid var(--color-danger-border, #FCA5A5)',
-              borderRadius: 'var(--radius-md, 6px)',
+              backgroundColor: 'var(--color-danger-bg)',
+              border: '1px solid var(--color-danger-border)',
+              borderRadius: 'var(--radius-md)',
               padding: '8px 12px',
               marginBottom: '14px',
-              color: 'var(--color-danger, #B42318)',
+              color: 'var(--color-danger)',
               fontSize: '13px'
             }}
           >
@@ -330,12 +297,12 @@ export default function AddServerModal({
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: testStatus.success ? 'var(--color-success-bg, #F0FDF4)' : 'var(--color-danger-bg, #FEF2F2)',
-              border: `1px solid ${testStatus.success ? 'var(--color-success-border, #86EFAC)' : 'var(--color-danger-border, #FCA5A5)'}`,
-              borderRadius: 'var(--radius-md, 6px)',
+              backgroundColor: testStatus.success ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
+              border: `1px solid ${testStatus.success ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`,
+              borderRadius: 'var(--radius-md)',
               padding: '8px 12px',
               marginBottom: '14px',
-              color: testStatus.success ? 'var(--color-success, #166534)' : 'var(--color-danger, #B42318)',
+              color: testStatus.success ? 'var(--color-success)' : 'var(--color-danger)',
               fontSize: '13px'
             }}
           >
@@ -349,7 +316,7 @@ export default function AddServerModal({
           <div>
             <label
               htmlFor="server-name"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
             >
               Server Name *
             </label>
@@ -368,14 +335,14 @@ export default function AddServerModal({
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
-                borderRadius: 'var(--radius-md, 6px)',
-                border: (touched.name || isSubmitted) && fieldErrors.name ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
+                borderRadius: 'var(--radius-md)',
+                border: (touched.name || isSubmitted) && fieldErrors.name ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
                 boxSizing: 'border-box'
               }}
             />
             {(touched.name || isSubmitted) && fieldErrors.name && (
-              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                 {fieldErrors.name}
               </span>
             )}
@@ -385,7 +352,7 @@ export default function AddServerModal({
           <div>
             <label
               htmlFor="server-ashost"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
             >
               Application Server / Host / IP *
             </label>
@@ -400,18 +367,18 @@ export default function AddServerModal({
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
-                borderRadius: 'var(--radius-md, 6px)',
-                border: (touched.ashost || isSubmitted) && fieldErrors.ashost ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
+                borderRadius: 'var(--radius-md)',
+                border: (touched.ashost || isSubmitted) && fieldErrors.ashost ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
                 boxSizing: 'border-box'
               }}
             />
             {(touched.ashost || isSubmitted) && fieldErrors.ashost ? (
-              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                 {fieldErrors.ashost}
               </span>
             ) : (
-              <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #64748B)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
                 Must match an approved corporate allowlist pattern.
               </span>
             )}
@@ -422,7 +389,7 @@ export default function AddServerModal({
             <div>
               <label
                 htmlFor="server-sysnr"
-                style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+                style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
               >
                 System Number (sysnr) *
               </label>
@@ -438,14 +405,14 @@ export default function AddServerModal({
                   width: '100%',
                   padding: '8px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: (touched.sysnr || isSubmitted) && fieldErrors.sysnr ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
+                  borderRadius: 'var(--radius-md)',
+                  border: (touched.sysnr || isSubmitted) && fieldErrors.sysnr ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
                   boxSizing: 'border-box'
                 }}
               />
               {(touched.sysnr || isSubmitted) && fieldErrors.sysnr && (
-                <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                   {fieldErrors.sysnr}
                 </span>
               )}
@@ -453,7 +420,7 @@ export default function AddServerModal({
             <div>
               <label
                 htmlFor="server-client"
-                style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+                style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
               >
                 Client *
               </label>
@@ -469,14 +436,14 @@ export default function AddServerModal({
                   width: '100%',
                   padding: '8px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: (touched.client || isSubmitted) && fieldErrors.client ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
+                  borderRadius: 'var(--radius-md)',
+                  border: (touched.client || isSubmitted) && fieldErrors.client ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
                   boxSizing: 'border-box'
                 }}
               />
               {(touched.client || isSubmitted) && fieldErrors.client && (
-                <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+                <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                   {fieldErrors.client}
                 </span>
               )}
@@ -487,7 +454,7 @@ export default function AddServerModal({
           <div>
             <label
               htmlFor="server-saprouter"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
             >
               SAP Router
             </label>
@@ -501,9 +468,9 @@ export default function AddServerModal({
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
-                borderRadius: 'var(--radius-md, 6px)',
-                border: '1px solid var(--color-border, #CBD5E1)',
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
                 boxSizing: 'border-box'
               }}
             />
@@ -513,7 +480,7 @@ export default function AddServerModal({
           <div>
             <label
               htmlFor="server-username"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
             >
               SAP Username *
             </label>
@@ -528,14 +495,14 @@ export default function AddServerModal({
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: '13px',
-                borderRadius: 'var(--radius-md, 6px)',
-                border: (touched.sapUsername || isSubmitted) && fieldErrors.sapUsername ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                backgroundColor: 'var(--color-surface, #FFFFFF)',
+                borderRadius: 'var(--radius-md)',
+                border: (touched.sapUsername || isSubmitted) && fieldErrors.sapUsername ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
                 boxSizing: 'border-box'
               }}
             />
             {(touched.sapUsername || isSubmitted) && fieldErrors.sapUsername && (
-              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                 {fieldErrors.sapUsername}
               </span>
             )}
@@ -545,7 +512,7 @@ export default function AddServerModal({
           <div>
             <label
               htmlFor="server-password"
-              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text, #0F172A)', marginBottom: '4px' }}
+              style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--color-text)', marginBottom: '4px' }}
             >
               SAP Password {serverToEdit ? '(Leave blank to keep existing)' : '*'}
             </label>
@@ -561,9 +528,9 @@ export default function AddServerModal({
                   width: '100%',
                   padding: '8px 36px 8px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: (!serverToEdit && (touched.sapPassword || isSubmitted) && fieldErrors.sapPassword) ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
+                  borderRadius: 'var(--radius-md)',
+                  border: (!serverToEdit && (touched.sapPassword || isSubmitted) && fieldErrors.sapPassword) ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -579,7 +546,7 @@ export default function AddServerModal({
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: 'var(--color-text-muted, #64748B)',
+                  color: 'var(--color-text-muted)',
                   padding: 0
                 }}
               >
@@ -587,7 +554,7 @@ export default function AddServerModal({
               </button>
             </div>
             {!serverToEdit && (touched.sapPassword || isSubmitted) && fieldErrors.sapPassword && (
-              <span style={{ fontSize: '11px', color: 'var(--color-danger, #B42318)', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: '11px', color: 'var(--color-danger)', marginTop: '2px', display: 'block' }}>
                 {fieldErrors.sapPassword}
               </span>
             )}
@@ -604,7 +571,7 @@ export default function AddServerModal({
             />
             <label
               htmlFor="server-default"
-              style={{ fontSize: '13px', color: 'var(--color-text, #0F172A)', cursor: 'pointer' }}
+              style={{ fontSize: '13px', color: 'var(--color-text)', cursor: 'pointer' }}
             >
               Set as my default server for new tabs and sessions
             </label>

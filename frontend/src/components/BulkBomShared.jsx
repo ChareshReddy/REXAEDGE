@@ -59,8 +59,8 @@ export function BulkFlowContainer({ children, className = '', style = {} }) {
         maxWidth: 1440,
         margin: '0 auto',
         boxSizing: 'border-box',
-        paddingLeft: 'var(--page-gutter, 32px)',
-        paddingRight: 'var(--page-gutter, 32px)',
+        paddingLeft: 'var(--page-gutter)',
+        paddingRight: 'var(--page-gutter)',
         paddingTop: 20,
         paddingBottom: 64,
         display: 'flex',
@@ -111,9 +111,9 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
     <div className="rx-bulk-columns-guide sap-bulk-columns-guide" style={{ marginTop: 14, ...style }}>
       <div
         style={{
-          fontSize: 'var(--font-size-12, 12px)',
+          fontSize: 'var(--font-size-12)',
           fontWeight: 600,
-          color: 'var(--color-text-secondary, #4A5F77)',
+          color: 'var(--color-text-secondary)',
           marginBottom: 8,
           display: 'flex',
           alignItems: 'center',
@@ -121,7 +121,7 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
         }}
       >
         <span>{title}</span>
-        <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted, #7A8CA3)' }}>
+        <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--color-text-muted)' }}>
           (* required)
         </span>
       </div>
@@ -136,17 +136,17 @@ export function BulkColumnsGuide({ columns = [], title = 'Required Excel Columns
               gap: 4,
               fontSize: '11.5px',
               padding: '3px 9px',
-              borderRadius: 'var(--radius-full, 9999px)',
-              backgroundColor: col.required ? 'var(--color-blue-50, #EEF4F9)' : 'var(--color-surface-subtle, #F8FAFC)',
-              color: col.required ? 'var(--color-blue-600, #02579A)' : 'var(--color-text-secondary, #4A5F77)',
-              border: col.required ? '1px solid var(--color-blue-200, #B3CDE0)' : '1px solid var(--color-border, #D9E2EC)',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: col.required ? 'var(--color-blue-50)' : 'var(--color-surface-subtle)',
+              color: col.required ? 'var(--color-blue-600)' : 'var(--color-text-secondary)',
+              border: col.required ? '1px solid var(--color-blue-200)' : '1px solid var(--color-border)',
               fontWeight: col.required ? 600 : 500
             }}
           >
-            {col.required && <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 700 }}>*</span>}
+            {col.required && <span style={{ color: 'var(--color-danger)', fontWeight: 700 }}>*</span>}
             <span>{col.label}</span>
             {col.default && (
-              <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted, #7A8CA3)', opacity: 0.85 }}>
+              <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', opacity: 0.85 }}>
                 (def: {col.default})
               </span>
             )}
@@ -194,19 +194,19 @@ export function BulkFileInfoBar({
         alignSelf: 'stretch',
         boxSizing: 'border-box',
         padding: '10px 16px',
-        backgroundColor: 'var(--color-surface, #FFFFFF)',
-        border: '1px solid var(--color-border, #D9E2EC)',
-        borderRadius: 'var(--radius-md, 8px)',
-        fontSize: 'var(--font-size-13, 13px)',
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-md)',
+        fontSize: 'var(--font-size-13)',
         ...style
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, overflow: 'hidden' }}>
-        <FileSpreadsheet size={16} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
+        <FileSpreadsheet size={16} color="var(--color-blue-600)" style={{ flexShrink: 0 }} />
         <span
           style={{
             fontWeight: 600,
-            color: 'var(--color-navy-900, #00204E)',
+            color: 'var(--color-navy-900)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
@@ -217,8 +217,8 @@ export function BulkFileInfoBar({
         </span>
         {countText && (
           <>
-            <span style={{ color: 'var(--color-text-muted, #7A8CA3)' }}>·</span>
-            <span style={{ color: 'var(--color-text-secondary, #4A5F77)', whiteSpace: 'nowrap' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>·</span>
+            <span style={{ color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
               {countText}
             </span>
           </>
@@ -237,10 +237,10 @@ export function BulkFileInfoBar({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              fontSize: 'var(--font-size-12, 12px)',
-              height: 'var(--size-button-sm-height, 32px)',
+              fontSize: 'var(--font-size-12)',
+              height: 'var(--size-button-sm-height)',
               padding: '0 12px',
-              borderRadius: 'var(--radius-md, 8px)'
+              borderRadius: 'var(--radius-md)'
             }}
           >
             <Download size={16} style={{ display: 'block', lineHeight: 1 }} />
@@ -258,10 +258,10 @@ export function BulkFileInfoBar({
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              fontSize: 'var(--font-size-12, 12px)',
-              height: 'var(--size-button-sm-height, 32px)',
+              fontSize: 'var(--font-size-12)',
+              height: 'var(--size-button-sm-height)',
               padding: '0 12px',
-              borderRadius: 'var(--radius-md, 8px)'
+              borderRadius: 'var(--radius-md)'
             }}
           >
             <RefreshCw size={13} />
@@ -312,9 +312,9 @@ export function BulkDataPreviewSection({
           minHeight: 48,
           maxHeight: 48,
           padding: '0 16px',
-          backgroundColor: 'var(--card-header-bg, #E4EDF8)',
-          borderBottom: '1px solid var(--card-header-border, #DDE6F0)',
-          borderLeft: '4px solid var(--card-header-accent, #0B2D57)',
+          backgroundColor: 'var(--card-header-bg)',
+          borderBottom: '1px solid var(--card-header-border)',
+          borderLeft: '4px solid var(--card-header-accent)',
           width: '100%',
           boxSizing: 'border-box'
         }}
@@ -326,7 +326,7 @@ export function BulkDataPreviewSection({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 'var(--space-12, 12px)',
+            gap: 'var(--space-12)',
             width: '100%',
             minWidth: 0
           }}
@@ -336,7 +336,7 @@ export function BulkDataPreviewSection({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 'var(--space-10, 10px)',
+              gap: 'var(--space-10)',
               minWidth: 0,
               flex: '1 1 auto'
             }}
@@ -348,7 +348,7 @@ export function BulkDataPreviewSection({
                 fontFamily: 'var(--font-sans)',
                 fontSize: '16px',
                 fontWeight: 600,
-                color: 'var(--card-header-text, #0B2D57)',
+                color: 'var(--card-header-text)',
                 lineHeight: 1,
                 whiteSpace: 'nowrap',
                 margin: 0,
@@ -366,21 +366,21 @@ export function BulkDataPreviewSection({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 'var(--space-6, 6px)',
+                  gap: 'var(--space-6)',
                   height: 28,
                   padding: '0 8px',
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid var(--color-blue-400, #6699B8)',
-                  borderRadius: 'var(--radius-sm, 4px)',
-                  fontSize: 'var(--font-size-12, 12px)',
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-blue-400)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--font-size-12)',
                   fontWeight: 600,
-                  color: 'var(--card-header-text, #0B2D57)',
+                  color: 'var(--card-header-text)',
                   maxWidth: 240,
                   minWidth: 0,
                   flexShrink: 1
                 }}
               >
-                <FileSpreadsheet size={14} color="var(--color-blue-600, #02579A)" style={{ flexShrink: 0 }} />
+                <FileSpreadsheet size={14} color="var(--color-blue-600)" style={{ flexShrink: 0 }} />
                 <span
                   className="rx-file-chip-name"
                   style={{
@@ -400,7 +400,7 @@ export function BulkDataPreviewSection({
               style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: 'var(--card-header-text, #0B2D57)',
+                color: 'var(--card-header-text)',
                 whiteSpace: 'nowrap',
                 flexShrink: 0
               }}
@@ -415,7 +415,7 @@ export function BulkDataPreviewSection({
                 style={{
                   fontSize: '13px',
                   fontWeight: 500,
-                  color: 'var(--card-header-text, #0B2D57)',
+                  color: 'var(--card-header-text)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -446,7 +446,7 @@ export function BulkDataPreviewSection({
               onClear={onSearchClear}
               isTable
               wrapperStyle={{ width: 260, height: 32 }}
-              style={{ height: 32, fontSize: 'var(--font-size-13, 13px)' }}
+              style={{ height: 32, fontSize: 'var(--font-size-13)' }}
               aria-label="Search Data Preview table"
             />
           </div>
@@ -457,12 +457,12 @@ export function BulkDataPreviewSection({
         className="rx-preview-body"
         data-testid="rx-bulk-preview-body"
         style={{
-          padding: 'var(--space-20, 20px)',
+          padding: 'var(--space-20)',
           boxSizing: 'border-box',
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: 'var(--space-16, 16px)'
+          gap: 'var(--space-16)'
         }}
       >
         {children}
@@ -555,12 +555,12 @@ export function BulkJobProgressCard({
         width: '100%',
         alignSelf: 'stretch',
         boxSizing: 'border-box',
-        borderLeft: isQueued ? '4px solid var(--color-blue-400, #6699B8)' : '4px solid var(--color-blue-600, #02579A)',
-        borderTop: '1px solid var(--color-border, #D9E2EC)',
-        borderRight: '1px solid var(--color-border, #D9E2EC)',
-        borderBottom: '1px solid var(--color-border, #D9E2EC)',
-        borderRadius: 'var(--radius-lg, 12px)',
-        backgroundColor: 'var(--color-surface, #FFFFFF)',
+        borderLeft: isQueued ? '4px solid var(--color-blue-400)' : '4px solid var(--color-blue-600)',
+        borderTop: '1px solid var(--color-border)',
+        borderRight: '1px solid var(--color-border)',
+        borderBottom: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)',
+        backgroundColor: 'var(--color-surface)',
         ...style
       }}
     >
@@ -579,21 +579,21 @@ export function BulkJobProgressCard({
             <Loader2
               size={18}
               className="sap-spin"
-              style={{ color: isQueued ? 'var(--color-blue-400, #6699B8)' : 'var(--color-blue-600, #02579A)' }}
+              style={{ color: isQueued ? 'var(--color-blue-400)' : 'var(--color-blue-600)' }}
             />
           )}
-          <span style={{ fontWeight: 600, fontSize: 'var(--font-size-14, 14px)', color: 'var(--color-navy-900, #00204E)' }}>
+          <span style={{ fontWeight: 600, fontSize: 'var(--font-size-14)', color: 'var(--color-navy-900)' }}>
             {titleText}
           </span>
           <span
             className="rx-elapsed-ticker"
             style={{
-              fontSize: 'var(--font-size-12, 12px)',
-              color: 'var(--color-text-secondary, #4A5F77)',
-              fontFamily: 'var(--font-family-mono, monospace)',
-              backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+              fontSize: 'var(--font-size-12)',
+              color: 'var(--color-text-secondary)',
+              fontFamily: 'var(--font-mono)',
+              backgroundColor: 'var(--color-blue-50)',
               padding: '2px 8px',
-              borderRadius: 'var(--radius-sm, 4px)'
+              borderRadius: 'var(--radius-sm)'
             }}
           >
             Elapsed: {formatElapsed(elapsedSec)}
@@ -606,9 +606,9 @@ export function BulkJobProgressCard({
             disabled={isCancelling}
             className="rx-btn rx-btn-secondary rx-btn-sm"
             style={{
-              height: 'var(--size-button-sm-height, 32px)',
+              height: 'var(--size-button-sm-height)',
               padding: '0 12px',
-              borderRadius: 'var(--radius-md, 8px)'
+              borderRadius: 'var(--radius-md)'
             }}
           >
             {isCancelling ? 'Stopping after current BOM...' : 'Cancel'}
@@ -621,7 +621,7 @@ export function BulkJobProgressCard({
         style={{
           width: '100%',
           height: 8,
-          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
+          backgroundColor: 'var(--color-blue-50)',
           borderRadius: 4,
           overflow: 'hidden',
           marginBottom: 10
@@ -632,7 +632,7 @@ export function BulkJobProgressCard({
           style={{
             width: isQueued ? '100%' : `${displayPercent}%`,
             height: '100%',
-            backgroundColor: isQueued ? 'var(--color-blue-400, #6699B8)' : 'var(--color-blue-600, #02579A)',
+            backgroundColor: isQueued ? 'var(--color-blue-400)' : 'var(--color-blue-600)',
             transition: 'width 0.4s ease-out',
             opacity: isQueued ? 0.35 : 1
           }}
@@ -645,8 +645,8 @@ export function BulkJobProgressCard({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: 'var(--font-size-12, 12px)',
-          color: 'var(--color-text-secondary, #4A5F77)',
+          fontSize: 'var(--font-size-12)',
+          color: 'var(--color-text-secondary)',
           flexWrap: 'wrap',
           gap: 8
         }}
@@ -658,22 +658,22 @@ export function BulkJobProgressCard({
         </span>
         <div style={{ display: 'flex', gap: 12 }}>
           {jobProgress.successCount > 0 && (
-            <span style={{ color: 'var(--color-success, #15803D)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>
               {isValidating ? 'Ready' : 'Created'}: {jobProgress.successCount}
             </span>
           )}
           {jobProgress.failedCount > 0 && (
-            <span style={{ color: 'var(--color-danger, #B42318)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-danger)', fontWeight: 600 }}>
               Failed: {jobProgress.failedCount}
             </span>
           )}
           {jobProgress.skippedCount > 0 && (
-            <span style={{ color: 'var(--color-text-secondary, #4A5F77)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
               Skipped: {jobProgress.skippedCount}
             </span>
           )}
           {jobProgress.notProcessedCount > 0 && (
-            <span style={{ color: 'var(--color-blue-600, #02579A)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--color-blue-600)', fontWeight: 600 }}>
               Not Processed: {jobProgress.notProcessedCount}
             </span>
           )}
@@ -687,16 +687,16 @@ export function BulkJobProgressCard({
           style={{
             marginTop: 10,
             paddingTop: 8,
-            borderTop: '1px dashed var(--color-border, #D9E2EC)',
-            fontSize: 'var(--font-size-12, 12px)',
-            color: 'var(--color-text-secondary, #4A5F77)',
+            borderTop: '1px dashed var(--color-border)',
+            fontSize: 'var(--font-size-12)',
+            color: 'var(--color-text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
             fontWeight: 500
           }}
         >
-          <AlertTriangle size={14} style={{ color: 'var(--color-warning, #d97706)' }} />
+          <AlertTriangle size={14} style={{ color: 'var(--color-warning)' }} />
           <span>{watchdogWarning}</span>
         </div>
       )}
@@ -1058,10 +1058,10 @@ export function renderMessageContent(text) {
           key={i}
           className="sap-code-pill"
           style={{
-            fontFamily: 'var(--font-mono, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: '0.9em',
             padding: '1px 4px',
-            borderRadius: 'var(--radius-sm, 4px)',
+            borderRadius: 'var(--radius-sm)',
             backgroundColor: 'rgba(0, 32, 78, 0.06)',
             color: 'inherit'
           }}
@@ -1076,10 +1076,10 @@ export function renderMessageContent(text) {
           key={i}
           className="sap-code-pill"
           style={{
-            fontFamily: 'var(--font-mono, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: '0.9em',
             padding: '1px 4px',
-            borderRadius: 'var(--radius-sm, 4px)',
+            borderRadius: 'var(--radius-sm)',
             backgroundColor: 'rgba(0, 32, 78, 0.06)',
             color: 'inherit'
           }}
@@ -1133,9 +1133,9 @@ export function BulkBomMessageRow({
         style={{
           whiteSpace: 'normal',
           padding: '6px 16px',
-          backgroundColor: 'var(--sap-surface-subtle, #f8fafc)',
-          borderTop: '1px dashed var(--sap-border-subtle, #e2e8f0)',
-          borderBottom: '2px solid var(--sap-border, #cbd5e1)',
+          backgroundColor: 'var(--sap-surface-subtle)',
+          borderTop: '1px dashed var(--sap-border-subtle)',
+          borderBottom: '2px solid var(--sap-border)',
           fontSize: 12,
           lineHeight: 1.45
         }}
@@ -1152,14 +1152,14 @@ export function BulkBomMessageRow({
                   alignItems: 'flex-start',
                   gap: 6,
                   padding: '3px 8px',
-                  borderRadius: 'var(--radius-sm, 6px)',
+                  borderRadius: 'var(--radius-sm)',
                   backgroundColor:
                     severity === 'error'
-                      ? 'var(--color-danger-bg, #FEF3F2)'
+                      ? 'var(--color-danger-bg)'
                       : severity === 'warning'
                       ? 'var(--color-warning-bg)'
                       : severity === 'skipped'
-                      ? 'var(--color-blue-50, #EEF4F9)'
+                      ? 'var(--color-blue-50)'
                       : 'transparent',
                   fontFamily: 'var(--font-sans)',
                   fontSize: 12,
@@ -1168,13 +1168,13 @@ export function BulkBomMessageRow({
               >
                 <span style={{ flexShrink: 0, marginTop: 2, display: 'inline-flex' }}>
                   {severity === 'error' ? (
-                    <AlertCircle size={13} style={{ color: 'var(--color-danger, #b42318)' }} />
+                    <AlertCircle size={13} style={{ color: 'var(--color-danger)' }} />
                   ) : severity === 'warning' ? (
-                    <AlertTriangle size={13} style={{ color: 'var(--color-warning, #d97706)' }} />
+                    <AlertTriangle size={13} style={{ color: 'var(--color-warning)' }} />
                   ) : severity === 'skipped' ? (
-                    <MinusCircle size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
+                    <MinusCircle size={13} style={{ color: 'var(--color-text-muted)' }} />
                   ) : (
-                    <Info size={13} style={{ color: 'var(--color-text-muted, #7A8CA3)' }} />
+                    <Info size={13} style={{ color: 'var(--color-text-muted)' }} />
                   )}
                 </span>
                 <span
@@ -1186,12 +1186,12 @@ export function BulkBomMessageRow({
                     fontFamily: 'var(--font-sans)',
                     color:
                       severity === 'error'
-                        ? 'var(--color-danger, #B42318)'
+                        ? 'var(--color-danger)'
                         : severity === 'warning'
-                        ? 'var(--color-text, #0F2742)'
+                        ? 'var(--color-text)'
                         : severity === 'skipped'
-                        ? 'var(--color-text-secondary, #4A5F77)'
-                        : 'var(--color-text-secondary, #4A5F77)'
+                        ? 'var(--color-text-secondary)'
+                        : 'var(--color-text-secondary)'
                   }}
                 >
                   {renderMessageContent(item.text)}
@@ -1209,7 +1209,7 @@ export function BulkBomMessageRow({
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--color-primary, #0070f2)',
+                  color: 'var(--color-primary, var(--color-blue-600))',
                   cursor: 'pointer',
                   padding: '2px 0',
                   fontFamily: 'inherit',
@@ -1248,7 +1248,7 @@ export function BulkBomResultBadge({ status, hasValidated = true }) {
           whiteSpace: 'nowrap'
         }}
       >
-        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-text-muted, #7A8CA3)' }} />
+        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
         <span>Not validated</span>
       </span>
     );
@@ -1266,7 +1266,7 @@ export function BulkBomResultBadge({ status, hasValidated = true }) {
           whiteSpace: 'nowrap'
         }}
       >
-        <CheckCircle2 size={13} style={{ color: 'var(--color-success, #15803D)' }} />
+        <CheckCircle2 size={13} style={{ color: 'var(--color-success)' }} />
         <span>Ready</span>
       </span>
     );
@@ -1282,9 +1282,9 @@ export function BulkBomResultBadge({ status, hasValidated = true }) {
           fontSize: 11,
           padding: '3px 8px',
           whiteSpace: 'nowrap',
-          backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-          color: 'var(--color-danger, #B42318)',
-          border: '1px solid var(--color-danger-border, #FECDCA)'
+          backgroundColor: 'var(--color-danger-bg)',
+          color: 'var(--color-danger)',
+          border: '1px solid var(--color-danger-border)'
         }}
       >
         <AlertCircle size={13} />
@@ -1303,12 +1303,12 @@ export function BulkBomResultBadge({ status, hasValidated = true }) {
           fontSize: 11,
           padding: '3px 8px',
           whiteSpace: 'nowrap',
-          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-          color: 'var(--color-text-secondary, #4A5F77)',
-          border: '1px solid var(--color-border, #D9E2EC)'
+          backgroundColor: 'var(--color-blue-50)',
+          color: 'var(--color-text-secondary)',
+          border: '1px solid var(--color-border)'
         }}
       >
-        <MinusCircle size={13} style={{ color: 'var(--color-text-secondary, #4A5F77)' }} />
+        <MinusCircle size={13} style={{ color: 'var(--color-text-secondary)' }} />
         <span>Skipped</span>
       </span>
     );
@@ -1534,12 +1534,12 @@ export function BulkExecutionResultBadge({ status, subStatus, message, mode = 'c
           fontSize: 11,
           padding: '3px 8px',
           whiteSpace: 'nowrap',
-          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-          color: 'var(--color-text-secondary, #4A5F77)',
-          border: '1px solid var(--color-border, #D9E2EC)'
+          backgroundColor: 'var(--color-blue-50)',
+          color: 'var(--color-text-secondary)',
+          border: '1px solid var(--color-border)'
         }}
       >
-        <MinusCircle size={13} style={{ color: 'var(--color-text-secondary, #4A5F77)' }} />
+        <MinusCircle size={13} style={{ color: 'var(--color-text-secondary)' }} />
         <span>Not attempted</span>
       </span>
     );
@@ -1576,12 +1576,12 @@ export function BulkExecutionResultBadge({ status, subStatus, message, mode = 'c
           fontSize: 11,
           padding: '3px 8px',
           whiteSpace: 'nowrap',
-          backgroundColor: 'var(--color-blue-50, #EEF4F9)',
-          color: 'var(--color-blue-700, #034375)',
-          border: '1px solid var(--color-blue-200, #B3CDE0)'
+          backgroundColor: 'var(--color-blue-50)',
+          color: 'var(--color-blue-700)',
+          border: '1px solid var(--color-blue-200)'
         }}
       >
-        <MinusCircle size={13} style={{ color: 'var(--color-blue-700, #034375)' }} />
+        <MinusCircle size={13} style={{ color: 'var(--color-blue-700)' }} />
         <span>Skipped</span>
       </span>
     );
@@ -1597,12 +1597,12 @@ export function BulkExecutionResultBadge({ status, subStatus, message, mode = 'c
         fontSize: 11,
         padding: '3px 8px',
         whiteSpace: 'nowrap',
-        backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-        color: 'var(--color-danger, #B42318)',
-        border: '1px solid var(--color-danger-border, #FECDCA)'
+        backgroundColor: 'var(--color-danger-bg)',
+        color: 'var(--color-danger)',
+        border: '1px solid var(--color-danger-border)'
       }}
     >
-      <AlertCircle size={13} style={{ color: 'var(--color-danger, #B42318)' }} />
+      <AlertCircle size={13} style={{ color: 'var(--color-danger)' }} />
       <span>Failed</span>
     </span>
   );

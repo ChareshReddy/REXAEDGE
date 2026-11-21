@@ -68,9 +68,9 @@ export default function ValidateBomModal({
       title="Validate BOM"
       subtitle="Check that a material and its BOM are ready in SAP before you create or copy."
       icon={ShieldCheck}
-      iconColor="var(--color-blue-600, #02579A)"
-      iconBadgeBg="var(--color-blue-100, #EEF4F9)"
-      iconBadgeBorder="var(--color-blue-300, #B3CDE0)"
+      iconColor="var(--color-blue-600)"
+      iconBadgeBg="var(--color-blue-100)"
+      iconBadgeBorder="var(--color-blue-200)"
       isLoading={isLoading}
       maxWidth={460}
       padding="16px 20px"

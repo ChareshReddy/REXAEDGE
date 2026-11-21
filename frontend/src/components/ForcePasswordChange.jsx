@@ -74,8 +74,8 @@ export default function ForcePasswordChange({ user, onSuccess }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--color-surface-subtle, #F7FAFC)',
-        padding: 'var(--spacing-md, 16px)'
+        backgroundColor: 'var(--color-surface-subtle)',
+        padding: 'var(--space-16)'
       }}
     >
       <div
@@ -83,25 +83,25 @@ export default function ForcePasswordChange({ user, onSuccess }) {
         style={{
           width: '100%',
           maxWidth: '460px',
-          backgroundColor: 'var(--color-surface, #FFFFFF)',
-          borderRadius: 'var(--radius-lg, 8px)',
-          border: '1px solid var(--color-border, #E2E8F0)',
-          boxShadow: 'var(--shadow-card, 0 4px 12px rgba(0, 32, 78, 0.08))',
-          padding: 'var(--spacing-xl, 32px)'
+          backgroundColor: 'var(--color-surface)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--color-border)',
+          boxShadow: 'var(--shadow-sm)',
+          padding: 'var(--space-32)'
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 'var(--spacing-lg, 24px)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 'var(--space-24)' }}>
           <div
             style={{
               width: '48px',
               height: '48px',
               borderRadius: '50%',
-              backgroundColor: 'var(--color-blue-100, #DCE8F1)',
-              color: 'var(--color-navy-900, #00204E)',
+              backgroundColor: 'var(--color-blue-100)',
+              color: 'var(--color-navy-900)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 'var(--spacing-md, 16px)'
+              marginBottom: 'var(--space-16)'
             }}
           >
             <Lock size={24} />
@@ -110,8 +110,8 @@ export default function ForcePasswordChange({ user, onSuccess }) {
             style={{
               fontSize: '20px',
               fontWeight: 700,
-              color: 'var(--color-text, #0F172A)',
-              margin: '0 0 var(--spacing-xs, 4px) 0'
+              color: 'var(--color-text)',
+              margin: '0 0 var(--space-4) 0'
             }}
           >
             Set a New Password
@@ -119,7 +119,7 @@ export default function ForcePasswordChange({ user, onSuccess }) {
           <p
             style={{
               fontSize: '13px',
-              color: 'var(--color-text-muted, #64748B)',
+              color: 'var(--color-text-muted)',
               margin: 0,
               lineHeight: 1.5
             }}
@@ -135,12 +135,12 @@ export default function ForcePasswordChange({ user, onSuccess }) {
               display: 'flex',
               alignItems: 'flex-start',
               gap: '8px',
-              backgroundColor: 'var(--color-danger-bg, #FEF2F2)',
-              border: '1px solid var(--color-danger-border, #FCA5A5)',
-              borderRadius: 'var(--radius-md, 6px)',
+              backgroundColor: 'var(--color-danger-bg)',
+              border: '1px solid var(--color-danger-border)',
+              borderRadius: 'var(--radius-md)',
               padding: '10px 12px',
-              marginBottom: 'var(--spacing-md, 16px)',
-              color: 'var(--color-danger, #B42318)',
+              marginBottom: 'var(--space-16)',
+              color: 'var(--color-danger)',
               fontSize: '13px',
               lineHeight: 1.4
             }}
@@ -152,14 +152,14 @@ export default function ForcePasswordChange({ user, onSuccess }) {
 
         <form onSubmit={handleSubmit} noValidate>
           {/* Current Temporary Password */}
-          <div style={{ marginBottom: 'var(--spacing-md, 16px)' }}>
+          <div style={{ marginBottom: 'var(--space-16)' }}>
             <label
               htmlFor="force-current-password"
               style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 600,
-                color: 'var(--color-text, #0F172A)',
+                color: 'var(--color-text)',
                 marginBottom: '6px'
               }}
             >
@@ -178,10 +178,10 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   width: '100%',
                   padding: '9px 36px 9px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  color: 'var(--color-text, #0F172A)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -197,7 +197,7 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: 'var(--color-text-muted, #64748B)',
+                  color: 'var(--color-text-muted)',
                   padding: 0,
                   display: 'flex',
                   alignItems: 'center'
@@ -209,14 +209,14 @@ export default function ForcePasswordChange({ user, onSuccess }) {
           </div>
 
           {/* New Password */}
-          <div style={{ marginBottom: 'var(--spacing-md, 16px)' }}>
+          <div style={{ marginBottom: 'var(--space-16)' }}>
             <label
               htmlFor="force-new-password"
               style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 600,
-                color: 'var(--color-text, #0F172A)',
+                color: 'var(--color-text)',
                 marginBottom: '6px'
               }}
             >
@@ -235,10 +235,10 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   width: '100%',
                   padding: '9px 36px 9px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  color: 'var(--color-text, #0F172A)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -254,7 +254,7 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: 'var(--color-text-muted, #64748B)',
+                  color: 'var(--color-text-muted)',
                   padding: 0,
                   display: 'flex',
                   alignItems: 'center'
@@ -266,7 +266,7 @@ export default function ForcePasswordChange({ user, onSuccess }) {
             <div
               style={{
                 fontSize: '11px',
-                color: 'var(--color-text-muted, #64748B)',
+                color: 'var(--color-text-muted)',
                 marginTop: '4px',
                 lineHeight: 1.3
               }}
@@ -276,14 +276,14 @@ export default function ForcePasswordChange({ user, onSuccess }) {
           </div>
 
           {/* Confirm New Password */}
-          <div style={{ marginBottom: 'var(--spacing-lg, 24px)' }}>
+          <div style={{ marginBottom: 'var(--space-24)' }}>
             <label
               htmlFor="force-confirm-password"
               style={{
                 display: 'block',
                 fontSize: '13px',
                 fontWeight: 600,
-                color: 'var(--color-text, #0F172A)',
+                color: 'var(--color-text)',
                 marginBottom: '6px'
               }}
             >
@@ -302,10 +302,10 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   width: '100%',
                   padding: '9px 36px 9px 12px',
                   fontSize: '13px',
-                  borderRadius: 'var(--radius-md, 6px)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
-                  backgroundColor: 'var(--color-surface, #FFFFFF)',
-                  color: 'var(--color-text, #0F172A)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
                   boxSizing: 'border-box'
                 }}
               />
@@ -321,7 +321,7 @@ export default function ForcePasswordChange({ user, onSuccess }) {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: 'var(--color-text-muted, #64748B)',
+                  color: 'var(--color-text-muted)',
                   padding: 0,
                   display: 'flex',
                   alignItems: 'center'
@@ -340,10 +340,10 @@ export default function ForcePasswordChange({ user, onSuccess }) {
               padding: '10px 16px',
               fontSize: '14px',
               fontWeight: 600,
-              backgroundColor: 'var(--color-navy-900, #00204E)',
-              color: '#FFFFFF',
+              backgroundColor: 'var(--color-navy-900)',
+              color: 'var(--color-text-inverse)',
               border: 'none',
-              borderRadius: 'var(--radius-md, 6px)',
+              borderRadius: 'var(--radius-md)',
               cursor: isLoading ? 'not-allowed' : 'pointer',
               opacity: isLoading ? 0.7 : 1,
               transition: 'background-color 0.15s ease'

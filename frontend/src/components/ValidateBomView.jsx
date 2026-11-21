@@ -372,25 +372,25 @@ export default function ValidateBomView({
                   style={{
                     width: '100%',
                     padding: '16px 20px',
-                    borderRadius: 'var(--radius-xl, 12px)',
-                    backgroundColor: result.bomExists ? 'var(--sap-success-bg, #f0fdf4)' : 'var(--sap-warning-bg, #fffbeb)',
-                    border: `1px solid ${result.bomExists ? 'var(--sap-success-border, #bbf7d0)' : 'var(--sap-warning-border, #D9E2EC)'}`,
+                    borderRadius: 'var(--radius-xl)',
+                    backgroundColor: result.bomExists ? 'var(--sap-success-bg)' : 'var(--sap-warning-bg)',
+                    border: `1px solid ${result.bomExists ? 'var(--sap-success-border)' : 'var(--sap-warning-border)'}`,
                     boxShadow: 'var(--sap-shadow-sm)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     {result.bomExists ? (
-                      <CheckCircle2 size={18} color="var(--sap-success, #16a34a)" />
+                      <CheckCircle2 size={18} color="var(--sap-success)" />
                     ) : (
-                      <AlertTriangle size={18} color="var(--sap-warning, #d97706)" />
+                      <AlertTriangle size={18} color="var(--sap-warning)" />
                     )}
-                    <strong style={{ fontSize: '14px', color: result.bomExists ? 'var(--sap-success-text, #166534)' : 'var(--sap-warning-text, #00204E)' }}>
+                    <strong style={{ fontSize: '14px', color: result.bomExists ? 'var(--sap-success-text)' : 'var(--sap-warning-text)' }}>
                       {result.bomExists ? 'BOM Exists in SAP' : 'No BOM Found'}
                     </strong>
                   </div>
                   <p style={{ fontSize: '12.5px', color: 'var(--sap-text)', marginBottom: 12 }}>{result.message}</p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, fontSize: '12px', background: '#ffffff', padding: '12px 16px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, fontSize: '12px', background: 'var(--color-surface)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--sap-border-subtle)' }}>
                     <div>Material: <strong>{result.material || formData.material}</strong></div>
                     <div>Plant: <strong>{result.plant || formData.plant}</strong></div>
                     <div>Components: <strong>{result.componentCount || 0}</strong></div>

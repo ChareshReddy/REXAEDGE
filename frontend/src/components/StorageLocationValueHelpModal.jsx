@@ -286,7 +286,7 @@ export default function StorageLocationValueHelpModal({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-            <h3 id="storage-location-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18, 18px)', fontWeight: 700, color: 'var(--sap-popup-header-title, #00204E)', lineHeight: 1.2 }}>
+            <h3 id="storage-location-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18)', fontWeight: 700, color: 'var(--sap-popup-header-title)', lineHeight: 1.2 }}>
               {modalTitle}
             </h3>
           </div>
@@ -338,7 +338,7 @@ export default function StorageLocationValueHelpModal({
 
             <button
               type="submit"
-              className="sap-button primary sap-f4-search-btn"
+              className="sap-button sap-f4-search-btn"
               style={{
                 height: 30,
                 padding: '0 14px',
@@ -348,12 +348,11 @@ export default function StorageLocationValueHelpModal({
                 alignItems: 'center',
                 gap: 6,
                 whiteSpace: 'nowrap',
-                flexShrink: 0,
-                color: '#ffffff'
+                flexShrink: 0
               }}
             >
-              <Search size={14} color="#ffffff" style={{ stroke: '#ffffff' }} />
-              <span style={{ color: '#ffffff' }}>Search</span>
+              <Search size={14} aria-hidden="true" />
+              <span>Search</span>
             </button>
           </form>
         </div>
@@ -363,10 +362,10 @@ export default function StorageLocationValueHelpModal({
           <div
             style={{
               padding: '6px 20px',
-              background: '#fffbeb',
-              borderBottom: '1px solid #fef3c7',
+              background: 'var(--color-warning-bg)',
+              borderBottom: '1px solid var(--color-warning-bg)',
               fontSize: 11.5,
-              color: '#b45309',
+              color: 'var(--color-warning-text)',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -420,8 +419,8 @@ export default function StorageLocationValueHelpModal({
                 <col style={{ width: 260, maxWidth: 340 }} />
               </colgroup>
               <thead>
-                <tr style={{ background: '#EEF4F9', borderBottom: '1px solid #EEF4F9' }}>
-                  <th className="sap-f4-sticky-col sap-col-left" style={{ width: 90, minWidth: 90, position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#EEF4F9' }}>Plnt</th>
+                <tr style={{ background: 'var(--color-blue-50)', borderBottom: '1px solid var(--color-blue-50)' }}>
+                  <th className="sap-f4-sticky-col sap-col-left" style={{ width: 90, minWidth: 90, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50)' }}>Plnt</th>
                   <th className="sap-col-left" style={{ width: 90, minWidth: 90 }}>SLoc</th>
                   <th className="sap-col-left" style={{ width: 260, maxWidth: 340 }}>Description</th>
                 </tr>
@@ -429,7 +428,7 @@ export default function StorageLocationValueHelpModal({
               <tbody>
                 {filteredLocations.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
-                  const rowBg = isSelected ? '#EEF4F9' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
+                  const rowBg = isSelected ? 'var(--color-blue-50)' : idx % 2 === 1 ? 'var(--color-surface-subtle)' : 'var(--color-surface)';
                   return (
                     <tr
                       key={`${item.werks}-${item.lgort}-${idx}`}
@@ -438,7 +437,7 @@ export default function StorageLocationValueHelpModal({
                       style={{
                         cursor: 'pointer',
                         background: rowBg,
-                        borderBottom: '1px solid #f1f5f9'
+                        borderBottom: '1px solid var(--color-surface-subtle)'
                       }}
                       onClick={(e) => {
                         e.preventDefault();
@@ -451,8 +450,8 @@ export default function StorageLocationValueHelpModal({
                       <td
                         className="sap-f4-sticky-col sap-col-code sap-col-left" style={{ width: 90,
                           fontFamily: 'var(--sap-font-mono)',
-                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
-                          color: 'var(--color-text-secondary, #4A5F77)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code)',
+                          color: 'var(--color-text-secondary)',
                           position: 'sticky',
                           left: 0,
                           zIndex: 1,
@@ -464,8 +463,8 @@ export default function StorageLocationValueHelpModal({
                       <td
                         className="sap-col-code sap-col-left" style={{ width: 90,
                           fontFamily: 'var(--sap-font-mono)',
-                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
-                          color: isSelected ? 'var(--color-navy-900, #00204E)' : 'var(--color-blue-600, #02579A)'
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code)',
+                          color: isSelected ? 'var(--color-navy-900)' : 'var(--color-blue-600)'
                         }}
                       >
                         {item.lgort}
@@ -476,8 +475,8 @@ export default function StorageLocationValueHelpModal({
                         style={{
                           width: 260,
                           maxWidth: 340,
-                          color: 'var(--color-text, #0F2742)',
-                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          color: 'var(--color-text)',
+                          fontFamily: "var(--font-sans)",
                           fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
@@ -497,13 +496,13 @@ export default function StorageLocationValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #EEF4F9', background: 'var(--sap-modal-footer-bg, #EEF4F9)' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--color-blue-50)', background: 'var(--sap-modal-footer-bg)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredLocations[selectedIndex] ? (
               <span title={`${filteredLocations[selectedIndex].werks} / ${filteredLocations[selectedIndex].lgort} - ${filteredLocations[selectedIndex].lgobe || ''}`}>
                 Selected: <strong style={{ color: 'var(--sap-text-primary)' }}>{filteredLocations[selectedIndex].lgort}</strong>
                 {filteredLocations[selectedIndex].lgobe ? ` - ${filteredLocations[selectedIndex].lgobe}` : ''}
-                <span style={{ marginLeft: 6, color: '#64748b', fontSize: 12 }}>
+                <span style={{ marginLeft: 6, color: 'var(--color-text-secondary)', fontSize: 12 }}>
                   (Plnt: {filteredLocations[selectedIndex].werks})
                 </span>
               </span>

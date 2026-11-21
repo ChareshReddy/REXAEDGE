@@ -886,9 +886,9 @@ export default function MaterialRestrictValueRangeModal({
               id="sap-restrict-range-title"
               style={{
                 margin: 0,
-                fontSize: 'var(--font-size-18, 18px)',
+                fontSize: 'var(--font-size-18)',
                 fontWeight: 700,
-                color: 'var(--sap-popup-header-title, #00204E)',
+                color: 'var(--sap-popup-header-title)',
                 lineHeight: 1.2
               }}
             >
@@ -1009,9 +1009,9 @@ export default function MaterialRestrictValueRangeModal({
               className="sap-f4-error"
               style={{
                 marginBottom: 12,
-                backgroundColor: '#fffbeb',
-                border: '1px solid #fde68a',
-                color: '#92400e',
+                backgroundColor: 'var(--color-warning-bg)',
+                border: '1px solid var(--color-warning-border)',
+                color: 'var(--color-warning-strong)',
                 borderRadius: 6,
                 padding: '10px 14px',
                 display: 'flex',
@@ -1021,7 +1021,7 @@ export default function MaterialRestrictValueRangeModal({
                 lineHeight: 1.4
               }}
             >
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1, color: '#d97706' }} />
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-warning)' }} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600 }}>{typeof errorMsg === 'object' ? errorMsg.title : 'Search notice'}</div>
                 <div>{typeof errorMsg === 'object' ? errorMsg.message : errorMsg}</div>
@@ -1029,7 +1029,7 @@ export default function MaterialRestrictValueRangeModal({
                   <div style={{ marginTop: 4, opacity: 0.9 }}>{errorMsg.hint}</div>
                 )}
                 {typeof errorMsg === 'object' && errorMsg.errorRef && (
-                  <div style={{ marginTop: 4, fontSize: 11, color: '#64748b' }}>
+                  <div style={{ marginTop: 4, fontSize: 11, color: 'var(--color-text-secondary)' }}>
                     Reference: <code>{errorMsg.errorRef}</code>
                   </div>
                 )}
@@ -1077,15 +1077,15 @@ export default function MaterialRestrictValueRangeModal({
           ) : (
             /* Unavailable Tab Message */
             <div className="sap-restrict-unavailable-panel">
-              <Info size={28} style={{ color: 'var(--sap-text-secondary, #64748b)', marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sap-text-primary, #1e293b)' }}>
+              <Info size={28} style={{ color: 'var(--sap-text-secondary)', marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--sap-text-primary)' }}>
                 {activeOption.unavailableReason ? 'Not available on this system' : (activeOption.notConfiguredOnSap ? 'Not configured on this system' : 'Not available yet')}
               </div>
               <p
                 style={{
                   margin: '6px 0 0',
                   fontSize: 13,
-                  color: 'var(--sap-text-secondary, #64748b)',
+                  color: 'var(--sap-text-secondary)',
                   maxWidth: 520,
                   textAlign: 'center'
                 }}
@@ -1144,7 +1144,7 @@ export default function MaterialRestrictValueRangeModal({
               {isSearching ? (
                 <Loader2 size={14} className="sap-spin" style={{ marginRight: 6 }} />
               ) : (
-                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: '#ffffff' }} />
+                <Check size={14} strokeWidth={2.5} style={{ marginRight: 6, color: 'var(--color-text-inverse)' }} />
               )}
               Continue
             </button>

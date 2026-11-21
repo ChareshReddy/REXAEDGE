@@ -203,7 +203,7 @@ export default function ConfirmationCard({
     if (type === 'delete_bom') {
       return {
         title: `Delete BOM Confirmation Required`,
-        icon: <Trash2 size={16} color="var(--color-primary, #02579A)" />,
+        icon: <Trash2 size={16} color="var(--color-primary, var(--color-blue-600))" />,
         accentClass: 'sap-confirm-card-info'
       };
     }
@@ -322,9 +322,9 @@ export default function ConfirmationCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'var(--color-blue-100, #D9E2EC)',
-                color: 'var(--color-blue-700, #034375)',
-                border: '1px solid var(--color-blue-200, #B3CDE0)',
+                background: 'var(--color-blue-100)',
+                color: 'var(--color-blue-700)',
+                border: '1px solid var(--color-blue-200)',
                 fontWeight: 600,
                 fontSize: 12,
                 padding: '4px 10px',
@@ -334,7 +334,7 @@ export default function ConfirmationCard({
               <Loader2
                 size={13}
                 className="sap-spin"
-                color="var(--color-blue-600, #02579A)"
+                color="var(--color-blue-600)"
                 strokeWidth={2.5}
               />
               <span>Executing...</span>
@@ -366,9 +366,9 @@ export default function ConfirmationCard({
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 16px',
-              background: 'var(--color-blue-50, #EEF4F9)',
-              border: '1px solid var(--color-blue-200, #B3CDE0)',
-              borderRadius: 'var(--radius-md, 6px)',
+              background: 'var(--color-blue-50)',
+              border: '1px solid var(--color-blue-200)',
+              borderRadius: 'var(--radius-md)',
               marginBottom: 16,
               gap: 12
             }}
@@ -377,7 +377,7 @@ export default function ConfirmationCard({
               <Loader2
                 size={20}
                 className="sap-spin"
-                color="var(--color-blue-600, #02579A)"
+                color="var(--color-blue-600)"
                 strokeWidth={2.5}
                 style={{ flexShrink: 0 }}
               />
@@ -387,7 +387,7 @@ export default function ConfirmationCard({
                   style={{
                     fontSize: 13,
                     fontWeight: 600,
-                    color: 'var(--color-navy-900, #00204E)',
+                    color: 'var(--color-navy-900)',
                     lineHeight: 1.3
                   }}
                 >
@@ -397,7 +397,7 @@ export default function ConfirmationCard({
                   data-testid="confirm-executing-subtext"
                   style={{
                     fontSize: 12,
-                    color: 'var(--color-text-secondary, #475569)',
+                    color: 'var(--color-text-secondary)',
                     marginTop: 2,
                     lineHeight: 1.3
                   }}
@@ -414,17 +414,17 @@ export default function ConfirmationCard({
                 alignItems: 'center',
                 gap: 5,
                 padding: '4px 8px',
-                borderRadius: 'var(--radius-sm, 4px)',
-                background: 'var(--color-surface, #FFFFFF)',
-                border: '1px solid var(--color-blue-200, #B3CDE0)',
-                color: 'var(--color-navy-900, #00204E)',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-blue-200)',
+                color: 'var(--color-navy-900)',
                 fontSize: 12,
-                fontFamily: 'var(--font-mono, monospace)',
+                fontFamily: 'var(--font-mono)',
                 fontWeight: 600,
                 flexShrink: 0
               }}
             >
-              <Clock size={13} color="var(--color-blue-600, #02579A)" />
+              <Clock size={13} color="var(--color-blue-600)" />
               <span data-testid="confirm-elapsed-time">{formatElapsed(elapsedSeconds)}</span>
             </div>
           </div>
@@ -546,7 +546,7 @@ export default function ConfirmationCard({
                     <td style={{ color: 'var(--sap-text-muted)' }}>{preview?.sourceMaterial}</td>
                     <td>
                       {preview?.sourceMaterial !== preview?.targetMaterial ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 'var(--sap-radius)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-md)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
                           {preview?.targetMaterial}
                         </span>
                       ) : (
@@ -559,7 +559,7 @@ export default function ConfirmationCard({
                     <td style={{ color: 'var(--sap-text-muted)' }}>{preview?.sourcePlant}</td>
                     <td>
                       {preview?.sourcePlant !== preview?.targetPlant ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 'var(--sap-radius)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-md)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
                           {preview?.targetPlant}
                         </span>
                       ) : (
@@ -572,7 +572,7 @@ export default function ConfirmationCard({
                     <td style={{ color: 'var(--sap-text-muted)' }}>{preview?.sourceUsage || '1'}</td>
                     <td>
                       {preview?.sourceUsage !== preview?.targetUsage ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 'var(--sap-radius)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-md)', background: 'var(--sap-success-bg)', color: 'var(--sap-success-text)', fontWeight: 600 }}>
                           {preview?.targetUsage || '1'}
                         </span>
                       ) : (
@@ -585,7 +585,7 @@ export default function ConfirmationCard({
                       <td className="sap-diff-field-name">Alternative BOM</td>
                       <td style={{ color: 'var(--sap-text-muted)' }}>{preview?.sourceAltBom || 'Default'}</td>
                       <td>
-                        <span style={{ padding: '2px 8px', borderRadius: 'var(--sap-radius)', background: 'var(--sap-primary-light)', color: 'var(--sap-primary)', fontWeight: 600, fontSize: '11px' }}>
+                        <span style={{ padding: '2px 8px', borderRadius: 'var(--radius-md)', background: 'var(--sap-primary-light)', color: 'var(--sap-primary)', fontWeight: 600, fontSize: '11px' }}>
                           {preview?.targetAltBom || 'Auto-select'}
                         </span>
                       </td>
@@ -607,7 +607,7 @@ export default function ConfirmationCard({
               padding: '10px 14px',
               background: 'var(--sap-bg)',
               border: '1px solid var(--sap-border)',
-              borderRadius: 'var(--sap-radius)',
+              borderRadius: 'var(--radius-md)',
               fontSize: '12px',
               color: 'var(--sap-text-muted)',
               lineHeight: 1.5,
@@ -680,16 +680,16 @@ export default function ConfirmationCard({
               alignItems: 'flex-start',
               gap: 8,
               padding: '10px 14px',
-              background: 'var(--color-danger-bg, #FEF3F2)',
-              border: '1px solid var(--color-danger-border, #FECDCA)',
-              borderRadius: 'var(--sap-radius, 6px)',
+              background: 'var(--color-danger-bg)',
+              border: '1px solid var(--color-danger-border)',
+              borderRadius: 'var(--radius-md)',
               marginBottom: 12
             }}>
-              <AlertTriangle size={15} color="var(--color-danger, #B42318)" style={{ flexShrink: 0, marginTop: 2 }} />
-              <div style={{ flex: 1, fontSize: '13px', lineHeight: 1.45, color: 'var(--color-danger, #B42318)' }}>
+              <AlertTriangle size={15} color="var(--color-danger)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1, fontSize: '13px', lineHeight: 1.45, color: 'var(--color-danger)' }}>
                 <span style={{ fontWeight: 700, marginRight: 6 }}>Permanent deletion:</span>
-                <span style={{ color: 'var(--color-text, #0F2742)' }}>
-                  You are about to delete BOM for Material <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.material}</strong>, Plant <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.plant}</strong>, Alternative BOM <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.alternativeBom}</strong>, BOM Usage <strong style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700 }}>{preview?.bomUsage || '1'}</strong>. This will permanently delete the selected BOM. Do you want to proceed?
+                <span style={{ color: 'var(--color-text)' }}>
+                  You are about to delete BOM for Material <strong style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{preview?.material}</strong>, Plant <strong style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{preview?.plant}</strong>, Alternative BOM <strong style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{preview?.alternativeBom}</strong>, BOM Usage <strong style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{preview?.bomUsage || '1'}</strong>. This will permanently delete the selected BOM. Do you want to proceed?
                 </span>
               </div>
             </div>
@@ -703,8 +703,8 @@ export default function ConfirmationCard({
                 flex: 'none',
                 flexGrow: 0,
                 overflowX: 'hidden',
-                border: '1px solid var(--color-border, #D9E2EC)',
-                borderRadius: 'var(--radius-sm, 4px)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
                 marginTop: 10,
                 marginBottom: 10
               }}
@@ -721,19 +721,19 @@ export default function ConfirmationCard({
                   <col style={{ width: '25%' }} />
                 </colgroup>
                 <thead>
-                  <tr style={{ background: 'var(--sap-card-nested-bg, #EEF4F9)' }}>
-                    <th style={{ textAlign: 'left', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Material</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Plant</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>Alternative BOM</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark, #00204E)', fontWeight: 600 }}>BOM usage</th>
+                  <tr style={{ background: 'var(--sap-card-nested-bg)' }}>
+                    <th style={{ textAlign: 'left', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark)', fontWeight: 600 }}>Material</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark)', fontWeight: 600 }}>Plant</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark)', fontWeight: 600 }}>Alternative BOM</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap', padding: '6px 10px', color: 'var(--sap-text-dark)', fontWeight: 600 }}>BOM usage</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr style={{ background: 'var(--color-surface, #ffffff)' }}>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'left', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--color-navy-900, #00204E)' }}>{preview?.material || '-'}</td>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-navy-900, #00204E)' }}>{preview?.plant || '-'}</td>
-                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono, monospace)', color: 'var(--color-navy-900, #00204E)' }}>{preview?.alternativeBom || '-'}</td>
-                    <td className="rx-table-cell-text" style={{ textAlign: 'center', padding: '8px 10px', color: 'var(--color-navy-900, #00204E)' }}>{preview?.bomUsage || '1'}</td>
+                  <tr style={{ background: 'var(--color-surface)' }}>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'left', padding: '8px 10px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--color-navy-900)' }}>{preview?.material || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono)', color: 'var(--color-navy-900)' }}>{preview?.plant || '-'}</td>
+                    <td className="rx-table-cell-code" style={{ textAlign: 'center', padding: '8px 10px', fontFamily: 'var(--font-mono)', color: 'var(--color-navy-900)' }}>{preview?.alternativeBom || '-'}</td>
+                    <td className="rx-table-cell-text" style={{ textAlign: 'center', padding: '8px 10px', color: 'var(--color-navy-900)' }}>{preview?.bomUsage || '1'}</td>
                   </tr>
                 </tbody>
               </table>
@@ -742,17 +742,17 @@ export default function ConfirmationCard({
             <div style={{
               marginTop: 10,
               padding: '10px 14px',
-              background: 'var(--sap-card-nested-bg, #EEF4F9)',
-              border: '1px solid var(--sap-border, #D9E2EC)',
-              borderRadius: 'var(--sap-radius, 6px)',
+              background: 'var(--sap-card-nested-bg)',
+              border: '1px solid var(--sap-border)',
+              borderRadius: 'var(--radius-md)',
               fontSize: '12px',
-              color: 'var(--sap-text-muted, #475569)',
+              color: 'var(--sap-text-muted)',
               lineHeight: 1.5,
               display: 'flex',
               alignItems: 'flex-start',
               gap: 8
             }}>
-              <Info size={16} color="var(--color-primary, #02579A)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <Info size={16} color="var(--color-primary, var(--color-blue-600))" style={{ flexShrink: 0, marginTop: 2 }} />
               <span>
                 Executed directly in SAP. BOM operations are verified and committed in your SAP system.
               </span>
@@ -761,8 +761,8 @@ export default function ConfirmationCard({
             {/* Mandatory Reason for Change */}
             {!isDone && !isExpired && (
               <div style={{ marginTop: 12 }}>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-navy-900, #00204E)', marginBottom: 4 }}>
-                  Mandatory Reason for Change <span style={{ color: 'var(--color-danger, #B42318)' }}>*</span>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--color-navy-900)', marginBottom: 4 }}>
+                  Mandatory Reason for Change <span style={{ color: 'var(--color-danger)' }}>*</span>
                 </label>
                 <textarea
                   rows={2}
@@ -784,20 +784,20 @@ export default function ConfirmationCard({
                     width: '100%',
                     padding: '8px 10px',
                     fontSize: '13px',
-                    fontFamily: 'var(--font-family, sans-serif)',
-                    color: 'var(--color-text, #0F2742)',
-                    background: 'var(--color-surface, #ffffff)',
+                    fontFamily: 'var(--font-family)',
+                    color: 'var(--color-text)',
+                    background: 'var(--color-surface)',
                     border: showReasonError && !reason.trim()
-                      ? '1px solid var(--color-danger, #B42318)'
-                      : '1px solid var(--color-border-input, #C7D4E1)',
-                    borderRadius: 'var(--sap-radius, 6px)',
+                      ? '1px solid var(--color-danger)'
+                      : '1px solid var(--color-border-input)',
+                    borderRadius: 'var(--radius-md)',
                     boxSizing: 'border-box',
                     outline: 'none',
                     resize: 'vertical'
                   }}
                 />
                 {showReasonError && !reason.trim() && (
-                  <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: 'var(--color-danger, #B42318)' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: 'var(--color-danger)' }}>
                     Reason for change is required before confirming deletion.
                   </p>
                 )}
@@ -819,12 +819,12 @@ export default function ConfirmationCard({
                       if (!deleteTouched) setDeleteTouched(true);
                     }}
                     disabled={isExecuting}
-                    style={{ accentColor: 'var(--color-blue-600, #02579A)' }}
+                    style={{ accentColor: 'var(--color-blue-600)' }}
                   />
                   <span>I understand that this action cannot be undone and will permanently delete this BOM in SAP.</span>
                 </label>
                 {deleteTouched && !deleteAcknowledged && (
-                  <p style={{ margin: '4px 0 0 24px', fontSize: '11.5px', color: 'var(--color-danger, #B42318)' }}>
+                  <p style={{ margin: '4px 0 0 24px', fontSize: '11.5px', color: 'var(--color-danger)' }}>
                     You must acknowledge this warning to proceed.
                   </p>
                 )}
@@ -845,7 +845,7 @@ export default function ConfirmationCard({
             <div style={{
               background: 'var(--sap-bg)',
               border: '1px solid var(--sap-border)',
-              borderRadius: 'var(--sap-radius)',
+              borderRadius: 'var(--radius-md)',
               padding: '12px 14px',
               marginBottom: 12,
               fontSize: '12.5px'
@@ -861,12 +861,12 @@ export default function ConfirmationCard({
 
               {preview.diagnosis?.matchedMessage && (
                 <div style={{
-                  fontFamily: 'var(--font-mono, monospace)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: '11.5px',
                   background: 'var(--sap-error-bg)',
                   color: 'var(--sap-error-text)',
                   padding: '6px 10px',
-                  borderRadius: 'var(--sap-radius)',
+                  borderRadius: 'var(--radius-md)',
                   marginBottom: 8,
                   wordBreak: 'break-word'
                 }}>
@@ -930,7 +930,7 @@ export default function ConfirmationCard({
             <div style={{
               background: 'var(--sap-bg)',
               border: '1px solid var(--sap-border)',
-              borderRadius: 'var(--sap-radius)',
+              borderRadius: 'var(--radius-md)',
               padding: '12px 14px',
               marginBottom: 12,
               fontSize: '12.5px'
@@ -946,12 +946,12 @@ export default function ConfirmationCard({
 
               {preview.diagnosis?.matchedMessage && (
                 <div style={{
-                  fontFamily: 'var(--font-mono, monospace)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: '11.5px',
                   background: 'var(--sap-error-bg)',
                   color: 'var(--sap-error-text)',
                   padding: '6px 10px',
-                  borderRadius: 'var(--sap-radius)',
+                  borderRadius: 'var(--radius-md)',
                   marginBottom: 8,
                   wordBreak: 'break-word'
                 }}>
@@ -1011,7 +1011,7 @@ export default function ConfirmationCard({
             <div style={{
               background: 'var(--sap-bg)',
               border: '1px solid var(--sap-border)',
-              borderRadius: 'var(--sap-radius)',
+              borderRadius: 'var(--radius-md)',
               padding: '12px 14px',
               marginBottom: 12,
               fontSize: '12.5px'
@@ -1027,12 +1027,12 @@ export default function ConfirmationCard({
 
               {(preview.diagnosis?.matchedMessage || preview.failureReason) && (
                 <div style={{
-                  fontFamily: 'var(--font-mono, monospace)',
+                  fontFamily: 'var(--font-mono)',
                   fontSize: '11.5px',
                   background: 'var(--sap-error-bg)',
                   color: 'var(--sap-error-text)',
                   padding: '6px 10px',
-                  borderRadius: 'var(--sap-radius)',
+                  borderRadius: 'var(--radius-md)',
                   marginBottom: 8,
                   wordBreak: 'break-word'
                 }}>
@@ -1215,7 +1215,7 @@ export default function ConfirmationCard({
 
         {/* Mandatory Reason for Level 3 Actions */}
         {isLevel3 && type !== 'delete_bom' && !isDone && !isExpired && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--sap-warning-bg)', border: '1px solid var(--sap-warning-border)', borderRadius: 'var(--sap-radius)' }}>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--sap-warning-bg)', border: '1px solid var(--sap-warning-border)', borderRadius: 'var(--radius-md)' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--sap-warning-text)', marginBottom: 4 }}>
               Mandatory Reason for Change (Business Justification):
             </label>
@@ -1230,7 +1230,7 @@ export default function ConfirmationCard({
                 padding: '6px 8px',
                 fontSize: '12px',
                 border: '1px solid var(--sap-warning)',
-                borderRadius: 'var(--sap-radius)',
+                borderRadius: 'var(--radius-md)',
                 boxSizing: 'border-box'
               }}
             />
@@ -1239,7 +1239,7 @@ export default function ConfirmationCard({
 
         {/* PROD Double-Confirmation Safeguard */}
         {isProd && isLevel3 && !isDone && !isExpired && (
-          <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--sap-error-bg)', border: '1px solid var(--sap-error-border)', borderRadius: 'var(--sap-radius)' }}>
+          <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--sap-error-bg)', border: '1px solid var(--sap-error-border)', borderRadius: 'var(--radius-md)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <AlertTriangle size={14} color="var(--sap-error)" />
               <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--sap-error-text)' }}>
@@ -1259,7 +1259,7 @@ export default function ConfirmationCard({
                 fontWeight: 600,
                 fontFamily: 'monospace',
                 border: prodConfirmation === 'CONFIRM' ? '1.5px solid var(--sap-success)' : '1.5px solid var(--sap-error)',
-                borderRadius: 'var(--sap-radius)',
+                borderRadius: 'var(--radius-md)',
                 boxSizing: 'border-box'
               }}
             />
@@ -1298,15 +1298,15 @@ export default function ConfirmationCard({
               padding: '6px 18px',
               gap: 6,
               ...(type === 'delete' || type === 'delete_bom' || type === 'post_fi_doc' ? {
-                background: 'var(--color-danger, #B42318)',
-                backgroundColor: 'var(--color-danger, #B42318)',
-                borderColor: 'var(--color-danger, #B42318)'
+                background: 'var(--color-danger)',
+                backgroundColor: 'var(--color-danger)',
+                borderColor: 'var(--color-danger)'
               } : {})
             }}
           >
             {isExecuting ? (
               <>
-                <Loader2 size={14} className="sap-spin" color="#ffffff" strokeWidth={2.5} />
+                <Loader2 size={14} className="sap-spin" color="var(--color-text-inverse)" strokeWidth={2.5} />
                 <span>{getConfirmButtonLabel()}</span>
               </>
             ) : (

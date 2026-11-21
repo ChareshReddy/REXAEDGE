@@ -426,7 +426,7 @@ export default function MaterialValueHelpModal({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
-            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18, 18px)', fontWeight: 700, color: 'var(--sap-popup-header-title, #00204E)', lineHeight: 1.2 }}>
+            <h3 id="material-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18)', fontWeight: 700, color: 'var(--sap-popup-header-title)', lineHeight: 1.2 }}>
               {modalTitle}
             </h3>
           </div>
@@ -453,10 +453,10 @@ export default function MaterialValueHelpModal({
         <div className="sap-f4-search-area">
           {/* Main search bar */}
           {searchMetadata && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#EEF4F9', border: '1px solid #EEF4F9', borderRadius: 4, padding: '4px 10px', marginBottom: 6, fontSize: 12, color: '#00204E' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-blue-50)', border: '1px solid var(--color-blue-50)', borderRadius: 4, padding: '4px 10px', marginBottom: 6, fontSize: 12, color: 'var(--color-navy-900)' }}>
               <span>Filtered by <strong>{searchMetadata.tabName || searchMetadata.tab}</strong>: {searchMetadata.count} matches found{searchMetadata.limitReached ? ' (limit reached)' : ''}</span>
               {onBackToRestrict && (
-                <button type="button" onClick={onBackToRestrict} className="sap-button" style={{ padding: '2px 8px', fontSize: 11, background: '#ffffff', border: '1px solid #B3CDE0', color: '#00204E' }}>
+                <button type="button" onClick={onBackToRestrict} className="sap-button" style={{ padding: '2px 8px', fontSize: 11, background: 'var(--color-surface)', border: '1px solid var(--color-blue-200)', color: 'var(--color-navy-900)' }}>
                   <ArrowLeft size={11} style={{ marginRight: 4 }} /> Change Filter
                 </button>
               )}
@@ -468,8 +468,8 @@ export default function MaterialValueHelpModal({
             <div
               className="sap-f4-criteria-block"
               style={{
-                background: 'var(--sap-surface-elevated, #f8fafc)',
-                border: '1px solid var(--sap-border-color, #e2e8f0)',
+                background: 'var(--color-surface-subtle)',
+                border: '1px solid var(--sap-border-color)',
                 borderRadius: 4,
                 padding: '6px 12px',
                 marginBottom: 6,
@@ -481,10 +481,10 @@ export default function MaterialValueHelpModal({
             >
               {tabBCriteria.map((c) => (
                 <div key={c.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: 'var(--sap-text-secondary, #64748b)', fontWeight: 500 }}>
+                  <span style={{ color: 'var(--sap-text-secondary)', fontWeight: 500 }}>
                     {c.label}:
                   </span>
-                  <strong style={{ color: 'var(--sap-text-primary, #0f172a)' }}>
+                  <strong style={{ color: 'var(--sap-text-primary)' }}>
                     {c.value}
                   </strong>
                 </div>
@@ -507,7 +507,7 @@ export default function MaterialValueHelpModal({
 
             <button
               type="submit"
-              className="sap-button primary sap-f4-search-btn"
+              className="sap-button sap-f4-search-btn"
               style={{
                 height: 30,
                 padding: '0 14px',
@@ -517,17 +517,16 @@ export default function MaterialValueHelpModal({
                 alignItems: 'center',
                 gap: 6,
                 whiteSpace: 'nowrap',
-                flexShrink: 0,
-                color: '#ffffff'
+                flexShrink: 0
               }}
               disabled={isLoading}
             >
               {isLoading ? (
-                <Loader2 size={14} className="sap-spin" color="#ffffff" style={{ stroke: '#ffffff' }} />
+                <Loader2 size={14} className="sap-spin" aria-hidden="true" />
               ) : (
-                <Search size={14} color="#ffffff" style={{ stroke: '#ffffff' }} />
+                <Search size={14} aria-hidden="true" />
               )}
-              <span style={{ color: '#ffffff' }}>Search</span>
+              <span>Search</span>
             </button>
           </form>
         </div>
@@ -538,10 +537,10 @@ export default function MaterialValueHelpModal({
           <div
             style={{
               padding: '6px 20px',
-              background: '#fffbeb',
-              borderBottom: '1px solid #fef3c7',
+              background: 'var(--color-warning-bg)',
+              borderBottom: '1px solid var(--color-warning-bg)',
               fontSize: 11.5,
-              color: '#b45309',
+              color: 'var(--color-warning-text)',
               display: 'flex',
               alignItems: 'center',
               gap: 6,
@@ -577,12 +576,12 @@ export default function MaterialValueHelpModal({
                 color: 'var(--sap-text-muted)'
               }}
             >
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--sap-text-primary, #1e293b)' }}>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--sap-text-primary)' }}>
                 {searchMetadata?.filterSummary
                   ? `No materials found for ${searchMetadata.filterSummary}`
                   : 'No matching materials found in SAP.'}
               </p>
-              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--sap-text-secondary, #64748b)' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--sap-text-secondary)' }}>
                 Try modifying your search criteria or clearing active filters.
               </p>
             </div>
@@ -605,16 +604,16 @@ export default function MaterialValueHelpModal({
                 )}
               </colgroup>
               <thead>
-                <tr style={{ background: 'var(--color-blue-50, #EEF4F9)', borderBottom: '1px solid var(--color-border, #D9E2EC)' }}>
+                <tr style={{ background: 'var(--color-blue-50)', borderBottom: '1px solid var(--color-border)' }}>
                   {isTabB ? (
                     <>
-                      <th className="sap-f4-sticky-col sap-col-left" style={{ width: 200, minWidth: 200, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50, #EEF4F9)' }}>Material</th>
+                      <th className="sap-f4-sticky-col sap-col-left" style={{ width: 200, minWidth: 200, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50)' }}>Material</th>
                       <th className="sap-col-center" style={{ width: 120, minWidth: 120 }}>AltBOM</th>
                       <th className="sap-col-center" style={{ width: 240, minWidth: 240 }}>Language</th>
                     </>
                   ) : (
                     <>
-                      <th className="sap-f4-sticky-col sap-col-left" style={{ width: 185, minWidth: 185, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50, #EEF4F9)' }}>Material</th>
+                      <th className="sap-f4-sticky-col sap-col-left" style={{ width: 185, minWidth: 185, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50)' }}>Material</th>
                       <th className="sap-col-left" style={{ width: 320, maxWidth: 320 }}>Description</th>
                       <th className="sap-col-center" style={{ width: 80, minWidth: 80 }}>Type</th>
                       <th className="sap-col-center" style={{ width: 100, minWidth: 100 }}>Language</th>
@@ -625,7 +624,7 @@ export default function MaterialValueHelpModal({
               <tbody>
                 {materials.map((item, idx) => {
                   const isSelected = idx === selectedIndex;
-                  const rowBg = isSelected ? '#EEF4F9' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
+                  const rowBg = isSelected ? 'var(--color-blue-50)' : idx % 2 === 1 ? 'var(--color-surface-subtle)' : 'var(--color-surface)';
 
                   if (isTabB) {
                     return (
@@ -636,7 +635,7 @@ export default function MaterialValueHelpModal({
                         style={{
                           cursor: 'pointer',
                           background: rowBg,
-                          borderBottom: '1px solid #f1f5f9'
+                          borderBottom: '1px solid var(--color-surface-subtle)'
                         }}
                         onClick={(e) => {
                           e.preventDefault();
@@ -650,7 +649,7 @@ export default function MaterialValueHelpModal({
                           className="sap-f4-sticky-col sap-col-code sap-col-left"
                           style={{
                             width: 185, minWidth: 185, fontFamily: 'var(--sap-font-mono)', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip',
-                            fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
+                            fontWeight: isSelected ? 600 : 'var(--font-weight-code)',
                             position: 'sticky',
                             left: 0,
                             zIndex: 1,
@@ -659,10 +658,10 @@ export default function MaterialValueHelpModal({
                         >
                           <span style={{ verticalAlign: 'middle' }}>{item.matnr}</span>
                         </td>
-                        <td className="sap-col-code sap-col-center" style={{ width: 100, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)' }}>
+                        <td className="sap-col-code sap-col-center" style={{ width: 100, fontFamily: 'var(--sap-font-mono)', fontWeight: isSelected ? 600 : 'var(--font-weight-code)' }}>
                           {item.stlal || '01'}
                         </td>
-                        <td className="sap-col-center" style={{ color: 'var(--color-text-secondary, #4A5F77)' }}>
+                        <td className="sap-col-center" style={{ color: 'var(--color-text-secondary)' }}>
                           {item.spras || 'E'}
                         </td>
                       </tr>
@@ -677,7 +676,7 @@ export default function MaterialValueHelpModal({
                       style={{
                         cursor: 'pointer',
                         background: rowBg,
-                        borderBottom: '1px solid #f1f5f9'
+                        borderBottom: '1px solid var(--color-surface-subtle)'
                       }}
                       onClick={(e) => {
                         e.preventDefault();
@@ -691,7 +690,7 @@ export default function MaterialValueHelpModal({
                         className="sap-f4-sticky-col sap-col-code sap-col-left"
                         style={{
                           width: 190, minWidth: 190, fontFamily: 'var(--sap-font-mono)', whiteSpace: 'nowrap', overflow: 'visible', textOverflow: 'clip',
-                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code)',
                           position: 'sticky',
                           left: 0,
                           zIndex: 1,
@@ -705,9 +704,9 @@ export default function MaterialValueHelpModal({
                             style={{
                               marginLeft: 6,
                               fontSize: 10,
-                              background: '#E2F3E5',
-                              color: '#1B6A2A',
-                              borderColor: '#A8DDB5'
+                              background: 'var(--color-success-bg)',
+                              color: 'var(--color-success-strong)',
+                              borderColor: 'var(--color-success-border)'
                             }}
                           >
                             BOM
@@ -719,8 +718,8 @@ export default function MaterialValueHelpModal({
                         style={{
                           width: 320,
                           maxWidth: 320,
-                          color: 'var(--color-text, #0F2742)',
-                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          color: 'var(--color-text)',
+                          fontFamily: "var(--font-sans)",
                           fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
@@ -736,7 +735,7 @@ export default function MaterialValueHelpModal({
                           {item.mtart || '-'}
                         </span>
                       </td>
-                      <td className="sap-col-center" style={{ width: 100, textAlign: 'center', whiteSpace: 'nowrap', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                      <td className="sap-col-center" style={{ width: 100, textAlign: 'center', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>
                         {item.spras || 'E'}
                       </td>
                     </tr>
@@ -748,7 +747,7 @@ export default function MaterialValueHelpModal({
         </div>
 
         {/* Footer: Selection Summary & Action Buttons */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #EEF4F9', background: '#EEF4F9' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--color-blue-50)', background: 'var(--color-blue-50)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && materials[selectedIndex] ? (
               <span title={`${materials[selectedIndex].matnr}${isTabB && materials[selectedIndex].stlal ? ` Alt ${materials[selectedIndex].stlal}` : ''}${materials[selectedIndex].maktx ? ` - ${materials[selectedIndex].maktx}` : ''}`}>

@@ -88,7 +88,7 @@ function TriStateCheckbox({ checked, indeterminate, onChange, disabled, id, aria
         height: 16,
         margin: 0,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        accentColor: 'var(--sap-primary, #0a6ed1)',
+        accentColor: 'var(--sap-primary)',
         flexShrink: 0
       }}
     />
@@ -105,10 +105,10 @@ function AdminTabErrorState({ title, message, onRetry, isLoading }) {
         textAlign: 'center',
         maxWidth: 520,
         margin: '32px auto',
-        backgroundColor: 'var(--color-surface, #ffffff)',
-        border: '1px solid var(--color-border, #e2e8f0)',
-        borderRadius: 'var(--radius-lg, 8px)',
-        boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0, 32, 78, 0.06))'
+        backgroundColor: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-sm)'
       }}
     >
       <div
@@ -116,8 +116,8 @@ function AdminTabErrorState({ title, message, onRetry, isLoading }) {
           width: 44,
           height: 44,
           borderRadius: '50%',
-          backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-          color: 'var(--color-danger, #B42318)',
+          backgroundColor: 'var(--color-danger-bg)',
+          color: 'var(--color-danger)',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -127,10 +127,10 @@ function AdminTabErrorState({ title, message, onRetry, isLoading }) {
       >
         <AlertTriangle size={22} />
       </div>
-      <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text, #0F172A)', margin: '0 0 6px 0' }}>
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
         {title}
       </h3>
-      <p style={{ fontSize: 13, color: 'var(--color-text-muted, #64748B)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
         {message}
       </p>
       <button
@@ -738,19 +738,19 @@ export default function AdminView({
     let label = 'Unknown';
 
     if (status === 'healthy') {
-      bg = 'var(--sap-status-success-bg)';
-      color = 'var(--sap-status-success-text)';
-      border = 'var(--sap-status-success-border)';
+      bg = 'var(--color-success-bg)';
+      color = 'var(--color-success-strong)';
+      border = 'var(--color-success-border)';
       label = 'Healthy';
     } else if (status === 'degraded') {
-      bg = 'var(--sap-status-warning-bg)';
-      color = 'var(--sap-status-warning-text)';
-      border = 'var(--sap-status-warning-border)';
+      bg = 'var(--color-warning-bg)';
+      color = 'var(--color-warning-text)';
+      border = 'var(--color-warning-border)';
       label = 'Degraded';
     } else if (status === 'down') {
-      bg = 'var(--sap-status-error-bg)';
-      color = 'var(--sap-status-error-text)';
-      border = 'var(--sap-status-error-border)';
+      bg = 'var(--color-danger-bg)';
+      color = 'var(--color-danger)';
+      border = 'var(--color-danger-border)';
       label = 'Down';
     }
 
@@ -761,7 +761,7 @@ export default function AdminView({
           alignItems: 'center',
           gap: 5,
           padding: '2px 8px',
-          borderRadius: 'var(--radius-full, 9999px)',
+          borderRadius: 'var(--radius-full)',
           fontSize: 11,
           fontWeight: 600,
           background: bg,
@@ -958,9 +958,9 @@ export default function AdminView({
                               fontSize: 11,
                               fontWeight: 600,
                               padding: '2px 8px',
-                              borderRadius: 'var(--sap-radius-pill, 12px)',
-                              background: u.is_disabled ? 'var(--sap-error-light, #fee2e2)' : 'var(--sap-success-light, #dcfce7)',
-                              color: u.is_disabled ? 'var(--sap-error, #dc2626)' : 'var(--sap-positive, #15803d)',
+                              borderRadius: 'var(--radius-full)',
+                              background: u.is_disabled ? 'var(--color-danger-bg)' : 'var(--color-success-bg)',
+                              color: u.is_disabled ? 'var(--sap-error)' : 'var(--color-success)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4
@@ -999,10 +999,10 @@ export default function AdminView({
                                     fontSize: 11,
                                     fontWeight: 500,
                                     color: 'var(--sap-text-subtle)',
-                                    background: 'var(--sap-surface-elevated)',
+                                    background: 'var(--color-surface)',
                                     border: '1px solid var(--sap-border-subtle)',
                                     padding: '2px 8px',
-                                    borderRadius: 'var(--sap-radius-pill)',
+                                    borderRadius: 'var(--radius-full)',
                                     display: 'inline-block'
                                   }}
                                   title="You cannot modify your own logged-in account"
@@ -1019,7 +1019,7 @@ export default function AdminView({
                                     aria-label={u.is_disabled ? `Enable ${u.email}` : `Disable ${u.email}`}
                                     style={{ height: 26, fontSize: 11, padding: '0 6px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                   >
-                                    {u.is_disabled ? <UserCheck size={13} color="var(--sap-positive)" /> : <UserX size={13} color="var(--sap-warning)" />}
+                                    {u.is_disabled ? <UserCheck size={13} color="var(--color-success)" /> : <UserX size={13} color="var(--sap-warning)" />}
                                     <span>{u.is_disabled ? 'Enable' : 'Disable'}</span>
                                   </button>
                                   <button
@@ -1136,11 +1136,11 @@ export default function AdminView({
                                 <span style={{
                                   fontSize: 11,
                                   fontWeight: 600,
-                                  color: 'var(--sap-warning-text, #b45309)',
-                                  background: 'var(--sap-warning-bg, #fef3c7)',
-                                  border: '1px solid var(--sap-warning-border, #fde68a)',
+                                  color: 'var(--sap-warning-text)',
+                                  background: 'var(--sap-warning-bg)',
+                                  border: '1px solid var(--sap-warning-border)',
                                   padding: '1px 6px',
-                                  borderRadius: 'var(--radius-sm, 4px)'
+                                  borderRadius: 'var(--radius-sm)'
                                 }}>
                                   Legacy unowned
                                 </span>
@@ -1173,9 +1173,9 @@ export default function AdminView({
                               fontSize: 11,
                               fontWeight: 600,
                               padding: '2px 8px',
-                              borderRadius: 'var(--sap-radius-pill, 12px)',
-                              background: s.is_disabled ? 'var(--sap-error-light, #fee2e2)' : (s.is_active ? 'var(--sap-success-light, #dcfce7)' : 'var(--sap-surface-subtle)'),
-                              color: s.is_disabled ? 'var(--sap-error, #dc2626)' : (s.is_active ? 'var(--sap-positive, #15803d)' : 'var(--sap-text-subtle)'),
+                              borderRadius: 'var(--radius-full)',
+                              background: s.is_disabled ? 'var(--color-danger-bg)' : (s.is_active ? 'var(--color-success-bg)' : 'var(--sap-surface-subtle)'),
+                              color: s.is_disabled ? 'var(--sap-error)' : (s.is_active ? 'var(--color-success)' : 'var(--sap-text-subtle)'),
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: 4
@@ -1203,8 +1203,8 @@ export default function AdminView({
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    border: '1px solid var(--color-border, #CBD5E1)',
-                                    borderRadius: 'var(--radius-md, 4px)'
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)'
                                   }}
                                 >
                                   <UserPlus size={13} color="var(--sap-primary)" />
@@ -1224,11 +1224,11 @@ export default function AdminView({
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  border: '1px solid var(--color-border, #CBD5E1)',
-                                  borderRadius: 'var(--radius-md, 4px)'
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: 'var(--radius-md)'
                                 }}
                               >
-                                {s.is_disabled ? <UserCheck size={13} color="var(--sap-positive)" /> : <PowerOff size={13} color="var(--sap-warning)" />}
+                                {s.is_disabled ? <UserCheck size={13} color="var(--color-success)" /> : <PowerOff size={13} color="var(--sap-warning)" />}
                               </button>
                               <button
                                 type="button"
@@ -1244,8 +1244,8 @@ export default function AdminView({
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  border: '1px solid var(--color-border, #CBD5E1)',
-                                  borderRadius: 'var(--radius-md, 4px)',
+                                  border: '1px solid var(--color-border)',
+                                  borderRadius: 'var(--radius-md)',
                                   color: 'var(--sap-text-subtle)'
                                 }}
                               >
@@ -1265,9 +1265,9 @@ export default function AdminView({
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  border: '1px solid var(--color-danger-border, #FCA5A5)',
-                                  borderRadius: 'var(--radius-md, 4px)',
-                                  color: 'var(--color-danger, #B42318)'
+                                  border: '1px solid var(--color-danger-border)',
+                                  borderRadius: 'var(--radius-md)',
+                                  color: 'var(--color-danger)'
                                 }}
                               >
                                 <Trash2 size={13} />
@@ -1308,9 +1308,9 @@ export default function AdminView({
               <>
                 {/* Connection Limits and Security Policy Card */}
             <div style={{
-              background: 'var(--sap-surface-elevated, #ffffff)',
-              border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-              borderRadius: 'var(--radius-md, 8px)',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--sap-border-subtle)',
+              borderRadius: 'var(--radius-md)',
               padding: '16px 20px',
               marginBottom: 20
             }}>
@@ -1319,22 +1319,22 @@ export default function AdminView({
                 <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--sap-text-dark)' }}>Platform Connection Limits &amp; Policies</h3>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle)', borderRadius: 6, border: '1px solid var(--sap-border-subtle)' }}>
                   <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Per-User Server Limit</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>5 Servers</div>
                   <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Configurable default limit per non-admin account</div>
                 </div>
-                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle)', borderRadius: 6, border: '1px solid var(--sap-border-subtle)' }}>
                   <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Global SAP Connection Cap</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>50 Connections</div>
                   <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Maximum active SAP RFC pool connections platform-wide</div>
                 </div>
-                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle)', borderRadius: 6, border: '1px solid var(--sap-border-subtle)' }}>
                   <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>RFC Call Timeout</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>45 Seconds</div>
                   <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Max execution duration per synchronous RFC invocation</div>
                 </div>
-                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle, #f8fafc)', borderRadius: 6, border: '1px solid var(--sap-border-subtle, #e2e8f0)' }}>
+                <div style={{ padding: '10px 14px', background: 'var(--sap-surface-subtle)', borderRadius: 6, border: '1px solid var(--sap-border-subtle)' }}>
                   <div style={{ fontSize: 11, color: 'var(--sap-text-muted)', fontWeight: 500 }}>Idle Pool Timeout</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--sap-text-dark)', marginTop: 2 }}>10 Minutes</div>
                   <div style={{ fontSize: 10.5, color: 'var(--sap-text-subtle)', marginTop: 2 }}>Automatic teardown of inactive RFC connections</div>
@@ -1391,7 +1391,7 @@ export default function AdminView({
                       return (
                         <tr key={rule.id}>
                           <td>
-                            <code style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 600, color: 'var(--sap-text-dark)', fontSize: 12 }}>
+                            <code style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--sap-text-dark)', fontSize: 12 }}>
                               {rule.pattern}
                             </code>
                           </td>
@@ -1451,7 +1451,7 @@ export default function AdminView({
         onClose={() => setIsUserModalOpen(false)}
         title="Add New User"
         icon={Users}
-        iconColor="var(--color-blue-600, #02579A)"
+        iconColor="var(--color-blue-600)"
         isLoading={userSubmitting}
         maxWidth={480}
         closeOnEscape={true}
@@ -1521,7 +1521,7 @@ export default function AdminView({
               autoComplete="new-password"
               leftIcon={<KeyRound size={16} />}
               className="rx-input"
-              style={{ height: 'var(--size-form-input-height, 36px)', fontFamily: 'var(--font-sans)' }}
+              style={{ height: 'var(--size-form-input-height)', fontFamily: 'var(--font-sans)' }}
             />
           </FieldWrapper>
 
@@ -1681,9 +1681,9 @@ export default function AdminView({
         </p>
 
         <div style={{
-          background: 'var(--sap-surface-elevated, #f7f9fa)',
-          border: '1px solid var(--sap-border-subtle, #d1d5db)',
-          borderRadius: 'var(--sap-radius-card, 6px)',
+          background: 'var(--color-surface-subtle)',
+          border: '1px solid var(--sap-border-subtle)',
+          borderRadius: 'var(--sap-radius-card)',
           padding: '12px 14px',
           display: 'flex',
           alignItems: 'center',
@@ -1692,11 +1692,11 @@ export default function AdminView({
           marginBottom: 16
         }}>
           <code style={{
-            fontFamily: 'var(--font-mono, monospace)',
+            fontFamily: 'var(--font-mono)',
             fontSize: 14,
             fontWeight: 700,
             letterSpacing: '0.05em',
-            color: 'var(--sap-text-dark, #111827)',
+            color: 'var(--sap-text-dark)',
             wordBreak: 'break-all'
           }}>
             {resetResultModal.initialPassword}
@@ -1713,7 +1713,7 @@ export default function AdminView({
             }}
             style={{ height: 30, fontSize: 12, padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
           >
-            {resetResultModal.copied ? <Check size={13} color="var(--sap-positive)" /> : <Copy size={13} />}
+            {resetResultModal.copied ? <Check size={13} color="var(--color-success)" /> : <Copy size={13} />}
             <span>{resetResultModal.copied ? 'Copied' : 'Copy'}</span>
           </button>
         </div>

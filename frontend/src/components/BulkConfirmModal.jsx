@@ -28,9 +28,9 @@ export default function BulkConfirmModal({
   const isCopy = mode === 'copy';
   const modalTitle = title || (isCopy ? 'Confirm Bulk BOM Copy' : 'Confirm Bulk BOM Creation');
 
-  const readyDotColor = readyCount > 0 ? 'var(--color-success, #15803D)' : 'var(--sap-text-muted, #7A8CA3)';
-  const skippedDotColor = skippedCount > 0 ? 'var(--color-info, #02579A)' : 'var(--sap-text-muted, #7A8CA3)';
-  const invalidDotColor = invalidCount > 0 ? 'var(--color-danger, #B42318)' : 'var(--sap-text-muted, #7A8CA3)';
+  const readyDotColor = readyCount > 0 ? 'var(--color-success)' : 'var(--sap-text-muted)';
+  const skippedDotColor = skippedCount > 0 ? 'var(--color-info)' : 'var(--sap-text-muted)';
+  const invalidDotColor = invalidCount > 0 ? 'var(--color-danger)' : 'var(--sap-text-muted)';
 
   return (
     <Modal
@@ -90,7 +90,7 @@ export default function BulkConfirmModal({
           style={{
             margin: '0 0 6px',
             fontSize: 13,
-            color: 'var(--sap-text-body, #334155)',
+            color: 'var(--sap-text-body)',
             lineHeight: 1.5
           }}
         >
@@ -110,13 +110,13 @@ export default function BulkConfirmModal({
             lineHeight: 1.4
           }}
         >
-          <span style={{ color: 'var(--sap-text-muted, #7A8CA3)', flexShrink: 0 }}>File</span>
+          <span style={{ color: 'var(--sap-text-muted)', flexShrink: 0 }}>File</span>
           <span
             data-testid="bulk-confirm-file-name"
             title={fileName}
             style={{
               fontWeight: 600,
-              color: 'var(--sap-text-dark, #0F172A)',
+              color: 'var(--sap-text-dark)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
@@ -132,10 +132,10 @@ export default function BulkConfirmModal({
           className="bulk-confirm-table-container rx-confirm-table-container"
           data-testid="bulk-confirm-table-container"
           style={{
-            border: '1px solid var(--table-header-border, #DDE6F0)',
+            border: '1px solid var(--table-header-border)',
             borderRadius: 4,
             overflow: 'hidden',
-            background: 'var(--sap-card-bg, #ffffff)',
+            background: 'var(--sap-card-bg)',
             marginBottom: 12
           }}
         >
@@ -151,8 +151,8 @@ export default function BulkConfirmModal({
             <thead>
               <tr
                 style={{
-                  background: 'var(--table-header-bg, #EDF2F9)',
-                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  background: 'var(--table-header-bg)',
+                  borderBottom: '1px solid var(--table-header-border)',
                   height: 36
                 }}
               >
@@ -162,7 +162,7 @@ export default function BulkConfirmModal({
                     textAlign: 'left',
                     fontSize: 12,
                     fontWeight: 600,
-                    color: 'var(--table-header-text, #0B2D57)',
+                    color: 'var(--table-header-text)',
                     lineHeight: '36px',
                     height: 36,
                     boxSizing: 'border-box'
@@ -177,7 +177,7 @@ export default function BulkConfirmModal({
                     width: 80,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: 'var(--table-header-text, #0B2D57)',
+                    color: 'var(--table-header-text)',
                     lineHeight: '36px',
                     height: 36,
                     boxSizing: 'border-box'
@@ -193,7 +193,7 @@ export default function BulkConfirmModal({
                 data-testid="bulk-confirm-row-ready"
                 style={{
                   height: 36,
-                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  borderBottom: '1px solid var(--table-header-border)',
                   boxSizing: 'border-box'
                 }}
               >
@@ -210,7 +210,7 @@ export default function BulkConfirmModal({
                         flexShrink: 0
                       }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark)' }}>
                       {isCopy ? 'Ready to copy' : 'Ready to create'}
                     </span>
                   </div>
@@ -221,7 +221,7 @@ export default function BulkConfirmModal({
                     padding: '0 12px',
                     textAlign: 'right',
                     fontWeight: 600,
-                    color: 'var(--table-header-text, #0B2D57)',
+                    color: 'var(--table-header-text)',
                     fontSize: 13,
                     fontVariantNumeric: 'tabular-nums',
                     height: 36,
@@ -238,7 +238,7 @@ export default function BulkConfirmModal({
                 data-testid="bulk-confirm-row-skipped"
                 style={{
                   height: 36,
-                  borderBottom: '1px solid var(--table-header-border, #DDE6F0)',
+                  borderBottom: '1px solid var(--table-header-border)',
                   boxSizing: 'border-box'
                 }}
               >
@@ -255,7 +255,7 @@ export default function BulkConfirmModal({
                         flexShrink: 0
                       }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark)' }}>
                       {isCopy ? 'Skipped' : 'Skipped (existing)'}
                     </span>
                   </div>
@@ -266,7 +266,7 @@ export default function BulkConfirmModal({
                     padding: '0 12px',
                     textAlign: 'right',
                     fontWeight: 600,
-                    color: 'var(--table-header-text, #0B2D57)',
+                    color: 'var(--table-header-text)',
                     fontSize: 13,
                     fontVariantNumeric: 'tabular-nums',
                     height: 36,
@@ -299,7 +299,7 @@ export default function BulkConfirmModal({
                         flexShrink: 0
                       }}
                     />
-                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--sap-text-dark)' }}>
                       Invalid (will not run)
                     </span>
                   </div>
@@ -310,7 +310,7 @@ export default function BulkConfirmModal({
                     padding: '0 12px',
                     textAlign: 'right',
                     fontWeight: 600,
-                    color: 'var(--table-header-text, #0B2D57)',
+                    color: 'var(--table-header-text)',
                     fontSize: 13,
                     fontVariantNumeric: 'tabular-nums',
                     height: 36,
@@ -331,7 +331,7 @@ export default function BulkConfirmModal({
           style={{
             margin: '0',
             fontSize: 13,
-            color: 'var(--sap-text-muted, #7A8CA3)',
+            color: 'var(--sap-text-muted)',
             lineHeight: 1.4
           }}
         >
@@ -343,9 +343,9 @@ export default function BulkConfirmModal({
           <div
             style={{
               padding: '12px 16px',
-              borderRadius: 'var(--radius-md, 8px)',
-              background: 'var(--color-danger-bg, #FEF3F2)',
-              border: '1px solid var(--color-danger-border, #FECDCA)',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--color-danger-bg)',
+              border: '1px solid var(--color-danger-border)',
               marginTop: 16
             }}
           >
@@ -354,7 +354,7 @@ export default function BulkConfirmModal({
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                color: 'var(--color-danger, #B42318)',
+                color: 'var(--color-danger)',
                 fontWeight: 700,
                 marginBottom: 8
               }}

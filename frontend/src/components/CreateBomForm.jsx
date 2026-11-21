@@ -442,7 +442,7 @@ export default function CreateBomForm({
             badge={
               <Badge
                 variant="outline"
-                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge,4px)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
               >
                 Source
               </Badge>
@@ -542,7 +542,7 @@ export default function CreateBomForm({
               <div className="rx-field-label text-[13px] font-semibold flex items-center gap-1 invisible select-none" aria-hidden="true">
                 <span>Valid From</span>
               </div>
-              <div className="flex items-center justify-end w-full" style={{ height: 'var(--size-form-input-height, 40px)' }}>
+              <div className="flex items-center justify-end w-full" style={{ height: 'var(--size-form-input-height)' }}>
                 <button
                   type="button"
                   id="validateSourceBomBtn"
@@ -553,7 +553,7 @@ export default function CreateBomForm({
                     isValidated && "is-validated"
                   )}
                   style={{
-                    height: 'var(--size-button-sm-height, 32px)',
+                    height: 'var(--size-button-sm-height)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8
@@ -597,7 +597,7 @@ export default function CreateBomForm({
             badge={
               <Badge
                 variant="outline"
-                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge,4px)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
+                className="rx-copy-card-badge font-semibold text-xs px-2.5 py-0.5 rounded-[var(--radius-badge)] bg-[var(--color-blue-50)] text-[var(--color-blue-700)] border-[var(--color-blue-200)] shadow-none shrink-0"
               >
                 Target
               </Badge>

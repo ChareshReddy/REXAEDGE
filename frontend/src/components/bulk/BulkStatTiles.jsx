@@ -43,48 +43,48 @@ export default function BulkStatTiles({
       filterKey: 'all',
       label: totalLabel,
       count: total,
-      bg: 'var(--color-blue-50, #EEF4F9)',
-      activeBorder: '2px solid var(--color-blue-600, #02579A)',
-      inactiveBorder: '1px solid var(--color-blue-200, #B3CDE0)',
+      bg: 'var(--color-blue-50)',
+      activeBorder: '2px solid var(--color-blue-600)',
+      inactiveBorder: '1px solid var(--color-blue-200)',
       activeShadow: '0 2px 6px rgba(2, 87, 154, 0.18)',
-      textColor: 'var(--color-blue-600, #02579A)',
-      labelColor: 'var(--color-text-secondary, #4A5F77)'
+      textColor: 'var(--color-blue-600)',
+      labelColor: 'var(--color-text-secondary)'
     },
     {
       id: 'ready',
       filterKey: 'ready',
       label: validLabel,
       count: valid,
-      bg: 'var(--color-success-bg, #ECFDF3)',
-      activeBorder: '2px solid var(--color-success, #15803D)',
-      inactiveBorder: '1px solid var(--color-success-border, #A6F4C5)',
+      bg: 'var(--color-success-bg)',
+      activeBorder: '2px solid var(--color-success)',
+      inactiveBorder: '1px solid var(--color-success-border)',
       activeShadow: '0 2px 6px rgba(21, 128, 61, 0.18)',
-      textColor: 'var(--color-success, #15803D)',
-      labelColor: 'var(--color-success, #15803D)'
+      textColor: 'var(--color-success)',
+      labelColor: 'var(--color-success)'
     },
     {
       id: 'errors',
       filterKey: 'errors',
       label: errorsLabel,
       count: errors,
-      bg: 'var(--color-danger-bg, #FEF3F2)',
-      activeBorder: '2px solid var(--color-danger, #B42318)',
-      inactiveBorder: '1px solid var(--color-danger-border, #FECDCA)',
+      bg: 'var(--color-danger-bg)',
+      activeBorder: '2px solid var(--color-danger)',
+      inactiveBorder: '1px solid var(--color-danger-border)',
       activeShadow: '0 2px 6px rgba(180, 35, 24, 0.18)',
-      textColor: 'var(--color-danger, #B42318)',
-      labelColor: 'var(--color-danger, #B42318)'
+      textColor: 'var(--color-danger)',
+      labelColor: 'var(--color-danger)'
     },
     {
       id: 'skipped',
       filterKey: 'skipped',
       label: warningsLabel,
       count: warnings,
-      bg: 'var(--color-surface-subtle, #F8FAFC)',
-      activeBorder: '2px solid var(--color-text-secondary, #4A5F77)',
-      inactiveBorder: '1px solid var(--color-border, #D9E2EC)',
+      bg: 'var(--color-surface-subtle)',
+      activeBorder: '2px solid var(--color-text-secondary)',
+      inactiveBorder: '1px solid var(--color-border)',
       activeShadow: '0 2px 6px rgba(74, 95, 119, 0.18)',
-      textColor: 'var(--color-text-secondary, #4A5F77)',
-      labelColor: 'var(--color-text-secondary, #4A5F77)'
+      textColor: 'var(--color-text-secondary)',
+      labelColor: 'var(--color-text-secondary)'
     }
   ];
 
@@ -135,13 +135,13 @@ export default function BulkStatTiles({
             style={{
               backgroundColor: t.bg,
               border: active ? t.activeBorder : t.inactiveBorder,
-              borderRadius: 'var(--radius-lg, 12px)',
+              borderRadius: 'var(--radius-lg)',
               padding: '14px 18px',
               cursor: isClickable ? 'pointer' : 'not-allowed',
               opacity: t.count === 0 ? 0.55 : 1,
               boxShadow: active ? t.activeShadow : 'none',
               boxSizing: 'border-box',
-              transition: 'all var(--transition-fast, 150ms ease)',
+              transition: 'all var(--transition-fast)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
@@ -153,7 +153,7 @@ export default function BulkStatTiles({
           >
             <div
               style={{
-                fontSize: 'var(--font-size-12, 12px)',
+                fontSize: 'var(--font-size-12)',
                 fontWeight: 500,
                 color: t.labelColor,
                 textTransform: 'none',
@@ -165,7 +165,7 @@ export default function BulkStatTiles({
             </div>
             <div
               style={{
-                fontSize: 'var(--font-size-24, 24px)',
+                fontSize: 'var(--font-size-24)',
                 fontWeight: 700,
                 color: t.textColor,
                 lineHeight: 1.2,

@@ -386,11 +386,11 @@ export default function CopyBomView({
                     width: '100%',
                     textAlign: 'center',
                     padding: '36px 20px',
-                    borderRadius: 'var(--sap-radius)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--sap-border)'
                   }}
                 >
-                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary)', marginBottom: 14 }} />
                   <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
                     Validating BOMs in SAP...
                   </h4>
@@ -448,7 +448,7 @@ export default function CopyBomView({
                 className="sap-result-success-card"
                 style={
                   hasDifferences
-                    ? { borderColor: 'var(--sap-warning-border, #D9E2EC)', backgroundColor: '#ffffff' }
+                    ? { borderColor: 'var(--sap-warning-border)', backgroundColor: 'var(--color-surface)' }
                     : {}
                 }
               >
@@ -456,11 +456,11 @@ export default function CopyBomView({
                 <div className="sap-result-success-header" style={{ alignItems: 'flex-start' }}>
                   <div className="sap-result-success-icon" style={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
                     {hasDifferences ? (
-                      <AlertTriangle data-testid="warning-icon" size={24} color="var(--sap-warning, #d97706)" />
+                      <AlertTriangle data-testid="warning-icon" size={24} color="var(--sap-warning)" />
                     ) : isVerificationFailed ? (
-                      <CheckCircle2 data-testid="info-icon" size={24} color="var(--sap-primary, #0070f2)" />
+                      <CheckCircle2 data-testid="info-icon" size={24} color="var(--sap-primary)" />
                     ) : (
-                      <CheckCircle2 data-testid="success-icon" size={24} color="var(--sap-success, #16a34a)" />
+                      <CheckCircle2 data-testid="success-icon" size={24} color="var(--sap-success)" />
                     )}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -470,10 +470,10 @@ export default function CopyBomView({
                         style={{
                           margin: 0,
                           color: hasDifferences
-                            ? 'var(--sap-warning-text, #00204E)'
+                            ? 'var(--sap-warning-text)'
                             : isVerificationFailed
-                              ? 'var(--sap-text, #00204E)'
-                              : 'var(--sap-success-text, #166534)'
+                              ? 'var(--sap-text)'
+                              : 'var(--sap-success-text)'
                         }}
                       >
                         {hasDifferences
@@ -487,7 +487,7 @@ export default function CopyBomView({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: 'var(--sap-primary, #0070f2)',
+                            color: 'var(--sap-primary)',
                             cursor: 'pointer',
                             fontSize: '12px',
                             fontWeight: 600,
@@ -514,14 +514,14 @@ export default function CopyBomView({
                       marginTop: 14,
                       padding: '12px 16px',
                       borderRadius: 6,
-                      backgroundColor: '#fffbeb',
-                      border: '1px solid #D9E2EC'
+                      backgroundColor: 'var(--color-warning-bg)',
+                      border: '1px solid var(--color-border)'
                     }}
                   >
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#00204E', marginBottom: 6 }}>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-navy-900)', marginBottom: 6 }}>
                       Discrepancies from source BOM ({realDifferences.length}):
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark, #1e293b)', lineHeight: 1.5 }}>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: '11.5px', color: 'var(--sap-text-dark)', lineHeight: 1.5 }}>
                       {realDifferences.map((diff, idx) => (
                         <li key={idx} style={{ marginBottom: 3 }}>
                           {diff}
@@ -554,7 +554,7 @@ export default function CopyBomView({
                           alignItems: 'center',
                           gap: 6,
                           fontSize: '13px',
-                          color: 'var(--color-blue-600, #02579A)',
+                          color: 'var(--color-blue-600)',
                           fontWeight: 500
                         }}
                       >
@@ -563,7 +563,7 @@ export default function CopyBomView({
                       </span>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: 'var(--color-danger, #B42318)', fontSize: '13px', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--color-danger)', fontSize: '13px', fontWeight: 600 }}>
                           Not verified
                         </span>
                         <button
@@ -575,7 +575,7 @@ export default function CopyBomView({
                           Verify again
                         </button>
                         {readBackError && (
-                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary, #475569)', lineHeight: 1.2 }}>
+                          <span style={{ fontSize: '11px', color: 'var(--color-text-secondary)', lineHeight: 1.2 }}>
                             {readBackError}
                           </span>
                         )}
@@ -597,7 +597,7 @@ export default function CopyBomView({
                           alignItems: 'center',
                           gap: 6,
                           fontSize: '13px',
-                          color: 'var(--color-blue-600, #02579A)',
+                          color: 'var(--color-blue-600)',
                           fontWeight: 500
                         }}
                       >
@@ -606,7 +606,7 @@ export default function CopyBomView({
                       </span>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: 'var(--color-danger, #B42318)', fontSize: '13px', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--color-danger)', fontSize: '13px', fontWeight: 600 }}>
                           Not verified
                         </span>
                         <button

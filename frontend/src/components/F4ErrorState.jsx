@@ -47,7 +47,7 @@ export function F4ErrorState({
           width: 44,
           height: 44,
           borderRadius: '50%',
-          backgroundColor: '#fef3c7', // amber-100
+          backgroundColor: 'var(--color-warning-bg)', // amber-100
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -55,7 +55,7 @@ export function F4ErrorState({
         }}
         aria-hidden="true"
       >
-        <AlertCircle size={24} color="#d97706" />
+        <AlertCircle size={24} color="var(--color-warning)" />
       </div>
 
       {/* Friendly Title */}
@@ -63,7 +63,7 @@ export function F4ErrorState({
         style={{
           fontSize: 15,
           fontWeight: 600,
-          color: '#1e293b',
+          color: 'var(--color-text)',
           marginBottom: 6
         }}
       >
@@ -74,7 +74,7 @@ export function F4ErrorState({
       <div
         style={{
           fontSize: 13,
-          color: '#475569',
+          color: 'var(--color-text-secondary)',
           lineHeight: 1.5,
           marginBottom: info.hint ? 10 : 14
         }}
@@ -87,9 +87,9 @@ export function F4ErrorState({
         <div
           style={{
             fontSize: 12,
-            color: '#92400e', // amber-800
-            backgroundColor: '#fffbeb', // amber-50
-            border: '1px solid #fde68a', // amber-200
+            color: 'var(--color-warning-strong)', // amber-800
+            backgroundColor: 'var(--color-warning-bg)', // amber-50
+            border: '1px solid var(--color-warning-border)', // amber-200
             borderRadius: 6,
             padding: '8px 12px',
             marginBottom: 14,
@@ -109,16 +109,16 @@ export function F4ErrorState({
             alignItems: 'center',
             gap: 6,
             padding: '4px 10px',
-            backgroundColor: '#f1f5f9',
-            border: '1px solid #e2e8f0',
+            backgroundColor: 'var(--color-surface-subtle)',
+            border: '1px solid var(--color-border-subtle)',
             borderRadius: 4,
             fontSize: 11,
-            color: '#64748b',
+            color: 'var(--color-text-secondary)',
             marginBottom: 16
           }}
         >
           <span>
-            Reference: <strong style={{ fontFamily: 'monospace', color: '#334155' }}>{info.errorRef}</strong>
+            Reference: <strong style={{ fontFamily: 'monospace', color: 'var(--color-text)' }}>{info.errorRef}</strong>
           </span>
           <button
             type="button"
@@ -132,10 +132,10 @@ export function F4ErrorState({
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              color: copied ? '#15803d' : '#64748b'
+              color: copied ? 'var(--color-success)' : 'var(--color-text-secondary)'
             }}
           >
-            {copied ? <Check size={12} color="#15803d" /> : <Copy size={12} />}
+            {copied ? <Check size={12} color="var(--color-success)" /> : <Copy size={12} />}
           </button>
         </div>
       )}

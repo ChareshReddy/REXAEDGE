@@ -283,7 +283,7 @@ export default function PlantValueHelpModal({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18, 18px)', fontWeight: 700, color: 'var(--sap-popup-header-title, #00204E)', lineHeight: 1.2 }}>
+            <h3 id="plant-f4-title" style={{ margin: 0, fontSize: 'var(--font-size-18)', fontWeight: 700, color: 'var(--sap-popup-header-title)', lineHeight: 1.2 }}>
               {modalTitle}
             </h3>
           </div>
@@ -335,7 +335,7 @@ export default function PlantValueHelpModal({
 
             <button
               type="submit"
-              className="sap-button primary sap-f4-search-btn"
+              className="sap-button sap-f4-search-btn"
               style={{
                 height: 30,
                 padding: '0 14px',
@@ -345,12 +345,11 @@ export default function PlantValueHelpModal({
                 alignItems: 'center',
                 gap: 6,
                 whiteSpace: 'nowrap',
-                flexShrink: 0,
-                color: '#ffffff'
+                flexShrink: 0
               }}
             >
-              <Search size={14} color="#ffffff" style={{ stroke: '#ffffff' }} />
-              <span style={{ color: '#ffffff' }}>Search</span>
+              <Search size={14} aria-hidden="true" />
+              <span>Search</span>
             </button>
           </form>
         </div>
@@ -398,8 +397,8 @@ export default function PlantValueHelpModal({
                 <col style={{ width: 220, maxWidth: 220 }} />
               </colgroup>
               <thead>
-                <tr style={{ background: '#EEF4F9', borderBottom: '1px solid #EEF4F9' }}>
-                  <th className="sap-f4-sticky-col sap-col-left" style={{ width: 90, minWidth: 90, position: 'sticky', left: 0, top: 0, zIndex: 4, background: '#EEF4F9' }}>Plnt</th>
+                <tr style={{ background: 'var(--color-blue-50)', borderBottom: '1px solid var(--color-blue-50)' }}>
+                  <th className="sap-f4-sticky-col sap-col-left" style={{ width: 90, minWidth: 90, position: 'sticky', left: 0, top: 0, zIndex: 4, background: 'var(--color-blue-50)' }}>Plnt</th>
                   <th className="sap-col-left" style={{ width: 280, maxWidth: 280 }}>Name 1</th>
                   <th className="sap-col-left" style={{ width: 220, maxWidth: 220 }}>City / Location</th>
                 </tr>
@@ -407,7 +406,7 @@ export default function PlantValueHelpModal({
               <tbody>
                 {filteredPlants.map((p, idx) => {
                   const isSelected = idx === selectedIndex;
-                  const rowBg = isSelected ? '#EEF4F9' : idx % 2 === 1 ? '#fafbfc' : '#ffffff';
+                  const rowBg = isSelected ? 'var(--color-blue-50)' : idx % 2 === 1 ? 'var(--color-surface-subtle)' : 'var(--color-surface)';
                   return (
                     <tr
                       key={`${p.werks}-${idx}`}
@@ -416,7 +415,7 @@ export default function PlantValueHelpModal({
                       style={{
                         cursor: 'pointer',
                         background: rowBg,
-                        borderBottom: '1px solid #f1f5f9'
+                        borderBottom: '1px solid var(--color-surface-subtle)'
                       }}
                       onClick={(e) => {
                         e.preventDefault();
@@ -431,8 +430,8 @@ export default function PlantValueHelpModal({
                         style={{
                           width: 90,
                           fontFamily: 'var(--sap-font-mono)',
-                          fontWeight: isSelected ? 600 : 'var(--font-weight-code, 500)',
-                          color: isSelected ? 'var(--color-navy-900, #00204E)' : 'var(--color-blue-600, #02579A)',
+                          fontWeight: isSelected ? 600 : 'var(--font-weight-code)',
+                          color: isSelected ? 'var(--color-navy-900)' : 'var(--color-blue-600)',
                           position: 'sticky',
                           left: 0,
                           zIndex: 1,
@@ -448,9 +447,9 @@ export default function PlantValueHelpModal({
                               fontSize: 9,
                               padding: '1px 4px',
                               borderRadius: 3,
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              border: '1px solid #bfdbfe',
+                              background: 'var(--color-blue-50)',
+                              color: 'var(--color-blue-600)',
+                              border: '1px solid var(--color-blue-200)',
                               verticalAlign: 'middle'
                             }}
                           >
@@ -464,8 +463,8 @@ export default function PlantValueHelpModal({
                         style={{
                           width: 280,
                           maxWidth: 280,
-                          color: 'var(--color-text, #0F2742)',
-                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          color: 'var(--color-text)',
+                          fontFamily: "var(--font-sans)",
                           fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
@@ -482,8 +481,8 @@ export default function PlantValueHelpModal({
                         style={{
                           width: 220,
                           maxWidth: 220,
-                          color: 'var(--color-text-secondary, #4A5F77)',
-                          fontFamily: "var(--font-sans, 'Inter', sans-serif)",
+                          color: 'var(--color-text-secondary)',
+                          fontFamily: "var(--font-sans)",
                           fontWeight: 400,
                           whiteSpace: 'normal',
                           wordBreak: 'break-word',
@@ -502,7 +501,7 @@ export default function PlantValueHelpModal({
         </div>
 
         {/* Footer */}
-        <div className="sap-f4-footer" style={{ borderTop: '1px solid #EEF4F9', background: 'var(--sap-modal-footer-bg, #EEF4F9)' }}>
+        <div className="sap-f4-footer" style={{ borderTop: '1px solid var(--color-blue-50)', background: 'var(--sap-modal-footer-bg)' }}>
           <div className="sap-f4-footer-preview" style={{ color: 'var(--sap-text-secondary)', fontSize: 13 }}>
             {selectedIndex >= 0 && filteredPlants[selectedIndex] ? (
               <span title={`${filteredPlants[selectedIndex].werks} - ${filteredPlants[selectedIndex].name1 || ''}`}>

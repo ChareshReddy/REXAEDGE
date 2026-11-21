@@ -690,7 +690,7 @@ export default function ChatBox({
 
       {/* Quick Suggestion Actions (Create BOM & Delete BOM only) */}
       <div className="sap-chat-suggestions sap-toolbar">
-        <span style={{ fontSize: '12px', fontWeight: 600, color: '#333333', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Sparkles size={13} />
           Quick Actions:
         </span>

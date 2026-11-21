@@ -195,11 +195,11 @@ export default function DeleteBomView({
                     width: '100%',
                     textAlign: 'center',
                     padding: '36px 20px',
-                    borderRadius: 'var(--sap-radius)',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--sap-border)'
                   }}
                 >
-                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary, #0a6ed1)', marginBottom: 14 }} />
+                  <Loader2 size={36} className="sap-spin" style={{ color: 'var(--sap-primary)', marginBottom: 14 }} />
                   <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--sap-text)', margin: '0 0 6px' }}>
                     Verifying BOM Existence in SAP...
                   </h4>
@@ -234,7 +234,7 @@ export default function DeleteBomView({
           {proposedAction && !executionResult && (
             <div className="sap-proposal-view-section" style={{ maxWidth: 960, width: '100%', margin: '0 auto' }}>
               <div className="sap-proposal-header-card">
-                <ShieldCheck size={20} color="var(--color-primary, #02579A)" style={{ flexShrink: 0 }} />
+                <ShieldCheck size={20} color="var(--color-primary, var(--color-blue-600))" style={{ flexShrink: 0 }} />
                 <div>
                   <h4>Human Confirmation Gate: Confirm Permanent BOM Deletion</h4>
                   <p>Deleting a BOM removes the alternative from SAP master records. Review carefully before confirming.</p>

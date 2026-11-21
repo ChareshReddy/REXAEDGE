@@ -1086,10 +1086,10 @@ export default function BulkBomView({
                     style={{
                       padding: '12px 16px',
                       marginBottom: 16,
-                      borderRadius: 'var(--radius-md, 8px)',
-                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                      border: '1px solid var(--color-danger-border, #FECDCA)',
-                      color: 'var(--color-danger, #B42318)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      color: 'var(--color-danger)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1097,7 +1097,7 @@ export default function BulkBomView({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger, #B42318)' }} />
+                      <AlertCircle size={18} style={{ flexShrink: 0, color: 'var(--color-danger)' }} />
                       <span style={{ fontSize: '13px', fontWeight: 500 }}>
                         The job was interrupted. Please upload again.
                       </span>
@@ -1107,9 +1107,9 @@ export default function BulkBomView({
                       className="rx-btn rx-btn-secondary rx-btn-sm"
                       onClick={resetAll}
                       style={{
-                        height: 'var(--size-button-sm-height, 32px)',
+                        height: 'var(--size-button-sm-height)',
                         padding: '0 12px',
-                        borderRadius: 'var(--radius-md, 8px)'
+                        borderRadius: 'var(--radius-md)'
                       }}
                     >
                       Upload Again
@@ -1123,10 +1123,10 @@ export default function BulkBomView({
                     style={{
                       padding: '12px 16px',
                       marginBottom: 16,
-                      borderRadius: 'var(--radius-md, 8px)',
-                      backgroundColor: 'var(--color-danger-bg, #FEF3F2)',
-                      border: '1px solid var(--color-danger-border, #FECDCA)',
-                      color: 'var(--color-danger, #B42318)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: 'var(--color-danger-bg)',
+                      border: '1px solid var(--color-danger-border)',
+                      color: 'var(--color-danger)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -1142,9 +1142,9 @@ export default function BulkBomView({
                       className="rx-btn rx-btn-secondary rx-btn-sm"
                       onClick={() => setJobError('')}
                       style={{
-                        height: 'var(--size-button-sm-height, 32px)',
+                        height: 'var(--size-button-sm-height)',
                         padding: '0 12px',
-                        borderRadius: 'var(--radius-md, 8px)'
+                        borderRadius: 'var(--radius-md)'
                       }}
                     >
                       Dismiss
@@ -1195,8 +1195,8 @@ export default function BulkBomView({
                       height: 'auto',
                       overflowX: 'auto',
                       overflowY: 'auto',
-                      border: '1px solid var(--color-border, #D9E2EC)',
-                      borderRadius: 'var(--radius-md, 8px)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
                       boxSizing: 'border-box'
                     }}
                   >
@@ -1206,7 +1206,7 @@ export default function BulkBomView({
                         <col style={{ width: '35%' }} />
                         <col style={{ width: '35%' }} />
                         <col style={{ width: '9%' }} />
-                        <col style={{ width: '16%', minWidth: 'var(--table-col-status-min-width, 140px)' }} />
+                        <col style={{ width: '16%', minWidth: 'var(--table-col-status-min-width)' }} />
                       </colgroup>
                       <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
                         <tr style={{ backgroundColor: 'var(--table-header-bg)' }}>
@@ -1214,13 +1214,13 @@ export default function BulkBomView({
                           <th style={{ width: '35%' }}>Source BOM</th>
                           <th style={{ width: '35%' }}>Target BOM</th>
                           <th style={{ width: '9%', textAlign: 'center' }}>Items</th>
-                          <th className="col-result" style={{ width: '16%', minWidth: 'var(--table-col-status-min-width, 140px)', textAlign: 'center' }}>Result</th>
+                          <th className="col-result" style={{ width: '16%', minWidth: 'var(--table-col-status-min-width)', textAlign: 'center' }}>Result</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredRows.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary, #4A5F77)' }}>
+                            <td colSpan={5} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--color-text-secondary)' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: '13px', fontWeight: 500 }}>No rows match this filter.</span>
                                 <button
@@ -1233,7 +1233,7 @@ export default function BulkBomView({
                                     background: 'none',
                                     border: 'none',
                                     padding: 0,
-                                    color: 'var(--color-blue-600, #02579A)',
+                                    color: 'var(--color-blue-600)',
                                     textDecoration: 'underline',
                                     cursor: 'pointer',
                                     fontSize: '12px',
@@ -1309,7 +1309,7 @@ export default function BulkBomView({
                                     padding: '6px 8px',
                                     verticalAlign: 'middle',
                                     boxSizing: 'border-box',
-                                    minWidth: 'var(--table-col-status-min-width, 140px)',
+                                    minWidth: 'var(--table-col-status-min-width)',
                                     overflow: 'visible',
                                     textOverflow: 'clip',
                                     whiteSpace: 'nowrap'
@@ -1336,7 +1336,7 @@ export default function BulkBomView({
                   <div
                     className="bulk-preview-sticky-footer sap-card-action-row"
                     style={{
-                      borderTop: '1px solid var(--sap-border, #D9E2EC)',
+                      borderTop: '1px solid var(--sap-border)',
                       paddingTop: 16,
                       marginTop: 16,
                       display: 'flex',
@@ -1379,7 +1379,7 @@ export default function BulkBomView({
                         className="sap-button"
                         disabled={isExecuting || isValidating}
                         onClick={resetAll}
-                        style={{ height: 'var(--size-button-height, 40px)', padding: '0 18px', fontSize: 'var(--font-size-13, 13px)', borderRadius: 'var(--radius-md, 8px)' }}
+                        style={{ height: 'var(--size-button-height)', padding: '0 18px', fontSize: 'var(--font-size-13)', borderRadius: 'var(--radius-md)' }}
                       >
                         Clear & Upload Another
                       </button>
@@ -1390,13 +1390,13 @@ export default function BulkBomView({
                         onClick={handleValidateWithSap}
                         disabled={isValidating || isExecuting || parsedRows.length === 0}
                         style={{
-                          height: 'var(--size-button-height, 40px)',
+                          height: 'var(--size-button-height)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
                           padding: '0 20px',
-                          fontSize: 'var(--font-size-13, 13px)',
-                          borderRadius: 'var(--radius-md, 8px)'
+                          fontSize: 'var(--font-size-13)',
+                          borderRadius: 'var(--radius-md)'
                         }}
                       >
                         {isValidating ? (
@@ -1418,13 +1418,13 @@ export default function BulkBomView({
                         disabled={!validationReport || isExecuting || (validCount === 0 && warningCount === 0)}
                         onClick={handleOpenConfirmCopy}
                         style={{
-                          height: 'var(--size-button-height, 40px)',
+                          height: 'var(--size-button-height)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
                           padding: '0 24px',
-                          fontSize: 'var(--font-size-13, 13px)',
-                          borderRadius: 'var(--radius-md, 8px)',
+                          fontSize: 'var(--font-size-13)',
+                          borderRadius: 'var(--radius-md)',
                           fontWeight: 600
                         }}
                       >

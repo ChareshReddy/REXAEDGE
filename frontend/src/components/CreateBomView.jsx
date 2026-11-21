@@ -1004,7 +1004,7 @@ export default function CreateBomView({
                           handleHeaderChange('baseQty', sanitized);
                         }}
                         onBlur={() => handleHeaderBlur('baseQty')}
-                        style={{ height: 'var(--size-form-input-height, 36px)' }}
+                        style={{ height: 'var(--size-form-input-height)' }}
                       />
                     </FieldWrapper>
                   </div>
@@ -1024,7 +1024,7 @@ export default function CreateBomView({
                         value={resolvedBaseUnit || ''}
                         placeholder=""
                         style={{
-                          height: 'var(--size-form-input-height, 36px)',
+                          height: 'var(--size-form-input-height)',
                           backgroundColor: 'var(--color-blue-50)',
                           borderColor: 'var(--color-border)',
                           color: 'var(--color-text-secondary)',
@@ -1094,11 +1094,11 @@ export default function CreateBomView({
                   disabled={isLocked}
                   onClick={handleAddComponent}
                   style={{
-                    height: 'var(--size-button-sm-height, 32px)',
-                    padding: '0 var(--space-12, 12px)',
-                    borderRadius: 'var(--radius-sm, 4px)',
-                    backgroundColor: 'var(--color-navy-900, #00204E)',
-                    color: '#FFFFFF',
+                    height: 'var(--size-button-sm-height)',
+                    padding: '0 var(--space-12)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--color-navy-900)',
+                    color: 'var(--color-text-inverse)',
                     border: 'none',
                     boxShadow: 'none',
                     display: 'inline-flex',
@@ -1109,7 +1109,7 @@ export default function CreateBomView({
                     cursor: isLocked ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  <Plus size={16} strokeWidth={2.4} style={{ display: 'block', lineHeight: 1, margin: 0, padding: 0, color: '#FFFFFF', stroke: '#FFFFFF' }} />
+                  <Plus size={16} strokeWidth={2.4} style={{ display: 'block', lineHeight: 1, margin: 0, padding: 0, color: 'var(--color-text-inverse)', stroke: 'var(--color-text-inverse)' }} />
                   <span>Add Component</span>
                 </Button>
               }
@@ -1117,8 +1117,8 @@ export default function CreateBomView({
               <div className="sap-table-container fiori-table-wrapper rounded-[var(--radius-md)] border border-[var(--color-border)] rx-components-table-container" style={{ maxHeight: 420, minHeight: 0, height: 'auto' }}>
                 <table className="sap-table w-full border-collapse text-[13px] rx-components-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                   <colgroup>
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '25%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '23%' }} />
                     <col style={{ width: '10%' }} />
                     <col style={{ width: '8%' }} />
                     <col style={{ width: '13%' }} />
@@ -1424,15 +1424,15 @@ export default function CreateBomView({
             }
             .confirm-single-header-table th,
             .confirm-single-components-table th {
-              background: var(--table-header-bg, #EDF2F9);
-              color: var(--table-header-text, #0B2D57);
+              background: var(--table-header-bg);
+              color: var(--table-header-text);
               font-size: 12px;
               font-weight: 600;
               padding: 0 12px;
               height: 36px;
               line-height: 36px;
               text-align: left;
-              border-bottom: 1px solid var(--table-header-border, #DDE6F0);
+              border-bottom: 1px solid var(--table-header-border);
               white-space: nowrap;
               box-sizing: border-box;
             }
@@ -1462,7 +1462,7 @@ export default function CreateBomView({
                 padding: 8px 12px !important;
                 height: auto !important;
                 min-height: 36px !important;
-                border-bottom: 1px solid var(--table-header-border, #DDE6F0) !important;
+                border-bottom: 1px solid var(--table-header-border) !important;
                 font-size: 13px !important;
                 white-space: normal !important;
                 box-sizing: border-box !important;
@@ -1472,10 +1472,10 @@ export default function CreateBomView({
               }
               .confirm-single-header-table td::before {
                 content: attr(data-label);
-                font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+                font-family: var(--font-sans);
                 font-size: 12px;
                 font-weight: 600;
-                color: var(--sap-text-secondary, #475569);
+                color: var(--sap-text-secondary);
                 margin-right: 12px;
                 flex-shrink: 0;
               }
@@ -1483,7 +1483,7 @@ export default function CreateBomView({
           `}</style>
 
           <div data-testid="confirm-bom-modal-content">
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-body, #334155)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--sap-text-body)', lineHeight: 1.5 }}>
               You are about to create a new Bill of Materials in SAP.
             </p>
 
@@ -1492,10 +1492,10 @@ export default function CreateBomView({
               className="confirm-bom-header-container rx-confirm-table-container"
               data-testid="confirm-bom-header-container"
               style={{
-                border: '1px solid var(--table-header-border, #DDE6F0)',
+                border: '1px solid var(--table-header-border)',
                 borderRadius: 4,
                 overflow: 'hidden',
-                background: 'var(--sap-card-bg, #ffffff)',
+                background: 'var(--sap-card-bg)',
                 marginBottom: 16
               }}
             >
@@ -1516,25 +1516,25 @@ export default function CreateBomView({
                 </thead>
                 <tbody>
                   <tr>
-                    <td data-label="Material" data-testid="confirm-detail-material" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="Material" data-testid="confirm-detail-material" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {(headerData.material || '-').toUpperCase()}
                     </td>
-                    <td data-label="Plant" data-testid="confirm-detail-plant" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="Plant" data-testid="confirm-detail-plant" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {(headerData.plant || '-').toUpperCase()}
                     </td>
-                    <td data-label="BOM usage" data-testid="confirm-detail-usage" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="BOM usage" data-testid="confirm-detail-usage" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {headerData.bomUsage || '1'}
                     </td>
-                    <td data-label="Alternative" data-testid="confirm-detail-alternative" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="Alternative" data-testid="confirm-detail-alternative" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {(headerData.alternativeBom || '01').toUpperCase()}
                     </td>
-                    <td data-label="Valid from" data-testid="confirm-detail-validfrom" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="Valid from" data-testid="confirm-detail-validfrom" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {headerData.validFrom || '-'}
                     </td>
-                    <td data-label="Base quantity" data-testid="confirm-detail-baseqty" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="Base quantity" data-testid="confirm-detail-baseqty" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {`${headerData.baseQty || '1'} ${(resolvedBaseUnit || preflightData?.baseUnit || '').toUpperCase()}`.trim()}
                     </td>
-                    <td data-label="BOM status" data-testid="confirm-detail-status" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>
+                    <td data-label="BOM status" data-testid="confirm-detail-status" style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>
                       {headerData.bomStatus || '01'}
                     </td>
                   </tr>
@@ -1549,7 +1549,7 @@ export default function CreateBomView({
                 style={{
                   fontSize: 12.5,
                   fontWeight: 600,
-                  color: 'var(--sap-text-dark, #0F172A)',
+                  color: 'var(--sap-text-dark)',
                   marginBottom: 6
                 }}
               >
@@ -1562,9 +1562,9 @@ export default function CreateBomView({
                   maxHeight: 252,
                   overflowY: 'auto',
                   overflowX: 'auto',
-                  border: '1px solid var(--table-header-border, #DDE6F0)',
+                  border: '1px solid var(--table-header-border)',
                   borderRadius: 4,
-                  background: 'var(--sap-card-bg, #ffffff)'
+                  background: 'var(--sap-card-bg)'
                 }}
               >
                 <table
@@ -1601,14 +1601,14 @@ export default function CreateBomView({
                           key={c.id || idx}
                           data-testid={`confirm-component-row-${idx}`}
                           style={{
-                            borderBottom: idx === components.length - 1 ? 'none' : '1px solid var(--table-header-border, #DDE6F0)'
+                            borderBottom: idx === components.length - 1 ? 'none' : '1px solid var(--table-header-border)'
                           }}
                         >
-                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{itemNo}</td>
-                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }} title={compMat}>{compMat}</td>
-                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{qty}</td>
-                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{cat}</td>
-                          <td style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--sap-text-dark, #0F172A)' }}>{loc}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>{itemNo}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }} title={compMat}>{compMat}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>{qty}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>{cat}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--sap-text-dark)' }}>{loc}</td>
                         </tr>
                       );
                     })}

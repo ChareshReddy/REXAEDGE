@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import AddServerModal from './AddServerModal';
 import Modal from './ui/Modal';
+import { Button } from './ui/button';
 import FioriPageHeader from './FioriPageHeader';
 import { PageContainer } from './layout';
 import { toast } from '../context/ToastContext';
@@ -220,10 +221,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
               padding: '8px 16px',
               fontSize: '13px',
               fontWeight: 600,
-              backgroundColor: 'var(--color-navy-900, #00204E)',
-              color: '#FFFFFF',
+              backgroundColor: 'var(--color-navy-900)',
+              color: 'var(--color-text-inverse)',
               border: 'none',
-              borderRadius: 'var(--radius-md, 6px)',
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer'
             }}
           >
@@ -251,12 +252,12 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: 'var(--color-success-bg, #F0FDF4)',
-            border: '1px solid var(--color-success-border, #86EFAC)',
-            borderRadius: 'var(--radius-md, 6px)',
+            backgroundColor: 'var(--color-success-bg)',
+            border: '1px solid var(--color-success-border)',
+            borderRadius: 'var(--radius-md)',
             padding: '10px 14px',
             marginBottom: '16px',
-            color: 'var(--color-success, #166534)',
+            color: 'var(--color-success)',
             fontSize: '13px'
           }}
         >
@@ -272,12 +273,12 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: 'var(--color-danger-bg, #FEF2F2)',
-            border: '1px solid var(--color-danger-border, #FCA5A5)',
-            borderRadius: 'var(--radius-md, 6px)',
+            backgroundColor: 'var(--color-danger-bg)',
+            border: '1px solid var(--color-danger-border)',
+            borderRadius: 'var(--radius-md)',
             padding: '10px 14px',
             marginBottom: '16px',
-            color: 'var(--color-danger, #B42318)',
+            color: 'var(--color-danger)',
             fontSize: '13px'
           }}
         >
@@ -288,7 +289,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
 
       {/* Main Content */}
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted, #64748B)' }}>
+        <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>
           <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
           <p style={{ fontSize: '13px' }}>Loading your SAP servers...</p>
         </div>
@@ -298,10 +299,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
           style={{
             textAlign: 'center',
             padding: '56px 24px',
-            backgroundColor: 'var(--color-surface, #FFFFFF)',
-            borderRadius: 'var(--radius-lg, 8px)',
-            border: '1px dashed var(--color-border, #CBD5E1)',
-            boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0, 0, 0, 0.05))'
+            backgroundColor: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px dashed var(--color-border)',
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
           <div
@@ -309,8 +310,8 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              backgroundColor: 'var(--color-blue-100, #DCE8F1)',
-              color: 'var(--color-navy-900, #00204E)',
+              backgroundColor: 'var(--color-blue-100)',
+              color: 'var(--color-navy-900)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -323,7 +324,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
             style={{
               fontSize: '18px',
               fontWeight: 600,
-              color: 'var(--color-text, #0F172A)',
+              color: 'var(--color-text)',
               margin: '0 0 6px 0'
             }}
           >
@@ -332,7 +333,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
           <p
             style={{
               fontSize: '13px',
-              color: 'var(--color-text-muted, #64748B)',
+              color: 'var(--color-text-muted)',
               maxWidth: '440px',
               margin: '0 auto 20px auto',
               lineHeight: 1.5
@@ -353,10 +354,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
               padding: '10px 18px',
               fontSize: '13px',
               fontWeight: 600,
-              backgroundColor: 'var(--color-navy-900, #00204E)',
-              color: '#FFFFFF',
+              backgroundColor: 'var(--color-navy-900)',
+              color: 'var(--color-text-inverse)',
               border: 'none',
-              borderRadius: 'var(--radius-md, 6px)',
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer'
             }}
           >
@@ -367,11 +368,11 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
       ) : (
         <div
           style={{
-            backgroundColor: 'var(--color-surface, #FFFFFF)',
-            borderRadius: 'var(--radius-lg, 8px)',
-            border: '1px solid var(--color-border, #E2E8F0)',
+            backgroundColor: 'var(--color-surface)',
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--color-border)',
             overflow: 'hidden',
-            boxShadow: 'var(--shadow-card, 0 1px 3px rgba(0, 0, 0, 0.05))'
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%' }}>
@@ -388,20 +389,21 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
               <thead>
                 <tr
                   style={{
-                    backgroundColor: 'var(--color-surface-subtle, #F8FAFC)',
-                    borderBottom: '1px solid var(--color-border, #E2E8F0)',
-                    color: 'var(--color-text-muted, #64748B)',
-                    fontWeight: 600
+                    backgroundColor: 'var(--table-header-bg)',
+                    borderBottom: '1px solid var(--table-header-border)',
+                    color: 'var(--table-header-text)',
+                    fontWeight: 600,
+                    height: 'var(--size-table-header-height)'
                   }}
                 >
-                  <th style={{ width: '60px', padding: '12px 16px' }}>Default</th>
-                  <th style={{ width: '180px', padding: '12px 16px' }}>Server Name</th>
-                  <th style={{ width: '160px', padding: '12px 16px' }}>Host / IP</th>
-                  <th style={{ width: '65px', padding: '12px 16px' }}>Sys #</th>
-                  <th style={{ width: '75px', padding: '12px 16px' }}>Client</th>
-                  <th style={{ width: '130px', padding: '12px 16px' }}>Type</th>
-                  <th style={{ width: '130px', padding: '12px 16px' }}>Status</th>
-                  <th style={{ width: '150px', padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                  <th style={{ width: '60px', padding: '0 var(--space-16)' }}>Default</th>
+                  <th style={{ width: '180px', padding: '0 var(--space-16)' }}>Server Name</th>
+                  <th style={{ width: '160px', padding: '0 var(--space-16)' }}>Host / IP</th>
+                  <th style={{ width: '65px', padding: '0 var(--space-16)' }}>Sys #</th>
+                  <th style={{ width: '75px', padding: '0 var(--space-16)' }}>Client</th>
+                  <th style={{ width: '130px', padding: '0 var(--space-16)' }}>Type</th>
+                  <th style={{ width: '130px', padding: '0 var(--space-16)' }}>Status</th>
+                  <th style={{ width: '150px', padding: '0 var(--space-16)', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,8 +416,8 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                     <tr
                       key={server.id}
                       style={{
-                        borderBottom: '1px solid var(--color-border, #E2E8F0)',
-                        backgroundColor: server.is_default ? 'var(--color-blue-50, #F0F6FA)' : 'transparent'
+                        borderBottom: '1px solid var(--color-border)',
+                        backgroundColor: server.is_default ? 'var(--color-blue-50)' : 'transparent'
                       }}
                     >
                       {/* Default Radio */}
@@ -433,9 +435,9 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                             height: '16px',
                             borderRadius: '50%',
                             border: server.is_default
-                              ? '1.5px solid var(--color-navy-900, #00204E)'
-                              : '1.5px solid var(--color-border, #CBD5E1)',
-                            backgroundColor: '#FFFFFF',
+                              ? '1.5px solid var(--color-navy-900)'
+                              : '1.5px solid var(--color-border)',
+                            backgroundColor: 'var(--color-surface)',
                             cursor: server.is_default ? 'default' : 'pointer',
                             padding: 0,
                             display: 'inline-flex',
@@ -451,7 +453,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                                 width: '8px',
                                 height: '8px',
                                 borderRadius: '50%',
-                                backgroundColor: 'var(--color-navy-900, #00204E)'
+                                backgroundColor: 'var(--color-navy-900)'
                               }}
                             />
                           )}
@@ -459,7 +461,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                       </td>
 
                       {/* Server Name */}
-                      <td style={{ width: '180px', padding: '12px 16px', fontWeight: 600, color: 'var(--color-text, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td style={{ width: '180px', padding: '12px 16px', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span title={server.name}>{server.name}</span>
                         {server.is_default && (
                           <span
@@ -467,8 +469,8 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                               marginLeft: '8px',
                               fontSize: '11px',
                               fontWeight: 500,
-                              color: 'var(--color-blue-700, #1D4ED8)',
-                              backgroundColor: 'var(--color-blue-100, #DCE8F1)',
+                              color: 'var(--color-blue-700)',
+                              backgroundColor: 'var(--color-blue-100)',
                               padding: '2px 6px',
                               borderRadius: '4px'
                             }}
@@ -479,17 +481,17 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                       </td>
 
                       {/* Host */}
-                      <td style={{ width: '160px', padding: '12px 16px', fontFamily: 'monospace', color: 'var(--color-text, #0F172A)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td style={{ width: '160px', padding: '12px 16px', fontFamily: 'monospace', color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span title={server.ashost}>{server.ashost}</span>
                       </td>
 
                       {/* Sysnr */}
-                      <td style={{ width: '65px', padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
+                      <td style={{ width: '65px', padding: '12px 16px', color: 'var(--color-text-muted)' }}>
                         {server.sysnr}
                       </td>
 
                       {/* Client */}
-                      <td style={{ width: '75px', padding: '12px 16px', color: 'var(--color-text-muted, #64748B)' }}>
+                      <td style={{ width: '75px', padding: '12px 16px', color: 'var(--color-text-muted)' }}>
                         {server.client}
                       </td>
 
@@ -502,10 +504,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                             fontSize: '11px',
                             fontWeight: 600,
                             padding: '2px 8px',
-                            borderRadius: 'var(--radius-badge, 4px)',
-                            backgroundColor: isProd ? 'var(--color-danger, #B42318)' : 'var(--color-blue-100, #DCE8F1)',
-                            color: isProd ? '#FFFFFF' : 'var(--color-navy-900, #00204E)',
-                            border: isProd ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-blue-300, #98B5CE)'
+                            borderRadius: 'var(--radius-badge)',
+                            backgroundColor: isProd ? 'var(--color-danger)' : 'var(--color-blue-100)',
+                            color: isProd ? 'var(--color-surface)' : 'var(--color-navy-900)',
+                            border: isProd ? '1px solid var(--color-danger)' : '1px solid var(--color-blue-200)'
                           }}
                         >
                           {srvType}
@@ -530,7 +532,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '6px',
-                                  color: 'var(--color-text-muted, #64748B)',
+                                  color: 'var(--color-text-muted)',
                                   fontSize: '12px',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
@@ -539,7 +541,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                                 }}
                                 title="Testing connection to SAP server..."
                               >
-                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted, #94A3B8)', flexShrink: 0 }} />
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)', flexShrink: 0 }} />
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Testing...</span>
                               </span>
                             );
@@ -547,7 +549,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
 
                           if (testState.result) {
                             const isSuccess = Boolean(testState.result.success);
-                            const dotColor = isSuccess ? 'var(--color-success, #16A34A)' : 'var(--color-danger, #DC2626)';
+                            const dotColor = isSuccess ? 'var(--color-success)' : 'var(--color-danger)';
                             const label = isSuccess ? 'Ready' : 'Unreachable';
                             const tooltip = testState.result.message || (isSuccess ? 'Connected' : 'Connection failed');
 
@@ -557,7 +559,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '6px',
-                                  color: 'var(--color-text-muted, #64748B)',
+                                  color: 'var(--color-text-muted)',
                                   fontSize: '12px',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
@@ -576,12 +578,12 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                           const isDown = server.is_disabled || server.health_status === 'down' || server.circuit_breaker === 'open';
                           const isDegraded = !isDown && server.health_status === 'degraded';
                           const dotColor = server.is_disabled
-                            ? 'var(--color-text-muted, #94A3B8)'
+                            ? 'var(--color-text-muted)'
                             : isDown
-                            ? 'var(--color-danger, #DC2626)'
+                            ? 'var(--color-danger)'
                             : isDegraded
-                            ? 'var(--color-warning, #D97706)'
-                            : 'var(--color-success, #16A34A)';
+                            ? 'var(--color-warning)'
+                            : 'var(--color-success)';
                           const label = server.is_disabled
                             ? 'Disabled'
                             : isDown
@@ -599,7 +601,7 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '6px',
-                                color: 'var(--color-text-muted, #64748B)',
+                                color: 'var(--color-text-muted)',
                                 fontSize: '12px',
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
@@ -631,10 +633,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                               fontSize: '12px',
                               fontWeight: 500,
                               backgroundColor: 'transparent',
-                              border: '1px solid var(--color-border, #CBD5E1)',
-                              borderRadius: 'var(--radius-md, 4px)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-md)',
                               cursor: testState.isTesting ? 'not-allowed' : 'pointer',
-                              color: 'var(--color-text, #0F172A)',
+                              color: 'var(--color-text)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -660,10 +662,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                               padding: 0,
                               fontSize: '12px',
                               backgroundColor: 'transparent',
-                              border: '1px solid var(--color-border, #CBD5E1)',
-                              borderRadius: 'var(--radius-md, 4px)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: 'var(--radius-md)',
                               cursor: 'pointer',
-                              color: 'var(--color-text, #0F172A)',
+                              color: 'var(--color-text)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -682,10 +684,10 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
                               padding: 0,
                               fontSize: '12px',
                               backgroundColor: 'transparent',
-                              border: '1px solid var(--color-danger-border, #FCA5A5)',
-                              borderRadius: 'var(--radius-md, 4px)',
+                              border: '1px solid var(--color-danger-border)',
+                              borderRadius: 'var(--radius-md)',
                               cursor: 'pointer',
-                              color: 'var(--color-danger, #B42318)',
+                              color: 'var(--color-danger)',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -729,47 +731,23 @@ export default function MyServersView({ onServerChanged, onNavigateHome }) {
         onClose={() => setServerToDelete(null)}
         title="Delete SAP Server"
         maxWidth="440px"
+        isLoading={isDeleting}
+        icon={Trash2}
         footer={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', width: '100%' }}>
-            <button
-              type="button"
-              onClick={() => setServerToDelete(null)}
-              disabled={isDeleting}
-              style={{
-                padding: '8px 14px',
-                fontSize: '13px',
-                backgroundColor: 'transparent',
-                border: '1px solid var(--color-border, #CBD5E1)',
-                borderRadius: 'var(--radius-md, 6px)',
-                cursor: isDeleting ? 'not-allowed' : 'pointer'
-              }}
-            >
+          <>
+            <Button variant="secondary" onClick={() => setServerToDelete(null)} disabled={isDeleting}>
               Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              style={{
-                padding: '8px 16px',
-                fontSize: '13px',
-                fontWeight: 600,
-                backgroundColor: 'var(--color-danger, #B42318)',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: 'var(--radius-md, 6px)',
-                cursor: isDeleting ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {isDeleting ? 'Deleting...' : 'Delete Server'}
-            </button>
-          </div>
+            </Button>
+            <Button variant="danger" onClick={handleDeleteConfirm} isLoading={isDeleting}>
+              {isDeleting ? 'Deleting…' : 'Delete Server'}
+            </Button>
+          </>
         }
       >
-        <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--color-text, #0F172A)', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--color-text)', lineHeight: 1.5 }}>
           Are you sure you want to delete server <strong>{serverToDelete?.name}</strong> ({serverToDelete?.ashost})?
         </p>
-        <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-muted, #64748B)', lineHeight: 1.4 }}>
+        <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
           This will remove your configured connection and stored SAP credentials. Active jobs using this server will be cancelled.
         </p>
       </Modal>

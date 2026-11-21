@@ -28,8 +28,10 @@ import { FormSection, FormGrid, FormActions } from './ui/form-layout';
 import { FieldWrapper } from './ui/FieldWrapper';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { DataTable } from './ui/DataTable';
+import { formatMaterialNumber } from './BomExplorerView';
 import { PageContainer } from './layout';
-import { readBom, changeBom } from '../services/api';
+import { readBom, changeBom, getBomAlternatives } from '../services/api';
 import activityTracker from '../services/activityTracker';
 import { useToast } from '../context/ToastContext';
 import { extractErrorInfo } from '../utils/friendlyError';
@@ -43,7 +45,8 @@ export default function ChangeBomView({
   onNavigateProducts,
   onNavigateBom,
   initialMaterial = '',
-  initialPlant = ''
+  initialPlant = '',
+  initialAlternative = ''
 }) {
   const toast = useToast();
 
@@ -52,13 +55,20 @@ export default function ChangeBomView({
     material: initialMaterial || '',
     plant: initialPlant || '',
     bomUsage: '1',
-    alternativeBom: '01',
+    alternativeBom: initialAlternative || '',
     changeNo: '',
     validFrom: ''
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [isLoadingBom, setIsLoadingBom] = useState(false);
+
+  // Alternative Selection Modal State
+  const [isAlternativeModalOpen, setIsAlternativeModalOpen] = useState(false);
+  const [alternativeList, setAlternativeList] = useState([]);
+  const [selectedAlternative, setSelectedAlternative] = useState(null);
+  const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
+  const [alternativeLookupError, setAlternativeLookupError] = useState(null);
 
   // 2. Loaded BOM state and Original snapshot for diffing
   const [isLoaded, setIsLoaded] = useState(false);
@@ -105,6 +115,102 @@ export default function ChangeBomView({
     return Object.keys(errors).length === 0;
   };
 
+  // Helper to populate loaded BOM into form state
+  const applyLoadedBom = (res, chosenAlt) => {
+    const rawItems = res.components || [];
+    const effAlt = chosenAlt || res.alternativeBom || res.alternative || res.header?.alternative || '01';
+    setSearchParams((prev) => ({
+      ...prev,
+      alternativeBom: effAlt
+    }));
+
+    const loadedHeader = {
+      baseQty: String(res.baseQty || res.header?.baseQty || '1'),
+      baseUnit: res.baseUnit || res.header?.baseUnit || 'EA',
+      bomStatus: String(res.bomStatus || res.header?.bomStatus || '01'),
+      headerText: res.headerText || res.altText || res.header?.headerText || '',
+      validFrom: res.validFrom || res.header?.validFrom || searchParams.validFrom || '',
+      changeNo: res.changeNo || res.header?.changeNo || searchParams.changeNo || ''
+    };
+
+    const mappedItems = rawItems.map((item, idx) => ({
+      id: `loaded-${idx + 1}`,
+      item: item.item || item.itemNo || String((idx + 1) * 10).padStart(4, '0'),
+      itemNode: item.itemNode || String(idx + 1).padStart(8, '0'),
+      component: item.component || '',
+      description: item.description || '',
+      quantity: String(item.quantity !== undefined ? item.quantity : 1),
+      unit: item.unit || 'EA',
+      itemCategory: item.itemCategory || 'L',
+      storageLocation: item.storageLocation || '',
+      itemText: item.itemText || '',
+      isNew: false,
+      isDeleted: false
+    }));
+
+    setHeaderData(loadedHeader);
+    setComponents(mappedItems);
+    setOriginalSnapshot({
+      header: { ...loadedHeader },
+      items: mappedItems.map((it) => ({ ...it }))
+    });
+    setIsLoaded(true);
+    toast.success(`BOM ${searchParams.material.toUpperCase()} loaded successfully.`);
+  };
+
+  // Confirm alternative from selection popup
+  const handleConfirmAlternative = async (chosenAlt) => {
+    const targetAlt = chosenAlt || selectedAlternative;
+    setIsAlternativeModalOpen(false);
+    const found = alternativeList.find((a) => a.alternative === targetAlt);
+
+    if (found?.fullData?.components) {
+      applyLoadedBom(found.fullData, targetAlt);
+      return;
+    }
+
+    setIsLoadingBom(true);
+    activityTracker.setOperation('change_bom_load', true);
+    try {
+      const res = await readBom({
+        material: searchParams.material.trim(),
+        plant: searchParams.plant.trim(),
+        bomUsage: searchParams.bomUsage || '1',
+        alternativeBom: targetAlt
+      });
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to read BOM from SAP.');
+      }
+      applyLoadedBom(res, targetAlt);
+    } catch (err) {
+      const info = extractErrorInfo(err, 'Failed to load BOM.');
+      toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
+    } finally {
+      setIsLoadingBom(false);
+      activityTracker.setOperation('change_bom_load', false);
+    }
+  };
+
+  // Keyboard navigation for Alternative BOM selection popup
+  const handleAlternativeKeyDown = (e) => {
+    if (!alternativeList || alternativeList.length === 0) return;
+    const currentIndex = alternativeList.findIndex((a) => a.alternative === selectedAlternative);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex < alternativeList.length - 1 ? currentIndex + 1 : 0;
+      setSelectedAlternative(alternativeList[nextIndex].alternative);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : alternativeList.length - 1;
+      setSelectedAlternative(alternativeList[prevIndex].alternative);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedAlternative) {
+        handleConfirmAlternative(selectedAlternative);
+      }
+    }
+  };
+
   // Load existing BOM from SAP
   const handleLoadBom = async () => {
     setTouched({ material: true, plant: true });
@@ -113,55 +219,78 @@ export default function ChangeBomView({
     setIsLoadingBom(true);
     activityTracker.setOperation('change_bom_load', true);
 
+    const typedAlt = searchParams.alternativeBom ? searchParams.alternativeBom.trim() : '';
+
     try {
-      const res = await readBom({
-        material: searchParams.material.trim(),
-        plant: searchParams.plant.trim(),
-        bomUsage: searchParams.bomUsage || '1',
-        alternativeBom: searchParams.alternativeBom || '01'
-      });
+      if (typedAlt) {
+        // User explicitly typed an alternative: open directly without popup
+        const res = await readBom({
+          material: searchParams.material.trim(),
+          plant: searchParams.plant.trim(),
+          bomUsage: searchParams.bomUsage || '1',
+          alternativeBom: typedAlt
+        });
 
-      if (!res.success) {
-        throw new Error(res.message || 'Failed to read BOM from SAP.');
+        if (!res.success) {
+          throw new Error(res.message || 'Failed to read BOM from SAP.');
+        }
+
+        applyLoadedBom(res, typedAlt);
+      } else {
+        // Alternative BOM field is empty: lightweight lookup of alternatives (MAST + STKO, no STAS/STPO)
+        setIsLoadingAlternatives(true);
+        const altLookup = await getBomAlternatives({
+          material: searchParams.material.trim(),
+          plant: searchParams.plant.trim(),
+          bomUsage: searchParams.bomUsage || '1'
+        });
+
+        if (!altLookup.success || altLookup.bomExists === false) {
+          throw new Error(altLookup.message || `No BOM exists for material ${searchParams.material.toUpperCase()} in plant ${searchParams.plant}.`);
+        }
+
+        const rawAlts = altLookup.alternatives || [];
+        if (rawAlts.length === 0) {
+          throw new Error(`No BOM exists for material ${searchParams.material.toUpperCase()} in plant ${searchParams.plant}.`);
+        }
+
+        if (rawAlts.length === 1) {
+          // Exactly one alternative exists: read components and open directly
+          const singleAlt = rawAlts[0].alternative || rawAlts[0].STLAL || '01';
+          const singleRes = await readBom({
+            material: searchParams.material.trim(),
+            plant: searchParams.plant.trim(),
+            bomUsage: searchParams.bomUsage || '1',
+            alternativeBom: singleAlt
+          });
+
+          if (!singleRes.success) {
+            throw new Error(singleRes.message || 'Failed to read BOM from SAP.');
+          }
+
+          applyLoadedBom(singleRes, singleAlt);
+        } else {
+          // Multiple alternatives exist: open selection popup (components not loaded yet!)
+          const altDetails = rawAlts.map((a) => ({
+            alternative: a.alternative || a.STLAL,
+            bomStatus: String(a.bomStatus || a.status || a.STLST || '01'),
+            baseQty: String(a.baseQty || a.BMENG || '1'),
+            baseUnit: a.baseUnit || a.unit || a.BMEIN || 'EA',
+            validFrom: a.validFrom || a.DATUV || '',
+            headerText: a.headerText || a.description || a.BKTXT || '',
+            fullData: null // Components are loaded only when user selects and opens this alternative
+          }));
+          setAlternativeList(altDetails);
+          setSelectedAlternative(altDetails[0].alternative);
+          setIsAlternativeModalOpen(true);
+        }
       }
-
-      const rawItems = res.components || [];
-      const loadedHeader = {
-        baseQty: String(res.baseQty || res.header?.baseQty || '1'),
-        baseUnit: res.baseUnit || res.header?.baseUnit || 'EA',
-        bomStatus: String(res.bomStatus || res.header?.bomStatus || '01'),
-        headerText: res.headerText || res.altText || res.header?.headerText || '',
-        validFrom: res.validFrom || res.header?.validFrom || searchParams.validFrom || '',
-        changeNo: res.changeNo || res.header?.changeNo || searchParams.changeNo || ''
-      };
-
-      const mappedItems = rawItems.map((item, idx) => ({
-        id: `loaded-${idx + 1}`,
-        item: item.item || item.itemNo || String((idx + 1) * 10).padStart(4, '0'),
-        itemNode: item.itemNode || String(idx + 1).padStart(8, '0'),
-        component: item.component || '',
-        description: item.description || '',
-        quantity: String(item.quantity !== undefined ? item.quantity : 1),
-        unit: item.unit || 'EA',
-        itemCategory: item.itemCategory || 'L',
-        storageLocation: item.storageLocation || '',
-        itemText: item.itemText || '',
-        isNew: false,
-        isDeleted: false
-      }));
-
-      setHeaderData(loadedHeader);
-      setComponents(mappedItems);
-      setOriginalSnapshot({
-        header: { ...loadedHeader },
-        items: mappedItems.map((it) => ({ ...it }))
-      });
-      setIsLoaded(true);
-      toast.success(`BOM ${searchParams.material} loaded successfully.`);
     } catch (err) {
       const info = extractErrorInfo(err, 'Failed to load BOM.');
+      setAlternativeLookupError(info.message);
       toast.error(info.message, { title: info.title, hint: info.hint, errorRef: info.errorRef });
     } finally {
+      setIsLoadingAlternatives(false);
       setIsLoadingBom(false);
       activityTracker.setOperation('change_bom_load', false);
     }
@@ -177,6 +306,7 @@ export default function ChangeBomView({
   };
 
   // Add a new component row
+  const pendingFocusNewRowIdRef = useRef(null);
   const handleAddComponent = () => {
     const existingPosnrs = components
       .map((c) => parseInt(c.item, 10))
@@ -198,8 +328,27 @@ export default function ChangeBomView({
       isDeleted: false
     };
 
+    pendingFocusNewRowIdRef.current = newItem.id;
     setComponents((prev) => [...prev, newItem]);
   };
+
+  // Scroll to new row and focus its first input when component added
+  useEffect(() => {
+    if (pendingFocusNewRowIdRef.current) {
+      const targetId = pendingFocusNewRowIdRef.current;
+      pendingFocusNewRowIdRef.current = null;
+      setTimeout(() => {
+        const rowEl = document.querySelector(`[data-component-row="${targetId}"]`);
+        if (rowEl) {
+          rowEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          const firstInput = rowEl.querySelector('input');
+          if (firstInput) {
+            firstInput.focus();
+          }
+        }
+      }, 50);
+    }
+  }, [components]);
 
   // Update item field
   const handleItemChange = (id, field, value) => {
@@ -293,6 +442,255 @@ export default function ChangeBomView({
     };
   }, [originalSnapshot, headerData, components]);
 
+  // Grouped changes for Confirmation Modal
+  const { modifiedChanges, addedChanges, deletedChanges } = useMemo(() => {
+    const mod = [
+      ...Object.entries(diff.headerChanges).map(([fKey, chg]) => ({
+        id: `hdr-${fKey}`,
+        item: 'Header',
+        component: searchParams.material,
+        field: fKey === 'baseQty' ? 'Base Quantity' : fKey === 'bomStatus' ? 'BOM Status' : fKey === 'headerText' ? 'Header Text' : fKey,
+        oldValue: String(chg.old || '—'),
+        newValue: String(chg.new || '—'),
+        isDeleted: false
+      })),
+      ...diff.modifiedItems.flatMap((m) =>
+        Object.entries(m.changes).map(([fKey, chg]) => ({
+          id: `mod-${m.id || m.itemNode}-${fKey}`,
+          item: m.item,
+          component: m.component,
+          field: fKey === 'quantity' ? 'Quantity' : fKey === 'unit' ? 'Unit' : fKey === 'storageLocation' ? 'Storage Location' : fKey === 'itemText' ? 'Item Text' : fKey,
+          oldValue: String(chg.old ?? '—'),
+          newValue: String(chg.new ?? '—'),
+          isDeleted: false
+        }))
+      )
+    ];
+
+    const add = diff.addedItems.map((a, idx) => ({
+      id: `add-${a.id || a.component || idx}`,
+      item: a.item || 'New',
+      component: a.component || '—',
+      quantity: a.quantity !== undefined && a.quantity !== null && a.quantity !== '' ? a.quantity : '—',
+      unit: a.unit || '—',
+      itemCategory: a.itemCategory || 'L',
+      storageLocation: a.storageLocation || '—',
+      itemText: a.itemText || '—',
+      isDeleted: false
+    }));
+
+    const del = diff.deletedItems.map((d, idx) => ({
+      id: `del-${d.id || d.itemNode || idx}`,
+      item: d.item || '—',
+      component: d.component || '—',
+      quantity: d.quantity !== undefined && d.quantity !== null && d.quantity !== '' ? d.quantity : '—',
+      unit: d.unit || '—',
+      isDeleted: true
+    }));
+
+    return { modifiedChanges: mod, addedChanges: add, deletedChanges: del };
+  }, [diff, searchParams.material]);
+
+  const changeColumns = useMemo(() => [
+    {
+      key: 'item',
+      title: 'Item',
+      width: '75px',
+      align: 'center',
+      isMono: true,
+      render: (val) => <span className="font-mono text-xs text-[var(--sap-text-muted)]">{val}</span>
+    },
+    {
+      key: 'component',
+      title: 'Component',
+      width: '160px',
+      isMono: true,
+      render: (val) => (
+        <span className="font-mono text-xs font-medium text-[var(--color-navy-900)]">
+          {formatMaterialNumber(val)}
+        </span>
+      )
+    },
+    {
+      key: 'field',
+      title: 'Field',
+      width: '140px',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)]">{val}</span>
+    },
+    {
+      key: 'oldValue',
+      title: 'Old Value',
+      render: (val, row) => (
+        <span className={row.isDeleted ? 'text-xs text-[var(--color-danger)] line-through' : 'text-xs text-[var(--sap-text-muted)] line-through'}>
+          {val}
+        </span>
+      )
+    },
+    {
+      key: 'newValue',
+      title: 'New Value',
+      render: (val, row) => (
+        <span className={row.isDeleted ? 'text-xs font-bold text-[var(--color-danger)]' : 'text-xs font-bold text-[var(--sap-success)]'}>
+          {val}
+        </span>
+      )
+    }
+  ], []);
+
+  const addedColumns = useMemo(() => [
+    {
+      key: 'item',
+      title: 'Item',
+      width: '65px',
+      align: 'center',
+      isMono: true,
+      render: (val) => <span className="font-mono text-xs text-[var(--sap-text-muted)]">{val || '—'}</span>
+    },
+    {
+      key: 'component',
+      title: 'Component',
+      width: '160px',
+      isMono: true,
+      render: (val) => (
+        <span className="font-mono text-xs font-medium text-[var(--color-navy-900)]">
+          {formatMaterialNumber(val) || '—'}
+        </span>
+      )
+    },
+    {
+      key: 'quantity',
+      title: 'Quantity',
+      width: '80px',
+      align: 'right',
+      render: (val) => <span className="text-xs font-medium">{val !== undefined && val !== null && val !== '' ? val : '—'}</span>
+    },
+    {
+      key: 'unit',
+      title: 'Unit',
+      width: '60px',
+      align: 'center',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)]">{val || '—'}</span>
+    },
+    {
+      key: 'itemCategory',
+      title: 'Category',
+      width: '70px',
+      align: 'center',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)]">{val || '—'}</span>
+    },
+    {
+      key: 'storageLocation',
+      title: 'Storage Location',
+      width: '120px',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)]">{val || '—'}</span>
+    },
+    {
+      key: 'itemText',
+      title: 'Item Text',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)] truncate">{val || '—'}</span>
+    }
+  ], []);
+
+  const deletedColumns = useMemo(() => [
+    {
+      key: 'item',
+      title: 'Item',
+      width: '75px',
+      align: 'center',
+      isMono: true,
+      render: (val) => <span className="font-mono text-xs text-[var(--sap-text-muted)]">{val || '—'}</span>
+    },
+    {
+      key: 'component',
+      title: 'Component',
+      width: '170px',
+      isMono: true,
+      render: (val) => (
+        <span className="font-mono text-xs font-medium text-[var(--color-navy-900)]">
+          {formatMaterialNumber(val) || '—'}
+        </span>
+      )
+    },
+    {
+      key: 'quantity',
+      title: 'Quantity',
+      width: '95px',
+      align: 'right',
+      render: (val) => <span className="text-xs">{val !== undefined && val !== null && val !== '' ? val : '—'}</span>
+    },
+    {
+      key: 'unit',
+      title: 'Unit',
+      width: '75px',
+      align: 'center',
+      render: (val) => <span className="text-xs text-[var(--sap-text-dark)]">{val || '—'}</span>
+    }
+  ], []);
+
+  const alternativeColumns = useMemo(() => [
+    {
+      key: 'alternative',
+      title: 'Alternative',
+      width: '90px',
+      align: 'center',
+      isMono: true,
+      render: (val) => (
+        <span className="font-mono text-xs font-semibold text-[var(--color-navy-900)]">
+          {val}
+        </span>
+      )
+    },
+    {
+      key: 'bomStatus',
+      title: 'Status',
+      width: '95px',
+      align: 'left',
+      render: (val, row) => {
+        const statusMap = { '01': 'Active', '1': 'Active', '02': 'Inactive', '2': 'Inactive' };
+        const text = row?.bomStatusText || statusMap[String(val || '').trim()] || '';
+        return (
+          <span className="text-xs text-[var(--color-text-primary)]">
+            {val ? (text ? `${val} (${text})` : val) : '—'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'baseQty',
+      title: 'Base Qty',
+      width: '85px',
+      align: 'right',
+      render: (val) => <span className="font-mono text-xs text-[var(--color-text-primary)]">{val || '—'}</span>
+    },
+    {
+      key: 'baseUnit',
+      title: 'Unit',
+      width: '65px',
+      align: 'center',
+      render: (val) => <span className="text-xs text-[var(--color-text-primary)]">{val || '—'}</span>
+    },
+    {
+      key: 'validFrom',
+      title: 'Valid From',
+      width: '105px',
+      align: 'center',
+      isMono: true,
+      render: (val) => <span className="font-mono text-xs text-[var(--color-text-muted)]">{val || '—'}</span>
+    },
+    {
+      key: 'headerText',
+      title: 'Description',
+      render: (val) => (
+        <span
+          className="text-xs text-[var(--color-text-primary)] truncate block max-w-full"
+          title={val || undefined}
+        >
+          {val || '—'}
+        </span>
+      )
+    }
+  ], []);
+
   // Execute Save Changes to SAP
   const handleConfirmSave = async () => {
     if (!diff.hasChanges) return;
@@ -369,8 +767,8 @@ export default function ChangeBomView({
 
       if (!res.success) {
         setIsReviewOpen(false);
-        const errMsg = res.message || res.error || 'Failed to save BOM changes.';
-        toast.error(errMsg, { title: res.title || 'Error', hint: res.hint, errorRef: res.error_ref });
+        const info = extractErrorInfo(res, 'Failed to save BOM changes.');
+        toast.error(info.message, { title: info.title || 'Error', hint: info.hint, errorRef: info.errorRef });
         return;
       }
 
@@ -399,6 +797,19 @@ export default function ChangeBomView({
     }
   };
 
+  // Sort verified result components ascending by item number (0010, 0020, ...)
+  const sortedVerifiedComponents = useMemo(() => {
+    if (!executionResult?.components || !Array.isArray(executionResult.components)) return [];
+    return [...executionResult.components].sort((a, b) => {
+      const numA = parseInt(String(a.item || a.itemNo || a.POSNR || '0').replace(/\D/g, ''), 10) || 0;
+      const numB = parseInt(String(b.item || b.itemNo || b.POSNR || '0').replace(/\D/g, ''), 10) || 0;
+      if (numA !== numB) return numA - numB;
+      const strA = String(a.item || a.itemNo || a.POSNR || '');
+      const strB = String(b.item || b.itemNo || b.POSNR || '');
+      return strA.localeCompare(strB);
+    });
+  }, [executionResult?.components]);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <FioriPageHeader
@@ -420,18 +831,18 @@ export default function ChangeBomView({
                   alignItems: 'center',
                   gap: 12,
                   padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg, 8px)',
-                  background: 'var(--sap-success-bg, #F0FDF4)',
-                  border: '1px solid var(--sap-success-border, #BBF7D0)',
-                  color: 'var(--sap-success, #16A34A)',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--sap-success-bg)',
+                  border: '1px solid var(--sap-success-border)',
+                  color: 'var(--sap-success)',
                   marginBottom: 24
                 }}
               >
                 <CheckCircle2 size={24} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Changed Successfully</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
-                    Material {searchParams.material} (Plant {searchParams.plant}, Alt {searchParams.alternativeBom}): Changes written and verified in SAP.
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
+                    Material {(searchParams.material || '').toUpperCase()} (Plant {searchParams.plant}, Alt {searchParams.alternativeBom}): Changes written and verified in SAP.
                   </p>
                 </div>
               </div>
@@ -442,17 +853,17 @@ export default function ChangeBomView({
                   alignItems: 'center',
                   gap: 12,
                   padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg, 8px)',
-                  background: 'var(--sap-warning-bg, #FFFBEB)',
-                  border: '1px solid var(--sap-warning-border, #FDE68A)',
-                  color: 'var(--sap-warning, #D97706)',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--sap-warning-bg)',
+                  border: '1px solid var(--sap-warning-border)',
+                  color: 'var(--sap-warning)',
                   marginBottom: 24
                 }}
               >
                 <AlertTriangle size={24} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Write Outcome Unknown</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
                     {executionResult.message || 'Operation timed out during write. Please use Display BOM to verify whether changes took effect before retrying.'}
                   </p>
                 </div>
@@ -464,17 +875,17 @@ export default function ChangeBomView({
                   alignItems: 'center',
                   gap: 12,
                   padding: '16px 20px',
-                  borderRadius: 'var(--radius-lg, 8px)',
-                  background: 'var(--sap-error-bg, #FEF2F2)',
-                  border: '1px solid var(--sap-error-border, #FECACA)',
-                  color: 'var(--sap-error, #DC2626)',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--sap-error-bg)',
+                  border: '1px solid var(--sap-error-border)',
+                  color: 'var(--sap-error)',
                   marginBottom: 24
                 }}
               >
                 <XCircle size={24} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>BOM Change Failed</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark, #0F172A)' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--sap-text-dark)' }}>
                     {executionResult.message || 'The SAP system rejected the BOM change request.'}
                   </p>
                 </div>
@@ -491,64 +902,144 @@ export default function ChangeBomView({
               }}
             >
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #64748B)', marginBottom: 4 }}>Header Changed</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-text-dark, #0F172A)' }}>
+                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Header Changed</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
                   {executionResult.summary?.headerChanged ? 'Yes' : 'No'}
                 </div>
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #64748B)', marginBottom: 4 }}>Items Modified</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-primary, #0284C7)' }}>
+                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Items Modified</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-primary, var(--color-blue-600))' }}>
                   {executionResult.summary?.itemsModified || 0}
                 </div>
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #64748B)', marginBottom: 4 }}>Items Added</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-success, #16A34A)' }}>
+                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Items Added</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-success)' }}>
                   {executionResult.summary?.itemsAdded || 0}
                 </div>
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #64748B)', marginBottom: 4 }}>Items Deleted</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-error, #DC2626)' }}>
+                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Items Deleted</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-error)' }}>
                   {executionResult.summary?.itemsDeleted || 0}
                 </div>
               </div>
               <div className="sap-card" style={{ padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--sap-text-muted, #64748B)', marginBottom: 4 }}>Total Components</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-text-dark, #0F172A)' }}>
+                <div style={{ fontSize: 12, color: 'var(--sap-text-muted)', marginBottom: 4 }}>Total Components</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--sap-text-dark)' }}>
                   {executionResult.summary?.totalComponentsAfter || executionResult.components?.length || 0}
                 </div>
               </div>
             </div>
 
             {/* Verified Components Table */}
-            {executionResult.components && executionResult.components.length > 0 && (
+            {sortedVerifiedComponents.length > 0 && (
               <div className="mb-6">
-                <h4 className="text-sm font-semibold text-[var(--color-navy-900)] mb-2">Verified BOM Components in SAP</h4>
-                <div className="sap-table-container fiori-table-wrapper rounded-[var(--radius-md)] border border-[var(--color-border)]">
-                  <table className="sap-table w-full border-collapse text-[13px]" style={{ width: '100%', tableLayout: 'fixed' }}>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold text-[var(--color-navy-900)]">
+                    Verified BOM Components in SAP
+                  </h4>
+                  <Badge variant="outline" className="text-xs">
+                    {sortedVerifiedComponents.length} components
+                  </Badge>
+                </div>
+                <div
+                  className="sap-table-container sap-card-table-scroll"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Verified BOM Components Table"
+                  style={{
+                    maxHeight: 380,
+                    overflowY: 'auto',
+                    overflowX: 'auto',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-md)'
+                  }}
+                >
+                  <table
+                    className="sap-table"
+                    style={{
+                      width: '100%',
+                      tableLayout: 'fixed',
+                      borderCollapse: 'separate',
+                      borderSpacing: 0
+                    }}
+                  >
                     <thead>
-                      <tr className="bg-[var(--table-header-bg)] border-b border-[var(--color-border)] h-[44px]">
-                        <th style={{ width: '10%', textAlign: 'center' }}>Item</th>
-                        <th style={{ width: '30%', textAlign: 'left' }}>Component</th>
-                        <th style={{ width: '15%', textAlign: 'right' }}>Quantity</th>
-                        <th style={{ width: '10%', textAlign: 'center' }}>Unit</th>
-                        <th style={{ width: '15%', textAlign: 'left' }}>SLoc</th>
-                        <th style={{ width: '20%', textAlign: 'left' }}>Item Text</th>
+                      <tr>
+                        <th style={{ width: '8%', textAlign: 'center', padding: '10px 14px' }}>Item</th>
+                        <th style={{ width: '9%', textAlign: 'center', padding: '10px 14px' }}>Category</th>
+                        <th style={{ width: '20%', textAlign: 'left', padding: '10px 14px' }}>Component</th>
+                        <th style={{ width: '13%', textAlign: 'right', padding: '10px 14px' }}>Quantity</th>
+                        <th style={{ width: '8%', textAlign: 'center', padding: '10px 14px' }}>Unit</th>
+                        <th style={{ width: '14%', textAlign: 'left', padding: '10px 14px' }}>SLoc</th>
+                        <th style={{ width: '28%', textAlign: 'left', padding: '10px 14px' }}>Item Text</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {executionResult.components.map((c, i) => (
-                        <tr key={i} className="border-b border-[var(--color-border-subtle)] h-[40px]">
-                          <td style={{ textAlign: 'center', color: 'var(--sap-text-muted)' }}>{c.item || c.itemNo}</td>
-                          <td className="font-mono font-medium">{c.component}</td>
-                          <td style={{ textAlign: 'right' }}>{c.quantity}</td>
-                          <td style={{ textAlign: 'center' }}>{c.unit}</td>
-                          <td>{c.storageLocation || '—'}</td>
-                          <td className="truncate">{c.itemText || c.description || '—'}</td>
-                        </tr>
-                      ))}
+                      {sortedVerifiedComponents.map((c, idx) => {
+                        const displayMat = formatMaterialNumber(c.component || c.IDNRK || c.material || '-');
+                        const itemCat = c.itemCategory || c.POSTP || c.category || 'L';
+                        const itemNo = c.item || c.itemNo || c.POSNR || (idx + 1) * 10;
+                        const sLoc = c.storageLocation || c.LGORT || '';
+                        const text = c.itemText || c.description || '';
+                        const hasQty = c.quantity !== undefined && c.quantity !== null && c.quantity !== '';
+                        return (
+                          <tr key={c.id || idx}>
+                            <td
+                              className="sap-col-code"
+                              style={{
+                                textAlign: 'center',
+                                padding: '10px 14px',
+                                fontFamily: 'var(--sap-font-mono)',
+                                fontWeight: 'var(--font-weight-code)'
+                              }}
+                            >
+                              {itemNo}
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px 14px' }}>
+                              {itemCat}
+                            </td>
+                            <td style={{ textAlign: 'left', padding: '10px 14px' }}>
+                              <span
+                                className="sap-col-code"
+                                style={{
+                                  fontFamily: 'var(--sap-font-mono)',
+                                  fontWeight: 'var(--font-weight-code)'
+                                }}
+                              >
+                                {displayMat}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '10px 14px' }}>
+                              {hasQty ? (
+                                <span style={{ fontFamily: 'var(--sap-font-mono)' }}>{c.quantity}</span>
+                              ) : (
+                                <span className="text-[var(--color-text-muted)]">—</span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '10px 14px' }}>
+                              {c.unit || c.MEINS || <span className="text-[var(--color-text-muted)]">—</span>}
+                            </td>
+                            <td style={{ textAlign: 'left', padding: '10px 14px' }}>
+                              {sLoc || <span className="text-[var(--color-text-muted)]">—</span>}
+                            </td>
+                            <td
+                              style={{
+                                textAlign: 'left',
+                                padding: '10px 14px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}
+                              title={text || undefined}
+                            >
+                              {text || <span className="text-[var(--color-text-muted)]">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -556,23 +1047,25 @@ export default function ChangeBomView({
             )}
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
+            <div style={{ display: 'flex', gap: 12, marginTop: 24, paddingBottom: 24 }}>
+              <Button
                 type="button"
+                variant="default"
                 className="sap-btn sap-btn-primary"
                 onClick={handleResetToSearch}
                 style={{ padding: '9px 20px' }}
               >
                 Change Another BOM
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
                 className="sap-btn sap-btn-secondary"
                 onClick={onBack}
                 style={{ padding: '9px 20px' }}
               >
                 Return to Launchpad
-              </button>
+              </Button>
             </div>
           </div>
         ) : !isLoaded ? (
@@ -702,6 +1195,29 @@ export default function ChangeBomView({
               </FormGrid>
             </div>
 
+            {alternativeLookupError && (
+              <div
+                id="alternative-lookup-error-banner"
+                className="mt-4 p-3 bg-[var(--color-danger-bg)] border border-[var(--color-danger-border)] rounded-md flex items-center justify-between gap-3 text-xs text-[var(--color-danger)]"
+                role="alert"
+              >
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{alternativeLookupError}</span>
+                </div>
+                <Button
+                  id="btn-retry-lookup"
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="sap-btn sap-btn-secondary text-xs h-7 px-3 shrink-0"
+                  onClick={handleLoadBom}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
             <FormActions
               className="mt-6 pt-4 border-t border-[var(--color-border-subtle)]"
               right={
@@ -709,14 +1225,14 @@ export default function ChangeBomView({
                   id="btn-load-bom"
                   type="button"
                   onClick={handleLoadBom}
-                  disabled={isLoadingBom}
+                  disabled={isLoadingBom || isLoadingAlternatives}
                   style={{
-                    backgroundColor: 'var(--color-navy-900, #00204E)',
-                    color: '#FFFFFF',
+                    backgroundColor: 'var(--color-navy-900)',
+                    color: 'var(--color-text-inverse)',
                     padding: '8px 24px'
                   }}
                 >
-                  {isLoadingBom ? (
+                  {isLoadingBom || isLoadingAlternatives ? (
                     <>
                       <Loader2 size={16} className="animate-spin mr-2 inline" />
                       Loading from SAP...
@@ -742,9 +1258,9 @@ export default function ChangeBomView({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '14px 20px',
-                background: 'var(--color-blue-50, #EEF4F9)',
-                border: '1px solid var(--color-border, #CBD5E1)',
-                borderRadius: 'var(--radius-md, 6px)'
+                background: 'var(--color-blue-50)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)'
               }}
             >
               <div className="flex items-center gap-6 text-sm">
@@ -798,7 +1314,7 @@ export default function ChangeBomView({
                       type="text"
                       disabled
                       value={headerData.baseUnit}
-                      style={{ flex: 1, backgroundColor: 'var(--color-surface-subtle, #F8FAFC)' }}
+                      style={{ flex: 1, backgroundColor: 'var(--color-surface-subtle)' }}
                     />
                   </div>
                 </FieldWrapper>
@@ -836,10 +1352,12 @@ export default function ChangeBomView({
                 <Button
                   id="btn-add-component"
                   type="button"
+                  variant="default"
                   onClick={handleAddComponent}
+                  className="sap-btn sap-btn-primary"
                   style={{
-                    backgroundColor: 'var(--color-navy-900, #00204E)',
-                    color: '#FFFFFF',
+                    backgroundColor: 'var(--color-navy-900)',
+                    color: 'var(--color-text-inverse)',
                     border: 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -847,7 +1365,8 @@ export default function ChangeBomView({
                     fontSize: 13,
                     fontWeight: 500,
                     cursor: 'pointer',
-                    padding: '6px 14px'
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-md)'
                   }}
                 >
                   <Plus size={16} strokeWidth={2.4} />
@@ -893,13 +1412,14 @@ export default function ChangeBomView({
                           ? {
                               textDecoration: 'line-through',
                               opacity: 0.6,
-                              backgroundColor: 'var(--color-danger-50, #FEF2F2)'
+                              backgroundColor: 'var(--color-danger-bg)'
                             }
                           : {};
 
                         return (
                           <tr
                             key={comp.id}
+                            data-component-row={comp.id}
                             className={`border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-blue-50)] h-[46px] ${isDeleted ? 'opacity-60 bg-red-50/50' : ''}`}
                             style={rowStyle}
                           >
@@ -965,7 +1485,7 @@ export default function ChangeBomView({
 
                             {/* Category (Read-only L) */}
                             <td className="px-2 py-1.5 text-center">
-                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[var(--color-blue-100,#DBEAFE)] text-[var(--color-primary,#0284C7)]">
+                              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-[var(--color-blue-100)] text-[var(--color-primary,var(--color-blue-600))]">
                                 {comp.itemCategory}
                               </span>
                             </td>
@@ -1064,8 +1584,8 @@ export default function ChangeBomView({
                   disabled={!diff.hasChanges || isSaving}
                   onClick={() => setIsReviewOpen(true)}
                   style={{
-                    backgroundColor: diff.hasChanges ? 'var(--color-navy-900, #00204E)' : 'var(--color-gray-300, #CBD5E1)',
-                    color: '#FFFFFF',
+                    backgroundColor: diff.hasChanges ? 'var(--color-navy-900)' : 'var(--color-border)',
+                    color: 'var(--color-text-inverse)',
                     padding: '8px 24px',
                     fontWeight: 600,
                     cursor: diff.hasChanges ? 'pointer' : 'not-allowed'
@@ -1084,28 +1604,31 @@ export default function ChangeBomView({
         isOpen={isReviewOpen}
         onClose={() => !isSaving && setIsReviewOpen(false)}
         title="Review BOM Changes"
-        subtitle={`Verify the differences before applying them to SAP for material ${searchParams.material}.`}
+        subtitle={`Material: ${(formatMaterialNumber(searchParams.material) || '').toUpperCase()} | Plant: ${searchParams.plant} | Alternative BOM: ${searchParams.alternativeBom || '01'}`}
         icon={FileEdit}
-        maxWidth={640}
+        maxWidth={760}
         isLoading={isSaving}
         footer={
           <div className="flex justify-end gap-3 w-full">
-            <button
+            <Button
+              id="btn-cancel-save-bom"
               type="button"
+              variant="secondary"
               className="sap-btn sap-btn-secondary"
               disabled={isSaving}
               onClick={() => setIsReviewOpen(false)}
             >
-              Back to Edit
-            </button>
+              Cancel
+            </Button>
             <Button
               id="btn-confirm-save-bom"
               type="button"
+              variant="default"
               disabled={isSaving}
               onClick={handleConfirmSave}
               style={{
-                backgroundColor: 'var(--color-navy-900, #00204E)',
-                color: '#FFFFFF',
+                backgroundColor: 'var(--color-navy-900)',
+                color: 'var(--color-text-inverse)',
                 padding: '8px 20px'
               }}
             >
@@ -1115,123 +1638,215 @@ export default function ChangeBomView({
                   Saving to SAP...
                 </>
               ) : (
-                'Confirm & Save'
+                'Confirm and Save'
               )}
             </Button>
           </div>
         }
       >
-        <div className="flex flex-col gap-4 text-sm">
-          {/* Header Changes */}
-          {Object.keys(diff.headerChanges).length > 0 && (
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 bg-[var(--color-surface-subtle,#F8FAFC)]">
-              <span className="text-xs font-bold text-[var(--color-navy-900)] block mb-2 uppercase tracking-wide">
-                Header Modifications
-              </span>
-              <div className="flex flex-col gap-1 text-xs">
-                {diff.headerChanges.baseQty && (
-                  <div className="flex justify-between py-1 border-b border-[var(--color-border-subtle)]">
-                    <span className="text-[var(--sap-text-muted)] font-medium">Base Quantity:</span>
-                    <span>
-                      <s className="text-[var(--color-danger)] mr-2">{diff.headerChanges.baseQty.old}</s>
-                      <span className="font-bold text-[var(--sap-success)]">{diff.headerChanges.baseQty.new}</span>
-                    </span>
-                  </div>
-                )}
-                {diff.headerChanges.bomStatus && (
-                  <div className="flex justify-between py-1 border-b border-[var(--color-border-subtle)]">
-                    <span className="text-[var(--sap-text-muted)] font-medium">BOM Status:</span>
-                    <span>
-                      <s className="text-[var(--color-danger)] mr-2">{diff.headerChanges.bomStatus.old}</s>
-                      <span className="font-bold text-[var(--sap-success)]">{diff.headerChanges.bomStatus.new}</span>
-                    </span>
-                  </div>
-                )}
-                {diff.headerChanges.headerText && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-[var(--sap-text-muted)] font-medium">Header Text:</span>
-                    <span>
-                      <s className="text-[var(--color-danger)] mr-2">{diff.headerChanges.headerText.old || '(empty)'}</s>
-                      <span className="font-bold text-[var(--sap-success)]">{diff.headerChanges.headerText.new}</span>
-                    </span>
-                  </div>
-                )}
+        <div className="flex flex-col gap-5 text-sm">
+          {/* Group: Modified */}
+          {modifiedChanges.length > 0 && (
+            <div className="flex flex-col">
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  borderLeft: '3px solid var(--color-navy-900)',
+                  paddingLeft: '10px',
+                  paddingTop: '12px',
+                  paddingBottom: '12px',
+                  marginBottom: '8px',
+                  borderBottom: '1px solid var(--color-border-subtle)'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-navy-900)' }}>
+                  Modified Items
+                </span>
+                <span
+                  style={{
+                    backgroundColor: 'var(--color-info-bg)',
+                    color: 'var(--color-info)',
+                    border: '1px solid var(--color-info-border)',
+                    height: '20px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    padding: '0 8px',
+                    borderRadius: 'var(--radius-full)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {modifiedChanges.length}
+                </span>
+                <span className="sr-only">Changed Components ({modifiedChanges.length})</span>
               </div>
+              <DataTable
+                columns={changeColumns}
+                data={modifiedChanges}
+                keyField="id"
+                className="max-h-[180px] overflow-y-auto border border-[var(--color-border)]"
+              />
             </div>
           )}
 
-          {/* Changed Items */}
-          {diff.modifiedItems.length > 0 && (
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-3">
-              <span className="text-xs font-bold text-[var(--color-primary)] block mb-2 uppercase tracking-wide">
-                Changed Components ({diff.modifiedItems.length})
-              </span>
-              <div className="flex flex-col gap-2">
-                {diff.modifiedItems.map((m, idx) => (
-                  <div key={idx} className="p-2 rounded bg-[var(--color-blue-50,#EEF4F9)] text-xs">
-                    <div className="flex justify-between font-medium text-[var(--color-navy-900)] mb-1">
-                      <span>Item {m.item}: {m.component}</span>
-                      <span className="text-[var(--sap-text-muted)] font-mono text-[11px]">{m.itemNode}</span>
-                    </div>
-                    {Object.entries(m.changes).map(([fKey, chg]) => (
-                      <div key={fKey} className="flex justify-between text-[11px] text-[var(--sap-text-dark)]">
-                        <span className="capitalize">{fKey}:</span>
-                        <span>
-                          <s className="text-[var(--color-danger)] mr-2">{chg.old || '—'}</s>
-                          <span className="font-bold text-[var(--sap-success)]">{chg.new || '—'}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+          {/* Group: Added */}
+          {addedChanges.length > 0 && (
+            <div className="flex flex-col">
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  borderLeft: '3px solid var(--color-navy-900)',
+                  paddingLeft: '10px',
+                  paddingTop: '12px',
+                  paddingBottom: '12px',
+                  marginBottom: '8px',
+                  borderBottom: '1px solid var(--color-border-subtle)'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-navy-900)' }}>
+                  Added Items
+                </span>
+                <span
+                  style={{
+                    backgroundColor: 'var(--color-success-bg)',
+                    color: 'var(--color-success-strong)',
+                    border: '1px solid var(--color-success-border)',
+                    height: '20px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    padding: '0 8px',
+                    borderRadius: 'var(--radius-full)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {addedChanges.length}
+                </span>
+                <span className="sr-only">Added Components ({addedChanges.length})</span>
               </div>
+              <DataTable
+                columns={addedColumns}
+                data={addedChanges}
+                keyField="id"
+                className="max-h-[180px] overflow-y-auto border border-[var(--color-border)]"
+              />
             </div>
           )}
 
-          {/* Added Items */}
-          {diff.addedItems.length > 0 && (
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-3">
-              <span className="text-xs font-bold text-[var(--sap-success)] block mb-2 uppercase tracking-wide">
-                Added Components ({diff.addedItems.length})
-              </span>
-              <div className="flex flex-col gap-2">
-                {diff.addedItems.map((a, idx) => (
-                  <div key={idx} className="p-2 rounded bg-green-50/60 border border-green-200 text-xs flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-[var(--color-navy-900)]">{a.component}</span>
-                      <span className="text-[var(--sap-text-muted)]">Qty: {a.quantity} {a.unit}</span>
-                      {a.storageLocation && <span className="text-[var(--sap-text-muted)]">({a.storageLocation})</span>}
-                    </div>
-                    <Badge variant="outline" className="text-green-700 bg-green-100 border-green-300">
-                      New (Cat {a.itemCategory})
-                    </Badge>
-                  </div>
-                ))}
+          {/* Group: Deleted */}
+          {deletedChanges.length > 0 && (
+            <div className="flex flex-col">
+              <div
+                className="flex items-center gap-2"
+                style={{
+                  borderLeft: '3px solid var(--color-navy-900)',
+                  paddingLeft: '10px',
+                  paddingTop: '12px',
+                  paddingBottom: '12px',
+                  marginBottom: '8px',
+                  borderBottom: '1px solid var(--color-border-subtle)'
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-navy-900)' }}>
+                  Deleted Items
+                </span>
+                <span
+                  style={{
+                    backgroundColor: 'var(--color-danger-bg)',
+                    color: 'var(--color-danger)',
+                    border: '1px solid var(--color-danger-border)',
+                    height: '20px',
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    padding: '0 8px',
+                    borderRadius: 'var(--radius-full)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {deletedChanges.length}
+                </span>
+                <span className="sr-only">Deleted Components ({deletedChanges.length})</span>
               </div>
+              <DataTable
+                columns={deletedColumns}
+                data={deletedChanges}
+                keyField="id"
+                className="max-h-[180px] overflow-y-auto border border-[var(--color-border)]"
+              />
             </div>
           )}
+        </div>
+      </Modal>
 
-          {/* Deleted Items */}
-          {diff.deletedItems.length > 0 && (
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-md)] p-3">
-              <span className="text-xs font-bold text-[var(--color-danger)] block mb-2 uppercase tracking-wide">
-                Deleted Components ({diff.deletedItems.length})
-              </span>
-              <div className="flex flex-col gap-2">
-                {diff.deletedItems.map((d, idx) => (
-                  <div key={idx} className="p-2 rounded bg-red-50/60 border border-red-200 text-xs flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-medium text-[var(--color-navy-900)] line-through">{d.component}</span>
-                      <span className="text-[var(--sap-text-muted)]">Item {d.item} (Qty: {d.quantity} {d.unit})</span>
-                    </div>
-                    <Badge variant="outline" className="text-red-700 bg-red-100 border-red-300">
-                      Marked for Deletion
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+      {/* Alternative BOM Selection Modal */}
+      <Modal
+        isOpen={isAlternativeModalOpen}
+        onClose={() => setIsAlternativeModalOpen(false)}
+        title="Select Alternative BOM"
+        subtitle={`Material ${searchParams.material.toUpperCase()} | Plant ${searchParams.plant} | BOM usage ${searchParams.bomUsage || '1'}`}
+        maxWidth={760}
+        cardClassName="max-w-[760px] w-full"
+        footer={
+          <div className="flex items-center justify-between w-full px-1">
+            <span className="text-xs text-[var(--color-text-secondary)] font-medium">
+              {alternativeList.length} {alternativeList.length === 1 ? 'alternative' : 'alternatives'}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                id="btn-cancel-alt-selection"
+                type="button"
+                variant="secondary"
+                className="sap-btn sap-btn-secondary"
+                onClick={() => setIsAlternativeModalOpen(false)}
+                style={{ padding: '6px 14px', height: '32px', fontSize: '13px' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                id="btn-open-selected-alt"
+                type="button"
+                variant="default"
+                disabled={!selectedAlternative || isLoadingAlternatives}
+                onClick={() => handleConfirmAlternative(selectedAlternative)}
+                style={{
+                  backgroundColor: 'var(--color-navy-900)',
+                  color: 'var(--color-text-inverse)',
+                  padding: '6px 16px',
+                  height: '32px',
+                  fontSize: '13px'
+                }}
+              >
+                Open
+              </Button>
             </div>
-          )}
+          </div>
+        }
+      >
+        <div
+          className="flex flex-col gap-2.5 outline-none"
+          tabIndex={0}
+          data-autofocus="true"
+          onKeyDown={handleAlternativeKeyDown}
+        >
+          <p className="text-xs text-[var(--color-text-secondary)] m-0">
+            Select an alternative to open for editing. Double click a row to open it.
+          </p>
+          <DataTable
+            columns={alternativeColumns}
+            data={alternativeList}
+            keyField="alternative"
+            selectedRowKey={selectedAlternative}
+            onRowSelect={(row) => setSelectedAlternative(row.alternative)}
+            onRowDoubleClick={(row) => handleConfirmAlternative(row.alternative)}
+            isLoading={isLoadingAlternatives}
+            error={alternativeLookupError}
+            emptyMessage="No alternative BOMs found"
+            className="max-h-[280px] overflow-y-auto border border-[var(--color-border)] rx-table-alt-selection"
+          />
         </div>
       </Modal>
     </div>
