@@ -13,6 +13,11 @@ console.log('============================================================\n');
 
 const indexCss = fs.readFileSync(path.join(rootDir, 'frontend/src/index.css'), 'utf8');
 const sapThemeCss = fs.readFileSync(path.join(rootDir, 'frontend/src/sap-theme.css'), 'utf8');
+const tokensCss = fs.readFileSync(path.join(rootDir, 'frontend/src/tokens.css'), 'utf8');
+const uiModalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/components/ui/Modal.jsx'), 'utf8');
+const popupsCss = fs.readFileSync(path.join(rootDir, 'frontend/src/components/ui/popups.css'), 'utf8');
+// Navy title: the literal brand navy or a token that resolves to it.
+const NAVY = /#00204E|#0f2744|var\(--(color-navy-900|sap-popup-header-title|modal-title-color)\)/i;
 const modalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/components/Modal.jsx'), 'utf8');
 const bomUsageModalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/components/BomUsageValueHelpModal.jsx'), 'utf8');
 const materialModalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/components/MaterialValueHelpModal.jsx'), 'utf8');
@@ -22,16 +27,14 @@ const restrictModalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/compon
 const bulkModalJsx = fs.readFileSync(path.join(rootDir, 'frontend/src/components/BulkBomCopyModal.jsx'), 'utf8');
 
 // Test 1: Design Tokens
-console.log('Test 1: Verify Popup Header Design Tokens in index.css & sap-theme.css...');
-assert.ok(indexCss.includes('--sap-popup-header-bg'), 'index.css must define --sap-popup-header-bg');
-assert.ok(indexCss.includes('--sap-popup-header-border'), 'index.css must define --sap-popup-header-border');
-assert.ok(indexCss.includes('--sap-popup-header-title'), 'index.css must define --sap-popup-header-title');
-assert.ok(indexCss.includes('--sap-popup-header-badge-bg'), 'index.css must define --sap-popup-header-badge-bg');
-
-assert.ok(sapThemeCss.includes('--sap-popup-header-bg'), 'sap-theme.css must define --sap-popup-header-bg');
-assert.ok(sapThemeCss.includes('--sap-popup-header-border'), 'sap-theme.css must define --sap-popup-header-border');
-assert.ok(sapThemeCss.includes('--sap-popup-header-title'), 'sap-theme.css must define --sap-popup-header-title');
-console.log('   ✓ Master design tokens defined properly in both index.css and sap-theme.css\n');
+console.log('Test 1: Verify Popup Header Design Tokens (single source: tokens.css)...');
+for (const t of ['--sap-popup-header-bg', '--sap-popup-header-border', '--sap-popup-header-title', '--sap-popup-header-badge-bg', '--modal-header-bg', '--modal-title-color']) {
+  assert.ok(new RegExp(`${t}\\s*:`).test(tokensCss), `tokens.css must define ${t}`);
+}
+assert.match(tokensCss, /--modal-header-bg:\s*var\(--color-blue-50\)/, 'Popup header band must be the light blue-50 surface');
+assert.match(tokensCss, /--modal-title-color:\s*var\(--color-navy-900\)/, 'Popup title must be brand navy');
+assert.ok(!/--sap-popup-header-[a-z-]+\s*:/.test(indexCss + sapThemeCss), 'Popup tokens must not be re-declared outside tokens.css');
+console.log('   ✓ Popup design tokens defined once in tokens.css\n');
 
 // Test 2: Header Background and Border on Every Popup Type
 console.log('Test 2: Verify Flat Header Background and Border on All Popups...');
@@ -44,12 +47,12 @@ console.log('   ✓ Header background and 1px border verified across all popups\
 
 // Test 3: Navy Title Text and Bold Weight with Contrast Ratio
 console.log('Test 3: Verify Navy Title Text, Bold Weight, and Text Contrast (>= 4.5:1)...');
-assert.ok(modalJsx.includes('#00204E') || modalJsx.includes('#0f2744'), 'Modal.jsx title must use brand navy');
-assert.ok(bomUsageModalJsx.includes('#00204E') || bomUsageModalJsx.includes('#0f2744'), 'BomUsageValueHelpModal.jsx title must use navy');
-assert.ok(materialModalJsx.includes('#00204E') || materialModalJsx.includes('#0f2744'), 'MaterialValueHelpModal.jsx title must use navy');
-assert.ok(plantModalJsx.includes('#00204E') || plantModalJsx.includes('#0f2744'), 'PlantValueHelpModal.jsx title must use navy');
-assert.ok(storageModalJsx.includes('#00204E') || storageModalJsx.includes('#0f2744'), 'StorageLocationValueHelpModal.jsx title must use navy');
-assert.ok(restrictModalJsx.includes('#00204E') || restrictModalJsx.includes('#0f2744'), 'MaterialRestrictValueRangeModal.jsx title must use navy');
+assert.ok(uiModalJsx.includes('rx-modal-title') && /\.rx-modal-title[^{]*\{[^}]*color:\s*var\(--modal-title-color\)/s.test(popupsCss), 'Shared Modal title must use the navy title token');
+assert.ok(NAVY.test(bomUsageModalJsx), 'BomUsageValueHelpModal.jsx title must use navy');
+assert.ok(NAVY.test(materialModalJsx), 'MaterialValueHelpModal.jsx title must use navy');
+assert.ok(NAVY.test(plantModalJsx), 'PlantValueHelpModal.jsx title must use navy');
+assert.ok(NAVY.test(storageModalJsx), 'StorageLocationValueHelpModal.jsx title must use navy');
+assert.ok(NAVY.test(restrictModalJsx), 'MaterialRestrictValueRangeModal.jsx title must use navy');
 console.log('   ✓ Navy bold titles with zero white text verified across all modal/popup components\n');
 
 // Test 4: "F4" Badge Removed (Clean title/close header per request 2)
@@ -65,7 +68,7 @@ console.log('   ✓ Close button states, 36px hit area, and SVG icon colors veri
 
 // Test 6: Tabs Row Under the Header
 console.log('Test 6: Verify Tabs Row Under Header...');
-assert.match(indexCss, /\.sap-restrict-tab-container\s*\{[^}]*background:\s*#ffffff/s, 'Tab container must have white background');
+assert.match(indexCss, /\.sap-restrict-tab-container\s*\{[^}]*background:\s*(#ffffff|var\(--color-surface\))/s, 'Tab container must have white background');
 console.log('   ✓ Tabs row white background and controls verified\n');
 
 // Test 7: Strict No-Red Verification across All Modified Components

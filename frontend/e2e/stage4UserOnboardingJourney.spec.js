@@ -113,7 +113,7 @@ test.describe('Stage 4: User Onboarding & First-Login Journey', () => {
     await page.waitForTimeout(300);
 
     // Verify modal fits within viewport
-    const modalBox = await page.locator('.rx-modal-dialog').boundingBox();
+    const modalBox = await page.locator('.sap-modal-card').first().boundingBox();
     if (modalBox) {
       expect(modalBox.width).toBeLessThanOrEqual(page.viewportSize().width);
     }
@@ -179,7 +179,7 @@ test.describe('Stage 4: User Onboarding & First-Login Journey', () => {
     // Verify connection success notification
     await expect(page.locator('text=Connection successful')).toBeVisible();
 
-    const modalBox3 = await page.locator('.rx-modal-dialog').boundingBox();
+    const modalBox3 = await page.locator('.sap-modal-card').first().boundingBox();
     if (modalBox3) {
       expect(modalBox3.width).toBeLessThanOrEqual(page.viewportSize().width);
     }

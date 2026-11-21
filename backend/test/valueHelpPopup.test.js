@@ -502,7 +502,7 @@ async function runTests() {
     assert.ok(bomUsageCode.includes("position: 'sticky'") && bomUsageCode.includes('left: 0'), 'Usage column must be sticky left: 0 in BOM Usage JSX');
     assert.ok(indexCss.includes('.sap-f4-table thead th:first-child') && indexCss.includes('position: sticky'), 'Header first cell must be sticky in CSS');
     assert.ok(indexCss.includes('.sap-f4-table tbody tr td:first-child') && indexCss.includes('position: sticky'), 'Body first cell must be sticky in CSS');
-    assert.ok(indexCss.includes('background-color: #ffffff') || indexCss.includes('background-color: #fafbfc'), 'Body first cell must have solid background in CSS');
+    assert.ok(/background-color:\s*(#ffffff|#fafbfc|var\(--color-surface(-subtle)?\))/i.test(indexCss), 'Body first cell must have solid background in CSS');
 
     // 13d. No horizontal scrollbar at 1366px screen width:
     const colWidths = [70, 65, 90, 90, 75, 65, 80, 280];

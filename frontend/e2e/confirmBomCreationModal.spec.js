@@ -362,12 +362,12 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(createRows.nth(1)).toContainText('Skipped (existing)');
       await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-skipped-count"]')).toHaveText('0');
       const createDotSkippedColor = await bulkCreateModal.locator('[data-testid="bulk-confirm-dot-skipped"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
-      expect(createDotSkippedColor).toBe('rgb(71, 85, 105)'); // gray when 0
+      expect(createDotSkippedColor).toBe('rgb(74, 95, 119)'); // gray when 0 (--color-text-secondary)
 
       await expect(createRows.nth(2)).toContainText('Invalid (will not run)');
       await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-invalid-count"]')).toHaveText('0');
       const createDotInvalidColor = await bulkCreateModal.locator('[data-testid="bulk-confirm-dot-invalid"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
-      expect(createDotInvalidColor).toBe('rgb(71, 85, 105)'); // gray when 0
+      expect(createDotInvalidColor).toBe('rgb(74, 95, 119)'); // gray when 0 (--color-text-secondary)
 
       // Footnote
       await expect(bulkCreateModal.locator('[data-testid="bulk-confirm-footnote"]')).toHaveText('Only Ready BOMs are sent to SAP.');
@@ -470,12 +470,12 @@ test.describe('Refined Popups: Single Create, Bulk Create, Bulk Copy', () => {
       await expect(copyRows.nth(1)).toContainText('Skipped');
       await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-skipped-count"]')).toHaveText('0');
       const copyDotSkippedColor = await bulkCopyModal.locator('[data-testid="bulk-confirm-dot-skipped"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
-      expect(copyDotSkippedColor).toBe('rgb(71, 85, 105)'); // gray when 0
+      expect(copyDotSkippedColor).toBe('rgb(74, 95, 119)'); // gray when 0 (--color-text-secondary)
 
       await expect(copyRows.nth(2)).toContainText('Invalid (will not run)');
       await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-invalid-count"]')).toHaveText('0');
       const copyDotInvalidColor = await bulkCopyModal.locator('[data-testid="bulk-confirm-dot-invalid"]').evaluate((el) => window.getComputedStyle(el).backgroundColor);
-      expect(copyDotInvalidColor).toBe('rgb(71, 85, 105)'); // gray when 0
+      expect(copyDotInvalidColor).toBe('rgb(74, 95, 119)'); // gray when 0 (--color-text-secondary)
 
       // Footnote
       await expect(bulkCopyModal.locator('[data-testid="bulk-confirm-footnote"]')).toHaveText('Only Ready BOMs are copied.');

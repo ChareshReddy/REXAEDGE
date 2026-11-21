@@ -122,8 +122,8 @@ const commandPaletteJsx = fs.readFileSync(path.resolve(frontendDir, 'components/
 const appJsx = fs.readFileSync(path.resolve(frontendDir, 'App.jsx'), 'utf8');
 
 assert(sidebarJsx.includes('rexa_sidebar_collapsed'), 'Sidebar must remember collapsed state');
-assert(sidebarJsx.includes('var(--size-sidebar-width-expanded, 240px)'), 'Sidebar expanded width 240px');
-assert(sidebarJsx.includes('var(--size-sidebar-width-collapsed, 72px)'), 'Sidebar collapsed width 72px');
+assert(sidebarJsx.includes('var(--size-sidebar-width-expanded') && /--size-sidebar-width-expanded:\s*240px/.test(tokensCss), 'Sidebar expanded width 240px');
+assert(sidebarJsx.includes('var(--size-sidebar-width-collapsed') && /--size-sidebar-width-collapsed:\s*72px/.test(tokensCss), 'Sidebar collapsed width 72px');
 assert(sidebarJsx.includes('MODULE_REGISTRY'), 'Sidebar module list must be data-driven from registry');
 
 assert(commandPaletteJsx.includes('ctrlKey || e.metaKey'), 'Command palette must listen for Ctrl+K / Cmd+K');

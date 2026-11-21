@@ -446,8 +446,9 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
           totalComponentsAfter: Math.max(1, 16 - deletedCount + addedCount)
         },
         components: [
-          { item: '0010', itemNode: '00000001', component: 'P1GH1215A', description: 'Modified part', quantity: 25, unit: 'PC', storageLocation: '0001', itemText: 'Updated quantity' },
-          { item: '0020', itemNode: '00000002', component: 'RAW-NEW-99', description: 'Newly added part', quantity: 5, unit: 'EA', storageLocation: '0001', itemText: 'New component' }
+          { item: '0020', itemNode: '00000002', component: 'RAW-NEW-99', description: 'Newly added part', quantity: 5, unit: 'EA', itemCategory: 'N', storageLocation: '0001', itemText: 'New component' },
+          { item: '0010', itemNode: '00000001', component: '000000000011021735', description: 'Modified part', quantity: 25, unit: 'PC', itemCategory: 'L', storageLocation: '0001', itemText: 'Updated quantity' },
+          { item: '0030', itemNode: '00000003', component: '000000000011021740', description: '', quantity: 12, unit: 'KG', itemCategory: 'L', storageLocation: '', itemText: '' }
         ],
         message: `BOM changed and verified successfully (${modifiedCount} modified, ${addedCount} added, ${deletedCount} deleted)`
       });
@@ -633,8 +634,247 @@ export async function setupMocks(page, { authenticated = true, user = mockAdminU
       });
     }
 
+    // 18b. BOM Alternatives (Lightweight lookup via MAST + STKO)
+    if (url.includes('/api/bom/alternatives') && method === 'POST') {
+      let postData = {};
+      try {
+        postData = request.postDataJSON() || {};
+      } catch {}
+      const reqMat = String(postData.material || '').trim().toUpperCase();
+
+      if (reqMat === 'NON-EXISTENT-MAT') {
+        return respondJson({
+          success: false,
+          bomExists: false,
+          errorCode: 'BOM_NOT_FOUND',
+          message: 'No BOM exists for material NON-EXISTENT-MAT in plant 1010.',
+          alternatives: [],
+          availableAlternatives: []
+        }, 404);
+      }
+
+      if (reqMat === 'MANY-ALT-MAT') {
+        const manyAlts = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14'];
+        return respondJson({
+          success: true,
+          bomExists: true,
+          material: 'MANY-ALT-MAT',
+          plant: postData.plant || '1010',
+          bomUsage: postData.bomUsage || '1',
+          stlnr: '00003001',
+          alternatives: manyAlts.map((alt) => ({
+            alternative: alt,
+            STLAL: alt,
+            status: '01',
+            STLST: '01',
+            bomStatus: '01',
+            baseQty: '100',
+            BMENG: '100',
+            unit: 'KG',
+            BMEIN: 'KG',
+            baseUnit: 'KG',
+            validFrom: '01.01.2026',
+            DATUV: '01.01.2026',
+            description: `High Performance Engine Assembly Variant Alt ${alt}`,
+            BKTXT: `High Performance Engine Assembly Variant Alt ${alt}`,
+            headerText: `High Performance Engine Assembly Variant Alt ${alt}`
+          })),
+          availableAlternatives: manyAlts
+        });
+      }
+
+      if (reqMat === 'MULTI-ALT-MAT') {
+        return respondJson({
+          success: true,
+          bomExists: true,
+          material: 'MULTI-ALT-MAT',
+          plant: postData.plant || '1010',
+          bomUsage: postData.bomUsage || '1',
+          stlnr: '00002001',
+          alternatives: [
+            {
+              alternative: '01',
+              STLAL: '01',
+              status: '01',
+              STLST: '01',
+              bomStatus: '01',
+              baseQty: '10',
+              BMENG: '10',
+              unit: 'EA',
+              BMEIN: 'EA',
+              baseUnit: 'EA',
+              validFrom: '01.01.2026',
+              DATUV: '01.01.2026',
+              description: 'Standard Motor Alt 01',
+              BKTXT: 'Standard Motor Alt 01',
+              headerText: 'Standard Motor Alt 01'
+            },
+            {
+              alternative: '02',
+              STLAL: '02',
+              status: '01',
+              STLST: '01',
+              bomStatus: '01',
+              baseQty: '20',
+              BMENG: '20',
+              unit: 'EA',
+              BMEIN: 'EA',
+              baseUnit: 'EA',
+              validFrom: '01.06.2026',
+              DATUV: '01.06.2026',
+              description: 'High Output Motor Alt 02',
+              BKTXT: 'High Output Motor Alt 02',
+              headerText: 'High Output Motor Alt 02'
+            }
+          ],
+          availableAlternatives: ['01', '02']
+        });
+      }
+
+      return respondJson({
+        success: true,
+        bomExists: true,
+        material: reqMat || 'A1BH0214C',
+        plant: postData.plant || '1010',
+        bomUsage: postData.bomUsage || '1',
+        stlnr: '00001001',
+        alternatives: [
+          {
+            alternative: '01',
+            STLAL: '01',
+            status: '01',
+            STLST: '01',
+            bomStatus: '01',
+            baseQty: '100',
+            BMENG: '100',
+            unit: 'PC',
+            BMEIN: 'PC',
+            baseUnit: 'PC',
+            validFrom: '01.01.2026',
+            DATUV: '01.01.2026',
+            description: 'Standard BOM Alt 01',
+            BKTXT: 'Standard BOM Alt 01',
+            headerText: 'Standard BOM Alt 01'
+          }
+        ],
+        availableAlternatives: ['01']
+      });
+    }
+
     // 19. BOM Explorer / read / display
-    if (url.includes('/api/boms/structure') || url.includes('/api/boms/display') || url.includes('/api/bom/read') || url.includes('/api/boms/')) {
+    if (url.includes('/api/bom/read') && method === 'POST') {
+      let postData = {};
+      try {
+        postData = request.postDataJSON() || {};
+      } catch {}
+      const reqMat = String(postData.material || '').trim().toUpperCase();
+      const reqAlt = postData.alternativeBom !== undefined && postData.alternativeBom !== null ? String(postData.alternativeBom).trim() : '';
+
+      if (reqMat === 'NON-EXISTENT-MAT') {
+        return respondJson({
+          success: false,
+          bomExists: false,
+          errorCode: 'BOM_NOT_FOUND',
+          message: 'No BOM exists for material NON-EXISTENT-MAT in plant 1010.'
+        }, 404);
+      }
+
+      if (reqMat === 'MANY-ALT-MAT') {
+        const manyAlts = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14'];
+        const chosen = reqAlt || '01';
+        return respondJson({
+          success: true,
+          bomExists: true,
+          material: 'MANY-ALT-MAT',
+          plant: postData.plant || '1010',
+          bomUsage: postData.bomUsage || '1',
+          alternativeBom: chosen,
+          availableAlternatives: manyAlts,
+          allAlternatives: manyAlts,
+          baseQty: '100',
+          baseUnit: 'KG',
+          bomStatus: '01',
+          validFrom: '01.01.2026',
+          headerText: `High Performance Engine Assembly Variant Alt ${chosen}`,
+          header: {
+            bomNumber: '00003001',
+            alternative: chosen,
+            availableAlternatives: manyAlts,
+            baseQty: '100',
+            baseUnit: 'KG',
+            bomStatus: '01',
+            validFrom: '01.01.2026',
+            description: `High Performance Engine Assembly Variant Alt ${chosen}`
+          },
+          components: sample16Components.slice(0, 3)
+        });
+      }
+
+      if (reqMat === 'MULTI-ALT-MAT') {
+        if (reqAlt === '02' || reqAlt === '2') {
+          return respondJson({
+            success: true,
+            bomExists: true,
+            material: 'MULTI-ALT-MAT',
+            plant: postData.plant || '1010',
+            bomUsage: postData.bomUsage || '1',
+            alternativeBom: '02',
+            availableAlternatives: ['01', '02'],
+            allAlternatives: ['01', '02'],
+            baseQty: '20',
+            baseUnit: 'EA',
+            bomStatus: '01',
+            validFrom: '01.06.2026',
+            headerText: 'High Output Motor Alt 02',
+            header: {
+              bomNumber: '00002001',
+              alternative: '02',
+              availableAlternatives: ['01', '02'],
+              baseQty: '20',
+              baseUnit: 'EA',
+              bomStatus: '01',
+              validFrom: '01.06.2026',
+              description: 'High Output Motor Alt 02'
+            },
+            components: sample16Components.slice(0, 4)
+          });
+        }
+        return respondJson({
+          success: true,
+          bomExists: true,
+          material: 'MULTI-ALT-MAT',
+          plant: postData.plant || '1010',
+          bomUsage: postData.bomUsage || '1',
+          alternativeBom: '01',
+          availableAlternatives: ['01', '02'],
+          allAlternatives: ['01', '02'],
+          baseQty: '10',
+          baseUnit: 'EA',
+          bomStatus: '01',
+          validFrom: '01.01.2026',
+          headerText: 'Standard Motor Alt 01',
+          header: {
+            bomNumber: '00002001',
+            alternative: '01',
+            availableAlternatives: ['01', '02'],
+            baseQty: '10',
+            baseUnit: 'EA',
+            bomStatus: '01',
+            validFrom: '01.01.2026',
+            description: 'Standard Motor Alt 01'
+          },
+          components: sample16Components.slice(0, 3)
+        });
+      }
+
+      return respondJson({
+        ...mockBomExplorerData,
+        availableAlternatives: ['01'],
+        allAlternatives: ['01']
+      });
+    }
+
+    if (url.includes('/api/boms/structure') || url.includes('/api/boms/display') || url.includes('/api/boms/')) {
       return respondJson(mockBomExplorerData);
     }
 

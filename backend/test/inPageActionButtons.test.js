@@ -29,7 +29,7 @@ assert(!layoutCss.includes('.sap-sticky-action-bar'), 'layout.css must NOT defin
 assert(!layoutCss.includes('.has-sticky-bar'), 'layout.css must NOT define .has-sticky-bar reserved padding');
 assert(!layoutCss.includes('--sap-sticky-bar-height'), 'layout.css must NOT define --sap-sticky-bar-height');
 assert(layoutCss.includes('.sap-card-action-row'), 'layout.css must define .sap-card-action-row');
-assert(layoutCss.includes('border-top: 1px solid var(--sap-border, #D9E2EC)') || layoutCss.includes('border-top: 1px solid var(--sap-border, #FED7AA)'), 'Action row must have 1px top divider');
+assert(/border-top:\s*1px solid var\(--sap-border(, #[0-9A-F]{6})?\)/i.test(layoutCss), 'Action row must have 1px top divider');
 assert(layoutCss.includes('padding-top: 16px'), 'Action row must have 16px padding-top');
 assert(layoutCss.includes('justify-content: flex-end'), 'Action row buttons must be right-aligned');
 assert(layoutCss.includes('gap: 12px'), 'Action row buttons must have 12px gap');
