@@ -556,6 +556,16 @@ export async function selectSapSession(sessionId) {
 }
 
 /**
+ * Fast lightweight lookup of BOM alternatives via MAST + STKO (no component reads).
+ * @param {object} params { material, plant, bomUsage }
+ * @returns {Promise<{ success: boolean, bomExists?: boolean, material: string, plant: string, bomUsage: string, alternatives: Array, availableAlternatives: string[] }>}
+ */
+export async function getBomAlternatives(params) {
+  const response = await apiClient.post('/bom/alternatives', params);
+  return response.data;
+}
+
+/**
  * Reads a BOM header and components via SAP RFC CSAP_MAT_BOM_READ.
  * @param {object} params { material, plant, bomUsage, alternativeBom }
  */

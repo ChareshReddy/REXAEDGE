@@ -86,10 +86,18 @@ export function isConnectionLevelError(err) {
   );
 }
 
+const RFC_FUNCTION_INTERFACES = {
+  RFC_CALL_TRANSACTION_USING: {
+    import: new Set(['TCODE', 'MODE']),
+    tables: new Set(['BT_DATA', 'L_ERRORS', 'MESSAGES', 'BDCMSGCOLL'])
+  }
+};
+
 /**
  * Lightweight mock client used when USE_MOCK_SAP=true and no custom ClientClass was injected.
+ * Rejects unknown RFC interface parameters like a real SAP system does.
  */
-class DefaultMockRfcClient {
+export class DefaultMockRfcClient {
   constructor(params = {}) {
     this.params = params;
     this.isOpen = false;
@@ -99,6 +107,28 @@ class DefaultMockRfcClient {
   }
   async call(fn, args = {}) {
     if (!this.isOpen) throw new Error('RFC client is not open');
+
+    const iface = RFC_FUNCTION_INTERFACES[fn];
+    if (iface && args && typeof args === 'object') {
+      for (const key of Object.keys(args)) {
+        const upper = key.toUpperCase();
+        if (!iface.import.has(upper) && !iface.tables.has(upper)) {
+          const err = new Error(`field '${key}' not found`);
+          err.code = 'RFC_INVALID_PARAMETER';
+          throw err;
+        }
+      }
+    }
+
+    if (fn === 'RFC_CALL_TRANSACTION_USING') {
+      return {
+        SUBRC: 0,
+        L_ERRORS: [
+          { MSGID: '29', MSGNR: '024', MSGTYP: 'S', MSGTXT: 'BOM changed' }
+        ]
+      };
+    }
+
     return { success: true, mock: true, functionName: fn };
   }
   async close() {

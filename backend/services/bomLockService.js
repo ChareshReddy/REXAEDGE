@@ -37,9 +37,13 @@ export function normalizeBomLockKey({ server, serverId, material, plant, bomUsag
   return `${sysIdentity}:${mat}:${plt}:${usg}:${alt}`;
 }
 
+/** Generic lock texts. Never include who holds the lock (privacy across users/tenants). */
+export const BOM_LOCKED_APP_MESSAGE = 'This BOM is being changed by another user. Please try again in a moment.';
+export const BOM_LOCKED_SAP_MESSAGE = 'This BOM is locked in SAP by another user. Ask them to close it, or try again later.';
+
 export class BomLockError extends Error {
-  constructor(message = 'This BOM is being changed by another user. Please try again in a moment.') {
-    super(message);
+  constructor(message = BOM_LOCKED_APP_MESSAGE) {
+    super(message === BOM_LOCKED_SAP_MESSAGE ? BOM_LOCKED_SAP_MESSAGE : BOM_LOCKED_APP_MESSAGE);
     this.name = 'BomLockError';
     this.code = 'BOM_LOCKED';
     this.status = 409;
@@ -77,7 +81,7 @@ class BomLockService {
           };
         }
 
-        // Held by a different user -> FAIL FAST immediately
+        // Held by a different user -> FAIL FAST immediately (holder is never disclosed)
         throw new BomLockError();
       } else {
         // Lock expired

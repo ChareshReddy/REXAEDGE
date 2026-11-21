@@ -10,6 +10,7 @@ import {
   rfcDeleteBom,
   rfcBatchValidateBoms,
   rfcBatchCopyBoms,
+  rfcGetBomAlternatives,
   rfcGetBomDisplayData,
   verifyCopiedBomHierarchy,
   pingRfcServer,
@@ -178,6 +179,52 @@ router.post('/validate-source', requireAppPermission(['bom.validate', 'bom.copy'
       errorCode: 'SAP_VALIDATION_ERROR',
       message: `Source BOM validation failed: ${err.message}`
     });
+  }
+});
+
+/**
+ * POST /api/bom/alternatives
+ * Fast lightweight lookup of BOM alternatives with header data (MAST + STKO, no STAS/STPO).
+ */
+router.post('/alternatives', requireAppPermission(['bom.display', 'bom.change']), async (req, res) => {
+  try {
+    const { material, plant, bomUsage } = req.body || {};
+    const result = await rfcGetBomAlternatives({
+      material,
+      plant,
+      bomUsage,
+      server: req.selectedServer
+    });
+
+    recordRouteAudit(req, {
+      action: 'bom.alternatives',
+      feature: 'bom',
+      target: `${material}/${plant}`,
+      status: result.success ? 'success' : 'failed',
+      message: result.success ? 'BOM alternatives retrieved successfully' : (result.message || 'Alternatives lookup failed'),
+      details: { material, plant, bomUsage }
+    });
+
+    if (!result.success && result.errorCode === 'BOM_NOT_FOUND') {
+      return res.status(404).json(result);
+    }
+    return res.status(200).json(result);
+  } catch (err) {
+    recordRouteAudit(req, {
+      action: 'bom.alternatives',
+      feature: 'bom',
+      target: req.body?.material ? `${req.body.material}/${req.body.plant || ''}` : 'unknown',
+      status: 'failed',
+      message: err.message
+    });
+    if (err.code === 'INVALID_INPUT') {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_INPUT',
+        message: err.message
+      });
+    }
+    return sendFriendlyError(res, req, err, { source: 'sap' });
   }
 });
 

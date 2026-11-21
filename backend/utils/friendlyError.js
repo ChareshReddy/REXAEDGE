@@ -100,18 +100,63 @@ export function toFriendlyError(err, options = {}) {
     };
   }
 
+  // 0a2. SAP RFC Interface Parameter Mismatch (e.g. field 'UPDATE' not found)
+  // Matched narrowly: a loose "field … not found" check also caught ordinary
+  // business errors (e.g. "Field MATNR: material 123 not found") and reported
+  // them as a non-retryable SAP interface problem.
+  const isInterfaceParameterError =
+    errCode === 'RFC_INVALID_PARAMETER' ||
+    /\bfield\s+['"][^'"]+['"]\s+not found\b/.test(textLower) ||
+    /\bparameter\s+['"]?[\w/]+['"]?\s+not found in (?:the )?(?:function )?interface\b/.test(textLower) ||
+    textLower.includes('not found in the interface');
+
+  if (isInterfaceParameterError) {
+    return {
+      code: 'SAP_NOT_AVAILABLE',
+      title: 'Action not supported in SAP',
+      message: 'Your SAP system interface does not support this change option. Please contact your SAP administrator.',
+      hint: 'The RFC function module parameters on this SAP system do not match the expected interface.',
+      retryable: false
+    };
+  }
+
+  // 0a3. SAP CS02 Dynpro Processing Error (SUBRC 1001)
+  const isSubrc1001Error =
+    err?.subrc === 1001 ||
+    textLower.includes('subrc 1001') ||
+    textLower.includes('could not process the change screens') ||
+    (errCode === 'RFC_CHANGE_TRANSACTION_ERROR' && textLower.includes('1001'));
+
+  if (isSubrc1001Error) {
+    return {
+      code: 'SAP_NOT_AVAILABLE',
+      title: 'SAP Processing Error',
+      message: 'SAP could not process the change screens. Please contact support.',
+      hint: 'A screen processing error occurred in SAP during batch change. Contact support or check BDC trace.',
+      retryable: false
+    };
+  }
+
   // 0. Explicit Stage 3 & Stage 5 Standard Codes
   if (errCode === 'BOM_LOCKED' ||
       textLower.includes('being changed by another user') ||
       textLower.includes('is currently locked') ||
-      textLower.includes('locked by user') ||
+      /\blocked by\b/.test(textLower) || // word boundary: "blocked by …" is not a lock
       textLower.includes('enqueue') ||
       (textLower.includes('csap') && (textLower.includes('lock') || textLower.includes('sperr')))) {
+    // The lock holder is never named (privacy across users); only where the lock lives.
+    const isSapSideLock =
+      !textLower.includes('being changed by another user') &&
+      (/locked in sap|\blocked by\b|enqueue|csap/.test(textLower));
     return {
       code: 'BOM_LOCKED',
       title: 'BOM currently locked',
-      message: 'This BOM is being changed by another user. Please try again in a moment.',
-      hint: 'Another user or SAP process is editing this BOM. Please try again in a moment.',
+      message: isSapSideLock
+        ? 'This BOM is locked in SAP by another user. Ask them to close it, or try again later.'
+        : 'This BOM is being changed by another user. Please try again in a moment.',
+      hint: isSapSideLock
+        ? 'Someone has this BOM open in SAP (transaction CS02). Try again once they close it.'
+        : 'Another user or SAP process is editing this BOM. Please try again in a moment.',
       retryable: true
     };
   }
