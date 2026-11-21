@@ -12,7 +12,7 @@ export const ToastViewport = forwardRef(function ToastViewport({ className = '',
     <div
       ref={ref}
       className={cn(
-        'rx-toast-banner-container fixed top-[calc(var(--size-topbar-height,64px)+12px)] right-[var(--page-gutter,32px)] z-50 flex max-h-screen w-full max-w-[440px] flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col',
+        'rx-toast-banner-container fixed top-[calc(var(--size-topbar-height)+12px)] right-[var(--page-gutter)] z-50 flex max-h-screen w-full max-w-[440px] flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col',
         className
       )}
       {...props}

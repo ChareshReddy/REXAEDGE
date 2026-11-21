@@ -44,9 +44,13 @@
   --color-success-bg: #ECFDF3;
   --color-success-border: #A6F4C5;
 
+  --color-success-strong: #166534; /* Success text on tinted success surfaces */
+
   --color-warning: #D97706;
   --color-warning-bg: #FFFBEB;
   --color-warning-border: #FDE68A;
+  --color-warning-text: #B45309;   /* AA-contrast warning text on light surfaces */
+  --color-warning-strong: #92400E; /* Warning headings / emphasis on warning-bg */
 
   --color-info: #02579A;
   --color-info-bg: #EEF4F9;
@@ -55,6 +59,11 @@
   --color-danger: #B42318;         /* Danger red reserved for errors & destructive actions only */
   --color-danger-bg: #FEF3F2;
   --color-danger-border: #FECDCA;
+  --color-danger-strong: #912018;  /* Danger hover / pressed */
+
+  /* Overlays */
+  --color-overlay: rgba(0, 32, 78, 0.45);      /* Modal / popup backdrop scrim (navy-tinted) */
+  --color-overlay-soft: rgba(0, 32, 78, 0.12); /* Light veils, loading masks */
 
   /* ==========================================================================
      2. TYPOGRAPHY
@@ -180,31 +189,203 @@
   --table-header-text: #0B2D57;
 
   /* ==========================================================================
-     8. BACKWARD COMPATIBILITY BRIDGES (Aliasing to Beautiful Blues tokens)
+     8. MODAL / POPUP SHELL (shared by every dialog, confirmation and F4 popup)
      ========================================================================== */
-  --sap-primary: var(--color-blue-600);
-  --sap-primary-hover: var(--color-navy-800);
-  --sap-surface-card: var(--color-surface);
-  --sap-page-bg: var(--color-page-bg);
-  --sap-border-color: var(--color-border);
-  --sap-border: var(--color-border);
-  --sap-text: var(--color-text);
-  --sap-text-secondary: var(--color-text-secondary);
-  --sap-text-muted: var(--color-text-muted);
-  --sap-navy: var(--color-navy-900);
-  --sap-card-bg: var(--color-surface);
-  --sap-page-header-bg: var(--page-header-bg);
-  --sap-table-header-bg: var(--table-header-bg);
-  --sap-table-header-border: var(--color-border);
-  --sap-table-row-hover: var(--color-blue-50);
-  --sap-table-row-selected: var(--color-blue-100);
-  --sap-popup-header-bg: var(--color-blue-50);
-  --sap-popup-header-border: var(--color-border);
-  --sap-popup-header-title: var(--color-navy-900);
-  --sap-popup-header-badge-bg: var(--color-blue-600);
-  --sap-popup-header-badge-text: #ffffff;
+  --modal-header-height: 60px;
+  --modal-header-bg: var(--color-blue-50);
+  --modal-header-border: var(--color-border);
+  --modal-title-color: var(--color-navy-900);
+  --modal-title-size: var(--font-size-18);
+  --modal-subtitle-color: var(--color-text-secondary);
+  --modal-subtitle-size: var(--font-size-13);
+  --modal-icon-size: 36px;
+  --modal-icon-bg: var(--color-blue-100);
+  --modal-icon-border: var(--color-blue-200);
+  --modal-icon-color: var(--color-blue-600);
+  --modal-close-size: 32px;
+  --modal-body-padding: var(--space-24);
+  --modal-footer-bg: var(--color-surface-subtle);
+  --modal-footer-border: var(--color-border-subtle);
+  --modal-footer-padding: var(--space-16) var(--space-24);
+  --modal-border: var(--color-border);
+  --modal-radius: var(--radius-xl);
+
+  /* ==========================================================================
+     9. LEGACY ALIASES — the ONLY place --sap-* tokens are defined.
+        Every alias points at a canonical token above; no raw values here.
+        (index.css / sap-theme.css / layout.css previously re-declared these
+        with conflicting hex values and circular references.)
+     ========================================================================== */
+  --font-family: var(--font-sans);
+  --topbar-height: 60px;
+  --radius-xs: 3px;
+  --page-gutter: var(--page-gutter-desktop);
+
+  /* Shell & brand */
   --sap-topbar-bg: var(--color-surface);
-  --page-gutter: 32px;
+  --sap-shell-bg: var(--color-surface);
+  --sap-shell-text: var(--color-navy-900);
+  --sap-navy: var(--color-navy-900);
+  --sap-brand-navy: var(--color-navy-900);
+  --sap-brand-navy-dark: var(--color-navy-900);
+  --sap-brand-blue: var(--color-blue-600);
+  --sap-brand-blue-hover: var(--color-navy-800);
+  --sap-brand-blue-light: var(--color-blue-50);
+  --sap-layout-max-width: 1680px;
+  --sap-layout-side-pad-sm: var(--page-gutter);
+  --sap-layout-side-pad-md: var(--page-gutter);
+  --sap-layout-side-pad-lg: var(--page-gutter);
+
+  /* Primary action = navy (matches .rx-btn-primary); links & focus = blue-600 */
+  --sap-primary: var(--color-navy-900);
+  --sap-primary-hover: var(--color-navy-800);
+  --sap-primary-active: var(--color-navy-900);
+  --sap-primary-light: var(--color-blue-50);
+  --sap-primary-border: var(--color-border);
+  --sap-link: var(--color-blue-600);
+  --sap-link-hover: var(--color-navy-800);
+  --sap-admin: var(--color-blue-600);
+  --sap-admin-pill-bg: var(--color-navy-900);
+  --sap-admin-pill-text: var(--color-text-inverse);
+
+  /* Destructive actions use the danger palette (tokens rule: red is reserved for destructive) */
+  --sap-destructive-bg: var(--color-danger);
+  --sap-destructive-hover: var(--color-danger-strong);
+  --sap-destructive-text: var(--color-text-inverse);
+  --sap-destructive-accent: var(--color-danger);
+
+  /* Surfaces */
+  --sap-page-bg: var(--color-page-bg);
+  --sap-bg: var(--color-page-bg);
+  --sap-workspace-bg: var(--color-page-bg);
+  --sap-page-header-bg: var(--page-header-bg);
+  --sap-heading-bg-solid: var(--page-header-bg);
+  --sap-heading-gradient: none;
+  --sap-card-bg: var(--color-surface);
+  --sap-surface-card: var(--color-surface);
+  --sap-panel-bg: var(--color-surface);
+  --sap-input-bg: var(--color-surface);
+  --sap-card-nested-bg: var(--color-blue-50);
+  --sap-table-surface: var(--color-blue-50);
+  --sap-hover-bg: var(--color-blue-50);
+  --sap-selected-bg: var(--color-blue-100);
+  --sap-surface-hover: var(--color-blue-50);
+  --sap-surface-active: var(--color-blue-100);
+  --sap-surface-subtle: var(--color-blue-50);
+  --sap-surface-empty: var(--color-surface);
+  --sap-disabled-bg: var(--color-blue-50);
+  --sap-modal-footer-bg: var(--modal-footer-bg);
+
+  /* Borders */
+  --sap-border: var(--color-border);
+  --sap-border-color: var(--color-border);
+  --sap-border-subtle: var(--color-border);
+  --sap-border-strong: var(--color-blue-200);
+  --sap-border-input: var(--color-border-input);
+  --sap-border-input-focus: var(--focus-ring-color);
+  --sap-border-width: 1px;
+
+  /* Tables */
+  --sap-table-header-bg: var(--table-header-bg);
+  --sap-table-header-border: var(--table-header-border);
+  --sap-table-stripe-bg: var(--color-surface);
+  --sap-table-hover-bg: var(--color-blue-50);
+  --sap-table-row-hover: var(--color-blue-50);
+  --sap-table-selected-bg: var(--color-blue-100);
+  --sap-table-row-selected: var(--color-blue-100);
+  --sap-selected-row: var(--color-blue-100);
+  --sap-table-border: var(--color-border);
+  --sap-table-row-separator: var(--color-border-subtle);
+  --sap-table-header-height: var(--size-table-header-height);
+  --sap-table-row-height: var(--size-table-row-height);
+  --sap-table-row-pad-y: var(--space-8);
+  --sap-table-row-pad-x: var(--space-12);
+  --sap-table-cell-padding: var(--space-12);
+
+  /* Text */
+  --sap-text: var(--color-navy-900);
+  --sap-text-dark: var(--color-navy-900);
+  --sap-text-primary: var(--color-navy-900);
+  --sap-text-body: var(--color-text);
+  --sap-text-secondary: var(--color-text-secondary);
+  --sap-text-muted: var(--color-text-secondary);
+  --sap-text-subtle: var(--color-text-secondary);
+
+  /* Status */
+  --sap-success: var(--color-success);
+  --sap-success-text: var(--color-success-strong);
+  --sap-success-bg: var(--color-success-bg);
+  --sap-success-border: var(--color-success-border);
+  --sap-warning: var(--color-warning);
+  --sap-warning-text: var(--color-warning-text);
+  --sap-warning-bg: var(--color-warning-bg);
+  --sap-warning-border: var(--color-warning-border);
+  --sap-error: var(--color-danger);
+  --sap-error-text: var(--color-danger);
+  --sap-error-bg: var(--color-danger-bg);
+  --sap-error-border: var(--color-danger-border);
+  --sap-info-bg: var(--color-info-bg);
+  --sap-info-border: var(--color-info-border);
+
+  /* Buttons (aligned with .rx-btn variants in ui.css) */
+  --sap-btn-primary-bg: var(--color-navy-900);
+  --sap-btn-primary-hover: var(--color-navy-800);
+  --sap-btn-primary-active: var(--color-navy-900);
+  --sap-btn-primary-border: var(--color-navy-900);
+  --sap-btn-primary-text: var(--color-text-inverse);
+  --sap-btn-focus-ring: var(--focus-ring-soft);
+  --sap-btn-secondary-bg: var(--color-surface);
+  --sap-btn-secondary-border: var(--color-border-input);
+  --sap-btn-secondary-text: var(--color-navy-900);
+  --sap-btn-secondary-hover-bg: var(--color-blue-50);
+  --sap-btn-secondary-hover-border: var(--color-border-hover);
+  --sap-btn-secondary-hover-text: var(--color-navy-800);
+  --sap-btn-secondary-active-bg: var(--color-blue-50);
+  --sap-btn-ghost-text: var(--color-blue-600);
+  --sap-btn-ghost-hover-bg: var(--color-blue-50);
+  --sap-btn-ghost-hover-text: var(--color-navy-800);
+  --sap-button-bg: var(--color-surface);
+  --sap-button-border: var(--color-border);
+  --sap-button-text: var(--color-navy-900);
+  --sap-neutral-btn-bg: var(--color-surface);
+  --sap-neutral-btn-border: var(--color-border-input);
+  --sap-neutral-btn-text: var(--color-navy-900);
+  --sap-neutral-btn-hover: var(--color-blue-50);
+  --sap-neutral-btn-active: var(--color-blue-50);
+
+  /* Icon badges, focus, shadows */
+  --sap-card-icon-bg: var(--modal-icon-bg);
+  --sap-card-icon-border: var(--modal-icon-border);
+  --sap-focus-ring: 0 0 0 2px var(--focus-ring-color);
+  --sap-shadow-sm: var(--shadow-sm);
+  --sap-shadow-card: var(--shadow-sm);
+  --sap-shadow-card-hover: var(--shadow-card-hover);
+  --sap-shadow-md: var(--shadow-dropdown);
+  --sap-shadow-lg: var(--shadow-modal);
+
+  /* Popup headers (legacy names → modal shell tokens) */
+  --sap-popup-header-bg: var(--modal-header-bg);
+  --sap-popup-header-border: var(--modal-header-border);
+  --sap-popup-header-title: var(--modal-title-color);
+  --sap-popup-header-badge-bg: var(--color-blue-600);
+  --sap-popup-header-badge-text: var(--color-text-inverse);
+  --sap-popup-header-close-color: var(--color-navy-800);
+  --sap-popup-header-close-hover-bg: var(--color-blue-100);
+  --sap-popup-header-close-active-bg: var(--color-blue-200);
+
+  /* Typography aliases */
+  --sap-font-family: var(--font-sans);
+  --sap-font-mono: var(--font-mono);
+  --sap-size-screen-title: var(--font-size-24);
+  --sap-size-section-header: var(--font-size-16);
+  --sap-size-label: var(--font-size-13);
+  --sap-size-body: var(--font-size-14);
+  --sap-size-input: var(--font-size-14);
+  --sap-size-table: var(--font-size-13);
+  --sap-size-button: var(--font-size-14);
+  --sap-size-statusbar: var(--font-size-12);
+  --sap-radius-sm: var(--radius-sm);
+  --sap-radius-card: var(--radius-lg);
 
   /* ==========================================================================
      9. SHADCN/UI TOKEN BRIDGE (Mapped to RexaEdge Beautiful Blues tokens)

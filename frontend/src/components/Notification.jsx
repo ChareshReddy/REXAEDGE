@@ -144,7 +144,7 @@ export default function Notification({
                   style={{
                     fontSize: 13,
                     lineHeight: 1.45,
-                    color: 'var(--color-text-secondary, #4A5F77)',
+                    color: 'var(--color-text-secondary)',
                     fontFamily: 'var(--font-sans)'
                   }}
                 >
@@ -158,7 +158,7 @@ export default function Notification({
                 style={{
                   fontSize: 12,
                   marginTop: 2,
-                  color: 'var(--color-text-muted, #7A8CA3)',
+                  color: 'var(--color-text-muted)',
                   fontStyle: 'italic'
                 }}
               >
@@ -182,7 +182,7 @@ export default function Notification({
               aria-label="Copy error reference"
               className="sap-notification-copy-btn"
             >
-              {copied ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+              {copied ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
             </button>
           </div>
         )}

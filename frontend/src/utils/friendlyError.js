@@ -26,10 +26,20 @@ export function extractErrorInfo(err, fallbackMessage = 'An error occurred') {
   if (err && typeof err === 'object' && !err.response && !err.isAxiosError && (err.title || err.code || err.hint)) {
     const rawMsg = stripLeadingEmoji(err.message || err.error || fallbackMessage);
     const execMatch = typeof rawMsg === 'string' ? rawMsg.match(/^execution failed:\s*(.*)/i) : null;
+    let resolvedTitle = stripLeadingEmoji(execMatch ? 'Execution failed' : (err.title || 'Error'));
+    let resolvedMsg = execMatch ? (execMatch[1].trim() || 'Operation failed') : rawMsg;
+
+    const lowerRaw = String(resolvedMsg || '').toLowerCase();
+    if (err.code === 'BDC_RECORDING_REQUIRED' || lowerRaw.includes('bdc_recording_required') || lowerRaw.includes('pending shdb recording')) {
+      console.warn('[friendlyError] BDC_RECORDING_REQUIRED technical details:', rawMsg);
+      resolvedTitle = 'Changes not supported yet';
+      resolvedMsg = 'This combination of changes is not supported yet. Please save adding more than two items, or more than one item-detail change, in separate steps.';
+    }
+
     return {
       code: err.code || (execMatch ? 'EXECUTION_FAILED' : 'UNKNOWN'),
-      title: stripLeadingEmoji(execMatch ? 'Execution failed' : (err.title || 'Error')),
-      message: execMatch ? (execMatch[1].trim() || 'Operation failed') : rawMsg,
+      title: resolvedTitle,
+      message: resolvedMsg,
       hint: err.hint || null,
       errorRef: err.error_ref || err.errorRef || null,
       retryable: err.retryable !== false
@@ -53,6 +63,10 @@ export function extractErrorInfo(err, fallbackMessage = 'An error occurred') {
     if (lowerRaw.includes('incompatible call rejected') || lowerRaw.includes('2295840') || lowerRaw.includes('incompatible function')) {
       resolvedTitle = 'Change BOM not enabled';
       resolvedMsg = 'Your SAP system does not allow Change BOM from RexaEdge yet. Ask your SAP team to enable it.';
+    } else if (data.code === 'BDC_RECORDING_REQUIRED' || lowerRaw.includes('bdc_recording_required') || lowerRaw.includes('pending shdb recording')) {
+      console.warn('[friendlyError] BDC_RECORDING_REQUIRED technical details:', rawMsg);
+      resolvedTitle = 'Changes not supported yet';
+      resolvedMsg = 'This combination of changes is not supported yet. Please save adding more than two items, or more than one item-detail change, in separate steps.';
     }
 
     return {

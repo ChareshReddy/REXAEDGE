@@ -11,15 +11,15 @@ const alertVariants = cva(
         default:
           "bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-text)] [&>svg]:text-[var(--color-text-secondary)]",
         warning:
-          "bg-[var(--color-warning-bg,#FFFBEB)] border-[var(--color-warning-border,#FDE68A)] text-[var(--color-warning,#B45309)] [&>svg]:text-[var(--color-warning,#B45309)]",
+          "bg-[var(--color-warning-bg)] border-[var(--color-warning-border)] text-[var(--color-warning)] [&>svg]:text-[var(--color-warning)]",
         info:
-          "bg-[var(--color-info-bg,#EEF4F9)] border-[var(--color-info-border,#B3CDE0)] text-[var(--color-info,#02579A)] [&>svg]:text-[var(--color-info,#02579A)]",
+          "bg-[var(--color-info-bg)] border-[var(--color-info-border)] text-[var(--color-info)] [&>svg]:text-[var(--color-info)]",
         success:
-          "bg-[var(--color-success-bg,#ECFDF3)] border-[var(--color-success-border,#A6F4C5)] text-[var(--color-success,#15803D)] [&>svg]:text-[var(--color-success,#15803D)]",
+          "bg-[var(--color-success-bg)] border-[var(--color-success-border)] text-[var(--color-success)] [&>svg]:text-[var(--color-success)]",
         destructive:
-          "bg-[var(--color-danger-bg,#FEF3F2)] border-[var(--color-danger-border,#FECDCA)] text-[var(--color-danger,#B42318)] [&>svg]:text-[var(--color-danger,#B42318)]",
+          "bg-[var(--color-danger-bg)] border-[var(--color-danger-border)] text-[var(--color-danger)] [&>svg]:text-[var(--color-danger)]",
         danger:
-          "bg-[var(--color-danger-bg,#FEF3F2)] border-[var(--color-danger-border,#FECDCA)] text-[var(--color-danger,#B42318)] [&>svg]:text-[var(--color-danger,#B42318)]",
+          "bg-[var(--color-danger-bg)] border-[var(--color-danger-border)] text-[var(--color-danger)] [&>svg]:text-[var(--color-danger)]",
       },
     },
     defaultVariants: {

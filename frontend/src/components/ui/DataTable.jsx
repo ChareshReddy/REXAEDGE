@@ -25,6 +25,7 @@ export function DataTable({
   keyField = 'id',
   selectedRowKey = null,
   onRowSelect = null,
+  onRowDoubleClick = null,
   isLoading = false,
   error = null,
   emptyMessage = 'No records found',
@@ -43,7 +44,7 @@ export function DataTable({
                 <TableHead
                   key={col.key || idx}
                   className={cn(
-                    "rx-table-th font-semibold text-[var(--color-navy-900)] border-b border-[var(--color-border)] h-[var(--size-table-header-height,40px)]",
+                    "rx-table-th font-semibold text-[var(--color-navy-900)] border-b border-[var(--color-border)] h-[var(--size-table-header-height)]",
                     (isActions || align === 'center') && "actions-column text-center"
                   )}
                   style={{
@@ -61,7 +62,7 @@ export function DataTable({
         <TableBody>
           {isLoading ? (
             Array.from({ length: 5 }).map((_, rIdx) => (
-              <TableRow key={`skel-${rIdx}`} className="rx-table-row border-b border-[var(--color-border-subtle)] h-[var(--size-table-row-height,44px)]">
+              <TableRow key={`skel-${rIdx}`} className="rx-table-row border-b border-[var(--color-border-subtle)] h-[var(--size-table-row-height)]">
                 {columns.map((col, cIdx) => (
                   <TableCell key={`skel-c-${cIdx}`} className="rx-table-td p-[6px]">
                     <div className="rx-skeleton rounded h-4 bg-gray-200 animate-pulse" style={{ width: col.width || '80%' }} />
@@ -89,10 +90,11 @@ export function DataTable({
                 <TableRow
                   key={rowKey}
                   className={cn(
-                    'rx-table-row border-b border-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-blue-50)] h-[var(--size-table-row-height,44px)]',
+                    'rx-table-row border-b border-[var(--color-border-subtle)] transition-colors hover:bg-[var(--color-blue-50)] h-[var(--size-table-row-height)]',
                     isSelected && 'rx-table-row-selected bg-[var(--color-blue-100)]'
                   )}
                   onClick={() => onRowSelect && onRowSelect(row, rowKey)}
+                  onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(row, rowKey)}
                   style={{ cursor: onRowSelect ? 'pointer' : 'default' }}
                 >
                   {columns.map((col, cIdx) => {

@@ -15,10 +15,10 @@ export default function NotFoundView({ pathname = '' }) {
         textAlign: 'center',
         maxWidth: 540,
         margin: '60px auto',
-        background: 'var(--sap-card-bg, #ffffff)',
-        borderRadius: 'var(--radius-xl, 12px)',
-        border: '1px solid var(--sap-border-subtle, #e2e8f0)',
-        boxShadow: 'var(--sap-shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1))'
+        background: 'var(--sap-card-bg)',
+        borderRadius: 'var(--radius-xl)',
+        border: '1px solid var(--sap-border-subtle)',
+        boxShadow: 'var(--sap-shadow-md)'
       }}
       role="region"
       aria-label="Page Not Found"
@@ -28,13 +28,13 @@ export default function NotFoundView({ pathname = '' }) {
           width: 64,
           height: 64,
           borderRadius: '50%',
-          background: 'var(--sap-info-bg, #e8f4fd)',
-          border: '1px solid var(--sap-info-border, #b8daff)',
+          background: 'var(--sap-info-bg)',
+          border: '1px solid var(--sap-info-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 20px',
-          color: 'var(--sap-shell-navy, #00204E)'
+          color: 'var(--color-navy-900)'
         }}
         aria-hidden="true"
       >
@@ -45,7 +45,7 @@ export default function NotFoundView({ pathname = '' }) {
         style={{
           fontSize: '1.25rem',
           fontWeight: 700,
-          color: 'var(--sap-shell-navy, #00204E)',
+          color: 'var(--color-navy-900)',
           margin: '0 0 10px'
         }}
       >
@@ -55,7 +55,7 @@ export default function NotFoundView({ pathname = '' }) {
       <p
         style={{
           fontSize: '0.875rem',
-          color: 'var(--sap-text-muted, #64748b)',
+          color: 'var(--sap-text-muted)',
           margin: '0 0 12px',
           lineHeight: 1.6,
           maxWidth: '420px'
@@ -69,9 +69,9 @@ export default function NotFoundView({ pathname = '' }) {
           style={{
             fontSize: '0.8125rem',
             padding: '3px 8px',
-            background: 'var(--sap-surface-subtle, #f1f5f9)',
+            background: 'var(--sap-surface-subtle)',
             borderRadius: '4px',
-            color: 'var(--sap-text-dark, #1e293b)',
+            color: 'var(--sap-text-dark)',
             marginBottom: '24px'
           }}
         >

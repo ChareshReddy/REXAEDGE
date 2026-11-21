@@ -2,23 +2,7 @@
    SHARED FLUID LAYOUT SYSTEM (PageContainer, PageHeader, FormGrid, SummaryPanel, StickyActionBar)
    ============================================================================ */
 
-:root {
-  --sap-topbar-bg: #FFFFFF;
-  --page-gutter: 32px;
-  --sap-layout-max-width: 1680px;
-  --sap-layout-side-pad-sm: var(--page-gutter);
-  --sap-layout-side-pad-md: var(--page-gutter);
-  --sap-layout-side-pad-lg: var(--page-gutter);
-}
-
-@media (max-width: 768px) {
-  :root {
-    --page-gutter: 16px;
-    --sap-layout-side-pad-sm: 16px;
-    --sap-layout-side-pad-md: 16px;
-    --sap-layout-side-pad-lg: 16px;
-  }
-}
+/* Design tokens live exclusively in tokens.css (incl. legacy --sap-* aliases). */
 
 /* PageContainer */
 .sap-page-container {
@@ -51,11 +35,11 @@
 
 /* Viewport wrapper */
 .sap-shell-header {
-  background: var(--sap-topbar-bg, #FFFFFF) !important;
+  background: var(--sap-topbar-bg) !important;
   background-image: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
+  border-bottom: 1px solid var(--sap-border) !important;
   box-shadow: none !important;
 }
 
@@ -63,7 +47,7 @@
   min-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
-  background: var(--sap-bg, #f4f6f8);
+  background: var(--sap-bg);
   width: 100%;
   box-sizing: border-box;
 }
@@ -71,8 +55,8 @@
 /* PageHeader wrapper */
 .sap-layout-header,
 .fiori-ph {
-  background: var(--sap-page-header-bg, #FFFFFF) !important;
-  border-bottom: 1px solid var(--sap-border, #D9E2EC) !important;
+  background: var(--sap-page-header-bg) !important;
+  border-bottom: 1px solid var(--sap-border) !important;
   box-shadow: none !important;
   width: 100%;
   position: relative;
@@ -111,7 +95,7 @@
   }
 }
 
-/* Subtitles: 15px regular slate-600 #475569, max-width 70ch */
+/* Subtitles: 15px regular slate-600 var(--color-text-secondary), max-width 70ch */
 .sap-layout-subtitle,
 .fiori-ph-subtitle {
   margin: 4px 0 0 !important;
@@ -119,7 +103,7 @@
   font-weight: 400 !important;
   letter-spacing: normal !important;
   text-transform: none !important;
-  color: #475569 !important;
+  color: var(--color-text-secondary) !important;
   line-height: 1.5 !important;
   text-align: left !important;
   max-width: 70ch !important;
@@ -149,7 +133,7 @@
   gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--sap-border, #D9E2EC);
+  border-top: 1px solid var(--sap-border);
   background: transparent;
   width: 100%;
   box-sizing: border-box;
@@ -182,16 +166,16 @@
 .sap-card-table-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--sap-table-surface, var(--color-blue-50, #EEF4F9));
+  background: var(--sap-table-surface);
   z-index: 10;
-  box-shadow: 0 1px 0 var(--sap-border, #D9E2EC);
+  box-shadow: 0 1px 0 var(--sap-border);
 }
 
 /* Empty state row for tables */
 .sap-table-empty-row {
   text-align: center;
   padding: 36px 16px;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 13.5px;
 }
 
@@ -262,8 +246,8 @@
   min-height: 190px !important;
   max-height: none !important;
   padding: 20px !important;
-  background-color: #FFFFFF !important;
-  border: 1px solid #D9E2EC !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 16px !important;
   box-shadow: 0 1px 2px rgba(0, 32, 78, 0.06) !important;
   display: flex !important;
@@ -275,25 +259,25 @@
 }
 
 .fiori-op-card:hover:not(:disabled):not(.disabled) {
-  border-color: #B3CDE0 !important;
+  border-color: var(--color-blue-200) !important;
   box-shadow: 0 8px 24px rgba(0, 32, 78, 0.12) !important;
   transform: translateY(-2px) !important;
-  background-color: #FFFFFF !important;
+  background-color: var(--color-surface) !important;
 }
 
 .fiori-op-card:hover:not(:disabled):not(.disabled) .fiori-op-icon-badge,
 .fiori-op-card:focus-visible .fiori-op-icon-badge,
 .fiori-op-card:active:not(:disabled):not(.disabled) .fiori-op-icon-badge {
-  background-color: var(--color-blue-100, #DCE8F1) !important;
-  border-color: var(--color-blue-400, #6699B8) !important;
-  color: var(--color-blue-600, #02579A) !important;
+  background-color: var(--color-blue-100) !important;
+  border-color: var(--color-blue-400) !important;
+  color: var(--color-blue-600) !important;
 }
 
 .fiori-op-card:hover:not(:disabled):not(.disabled) .fiori-op-icon-badge svg,
 .fiori-op-card:focus-visible .fiori-op-icon-badge svg,
 .fiori-op-card:active:not(:disabled):not(.disabled) .fiori-op-icon-badge svg {
-  stroke: var(--color-blue-600, #02579A) !important;
-  color: var(--color-blue-600, #02579A) !important;
+  stroke: var(--color-blue-600) !important;
+  color: var(--color-blue-600) !important;
 }
 
 .fiori-op-card:active:not(:disabled):not(.disabled) {
@@ -301,7 +285,7 @@
 }
 
 .fiori-op-card:focus-visible {
-  outline: 2px solid #02579A !important;
+  outline: 2px solid var(--color-blue-600) !important;
   outline-offset: 2px !important;
 }
 
@@ -366,20 +350,20 @@
 .sap-form-dual-connector-line {
   flex: 1;
   width: 1px;
-  background: var(--sap-border, #D9E2EC);
+  background: var(--sap-border);
 }
 
 .sap-form-dual-connector-badge {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid var(--sap-border-strong, #B3CDE0);
+  background: var(--color-surface);
+  border: 1px solid var(--sap-border-strong);
   box-shadow: 0 1px 2px rgba(2, 87, 154, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #05396B;
+  color: var(--color-navy-800);
   flex-shrink: 0;
 }
 
@@ -387,9 +371,9 @@
 .sap-table-container-full {
   width: 100%;
   max-width: 100%;
-  background: var(--sap-card-bg, #FFFFFF);
-  border: 1px solid var(--sap-border, #D9E2EC);
-  border-radius: var(--radius-xl, 12px);
+  background: var(--sap-card-bg);
+  border: 1px solid var(--sap-border);
+  border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(2, 87, 154, 0.04);
 }
@@ -410,9 +394,9 @@
 .sap-admin-table-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--sap-table-surface, var(--color-blue-50, #EEF4F9));
+  background: var(--sap-table-surface);
   z-index: 10;
-  box-shadow: 0 1px 0 var(--sap-border, #D9E2EC);
+  box-shadow: 0 1px 0 var(--sap-border);
 }
 
 
@@ -422,13 +406,13 @@
   flex-direction: row;
   flex: 1;
   min-height: 0;
-  height: calc(100vh - var(--size-topbar-height, 64px));
-  height: calc(100dvh - var(--size-topbar-height, 64px));
-  max-height: calc(100vh - var(--size-topbar-height, 64px));
-  max-height: calc(100dvh - var(--size-topbar-height, 64px));
+  height: calc(100vh - var(--size-topbar-height));
+  height: calc(100dvh - var(--size-topbar-height));
+  max-height: calc(100vh - var(--size-topbar-height));
+  max-height: calc(100dvh - var(--size-topbar-height));
   width: 100%;
   overflow: hidden;
-  background: var(--color-page-bg, #F5F8FB);
+  background: var(--color-page-bg);
 }
 
 .rx-topbar-search-btn {
@@ -437,30 +421,30 @@
   gap: 8px;
   height: 32px;
   padding: 0 12px;
-  background: var(--color-blue-50, #EEF4F9);
-  border: 1px solid var(--color-border, #D9E2EC);
-  border-radius: var(--radius-sm, 6px);
-  color: var(--color-text-secondary, #4A5F77);
-  font-size: var(--font-size-xs, 12px);
+  background: var(--color-blue-50);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
   font-family: inherit;
   cursor: pointer;
   transition: all var(--duration-fast, 150ms) ease;
 }
 
 .rx-topbar-search-btn:hover {
-  background: var(--color-blue-100, #DCE8F1);
-  border-color: var(--color-blue-200, #B3CDE0);
-  color: var(--color-blue-600, #02579A);
+  background: var(--color-blue-100);
+  border-color: var(--color-blue-200);
+  color: var(--color-blue-600);
 }
 
 .rx-topbar-search-kbd {
   font-size: 10px;
   font-family: inherit;
-  background: var(--color-surface, #FFFFFF);
-  border: 1px solid var(--color-border, #D9E2EC);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 1px 4px;
-  color: var(--color-text-muted, #7A8CA3);
+  color: var(--color-text-muted);
 }
 
 
@@ -478,16 +462,16 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  border-radius: var(--radius-md, 8px);
-  border: 1px solid var(--color-border, #D9E2EC);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
   background-color: transparent;
-  color: var(--color-navy-900, #00204E);
+  color: var(--color-navy-900);
   cursor: pointer;
-  transition: background-color var(--transition-fast, 150ms ease);
+  transition: background-color var(--transition-fast);
 }
 
 .rx-topbar-sidebar-toggle:hover {
-  background-color: var(--color-blue-50, #EEF4F9);
+  background-color: var(--color-blue-50);
 }
 
 @media (max-width: 1024px) {
@@ -510,7 +494,7 @@
     min-width: 280px !important;
     max-width: 85vw !important;
     transform: translateX(-100%);
-    transition: transform var(--transition-normal, 200ms ease) !important;
+    transition: transform var(--transition-normal) !important;
     z-index: 1002 !important;
     box-shadow: 0 20px 48px rgba(0, 32, 78, 0.25) !important;
   }
@@ -520,8 +504,8 @@
   }
 
   .sap-page-container {
-    padding-left: var(--page-gutter, 16px) !important;
-    padding-right: var(--page-gutter, 16px) !important;
+    padding-left: var(--page-gutter) !important;
+    padding-right: var(--page-gutter) !important;
   }
 }
 
@@ -743,8 +727,8 @@
   display: inline-flex;
   align-items: center;
   padding: 2px;
-  background-color: var(--color-blue-50, #EEF4F9);
-  border: 1px solid var(--color-border, #D9E2EC);
+  background-color: var(--color-blue-50);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   box-sizing: border-box;
 }
@@ -756,12 +740,12 @@
   border: none;
   cursor: pointer;
   background-color: transparent;
-  color: var(--color-navy-900, #00204E);
+  color: var(--color-navy-900);
   font-weight: 500;
-  font-size: var(--font-size-13, 13px);
+  font-size: var(--font-size-13);
   font-family: var(--font-sans);
   box-shadow: none;
-  transition: all var(--transition-fast, 150ms ease);
+  transition: all var(--transition-fast);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -769,14 +753,14 @@
 }
 
 .rx-switch-btn:hover:not(:disabled):not(.active) {
-  background-color: var(--color-blue-100, #DCE8F1);
+  background-color: var(--color-blue-100);
 }
 
 .rx-switch-btn.active {
-  background-color: var(--color-blue-600, #02579A);
-  color: #FFFFFF;
+  background-color: var(--color-blue-600);
+  color: var(--color-text-inverse);
   font-weight: 600;
-  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 32, 78, 0.05));
+  box-shadow: var(--shadow-sm);
 }
 
 .rx-switch-btn:disabled {

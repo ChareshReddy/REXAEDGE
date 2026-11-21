@@ -173,8 +173,8 @@ export default function Tooltip({
             left: `${coords.left}px`,
             zIndex: 10050,
             pointerEvents: 'none',
-            backgroundColor: '#1e293b',
-            color: '#ffffff',
+            backgroundColor: 'var(--color-text)',
+            color: 'var(--color-text-inverse)',
             borderRadius: 4,
             padding: '4px 8px',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.28)',
@@ -204,13 +204,13 @@ export default function Tooltip({
                     top: '-4px',
                     borderLeft: '4px solid transparent',
                     borderRight: '4px solid transparent',
-                    borderBottom: '4px solid #1e293b'
+                    borderBottom: '4px solid var(--color-text)'
                   }
                 : {
                     bottom: '-4px',
                     borderLeft: '4px solid transparent',
                     borderRight: '4px solid transparent',
-                    borderTop: '4px solid #1e293b'
+                    borderTop: '4px solid var(--color-text)'
                   })
             }}
           />

@@ -116,7 +116,7 @@ export default function FilterRange({ currentFilter, onApplyFilter, isLoading })
             color: 'var(--sap-primary)',
             background: 'var(--sap-primary-light)',
             padding: '6px 12px',
-            borderRadius: 'var(--sap-radius)',
+            borderRadius: 'var(--radius-md)',
             fontWeight: 500
           }}>
             Active OData $filter: BusinessPartner range

@@ -8,14 +8,14 @@
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--space-24, 24px) var(--page-gutter, 32px) var(--space-32, 32px);
+  padding: var(--space-24) var(--page-gutter) var(--space-32);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: var(--space-24, 24px);
-  font-family: var(--font-sans, 'Inter', sans-serif);
-  color: var(--color-text, #0F2742);
-  background-color: var(--color-page-bg, #F5F8FB);
+  gap: var(--space-24);
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-page-bg);
   min-height: 100%;
   flex: 1;
 }
@@ -28,15 +28,15 @@
   overflow: hidden;
   width: 100%;
   flex-shrink: 0;
-  min-height: var(--size-hero-min-height, 120px);
-  border-radius: var(--radius-xl, 16px);
-  background: var(--hero-bg-gradient, linear-gradient(135deg, var(--color-navy-900, #00204E) 0%, var(--color-navy-800, #05396B) 50%, var(--color-blue-600, #02579A) 100%));
-  padding: var(--space-28, 28px) var(--space-32, 32px);
+  min-height: var(--size-hero-min-height);
+  border-radius: var(--radius-xl);
+  background: var(--hero-bg-gradient);
+  padding: var(--space-28) var(--space-32);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 32, 78, 0.08));
+  box-shadow: var(--shadow-md);
 }
 
 /* Subtle Geometric Pattern Overlay (SVG, 6% opacity, matching login left panel) */
@@ -55,44 +55,44 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  gap: var(--space-16, 16px);
+  gap: var(--space-16);
 }
 
 .rexa-home-page .rx-hero-text {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6, 6px);
+  gap: var(--space-6);
 }
 
 .rexa-home-page .rx-hero-title {
-  font-size: var(--font-size-28, 28px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-inverse, #FFFFFF);
+  font-size: var(--font-size-28);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-inverse);
   margin: 0;
-  line-height: var(--line-height-tight, 1.25);
+  line-height: var(--line-height-tight);
   letter-spacing: -0.01em;
 }
 
 .rexa-home-page .rx-hero-subtitle {
-  font-size: var(--font-size-16, 16px);
-  font-weight: var(--font-weight-regular, 400);
-  color: var(--color-blue-100, #DCE8F1);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-blue-100);
   margin: 0;
-  line-height: var(--line-height-normal, 1.4);
+  line-height: var(--line-height-normal);
 }
 
 .rexa-home-page .rx-hero-status-pill {
   display: inline-flex;
   align-items: center;
   align-self: center;
-  gap: var(--space-8, 8px);
-  padding: var(--space-6, 6px) var(--space-14, 14px);
-  border-radius: var(--radius-full, 9999px);
-  background-color: var(--hero-pill-bg, rgba(255, 255, 255, 0.16));
-  border: 1px solid var(--hero-pill-border, rgba(255, 255, 255, 0.28));
-  color: var(--color-text-inverse, #FFFFFF);
-  font-size: var(--font-size-13, 13px);
-  font-weight: var(--font-weight-medium, 500);
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-14);
+  border-radius: var(--radius-full);
+  background-color: var(--hero-pill-bg);
+  border: 1px solid var(--hero-pill-border);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-medium);
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
@@ -101,21 +101,21 @@
 .rexa-home-page .rx-hero-status-dot {
   width: 8px;
   height: 8px;
-  border-radius: var(--radius-full, 9999px);
+  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 
 .rexa-home-page .rx-hero-status-dot.rx-dot-online {
-  background-color: var(--hero-status-dot-online, #34D399);
-  box-shadow: 0 0 6px var(--hero-status-dot-online, #34D399);
+  background-color: var(--hero-status-dot-online);
+  box-shadow: 0 0 6px var(--hero-status-dot-online);
 }
 
 .rexa-home-page .rx-hero-status-dot.rx-dot-offline {
-  background-color: var(--hero-status-dot-offline, #F87171);
+  background-color: var(--hero-status-dot-offline);
 }
 
 .rexa-home-page .rx-hero-status-text {
-  color: var(--color-text-inverse, #FFFFFF);
+  color: var(--color-text-inverse);
   line-height: 1;
 }
 
@@ -131,7 +131,7 @@
 .rexa-home-page .rx-category-chips {
   display: flex;
   align-items: center;
-  gap: var(--space-8, 8px);
+  gap: var(--space-8);
   flex-wrap: wrap;
   width: 100%;
 }
@@ -139,42 +139,42 @@
 .rexa-home-page .rx-chip-btn {
   height: 36px;
   min-height: 36px;
-  padding: 0 var(--space-14, 14px);
-  border-radius: var(--radius-full, 9999px);
-  border: 1px solid var(--color-border, #D9E2EC);
-  background-color: var(--color-surface, #FFFFFF);
-  color: var(--color-text-secondary, #4A5F77);
-  font-size: var(--font-size-14, 14px);
-  font-weight: var(--font-weight-medium, 500);
+  padding: 0 var(--space-14);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-8, 8px);
+  gap: var(--space-8);
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
-  transition: background-color var(--transition-fast, 150ms ease),
-              border-color var(--transition-fast, 150ms ease),
-              color var(--transition-fast, 150ms ease);
+  transition: background-color var(--transition-fast),
+              border-color var(--transition-fast),
+              color var(--transition-fast);
 }
 
 .rexa-home-page .rx-chip-btn:hover {
-  background-color: var(--color-blue-50, #EEF4F9);
-  border-color: var(--color-border-hover, #B3CDE0);
-  color: var(--color-navy-900, #00204E);
+  background-color: var(--color-blue-50);
+  border-color: var(--color-border-hover);
+  color: var(--color-navy-900);
 }
 
 .rexa-home-page .rx-chip-btn:focus-visible {
-  outline: 2px solid var(--color-blue-600, #02579A);
+  outline: 2px solid var(--color-blue-600);
   outline-offset: 2px;
 }
 
 .rexa-home-page .rx-chip-btn.rx-chip-active {
-  background-color: var(--color-blue-100, #DCE8F1);
-  border-color: var(--color-blue-600, #02579A);
-  color: var(--color-navy-900, #00204E);
-  font-weight: var(--font-weight-semibold, 600);
+  background-color: var(--color-blue-100);
+  border-color: var(--color-blue-600);
+  color: var(--color-navy-900);
+  font-weight: var(--font-weight-semibold);
 }
 
 .rexa-home-page .rx-chip-label {
@@ -186,24 +186,24 @@
   align-items: center;
   justify-content: center;
   padding: 1px 7px;
-  border-radius: var(--radius-full, 9999px);
-  background-color: var(--color-blue-50, #EEF4F9);
-  color: var(--color-text-muted, #7A8CA3);
-  font-size: var(--font-size-12, 12px);
-  font-weight: var(--font-weight-semibold, 600);
+  border-radius: var(--radius-full);
+  background-color: var(--color-blue-50);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
   line-height: 1.3;
-  transition: background-color var(--transition-fast, 150ms ease),
-              color var(--transition-fast, 150ms ease);
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast);
 }
 
 .rexa-home-page .rx-chip-btn:hover .rx-chip-count {
-  background-color: var(--color-surface, #FFFFFF);
-  color: var(--color-navy-900, #00204E);
+  background-color: var(--color-surface);
+  color: var(--color-navy-900);
 }
 
 .rexa-home-page .rx-chip-btn.rx-chip-active .rx-chip-count {
-  background-color: var(--color-surface, #FFFFFF);
-  color: var(--color-blue-700, #034375);
+  background-color: var(--color-surface);
+  color: var(--color-blue-700);
 }
 
 .rexa-home-page .rx-sr-only {
@@ -225,42 +225,42 @@
 .rexa-home-page .rx-home-sections {
   display: flex;
   flex-direction: column;
-  gap: var(--space-28, 28px);
+  gap: var(--space-28);
   width: 100%;
 }
 
 .rexa-home-page .rx-modules-section:last-child {
-  padding-bottom: var(--space-32, 32px);
+  padding-bottom: var(--space-32);
 }
 
 .rexa-home-page .rx-modules-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-12, 12px);
+  gap: var(--space-12);
   width: 100%;
 }
 
 .rexa-home-page .rx-home-section-title {
-  font-size: var(--font-size-16, 16px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-navy-900, #00204E);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy-900);
   margin: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-6, 6px);
-  line-height: var(--line-height-tight, 1.25);
+  gap: var(--space-6);
+  line-height: var(--line-height-tight);
 }
 
 .rexa-home-page .rx-home-section-count {
-  color: var(--color-text-muted, #7A8CA3);
-  font-weight: var(--font-weight-medium, 500);
-  font-size: var(--font-size-14, 14px);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-14);
 }
 
 .rexa-home-page .rx-modules-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-20, 20px);
+  gap: var(--space-20);
 }
 
 /* ----------------------------------------------------------------------------
@@ -270,33 +270,33 @@
    Hover: lift 2px, stronger blue-tint shadow, tile darkens to navy-800.
    ---------------------------------------------------------------------------- */
 .rexa-home-page .rx-module-card.rx-card-available {
-  background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid var(--color-border, #D9E2EC);
-  border-top: 3px solid var(--color-blue-600, #02579A);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--space-20, 20px);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--color-blue-600);
+  border-radius: var(--radius-lg);
+  padding: var(--space-20);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   min-height: 190px;
-  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 32, 78, 0.05));
+  box-shadow: var(--shadow-sm);
   box-sizing: border-box;
   cursor: pointer;
   text-align: left;
-  transition: box-shadow var(--transition-fast, 150ms ease),
-              transform var(--transition-fast, 150ms ease),
-              border-color var(--transition-fast, 150ms ease);
+  transition: box-shadow var(--transition-fast),
+              transform var(--transition-fast),
+              border-color var(--transition-fast);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available:hover {
-  box-shadow: var(--shadow-card-hover, 0 8px 24px rgba(2, 87, 154, 0.12));
+  box-shadow: var(--shadow-card-hover);
   transform: translateY(-2px);
-  border-color: var(--color-border-hover, #B3CDE0);
-  border-top-color: var(--color-blue-600, #02579A);
+  border-color: var(--color-border-hover);
+  border-top-color: var(--color-blue-600);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available:focus-visible {
-  outline: 2px solid var(--color-blue-600, #02579A);
+  outline: 2px solid var(--color-blue-600);
   outline-offset: 2px;
 }
 
@@ -309,79 +309,79 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-12, 12px);
+  margin-bottom: var(--space-12);
 }
 
 /* 48px tile, radius 12, filled with blue-600, white icon */
 .rexa-home-page .rx-module-card.rx-card-available .rx-icon-badge {
   width: 48px;
   height: 48px;
-  border-radius: var(--radius-lg, 12px);
-  background-color: var(--color-blue-600, #02579A);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-blue-600);
   border: none;
-  color: var(--color-text-inverse, #FFFFFF);
+  color: var(--color-text-inverse);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background-color var(--transition-fast, 150ms ease);
+  transition: background-color var(--transition-fast);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available .rx-icon-badge svg {
-  stroke: var(--color-text-inverse, #FFFFFF);
-  color: var(--color-text-inverse, #FFFFFF);
+  stroke: var(--color-text-inverse);
+  color: var(--color-text-inverse);
 }
 
 /* Hover: icon tile darkens to navy-800 */
 .rexa-home-page .rx-module-card.rx-card-available:hover .rx-icon-badge,
 .rexa-home-page .rx-module-card.rx-card-available:focus-visible .rx-icon-badge,
 .rexa-home-page .rx-module-card.rx-card-available:active .rx-icon-badge {
-  background-color: var(--color-navy-800, #05396B);
+  background-color: var(--color-navy-800);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available .rx-module-group-tag {
-  font-size: var(--font-size-12, 12px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-blue-600, #02579A);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue-600);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: var(--space-4, 4px);
+  margin-bottom: var(--space-4);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available .rx-module-title {
-  font-size: var(--font-size-18, 18px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-navy-900, #00204E);
-  margin: 0 0 var(--space-6, 6px) 0;
-  line-height: var(--line-height-tight, 1.25);
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-navy-900);
+  margin: 0 0 var(--space-6) 0;
+  line-height: var(--line-height-tight);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available .rx-module-desc {
-  font-size: var(--font-size-13, 13px);
-  color: var(--color-text-secondary, #4A5F77);
-  line-height: var(--line-height-normal, 1.4);
+  font-size: var(--font-size-13);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
   margin: 0;
 }
 
 .rexa-home-page .rx-card-bottom-row {
-  margin-top: var(--space-16, 16px);
+  margin-top: var(--space-16);
   display: flex;
   align-items: center;
   justify-content: flex-start;
 }
 
 .rexa-home-page .rx-open-link {
-  font-size: var(--font-size-13, 13px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-blue-600, #02579A);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue-600);
   display: inline-flex;
   align-items: center;
-  gap: var(--space-4, 4px);
-  transition: gap var(--transition-fast, 150ms ease);
+  gap: var(--space-4);
+  transition: gap var(--transition-fast);
 }
 
 .rexa-home-page .rx-module-card.rx-card-available:hover .rx-open-link {
-  gap: var(--space-8, 8px);
+  gap: var(--space-8);
 }
 
 /* ----------------------------------------------------------------------------
@@ -392,10 +392,10 @@
    ---------------------------------------------------------------------------- */
 .rexa-home-page .rx-module-card.rx-card-coming-soon {
   cursor: default;
-  background-color: var(--color-coming-soon-bg, rgba(238, 244, 249, 0.4));
-  border: 1px dashed var(--color-border, #D9E2EC);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--space-16, 16px) var(--space-20, 20px);
+  background-color: var(--color-coming-soon-bg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-16) var(--space-20);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -411,16 +411,16 @@
 .rexa-home-page .rx-module-card.rx-card-coming-soon:hover {
   box-shadow: none;
   transform: none;
-  border-color: var(--color-border, #D9E2EC);
+  border-color: var(--color-border);
 }
 
 .rexa-home-page .rx-module-card.rx-card-coming-soon .rx-icon-badge {
   width: 38px;
   height: 38px;
-  border-radius: var(--radius-md, 8px);
-  background-color: var(--color-blue-50, #EEF4F9);
-  border: 1px solid var(--color-blue-100, #DCE8F1);
-  color: var(--color-text-muted, #7A8CA3);
+  border-radius: var(--radius-md);
+  background-color: var(--color-blue-50);
+  border: 1px solid var(--color-blue-100);
+  color: var(--color-text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -428,42 +428,42 @@
 }
 
 .rexa-home-page .rx-module-card.rx-card-coming-soon .rx-icon-badge svg {
-  stroke: var(--color-text-muted, #7A8CA3);
-  color: var(--color-text-muted, #7A8CA3);
+  stroke: var(--color-text-muted);
+  color: var(--color-text-muted);
 }
 
 .rexa-home-page .rx-coming-soon-badge {
-  font-size: var(--font-size-12, 12px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-muted, #7A8CA3);
-  background-color: var(--color-surface, #FFFFFF);
-  border: 1px solid var(--color-border, #D9E2EC);
-  border-radius: var(--radius-full, 9999px);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
   padding: 2px 8px;
-  line-height: var(--line-height-normal, 1.4);
+  line-height: var(--line-height-normal);
 }
 
 .rexa-home-page .rx-module-card.rx-card-coming-soon .rx-module-group-tag {
-  font-size: var(--font-size-12, 12px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-muted, #7A8CA3);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: var(--space-4, 4px);
+  margin-bottom: var(--space-4);
 }
 
 .rexa-home-page .rx-module-card.rx-card-coming-soon .rx-module-title {
-  font-size: var(--font-size-16, 16px);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text-secondary, #4A5F77);
-  margin: 0 0 var(--space-4, 4px) 0;
-  line-height: var(--line-height-tight, 1.25);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4) 0;
+  line-height: var(--line-height-tight);
 }
 
 .rexa-home-page .rx-module-card.rx-card-coming-soon .rx-module-desc {
-  font-size: var(--font-size-13, 13px);
-  color: var(--color-text-muted, #7A8CA3);
-  line-height: var(--line-height-normal, 1.4);
+  font-size: var(--font-size-13);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-normal);
   margin: 0;
 }
 
@@ -475,41 +475,41 @@
    ---------------------------------------------------------------------------- */
 @media (min-width: 641px) and (max-width: 1024px) {
   .rexa-home-page {
-    padding: var(--space-16, 16px);
+    padding: var(--space-16);
   }
 
   .rexa-home-page .rx-modules-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: var(--space-16, 16px);
+    gap: var(--space-16);
   }
 }
 
 @media (max-width: 640px) {
   .rexa-home-page {
-    padding: var(--space-12, 12px);
+    padding: var(--space-12);
   }
 
   .rexa-home-page .rx-home-hero {
-    padding: var(--space-20, 20px) var(--space-16, 16px);
+    padding: var(--space-20) var(--space-16);
   }
 
   .rexa-home-page .rx-hero-content {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: var(--space-12, 12px);
+    gap: var(--space-12);
   }
 
   .rexa-home-page .rx-hero-title {
-    font-size: var(--font-size-22, 22px);
+    font-size: var(--font-size-20);
   }
 
   .rexa-home-page .rx-hero-subtitle {
-    font-size: var(--font-size-14, 14px);
+    font-size: var(--font-size-14);
   }
 
   .rexa-home-page .rx-modules-grid {
     grid-template-columns: 1fr !important;
-    gap: var(--space-16, 16px);
+    gap: var(--space-16);
   }
 
   .rexa-home-page .rx-category-chips {

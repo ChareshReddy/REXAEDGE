@@ -114,10 +114,10 @@ const SearchInput = React.forwardRef(function SearchInput(
           className
         )}
         style={{
-          paddingLeft: "var(--input-icon-pad, 40px)",
-          ...(isPopup ? { height: "var(--size-popup-input-height, 34px)" } : {}),
-          ...(isTable ? { height: "var(--size-table-input-height, 32px)" } : {}),
-          ...(showClear ? { paddingRight: "var(--input-clear-pad, 36px)" } : {}),
+          paddingLeft: "var(--input-icon-pad)",
+          ...(isPopup ? { height: "var(--size-popup-input-height)" } : {}),
+          ...(isTable ? { height: "var(--size-table-input-height)" } : {}),
+          ...(showClear ? { paddingRight: "var(--input-clear-pad)" } : {}),
           ...style
         }}
         {...props}

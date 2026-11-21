@@ -173,7 +173,7 @@ export default function PasswordModal({
       title={modalTitle}
       subtitle={modalSubtitle}
       icon={Key}
-      iconColor="var(--color-blue-600, #02579A)"
+      iconColor="var(--color-blue-600)"
       isLoading={isLoading}
       maxWidth={500}
       width="100%"
@@ -262,16 +262,16 @@ export default function PasswordModal({
         <div
           className="sap-password-rules-box"
           style={{
-            background: 'var(--color-blue-50, #EEF4F9)',
-            border: '1px solid var(--color-blue-200, #B3CDE0)',
-            borderRadius: 'var(--radius-md, 8px)',
+            background: 'var(--color-blue-50)',
+            border: '1px solid var(--color-blue-200)',
+            borderRadius: 'var(--radius-md)',
             padding: '12px 14px'
           }}
         >
           <div
             style={{
               fontWeight: 600,
-              color: 'var(--color-navy-900, #00204E)',
+              color: 'var(--color-navy-900)',
               fontSize: 12,
               marginBottom: 8
             }}
@@ -290,8 +290,8 @@ export default function PasswordModal({
                     alignItems: 'center',
                     gap: 8,
                     fontSize: 12,
-                    color: isMet ? 'var(--color-navy-900, #00204E)' : 'var(--color-text-muted, #7A8CA3)',
-                    transition: 'color var(--transition-fast, 150ms ease)'
+                    color: isMet ? 'var(--color-navy-900)' : 'var(--color-text-muted)',
+                    transition: 'color var(--transition-fast)'
                   }}
                 >
                   <div
@@ -299,24 +299,24 @@ export default function PasswordModal({
                       width: 16,
                       height: 16,
                       borderRadius: '50%',
-                      background: isMet ? 'rgba(16, 126, 62, 0.15)' : 'var(--color-blue-100, #D9E2EC)',
-                      border: isMet ? '1px solid var(--color-success, #107e3e)' : '1px solid var(--color-border, #CBD5E1)',
+                      background: isMet ? 'rgba(16, 126, 62, 0.15)' : 'var(--color-blue-100)',
+                      border: isMet ? '1px solid var(--color-success)' : '1px solid var(--color-border)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
-                      transition: 'all var(--transition-fast, 150ms ease)'
+                      transition: 'all var(--transition-fast)'
                     }}
                   >
                     {isMet ? (
-                      <Check size={10} strokeWidth={3} color="var(--color-success, #107e3e)" />
+                      <Check size={10} strokeWidth={3} color="var(--color-success)" />
                     ) : (
                       <span
                         style={{
                           width: 4,
                           height: 4,
                           borderRadius: '50%',
-                          background: 'var(--color-text-muted, #7A8CA3)'
+                          background: 'var(--color-text-muted)'
                         }}
                       />
                     )}
@@ -334,7 +334,7 @@ export default function PasswordModal({
                   alignItems: 'center',
                   gap: 8,
                   fontSize: 12,
-                  color: isDifferentFromCurrent ? 'var(--color-navy-900, #00204E)' : 'var(--color-danger, #B00020)'
+                  color: isDifferentFromCurrent ? 'var(--color-navy-900)' : 'var(--color-danger)'
                 }}
               >
                 <div
@@ -343,7 +343,7 @@ export default function PasswordModal({
                     height: 16,
                     borderRadius: '50%',
                     background: isDifferentFromCurrent ? 'rgba(16, 126, 62, 0.15)' : 'rgba(176, 0, 32, 0.15)',
-                    border: isDifferentFromCurrent ? '1px solid var(--color-success, #107e3e)' : '1px solid var(--color-danger, #B00020)',
+                    border: isDifferentFromCurrent ? '1px solid var(--color-success)' : '1px solid var(--color-danger)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -351,9 +351,9 @@ export default function PasswordModal({
                   }}
                 >
                   {isDifferentFromCurrent ? (
-                    <Check size={10} strokeWidth={3} color="var(--color-success, #107e3e)" />
+                    <Check size={10} strokeWidth={3} color="var(--color-success)" />
                   ) : (
-                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-danger, #B00020)' }}>!</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-danger)' }}>!</span>
                   )}
                 </div>
                 <span style={{ fontWeight: isDifferentFromCurrent ? 500 : 400 }}>New password differs from current</span>

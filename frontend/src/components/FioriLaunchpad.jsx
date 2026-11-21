@@ -289,9 +289,9 @@ export default function FioriLaunchpad({
                     style={{
                       height: 154,
                       opacity: 0.6,
-                      background: 'var(--sap-card-bg, #fff)',
-                      border: '1px solid var(--sap-border, #d9d9d9)',
-                      borderRadius: 'var(--radius-xl, 12px)',
+                      background: 'var(--sap-card-bg)',
+                      border: '1px solid var(--sap-border)',
+                      borderRadius: 'var(--radius-xl)',
                       padding: 18,
                       display: 'flex',
                       flexDirection: 'column',

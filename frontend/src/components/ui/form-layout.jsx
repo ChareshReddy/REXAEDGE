@@ -48,7 +48,7 @@ export function FormSection({
           className={cn(
             'rx-form-section-header flex flex-row items-center justify-between gap-2',
             isTinted
-              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] border-l-4 border-l-[var(--card-header-accent,#0B2D57)] w-full'
+              ? 'rx-form-section-header-tinted !m-0 px-4 h-12 min-h-[48px] max-h-[48px] bg-[var(--card-header-bg)] border-b border-[var(--card-header-border)] border-l-4 border-l-[var(--card-header-accent)] w-full'
               : 'pb-3 mb-4 border-b border-[var(--color-border)]'
           )}
         >
@@ -56,7 +56,7 @@ export function FormSection({
             {title && (
               <h3
                 className={cn(
-                  'rx-form-section-title text-[16px] font-semibold text-[var(--card-header-text,#0B2D57)] leading-none shrink-0',
+                  'rx-form-section-title text-[16px] font-semibold text-[var(--card-header-text)] leading-none shrink-0',
                   !isTinted && 'text-base'
                 )}
               >
@@ -64,7 +64,7 @@ export function FormSection({
               </h3>
             )}
             {hasDataDesc && (
-              <span className="rx-card-header-data text-[13px] text-[var(--card-header-text,#0B2D57)] font-normal truncate">
+              <span className="rx-card-header-data text-[13px] text-[var(--card-header-text)] font-normal truncate">
                 {description}
               </span>
             )}

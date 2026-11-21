@@ -1,0 +1,246 @@
+/* ============================================================================
+   POPUPS — loaded LAST (see main.jsx) so these shared popup rules win over the
+   older per-popup overrides in index.css / sap-theme.css.
+   ============================================================================ */
+
+/* ============================================================================
+   POPUP FAMILY ALIGNMENT
+   One visual language for every popup: the shared Modal (.rx-modal-* /
+   .sap-modal-*), F4 value-help dialogs (.sap-f4-*) and the restrict-value-range
+   dialog.
+   ============================================================================ */
+.sap-modal-backdrop,
+.sap-f4-portal-overlay {
+  background-color: var(--color-overlay) !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+}
+
+.sap-modal-card,
+.sap-f4-modal-dialog,
+.sap-restrict-modal-dialog,
+.sap-f4-dialog {
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--modal-border) !important;
+  border-radius: var(--modal-radius) !important;
+  box-shadow: var(--shadow-modal) !important;
+}
+
+.sap-modal-card.rx-modal-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  outline: none;
+}
+
+/* Headers */
+.sap-f4-header {
+  height: var(--modal-header-height) !important;
+  min-height: var(--modal-header-height) !important;
+  max-height: var(--modal-header-height) !important;
+  padding: 0 var(--space-16) 0 var(--space-24) !important;
+  background-color: var(--modal-header-bg) !important;
+  border-bottom: 1px solid var(--modal-header-border) !important;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.rx-modal-header.sap-modal-header {
+  padding: 0 var(--space-16) 0 var(--space-24);
+}
+
+.sap-f4-header h3,
+.rx-modal-header .rx-modal-title {
+  font-family: var(--font-sans) !important;
+  font-size: var(--modal-title-size) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  color: var(--modal-title-color) !important;
+  line-height: var(--line-height-tight) !important;
+}
+
+/* Close (X) button — identical in every popup */
+.rx-modal-close,
+.sap-modal-close-btn,
+.sap-f4-header-close {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: var(--modal-close-size) !important;
+  height: var(--modal-close-size) !important;
+  min-width: var(--modal-close-size) !important;
+  min-height: var(--modal-close-size) !important;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--radius-md) !important;
+  background-color: transparent !important;
+  color: var(--sap-popup-header-close-color) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.rx-modal-close:hover:not(:disabled),
+.sap-modal-close-btn:hover:not(:disabled),
+.sap-f4-header-close:hover:not(:disabled) {
+  background-color: var(--sap-popup-header-close-hover-bg) !important;
+  color: var(--color-navy-900) !important;
+}
+
+.rx-modal-close:active:not(:disabled),
+.sap-modal-close-btn:active:not(:disabled),
+.sap-f4-header-close:active:not(:disabled) {
+  background-color: var(--sap-popup-header-close-active-bg) !important;
+}
+
+.rx-modal-close:focus-visible,
+.sap-modal-close-btn:focus-visible,
+.sap-f4-header-close:focus-visible {
+  outline: var(--focus-ring) !important;
+  outline-offset: 1px !important;
+}
+
+.rx-modal-close:disabled,
+.sap-modal-close-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Footers */
+.rx-modal-footer,
+.sap-modal-footer,
+.sap-f4-footer {
+  background-color: var(--modal-footer-bg) !important;
+  border-top: 1px solid var(--modal-footer-border) !important;
+}
+
+@media (min-width: 769px) {
+  .rx-modal-footer.sap-modal-footer {
+    padding: var(--modal-footer-padding) !important;
+  }
+
+  .sap-f4-footer {
+    padding: var(--space-12) var(--space-16) var(--space-12) var(--space-24) !important;
+  }
+}
+
+/* F4 search: secondary action — the footer "Select" is the single primary action */
+.sap-f4-search-row button[type="submit"],
+.sap-f4-search-area button[type="submit"],
+button.sap-f4-search-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--space-6) !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-border-input) !important;
+  color: var(--color-navy-900) !important;
+}
+
+.sap-f4-search-row button[type="submit"] svg,
+.sap-f4-search-area button[type="submit"] svg,
+button.sap-f4-search-btn svg {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.sap-f4-search-row button[type="submit"]:hover:not(:disabled),
+.sap-f4-search-area button[type="submit"]:hover:not(:disabled),
+button.sap-f4-search-btn:hover:not(:disabled) {
+  background-color: var(--color-blue-50) !important;
+  border-color: var(--color-border-hover) !important;
+  color: var(--color-navy-800) !important;
+}
+
+.sap-f4-search-row button[type="submit"]:active:not(:disabled),
+.sap-f4-search-area button[type="submit"]:active:not(:disabled),
+button.sap-f4-search-btn:active:not(:disabled) {
+  background-color: var(--color-blue-100) !important;
+}
+
+.sap-f4-search-row button[type="submit"]:focus-visible,
+.sap-f4-search-area button[type="submit"]:focus-visible,
+button.sap-f4-search-btn:focus-visible {
+  outline: var(--focus-ring) !important;
+  outline-offset: var(--focus-ring-offset) !important;
+}
+
+/* Route chunk loading (React.lazy fallback in App.jsx) */
+.rx-route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: 240px;
+  padding: var(--space-48) var(--page-gutter);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-14);
+}
+
+/* Unstyled native fields placed directly in a popup body (e.g. Add SAP Server form)
+   get the same focus treatment as .rx-input instead of the browser default outline. */
+.rx-modal-body input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus-visible,
+.rx-modal-body select:focus-visible,
+.rx-modal-body textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-blue-600) !important;
+  box-shadow: var(--focus-ring-soft);
+}
+
+.rx-modal-body [aria-invalid="true"]:focus-visible {
+  border-color: var(--color-danger) !important;
+}
+
+/* F4 value-help tables use the same header band as every page table
+   (table-header tokens, 40px, 12px padding = aligned with the 12px cell padding). */
+.sap-f4-table thead th {
+  background-color: var(--table-header-bg) !important;
+  color: var(--table-header-text) !important;
+  height: var(--size-table-header-height) !important;
+  padding: 0 var(--space-12) !important;
+  border-bottom: 1px solid var(--table-header-border) !important;
+  box-shadow: 0 1px 0 var(--table-header-border) !important;
+}
+
+/* Add / Edit SAP Server footer: Test on the left, Cancel + Save on the right, hint below */
+.rx-server-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-12);
+  width: 100%;
+}
+
+.rx-server-modal-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.rx-server-modal-hint {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+  font-size: var(--font-size-12);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .rx-server-modal-footer-actions {
+    width: 100%;
+  }
+
+  .rx-server-modal-footer-actions > .rx-btn {
+    flex: 1;
+  }
+}
+
+/* Dialog footers: actions are always right-aligned (Cancel, then the primary action). */
+.rx-modal-footer.sap-modal-footer {
+  justify-content: flex-end !important;
+}

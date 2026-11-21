@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   Home,
   Layers,
@@ -28,23 +28,11 @@ import {
   Info
 } from 'lucide-react';
 import Login from './components/Login';
-import ChatBox from './components/ChatBox';
 import FioriLaunchpad from './components/FioriLaunchpad';
-import CopyBomView from './components/CopyBomView';
-import DeleteBomView from './components/DeleteBomView';
-import BomExplorerView from './components/BomExplorerView';
-import BulkBomView from './components/BulkBomView';
-import ValidateBomView from './components/ValidateBomView';
 import { ToastProvider, toast } from './context/ToastContext';
-import CreateBomView from './components/CreateBomView';
-import BulkCreateBomView from './components/BulkCreateBomView';
-import ChangeBomView from './components/ChangeBomView';
-import DesignSystemShowcase from './components/dev/DesignSystemShowcase';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import AddServerModal from './components/AddServerModal';
-import MyServersView from './components/MyServersView';
 
-import AdminView from './components/AdminView';
 import Sidebar from './components/layout/Sidebar';
 import CommandPalette from './components/layout/CommandPalette';
 import Modal from './components/Modal';
@@ -88,6 +76,19 @@ import {
 } from './config/routes';
 import AccessDeniedView from './components/AccessDeniedView';
 import NotFoundView from './components/NotFoundView';
+
+// Route-level views are code-split: each loads on first navigation.
+const CopyBomView = lazy(() => import('./components/CopyBomView'));
+const DeleteBomView = lazy(() => import('./components/DeleteBomView'));
+const BomExplorerView = lazy(() => import('./components/BomExplorerView'));
+const BulkBomView = lazy(() => import('./components/BulkBomView'));
+const ValidateBomView = lazy(() => import('./components/ValidateBomView'));
+const CreateBomView = lazy(() => import('./components/CreateBomView'));
+const BulkCreateBomView = lazy(() => import('./components/BulkCreateBomView'));
+const ChangeBomView = lazy(() => import('./components/ChangeBomView'));
+const DesignSystemShowcase = lazy(() => import('./components/dev/DesignSystemShowcase'));
+const MyServersView = lazy(() => import('./components/MyServersView'));
+const AdminView = lazy(() => import('./components/AdminView'));
 
 function AppContent({
   initialUser = null,
@@ -1083,7 +1084,7 @@ function AppContent({
     <ToastProvider>
       <div className="sap-app-root">
       {/* SAP Shell Top Header */}
-      <header className="sap-shell-header sap-toolbar" style={{ height: 'var(--size-topbar-height, 64px)', minHeight: 'var(--size-topbar-height, 64px)', maxHeight: 'var(--size-topbar-height, 64px)' }}>
+      <header className="sap-shell-header sap-toolbar" style={{ height: 'var(--size-topbar-height)', minHeight: 'var(--size-topbar-height)', maxHeight: 'var(--size-topbar-height)' }}>
         <div className="sap-shell-header-left">
           <button
             type="button"
@@ -1226,12 +1227,12 @@ function AppContent({
                           fontSize: 11,
                           fontWeight: 600,
                           padding: '2px 6px',
-                          borderRadius: 'var(--radius-badge, 4px)',
+                          borderRadius: 'var(--radius-badge)',
                           lineHeight: '1.2',
                           letterSpacing: '0.02em',
-                          backgroundColor: isCurrentProd ? 'var(--color-danger, #B42318)' : 'var(--color-blue-100, #DCE8F1)',
-                          color: isCurrentProd ? '#FFFFFF' : 'var(--color-navy-900, #00204E)',
-                          border: isCurrentProd ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-blue-300, #98B5CE)'
+                          backgroundColor: isCurrentProd ? 'var(--color-danger)' : 'var(--color-blue-100)',
+                          color: isCurrentProd ? 'var(--color-surface)' : 'var(--color-navy-900)',
+                          border: isCurrentProd ? '1px solid var(--color-danger)' : '1px solid var(--color-blue-200)'
                         }}
                       >
                         {formatEnvironment(currentServerType)}
@@ -1269,12 +1270,12 @@ function AppContent({
                           fontSize: 11,
                           fontWeight: 600,
                           padding: '2px 6px',
-                          borderRadius: 'var(--radius-badge, 4px)',
+                          borderRadius: 'var(--radius-badge)',
                           lineHeight: '1.2',
                           letterSpacing: '0.02em',
-                          backgroundColor: isCurrentProd ? 'var(--color-danger, #B42318)' : 'var(--color-blue-100, #DCE8F1)',
-                          color: isCurrentProd ? '#FFFFFF' : 'var(--color-navy-900, #00204E)',
-                          border: isCurrentProd ? '1px solid var(--color-danger, #B42318)' : '1px solid var(--color-blue-300, #98B5CE)'
+                          backgroundColor: isCurrentProd ? 'var(--color-danger)' : 'var(--color-blue-100)',
+                          color: isCurrentProd ? 'var(--color-surface)' : 'var(--color-navy-900)',
+                          border: isCurrentProd ? '1px solid var(--color-danger)' : '1px solid var(--color-blue-200)'
                         }}
                       >
                         {formatEnvironment(currentServerType)}
@@ -1286,7 +1287,7 @@ function AppContent({
 
               if (isLoadingServers) {
                 return (
-                  <span style={{ fontSize: 12, color: 'var(--color-text-muted, #64748B)' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                     Loading servers...
                   </span>
                 );
@@ -1295,7 +1296,7 @@ function AppContent({
               if (serverLoadError) {
                 return (
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 12, color: 'var(--color-danger, #B42318)' }} title={serverLoadError}>
+                    <span style={{ fontSize: 12, color: 'var(--color-danger)' }} title={serverLoadError}>
                       Failed to load servers
                     </span>
                     <button
@@ -1305,10 +1306,10 @@ function AppContent({
                         padding: '2px 8px',
                         fontSize: 11,
                         background: 'transparent',
-                        border: '1px solid var(--color-border, #E2E8F0)',
-                        borderRadius: 'var(--radius-sm, 4px)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-sm)',
                         cursor: 'pointer',
-                        color: 'var(--color-text, #0F172A)'
+                        color: 'var(--color-text)'
                       }}
                     >
                       Retry
@@ -1329,10 +1330,10 @@ function AppContent({
                     padding: '4px 10px',
                     fontSize: 12,
                     fontWeight: 600,
-                    backgroundColor: 'var(--color-navy-900, #00204E)',
-                    color: '#FFFFFF',
+                    backgroundColor: 'var(--color-navy-900)',
+                    color: 'var(--color-text-inverse)',
                     border: 'none',
-                    borderRadius: 'var(--radius-md, 6px)',
+                    borderRadius: 'var(--radius-md)',
                     cursor: 'pointer'
                   }}
                 >
@@ -1388,8 +1389,8 @@ function AppContent({
 
                 {/* Multi-Session Capability Preserved */}
                 {sapSession.sessions && sapSession.sessions.length > 0 && (
-                  <div style={{ padding: '8px 14px', background: '#ffffff', borderBottom: '1px solid var(--sap-border, var(--color-border, #D9E2EC))' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted, #475569)', marginBottom: 6 }}>
+                  <div style={{ padding: '8px 14px', background: 'var(--color-surface)', borderBottom: '1px solid var(--sap-border)' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sap-text-muted)', marginBottom: 6 }}>
                       Active SAP Sessions ({sapSession.sessions.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1408,19 +1409,19 @@ function AppContent({
                               padding: '5px 8px',
                               fontSize: '12px',
                               borderRadius: '4px',
-                              border: isSelected ? '1px solid var(--sap-primary, var(--color-blue-600, #02579A))' : '1px solid var(--sap-border, var(--color-border, #D9E2EC))',
-                              background: isSelected ? 'var(--color-blue-50, #EEF4F9)' : '#ffffff',
+                              border: isSelected ? '1px solid var(--sap-primary)' : '1px solid var(--sap-border)',
+                              background: isSelected ? 'var(--color-blue-50)' : 'var(--color-surface)',
                               cursor: 'pointer',
-                              color: isSelected ? 'var(--sap-primary, var(--color-blue-600, #02579A))' : 'var(--sap-text-body, #334155)',
+                              color: isSelected ? 'var(--sap-primary)' : 'var(--sap-text-body)',
                               fontWeight: isSelected ? 600 : 400,
                               textAlign: 'left'
                             }}
                           >
                             <span>{sess.user} ({sess.system}/{sess.client})</span>
                             {isSelected ? (
-                              <span style={{ fontSize: '10px', color: '#16a34a', fontWeight: 700 }}>Active</span>
+                              <span style={{ fontSize: '10px', color: 'var(--color-success)', fontWeight: 700 }}>Active</span>
                             ) : (
-                              <span style={{ fontSize: '10px', color: '#64748b' }}>Select</span>
+                              <span style={{ fontSize: '10px', color: 'var(--color-text-secondary)' }}>Select</span>
                             )}
                           </button>
                         );
@@ -1448,7 +1449,7 @@ function AppContent({
                       }}
                       role="menuitem"
                     >
-                      <ShieldCheck size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
+                      <ShieldCheck size={14} color="var(--color-blue-600)" className="sap-user-menu-icon" />
                       <span className="sap-user-menu-label">{activeTab === 'admin' ? 'Exit Administration' : 'Enterprise Administration'}</span>
                     </button>
                   )}
@@ -1462,7 +1463,7 @@ function AppContent({
                     }}
                     role="menuitem"
                   >
-                    <Server size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
+                    <Server size={14} color="var(--color-blue-600)" className="sap-user-menu-icon" />
                     <span className="sap-user-menu-label">My SAP Servers</span>
                   </button>
 
@@ -1475,7 +1476,7 @@ function AppContent({
                     }}
                     role="menuitem"
                   >
-                    <KeyRound size={14} color="var(--color-blue-600, #02579A)" className="sap-user-menu-icon" />
+                    <KeyRound size={14} color="var(--color-blue-600)" className="sap-user-menu-icon" />
                     <span className="sap-user-menu-label">Change password</span>
                   </button>
 
@@ -1660,6 +1661,7 @@ function AppContent({
         />
         {/* Main SAP Fiori Workspace Layout */}
         <main className="sap-assistant-layout">
+        <Suspense fallback={<div className="rx-route-loading" role="status" aria-live="polite"><span className="rx-spinner" aria-hidden="true" /><span>Loading…</span></div>}>
         {(activeTab === 'home' || (activeTab === 'launchpad' && (!launchpadSubView || launchpadSubView === 'home'))) && (
           <HomePage
             onExploreProducts={() => navigateToView('launchpad', 'bom_operations')}
@@ -1694,7 +1696,7 @@ function AppContent({
 
         {/* Inline Info when a SAP server is not selected on operational pages */}
         {['create_bom', 'bulk_create_bom', 'copy_bom', 'bulk_bom', 'change_bom', 'delete_bom', 'bom_explorer', 'validate_bom'].includes(activeTab) && availableServers.length > 0 && !selectedServer && (
-          <div style={{ maxWidth: 'var(--sap-layout-max-width, 1680px)', margin: '16px auto 0', padding: '0 var(--page-gutter, 32px)', boxSizing: 'border-box', width: '100%' }}>
+          <div style={{ maxWidth: 'var(--sap-layout-max-width)', margin: '16px auto 0', padding: '0 var(--page-gutter)', boxSizing: 'border-box', width: '100%' }}>
             <div
               className="rx-no-server-alert"
               role="alert"
@@ -1703,15 +1705,15 @@ function AppContent({
                 alignItems: 'center',
                 gap: 12,
                 padding: '12px 16px',
-                borderRadius: 'var(--radius-md, 8px)',
-                backgroundColor: 'var(--color-blue-50, #F0F6FA)',
-                border: '1px solid var(--color-blue-200, #BFDBFE)',
-                color: 'var(--color-navy-900, #00204E)',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-blue-50)',
+                border: '1px solid var(--color-blue-200)',
+                color: 'var(--color-navy-900)',
                 fontSize: 13,
                 fontFamily: 'var(--font-sans)'
               }}
             >
-              <Info size={18} style={{ color: 'var(--color-navy-700, #0A4D68)', flexShrink: 0 }} />
+              <Info size={18} style={{ color: 'var(--color-blue-700)', flexShrink: 0 }} />
               <div>
                 <strong style={{ display: 'block', fontWeight: 600 }}>Select a SAP server</strong>
                 <span>No SAP server is selected. Please choose a server from the top bar before performing operations.</span>
@@ -1770,10 +1772,10 @@ function AppContent({
               margin: '48px auto',
               padding: '40px 24px',
               textAlign: 'center',
-              backgroundColor: 'var(--color-surface, #FFFFFF)',
-              borderRadius: 'var(--radius-lg, 8px)',
-              border: '1px solid var(--color-border, #E2E8F0)',
-              boxShadow: 'var(--shadow-card, 0 2px 8px rgba(0, 32, 78, 0.06))'
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
             <div
@@ -1781,8 +1783,8 @@ function AppContent({
                 width: '52px',
                 height: '52px',
                 borderRadius: '50%',
-                backgroundColor: 'var(--color-blue-100, #DCE8F1)',
-                color: 'var(--color-navy-900, #00204E)',
+                backgroundColor: 'var(--color-blue-100)',
+                color: 'var(--color-navy-900)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1791,10 +1793,10 @@ function AppContent({
             >
               <Server size={26} />
             </div>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text, #0F172A)', margin: '0 0 6px 0' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
               Add a SAP server to continue
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', margin: '0 0 20px 0', lineHeight: 1.5 }}>
               You need at least one configured SAP server to view, create, or modify Bills of Materials.
             </p>
             <div style={{ display: 'inline-flex', gap: '10px', justifyContent: 'center' }}>
@@ -1808,10 +1810,10 @@ function AppContent({
                   padding: '9px 18px',
                   fontSize: '13px',
                   fontWeight: 600,
-                  backgroundColor: 'var(--color-navy-900, #00204E)',
-                  color: '#FFFFFF',
+                  backgroundColor: 'var(--color-navy-900)',
+                  color: 'var(--color-text-inverse)',
                   border: 'none',
-                  borderRadius: 'var(--radius-md, 6px)',
+                  borderRadius: 'var(--radius-md)',
                   cursor: 'pointer'
                 }}
               >
@@ -1828,9 +1830,9 @@ function AppContent({
                   fontSize: '13px',
                   fontWeight: 600,
                   backgroundColor: 'transparent',
-                  color: 'var(--color-navy-900, #00204E)',
-                  border: '1px solid var(--color-border, #CBD5E1)',
-                  borderRadius: 'var(--radius-md, 6px)',
+                  color: 'var(--color-navy-900)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
                   cursor: 'pointer'
                 }}
               >
@@ -1849,16 +1851,16 @@ function AppContent({
               margin: '48px auto',
               padding: '32px 24px',
               textAlign: 'center',
-              backgroundColor: 'var(--color-surface, #FFFFFF)',
-              borderRadius: 'var(--radius-lg, 8px)',
-              border: '1px solid var(--color-danger, #B42318)',
-              boxShadow: 'var(--shadow-card, 0 2px 8px rgba(0, 32, 78, 0.06))'
+              backgroundColor: 'var(--color-surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--color-danger)',
+              boxShadow: 'var(--shadow-sm)'
             }}
           >
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-danger, #B42318)', margin: '0 0 8px 0' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-danger)', margin: '0 0 8px 0' }}>
               Failed to load SAP servers
             </h2>
-            <p style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', margin: '0 0 16px 0' }}>
               {serverLoadError}
             </p>
             <button
@@ -1871,10 +1873,10 @@ function AppContent({
                 padding: '8px 16px',
                 fontSize: '13px',
                 fontWeight: 600,
-                backgroundColor: 'var(--color-navy-900, #00204E)',
-                color: '#FFFFFF',
+                backgroundColor: 'var(--color-navy-900)',
+                color: 'var(--color-text-inverse)',
                 border: 'none',
-                borderRadius: 'var(--radius-md, 6px)',
+                borderRadius: 'var(--radius-md)',
                 cursor: 'pointer'
               }}
             >
@@ -1979,6 +1981,7 @@ function AppContent({
             onNavigateHome={() => navigateToView('home')}
           />
         )}
+        </Suspense>
       </main>
       </div>
 
@@ -2003,10 +2006,10 @@ function AppContent({
               gap: 8,
               padding: '10px 12px',
               marginBottom: 16,
-              background: 'var(--sap-warning-bg, #fffbeb)',
-              border: '1px solid var(--sap-warning-border, #fde68a)',
+              background: 'var(--sap-warning-bg)',
+              border: '1px solid var(--sap-warning-border)',
               borderRadius: 'var(--radius-md)',
-              color: 'var(--sap-warning-text, #b45309)',
+              color: 'var(--sap-warning-text)',
               fontSize: 12.5,
               lineHeight: 1.4
             }}

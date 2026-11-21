@@ -29,7 +29,7 @@ const SelectRoot = React.forwardRef(function SelectRoot(
         data-slot="select"
         className={cn(
           "rx-select flex w-full rounded-[var(--radius-md)] border border-input bg-transparent px-3 py-1 text-sm shadow-none transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-          isTable ? "rx-select-table h-[var(--size-table-input-height,32px)]" : "h-[var(--size-form-input-height,36px)]",
+          isTable ? "rx-select-table h-[var(--size-table-input-height)]" : "h-[var(--size-form-input-height)]",
           hasError && "rx-select-error border-destructive focus-visible:ring-destructive/30",
           className
         )}
@@ -63,7 +63,7 @@ function SelectTrigger({
       data-size={size}
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-input bg-transparent px-3 py-2 text-sm shadow-none transition-colors outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-[placeholder]:text-muted-foreground",
-        size === "sm" ? "h-[var(--size-table-input-height,32px)]" : "h-[var(--size-form-input-height,36px)]",
+        size === "sm" ? "h-[var(--size-table-input-height)]" : "h-[var(--size-form-input-height)]",
         className
       )}
       {...props}

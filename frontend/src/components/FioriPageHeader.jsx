@@ -5,8 +5,8 @@ import { Link } from '../context/RouterContext';
  * Shared Fiori Page Header Component
  * Layout (top to bottom):
  * 1. Breadcrumbs on top (13px, muted slate, chevrons, hover orange-700, current navy semi-bold)
- * 2. Title below breadcrumbs (28px bold navy #00204E, 8px gap)
- * 3. Description below title (15px regular slate-600 #475569, 4px gap, max 70ch)
+ * 2. Title below breadcrumbs (28px bold navy var(--color-navy-900), 8px gap)
+ * 3. Description below title (15px regular slate-600 var(--color-text-secondary), 4px gap, max 70ch)
  * 4. Children (tabs, filters, etc. at bottom edge with 16px gap above)
  */
 export default function FioriPageHeader({
@@ -58,7 +58,7 @@ export default function FioriPageHeader({
           style={{
             width: '100%',
             boxSizing: 'border-box',
-            padding: '12px var(--page-gutter, 32px) 8px',
+            padding: '12px var(--page-gutter) 8px',
             backgroundColor: 'transparent'
           }}
         >
@@ -107,7 +107,7 @@ export default function FioriPageHeader({
               <h1 className={`fiori-ph-title ${isProductsPage ? 'fiori-ph-title-products' : ''} rx-welcome-title`} style={{ fontSize: 24, fontWeight: 600 }}>
                 {title}
               </h1>
-              {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle" style={{ fontSize: 14, color: 'var(--page-header-subtext, #4A5F77)' }}>{subtitle}</p>}
+              {subtitle && <p className="fiori-ph-subtitle sap-layout-subtitle" style={{ fontSize: 14, color: 'var(--page-header-subtext)' }}>{subtitle}</p>}
             </div>
             {extraTitleContent && (
               <div className="fiori-ph-actions-right" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>

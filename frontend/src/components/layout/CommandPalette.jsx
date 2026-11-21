@@ -129,10 +129,10 @@ export function CommandPalette({
         style={{
           width: '100%',
           maxWidth: 580,
-          backgroundColor: 'var(--color-surface, #FFFFFF)',
-          borderRadius: 'var(--radius-xl, 16px)',
-          border: '1px solid var(--color-border, #D9E2EC)',
-          boxShadow: 'var(--shadow-modal, 0 20px 48px rgba(0, 32, 78, 0.18))',
+          backgroundColor: 'var(--color-surface)',
+          borderRadius: 'var(--radius-xl)',
+          border: '1px solid var(--color-border)',
+          boxShadow: 'var(--shadow-modal)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column'
@@ -140,7 +140,7 @@ export function CommandPalette({
       >
         {/* Search Input Bar */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--color-border)', gap: 12 }}>
-          <Search size={18} strokeWidth={1.75} style={{ color: 'var(--color-blue-600, #02579A)' }} />
+          <Search size={18} strokeWidth={1.75} style={{ color: 'var(--color-blue-600)' }} />
           <input
             ref={inputRef}
             type="text"
@@ -184,8 +184,8 @@ export function CommandPalette({
                     justifyContent: 'space-between',
                     padding: '10px 18px',
                     cursor: 'pointer',
-                    backgroundColor: isSelected ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-                    borderLeft: isSelected ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
+                    backgroundColor: isSelected ? 'var(--color-blue-50)' : 'transparent',
+                    borderLeft: isSelected ? '3px solid var(--color-blue-600)' : '3px solid transparent',
                     transition: 'background-color 100ms ease'
                   }}
                 >

@@ -88,7 +88,7 @@ const PasswordInput = forwardRef(function PasswordInput(
             left: 12,
             top: '50%',
             transform: 'translateY(-50%)',
-            color: 'var(--color-text-muted, #7A8CA3)',
+            color: 'var(--color-text-muted)',
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -122,7 +122,7 @@ const PasswordInput = forwardRef(function PasswordInput(
         className={`${className || 'sap-input'} ${leftIcon ? 'sap-input-with-icon' : ''}`.trim()}
         style={{
           width: '100%',
-          height: style.height || inputStyle.height || 'var(--size-form-input-height, 36px)',
+          height: style.height || inputStyle.height || 'var(--size-form-input-height)',
           paddingLeft: leftIcon ? 40 : 10,
           paddingRight: 40,
           boxSizing: 'border-box',

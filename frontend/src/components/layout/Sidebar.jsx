@@ -350,10 +350,10 @@ export function Sidebar({
         className={`rx-sidebar ${isCollapsed ? 'rx-sidebar-collapsed' : 'rx-sidebar-expanded'} ${isOpenMobile ? 'rx-sidebar-mobile-open' : ''}`}
         aria-label="Application Sidebar"
         style={{
-          width: isCollapsed ? 'var(--size-sidebar-width-collapsed, 72px)' : 'var(--size-sidebar-width-expanded, 240px)',
-          minWidth: isCollapsed ? 'var(--size-sidebar-width-collapsed, 72px)' : 'var(--size-sidebar-width-expanded, 240px)',
-          backgroundColor: 'var(--color-surface, #FFFFFF)',
-          borderRight: '1px solid var(--color-border, #D9E2EC)',
+          width: isCollapsed ? 'var(--size-sidebar-width-collapsed)' : 'var(--size-sidebar-width-expanded)',
+          minWidth: isCollapsed ? 'var(--size-sidebar-width-collapsed)' : 'var(--size-sidebar-width-expanded)',
+          backgroundColor: 'var(--color-surface)',
+          borderRight: '1px solid var(--color-border)',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -362,7 +362,7 @@ export function Sidebar({
           top: 0,
           zIndex: isOpenMobile ? 999 : 99,
           boxSizing: 'border-box',
-          transition: 'width var(--transition-normal, 200ms ease), min-width var(--transition-normal, 200ms ease)'
+          transition: 'width var(--transition-normal), min-width var(--transition-normal)'
         }}
       >
         {/* Navigation Items Scrollable Container */}
@@ -392,18 +392,18 @@ export function Sidebar({
               justifyContent: isCollapsed ? 'center' : 'flex-start',
               gap: 12,
               padding: isCollapsed ? '10px 0' : '10px 14px',
-              borderRadius: 'var(--radius-md, 8px)',
+              borderRadius: 'var(--radius-md)',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: isHomeActive ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-              borderLeft: isHomeActive ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-              color: isHomeActive ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+              backgroundColor: isHomeActive ? 'var(--color-blue-50)' : 'transparent',
+              borderLeft: isHomeActive ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+              color: isHomeActive ? 'var(--color-blue-600)' : 'var(--color-text)',
               fontWeight: isHomeActive ? 600 : 500,
-              fontSize: 'var(--font-size-14, 14px)',
+              fontSize: 'var(--font-size-14)',
               fontFamily: 'var(--font-sans)',
               width: '100%',
               textAlign: 'left',
-              transition: 'background-color var(--transition-fast, 150ms ease)',
+              transition: 'background-color var(--transition-fast)',
               boxSizing: 'border-box',
               outline: 'none'
             }}
@@ -414,7 +414,7 @@ export function Sidebar({
 
           {/* Section Divider */}
           {!isCollapsed && (
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted, #7A8CA3)', padding: '12px 14px 4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', padding: '12px 14px 4px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               OPERATIONS
             </div>
           )}
@@ -439,18 +439,18 @@ export function Sidebar({
                 justifyContent: isCollapsed ? 'center' : 'space-between',
                 gap: 10,
                 padding: isCollapsed ? '10px 0' : '10px 14px',
-                borderRadius: 'var(--radius-md, 8px)',
+                borderRadius: 'var(--radius-md)',
                 border: 'none',
                 cursor: 'pointer',
-                backgroundColor: isBomGroupActive && !isCollapsed && !expandedGroups.bom ? 'var(--color-blue-50, #EEF4F9)' : (isBomGroupActive && isCollapsed ? 'var(--color-blue-50, #EEF4F9)' : 'transparent'),
-                borderLeft: isBomGroupActive && (isCollapsed || !expandedGroups.bom) ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-                color: isBomGroupActive ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+                backgroundColor: isBomGroupActive && !isCollapsed && !expandedGroups.bom ? 'var(--color-blue-50)' : (isBomGroupActive && isCollapsed ? 'var(--color-blue-50)' : 'transparent'),
+                borderLeft: isBomGroupActive && (isCollapsed || !expandedGroups.bom) ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+                color: isBomGroupActive ? 'var(--color-blue-600)' : 'var(--color-text)',
                 fontWeight: 600,
-                fontSize: 'var(--font-size-14, 14px)',
+                fontSize: 'var(--font-size-14)',
                 fontFamily: 'var(--font-sans)',
                 width: '100%',
                 textAlign: 'left',
-                transition: 'background-color var(--transition-fast, 150ms ease)',
+                transition: 'background-color var(--transition-fast)',
                 boxSizing: 'border-box',
                 outline: 'none'
               }}
@@ -460,7 +460,7 @@ export function Sidebar({
                 {!isCollapsed && <span className="rx-sidebar-item-label">BOM management</span>}
               </div>
               {!isCollapsed && (
-                <span style={{ color: 'var(--color-text-muted, #7A8CA3)', display: 'inline-flex', transition: 'transform 150ms ease' }}>
+                <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', transition: 'transform 150ms ease' }}>
                   {expandedGroups.bom ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </span>
               )}
@@ -483,18 +483,18 @@ export function Sidebar({
                         alignItems: 'center',
                         gap: 10,
                         padding: '8px 10px',
-                        borderRadius: 'var(--radius-md, 8px)',
+                        borderRadius: 'var(--radius-md)',
                         border: 'none',
                         cursor: 'pointer',
-                        backgroundColor: item.active ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-                        borderLeft: item.active ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-                        color: item.active ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+                        backgroundColor: item.active ? 'var(--color-blue-50)' : 'transparent',
+                        borderLeft: item.active ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+                        color: item.active ? 'var(--color-blue-600)' : 'var(--color-text)',
                         fontWeight: item.active ? 600 : 500,
-                        fontSize: 'var(--font-size-14, 14px)',
+                        fontSize: 'var(--font-size-14)',
                         fontFamily: 'var(--font-sans)',
                         width: '100%',
                         textAlign: 'left',
-                        transition: 'background-color var(--transition-fast, 150ms ease)',
+                        transition: 'background-color var(--transition-fast)',
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
@@ -530,18 +530,18 @@ export function Sidebar({
               justifyContent: isCollapsed ? 'center' : 'flex-start',
               gap: 12,
               padding: isCollapsed ? '10px 0' : '10px 14px',
-              borderRadius: 'var(--radius-md, 8px)',
+              borderRadius: 'var(--radius-md)',
               border: 'none',
               cursor: 'pointer',
-              backgroundColor: isMyServersActive ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-              borderLeft: isMyServersActive ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-              color: isMyServersActive ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+              backgroundColor: isMyServersActive ? 'var(--color-blue-50)' : 'transparent',
+              borderLeft: isMyServersActive ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+              color: isMyServersActive ? 'var(--color-blue-600)' : 'var(--color-text)',
               fontWeight: isMyServersActive ? 600 : 500,
-              fontSize: 'var(--font-size-14, 14px)',
+              fontSize: 'var(--font-size-14)',
               fontFamily: 'var(--font-sans)',
               width: '100%',
               textAlign: 'left',
-              transition: 'background-color var(--transition-fast, 150ms ease)',
+              transition: 'background-color var(--transition-fast)',
               boxSizing: 'border-box',
               outline: 'none'
             }}
@@ -563,9 +563,9 @@ export function Sidebar({
                   justifyContent: isCollapsed ? 'center' : 'space-between',
                   gap: 12,
                   padding: isCollapsed ? '10px 0' : '10px 14px',
-                  borderRadius: 'var(--radius-md, 8px)',
-                  color: 'var(--color-text-muted, #7A8CA3)',
-                  fontSize: 'var(--font-size-14, 14px)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--color-text-muted)',
+                  fontSize: 'var(--font-size-14)',
                   fontFamily: 'var(--font-sans)',
                   cursor: 'default',
                   opacity: 0.65,
@@ -587,10 +587,10 @@ export function Sidebar({
                       fontSize: 10,
                       fontWeight: 600,
                       padding: '2px 6px',
-                      background: 'var(--color-blue-50, #EEF4F9)',
-                      color: 'var(--color-text-secondary, #4A5F77)',
-                      borderRadius: 'var(--radius-full, 9999px)',
-                      border: '1px solid var(--color-border, #D9E2EC)'
+                      background: 'var(--color-blue-50)',
+                      color: 'var(--color-text-secondary)',
+                      borderRadius: 'var(--radius-full)',
+                      border: '1px solid var(--color-border)'
                     }}
                   >
                     Soon
@@ -622,18 +622,18 @@ export function Sidebar({
                     justifyContent: isCollapsed ? 'center' : 'space-between',
                     gap: 10,
                     padding: isCollapsed ? '10px 0' : '10px 14px',
-                    borderRadius: 'var(--radius-md, 8px)',
+                    borderRadius: 'var(--radius-md)',
                     border: 'none',
                     cursor: 'pointer',
-                    backgroundColor: isAdminActive && (isCollapsed || !expandedGroups.admin) ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-                    borderLeft: isAdminActive && (isCollapsed || !expandedGroups.admin) ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-                    color: isAdminActive ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+                    backgroundColor: isAdminActive && (isCollapsed || !expandedGroups.admin) ? 'var(--color-blue-50)' : 'transparent',
+                    borderLeft: isAdminActive && (isCollapsed || !expandedGroups.admin) ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+                    color: isAdminActive ? 'var(--color-blue-600)' : 'var(--color-text)',
                     fontWeight: 600,
-                    fontSize: 'var(--font-size-14, 14px)',
+                    fontSize: 'var(--font-size-14)',
                     fontFamily: 'var(--font-sans)',
                     width: '100%',
                     textAlign: 'left',
-                    transition: 'background-color var(--transition-fast, 150ms ease)',
+                    transition: 'background-color var(--transition-fast)',
                     boxSizing: 'border-box',
                     outline: 'none'
                   }}
@@ -643,7 +643,7 @@ export function Sidebar({
                     {!isCollapsed && <span className="rx-sidebar-item-label">Admin</span>}
                   </div>
                   {!isCollapsed && (
-                    <span style={{ color: 'var(--color-text-muted, #7A8CA3)', display: 'inline-flex', transition: 'transform 150ms ease' }}>
+                    <span style={{ color: 'var(--color-text-muted)', display: 'inline-flex', transition: 'transform 150ms ease' }}>
                       {expandedGroups.admin ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </span>
                   )}
@@ -666,18 +666,18 @@ export function Sidebar({
                             alignItems: 'center',
                             gap: 10,
                             padding: '8px 10px',
-                            borderRadius: 'var(--radius-md, 8px)',
+                            borderRadius: 'var(--radius-md)',
                             border: 'none',
                             cursor: 'pointer',
-                            backgroundColor: item.active ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-                            borderLeft: item.active ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-                            color: item.active ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+                            backgroundColor: item.active ? 'var(--color-blue-50)' : 'transparent',
+                            borderLeft: item.active ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+                            color: item.active ? 'var(--color-blue-600)' : 'var(--color-text)',
                             fontWeight: item.active ? 600 : 500,
-                            fontSize: 'var(--font-size-14, 14px)',
+                            fontSize: 'var(--font-size-14)',
                             fontFamily: 'var(--font-sans)',
                             width: '100%',
                             textAlign: 'left',
-                            transition: 'background-color var(--transition-fast, 150ms ease)',
+                            transition: 'background-color var(--transition-fast)',
                             outline: 'none',
                             boxSizing: 'border-box'
                           }}
@@ -714,10 +714,10 @@ export function Sidebar({
               position: 'fixed',
               left: 72,
               top: Math.max(70, flyoutPosition.top),
-              backgroundColor: 'var(--color-surface, #FFFFFF)',
-              border: '1px solid var(--color-border, #D9E2EC)',
-              borderRadius: 'var(--radius-lg, 12px)',
-              boxShadow: 'var(--shadow-modal, 0 20px 48px rgba(0, 32, 78, 0.18))',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-modal)',
               zIndex: 1000,
               minWidth: 210,
               padding: '8px 6px',
@@ -730,11 +730,11 @@ export function Sidebar({
               style={{
                 fontSize: 11,
                 fontWeight: 700,
-                color: 'var(--color-text-secondary, #4A5F77)',
+                color: 'var(--color-text-secondary)',
                 padding: '6px 10px 4px',
                 letterSpacing: 0.5,
                 textTransform: 'uppercase',
-                borderBottom: '1px solid var(--color-border-subtle, #E2E8F0)',
+                borderBottom: '1px solid var(--color-border-subtle)',
                 marginBottom: 4
               }}
             >
@@ -754,18 +754,18 @@ export function Sidebar({
                     alignItems: 'center',
                     gap: 10,
                     padding: '8px 12px',
-                    borderRadius: 'var(--radius-md, 8px)',
+                    borderRadius: 'var(--radius-md)',
                     border: 'none',
                     cursor: 'pointer',
-                    backgroundColor: item.active ? 'var(--color-blue-50, #EEF4F9)' : 'transparent',
-                    borderLeft: item.active ? '3px solid var(--color-blue-600, #02579A)' : '3px solid transparent',
-                    color: item.active ? 'var(--color-blue-600, #02579A)' : 'var(--color-text, #0F2742)',
+                    backgroundColor: item.active ? 'var(--color-blue-50)' : 'transparent',
+                    borderLeft: item.active ? '3px solid var(--color-blue-600)' : '3px solid transparent',
+                    color: item.active ? 'var(--color-blue-600)' : 'var(--color-text)',
                     fontWeight: item.active ? 600 : 500,
-                    fontSize: 'var(--font-size-13, 13px)',
+                    fontSize: 'var(--font-size-13)',
                     fontFamily: 'var(--font-sans)',
                     width: '100%',
                     textAlign: 'left',
-                    transition: 'background-color var(--transition-fast, 150ms ease)',
+                    transition: 'background-color var(--transition-fast)',
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
@@ -779,7 +779,7 @@ export function Sidebar({
         )}
 
         {/* Sidebar Collapse Toggle Button */}
-        <div style={{ padding: '12px 8px', borderTop: '1px solid var(--color-border, #D9E2EC)' }}>
+        <div style={{ padding: '12px 8px', borderTop: '1px solid var(--color-border)' }}>
           <button
             type="button"
             onClick={toggleCollapse}
@@ -791,12 +791,12 @@ export function Sidebar({
               justifyContent: isCollapsed ? 'center' : 'space-between',
               width: '100%',
               padding: '8px 12px',
-              borderRadius: 'var(--radius-sm, 6px)',
+              borderRadius: 'var(--radius-sm)',
               border: 'none',
               background: 'transparent',
-              color: 'var(--color-text-secondary, #4A5F77)',
+              color: 'var(--color-text-secondary)',
               cursor: 'pointer',
-              fontSize: 'var(--font-size-12, 12px)',
+              fontSize: 'var(--font-size-12)',
               fontFamily: 'var(--font-sans)',
               outline: 'none',
               boxSizing: 'border-box'

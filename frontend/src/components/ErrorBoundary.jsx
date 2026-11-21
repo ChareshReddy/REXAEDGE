@@ -85,10 +85,10 @@ export default class ErrorBoundary extends React.Component {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '24px',
-            backgroundColor: 'var(--color-bg, #FFFBFB)',
+            backgroundColor: 'var(--color-page-bg)',
             fontFamily:
-              'var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif)',
-            color: 'var(--color-text, #1d2d3e)',
+              'var(--font-family)',
+            color: 'var(--color-text)',
             boxSizing: 'border-box'
           }}
         >
@@ -97,10 +97,10 @@ export default class ErrorBoundary extends React.Component {
             style={{
               maxWidth: 620,
               width: '100%',
-              backgroundColor: '#ffffff',
+              backgroundColor: 'var(--color-surface)',
               borderRadius: '12px',
-              border: '1px solid var(--color-border, #e2e8f0)',
-              boxShadow: 'var(--shadow-card, 0 4px 20px rgba(0, 0, 0, 0.08))',
+              border: '1px solid var(--color-border)',
+              boxShadow: 'var(--shadow-sm)',
               padding: '32px',
               textAlign: 'center',
               boxSizing: 'border-box'
@@ -111,8 +111,8 @@ export default class ErrorBoundary extends React.Component {
                 width: 56,
                 height: 56,
                 borderRadius: '50%',
-                backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                color: 'var(--color-amber-700, #b45309)',
+                backgroundColor: 'var(--color-warning-bg)',
+                color: 'var(--color-warning-text)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -122,11 +122,11 @@ export default class ErrorBoundary extends React.Component {
               <AlertTriangle size={32} />
             </div>
 
-            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text, #1d2d3e)' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px', color: 'var(--color-text)' }}>
               Application Render Error
             </h2>
 
-            <p style={{ fontSize: '14px', color: 'var(--color-text-muted, #64748b)', margin: '0 0 16px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', margin: '0 0 16px', lineHeight: 1.5 }}>
               The application encountered an unexpected error while rendering this view.
             </p>
 
@@ -136,12 +136,12 @@ export default class ErrorBoundary extends React.Component {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                  border: '1px solid var(--color-amber-200, #fde68a)',
+                  backgroundColor: 'var(--color-warning-bg)',
+                  border: '1px solid var(--color-warning-border)',
                   borderRadius: '6px',
                   padding: '6px 14px',
                   fontSize: '13px',
-                  color: 'var(--color-amber-900, #78350f)',
+                  color: 'var(--color-warning-strong)',
                   marginBottom: '18px'
                 }}
               >
@@ -156,27 +156,27 @@ export default class ErrorBoundary extends React.Component {
                     border: 'none',
                     padding: '2px 4px',
                     cursor: 'pointer',
-                    color: 'var(--color-amber-800, #92400e)',
+                    color: 'var(--color-warning-strong)',
                     display: 'inline-flex',
                     alignItems: 'center'
                   }}
                   title="Copy error reference"
                 >
-                  {this.state.copied ? <Check size={14} color="#15803d" /> : <Copy size={14} />}
+                  {this.state.copied ? <Check size={14} color="var(--color-success)" /> : <Copy size={14} />}
                 </button>
               </div>
             )}
 
             <div
               style={{
-                backgroundColor: 'var(--color-amber-50, #fffbeb)',
-                border: '1px solid var(--color-amber-300, #fcd34d)',
+                backgroundColor: 'var(--color-warning-bg)',
+                border: '1px solid var(--color-warning-border)',
                 borderRadius: '8px',
                 padding: '12px 16px',
                 textAlign: 'left',
                 marginBottom: '24px',
                 fontSize: '13px',
-                color: 'var(--color-amber-800, #92400e)',
+                color: 'var(--color-warning-strong)',
                 wordBreak: 'break-word',
                 fontFamily: 'monospace'
               }}
@@ -190,9 +190,9 @@ export default class ErrorBoundary extends React.Component {
                   marginBottom: '24px',
                   textAlign: 'left',
                   fontSize: '12px',
-                  color: 'var(--color-text-muted, #64748b)',
-                  backgroundColor: '#f8fafc',
-                  border: '1px solid var(--color-border, #e2e8f0)',
+                  color: 'var(--color-text-muted)',
+                  backgroundColor: 'var(--color-surface-subtle)',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '6px',
                   padding: '8px 12px'
                 }}
@@ -222,8 +222,8 @@ export default class ErrorBoundary extends React.Component {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '10px 20px',
-                  backgroundColor: 'var(--sap-btn-primary-bg, #02579A)',
-                  color: '#ffffff',
+                  backgroundColor: 'var(--sap-btn-primary-bg)',
+                  color: 'var(--color-text-inverse)',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
@@ -244,9 +244,9 @@ export default class ErrorBoundary extends React.Component {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '10px 18px',
-                  backgroundColor: '#ffffff',
-                  color: 'var(--color-text, #32363a)',
-                  border: '1px solid var(--color-border, #d9d9d9)',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: 600,

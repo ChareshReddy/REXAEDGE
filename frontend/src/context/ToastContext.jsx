@@ -521,7 +521,7 @@ function ToastItem({ toast: item, onRemove }) {
                   style={{
                     fontSize: 13,
                     lineHeight: 1.45,
-                    color: 'var(--color-text-secondary, #4A5F77)',
+                    color: 'var(--color-text-secondary)',
                     fontFamily: 'var(--font-sans)'
                   }}
                 >
@@ -535,7 +535,7 @@ function ToastItem({ toast: item, onRemove }) {
                 style={{
                   fontSize: 12,
                   marginTop: 2,
-                  color: 'var(--color-text-muted, #7A8CA3)',
+                  color: 'var(--color-text-muted)',
                   fontStyle: 'italic'
                 }}
               >
@@ -570,7 +570,7 @@ function ToastItem({ toast: item, onRemove }) {
               aria-label="Copy error reference"
               className="sap-toast-copy-btn"
             >
-              {copiedRef ? <Check size={11} color="#15803d" /> : <Copy size={11} />}
+              {copiedRef ? <Check size={11} color="var(--color-success)" /> : <Copy size={11} />}
             </button>
           </div>
         )}

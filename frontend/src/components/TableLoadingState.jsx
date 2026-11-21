@@ -24,10 +24,10 @@ export default function TableLoadingState({
     ...(borderless
       ? {}
       : {
-          background: '#ffffff',
-          border: '1px solid var(--sap-border-color, #e2d8d8)',
-          borderRadius: 'var(--sap-radius-md, 8px)',
-          boxShadow: 'var(--sap-shadow-card, 0 1px 3px rgba(0, 0, 0, 0.05))'
+          background: 'var(--color-surface)',
+          border: '1px solid var(--sap-border-color)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--sap-shadow-card)'
         }),
     ...style
   };
@@ -42,15 +42,15 @@ export default function TableLoadingState({
       <Loader2
         size={32}
         className="sap-spin"
-        color="#02579A"
-        style={{ color: '#02579A', flexShrink: 0 }}
+        color="var(--color-blue-600)"
+        style={{ color: 'var(--color-blue-600)', flexShrink: 0 }}
       />
       <span
         style={{
           marginTop: 12,
           fontSize: 13,
           fontWeight: 500,
-          color: '#334155', // slate-700
+          color: 'var(--color-text)', // slate-700
           textAlign: 'center'
         }}
       >

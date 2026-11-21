@@ -158,17 +158,17 @@ export default function HomePage({
             gap: '16px',
             padding: '14px 20px',
             margin: '20px 0',
-            backgroundColor: 'var(--color-blue-50, #F0F7FD)',
-            border: '1px solid var(--color-blue-200, #BAE6FD)',
-            borderRadius: 'var(--radius-lg, 8px)',
-            color: 'var(--color-navy-900, #00204E)'
+            backgroundColor: 'var(--color-blue-50)',
+            border: '1px solid var(--color-blue-200)',
+            borderRadius: 'var(--radius-lg)',
+            color: 'var(--color-navy-900)'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <Server size={20} color="var(--color-navy-900, #00204E)" />
+            <Server size={20} color="var(--color-navy-900)" />
             <div>
               <div style={{ fontWeight: 600, fontSize: '14px' }}>Add a SAP server to continue</div>
-              <div style={{ fontSize: '13px', color: 'var(--color-text-muted, #64748B)' }}>
+              <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
                 Configure your SAP connection to unlock BOM management and corporate ERP features.
               </div>
             </div>
@@ -183,10 +183,10 @@ export default function HomePage({
               padding: '8px 16px',
               fontSize: '13px',
               fontWeight: 600,
-              backgroundColor: 'var(--color-navy-900, #00204E)',
-              color: '#FFFFFF',
+              backgroundColor: 'var(--color-navy-900)',
+              color: 'var(--color-text-inverse)',
               border: 'none',
-              borderRadius: 'var(--radius-md, 6px)',
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
               whiteSpace: 'nowrap'
             }}

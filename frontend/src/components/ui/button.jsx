@@ -10,19 +10,19 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "rx-btn-primary bg-primary text-primary-foreground hover:bg-[#05396B]",
-        primary: "rx-btn-primary bg-primary text-primary-foreground hover:bg-[#05396B]",
-        destructive: "rx-btn-danger bg-destructive text-white hover:bg-destructive/90",
-        danger: "rx-btn-danger bg-destructive text-white hover:bg-destructive/90",
+        default: "rx-btn-primary bg-primary text-primary-foreground hover:bg-[var(--color-navy-800)]",
+        primary: "rx-btn-primary bg-primary text-primary-foreground hover:bg-[var(--color-navy-800)]",
+        destructive: "rx-btn-danger bg-destructive text-[var(--color-text-inverse)] hover:bg-[var(--color-danger-strong)]",
+        danger: "rx-btn-danger bg-destructive text-[var(--color-text-inverse)] hover:bg-[var(--color-danger-strong)]",
         outline: "border border-border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
-        secondary: "rx-btn-secondary bg-secondary text-secondary-foreground hover:bg-[#DCE8F1]",
+        secondary: "rx-btn-secondary bg-secondary text-secondary-foreground hover:bg-[var(--color-blue-100)]",
         ghost: "rx-btn-ghost hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-[var(--size-button-height,36px)] px-3.5 py-1.5",
-        md: "h-[var(--size-button-height,36px)] px-3.5 py-1.5",
-        sm: "rx-btn-sm h-[var(--size-button-sm-height,32px)] px-3 text-xs",
+        default: "h-[var(--size-button-height)] px-3.5 py-1.5",
+        md: "h-[var(--size-button-height)] px-3.5 py-1.5",
+        sm: "rx-btn-sm h-[var(--size-button-sm-height)] px-3 text-xs",
         xs: "h-6 px-2 text-xs",
         lg: "rx-btn-lg h-11 px-6 text-base",
         icon: "size-10",

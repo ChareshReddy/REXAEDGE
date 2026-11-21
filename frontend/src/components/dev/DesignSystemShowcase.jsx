@@ -300,7 +300,7 @@ export default function DesignSystemShowcase() {
             <h3 className="text-base font-semibold text-[var(--color-navy-900)] mb-2">
               3. Delete BOM Variant (Neutral Card Preceded by Amber Warning Alert, Red only on Confirm)
             </h3>
-            <Alert variant="warning" className="mb-4 bg-[var(--color-amber-50)] border-[var(--color-warning)] text-[var(--color-warning)]">
+            <Alert variant="warning" className="mb-4 bg-[var(--color-warning-bg)] border-[var(--color-warning)] text-[var(--color-warning)]">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <AlertTitle className="font-semibold text-xs tracking-wide uppercase">Destructive Operation</AlertTitle>
               <AlertDescription className="text-xs text-[var(--color-text)]">
@@ -334,18 +334,18 @@ export default function DesignSystemShowcase() {
         <Card title="Beautiful Blues Palette Tokens">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
             {[
-              { token: '--color-navy-900', hex: '#00204E', label: 'Navy 900 (Headings, Surfaces)' },
-              { token: '--color-navy-800', hex: '#05396B', label: 'Navy 800 (Hover/Pressed)' },
-              { token: '--color-blue-600', hex: '#02579A', label: 'Blue 600 (Primary Buttons)' },
-              { token: '--color-blue-400', hex: '#6699B8', label: 'Blue 400 (Secondary Icons)' },
-              { token: '--color-blue-200', hex: '#B3CDE0', label: 'Blue 200 (Focus Borders)' },
-              { token: '--color-blue-100', hex: '#DCE8F1', label: 'Blue 100 (Selected Rows)' },
-              { token: '--color-blue-50', hex: '#EEF4F9', label: 'Blue 50 (Table Header/Hover)' },
-              { token: '--color-border-input', hex: '#C7D4E1', label: 'Border Input (40px field boundary)' },
-              { token: '--color-border-input-hover', hex: '#98B5CE', label: 'Border Input Hover' },
-              { token: '--color-page-bg', hex: '#F5F8FB', label: 'Page Background' },
-              { token: '--color-surface', hex: '#FFFFFF', label: 'Surface Card' },
-              { token: '--color-border', hex: '#D9E2EC', label: 'Border Neutral' }
+              { token: '--color-navy-900', hex: 'var(--color-navy-900)', label: 'Navy 900 (Headings, Surfaces)' },
+              { token: '--color-navy-800', hex: 'var(--color-navy-800)', label: 'Navy 800 (Hover/Pressed)' },
+              { token: '--color-blue-600', hex: 'var(--color-blue-600)', label: 'Blue 600 (Primary Buttons)' },
+              { token: '--color-blue-400', hex: 'var(--color-blue-400)', label: 'Blue 400 (Secondary Icons)' },
+              { token: '--color-blue-200', hex: 'var(--color-blue-200)', label: 'Blue 200 (Focus Borders)' },
+              { token: '--color-blue-100', hex: 'var(--color-blue-100)', label: 'Blue 100 (Selected Rows)' },
+              { token: '--color-blue-50', hex: 'var(--color-blue-50)', label: 'Blue 50 (Table Header/Hover)' },
+              { token: '--color-border-input', hex: 'var(--color-border-input)', label: 'Border Input (40px field boundary)' },
+              { token: '--color-border-input-hover', hex: 'var(--color-border-input-hover)', label: 'Border Input Hover' },
+              { token: '--color-page-bg', hex: 'var(--color-page-bg)', label: 'Page Background' },
+              { token: '--color-surface', hex: 'var(--color-surface)', label: 'Surface Card' },
+              { token: '--color-border', hex: 'var(--color-border)', label: 'Border Neutral' }
             ].map((c) => (
               <div key={c.token} style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                 <div style={{ height: 60, backgroundColor: c.hex }} />
